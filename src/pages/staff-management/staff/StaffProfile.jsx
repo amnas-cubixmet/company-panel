@@ -39,6 +39,7 @@ import { attendanceManagerService } from '../../../services/attendanceManager.se
 import { jobService } from '../../../services/job.service';
 import { roleService } from '../../../services/role.service';
 import { staffService } from '../../../services/staff.service';
+import '../../../styles/staff-mobile-onboarding.css';
 import { staffManagementService } from '../../../services/staffManagement.service';
 
 const money = (value) =>
