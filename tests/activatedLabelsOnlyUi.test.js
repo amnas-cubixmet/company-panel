@@ -40,7 +40,7 @@ test('dashboard and account never advertise inactive-label workshop modules', ()
   assert.match(account, /featureAccess\.can\(route\.permission\)/);
   assert.match(account, /featureAccess\.activeLabelModules\.length/);
   assert.doesNotMatch(account, /section === 'features' && !featureAccess\.labelOnly/);
-  assert.match(account, /section === 'features' && <section className="cg-credit-panel cg-bundle-marketplace"/);
+  assert.match(account, /section === 'overview' && <section className="cg-credit-panel cg-bundle-marketplace"/);
   assert.match(account, /notifyCreditChange\(\)/);
 });
 
