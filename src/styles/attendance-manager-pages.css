@@ -135,7 +135,8 @@
 .attendance-rules-header p{margin:4px 0 0;color:var(--text-muted);font-size:10px}
 .attendance-rules-save{height:36px;padding:0 12px;border:0;border-radius:9px;background:var(--primary);color:#fff;display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:750;cursor:pointer}
 .attendance-rules-save:disabled{opacity:.5;cursor:not-allowed}
-.attendance-rules-message{padding:9px 11px;border:1px solid var(--success);border-radius:9px;background:var(--success-soft);color:var(--success);font-size:10px;font-weight:700}
+.attendance-rules-message{padding:11px 13px;border:1px solid var(--success);border-radius:9px;background:var(--success-soft);color:var(--success);font-size:14px;font-weight:650;line-height:1.5;overflow-wrap:anywhere}
+.attendance-rules-message.is-error{border-color:var(--danger);background:var(--danger-soft);color:var(--danger)}
 .attendance-rule-section{padding:13px;border:1px solid var(--border);border-radius:12px;background:var(--surface);box-shadow:var(--shadow-sm);min-width:0}
 .attendance-rule-title{display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
 .attendance-rule-title>svg{margin-top:1px;color:var(--primary);flex:0 0 auto}
@@ -267,6 +268,8 @@
 .attendance-punch-location-settings>small{display:block;margin-top:10px;color:var(--text-muted);font-size:13px;line-height:1.5}
 .attendance-punch-location-settings .attendance-location-pick{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 14px;font-size:14px}
 .attendance-punch-location-settings .attendance-location-feedback{margin:8px 0 0;color:var(--text-secondary);font-size:14px;line-height:1.5}
+.attendance-rules-page .attendance-location-feedback.is-error{border:1px solid var(--danger);border-radius:9px;padding:10px 12px;background:var(--danger-soft);color:var(--danger);font-weight:650}
+.attendance-rules-page .attendance-location-feedback.is-success{border:1px solid var(--success);border-radius:9px;padding:10px 12px;background:var(--success-soft);color:var(--success);font-weight:650}
 
 /* Workshop place search (submit-only, no automatic geocoding calls). */
 .attendance-place-search{display:grid;gap:10px;min-width:0}
