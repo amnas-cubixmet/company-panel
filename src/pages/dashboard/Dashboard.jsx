@@ -20,17 +20,25 @@ export const Dashboard = () => {
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [filterPeriod, setFilterPeriod] = useState('today');
   const [filterBranch, setFilterBranch] = useState('main');
 
   const fetchDashboard = async () => {
     setLoading(true);
+    setError('');
     try {
       const response = await getDashboardData({
         period: filterPeriod,
         branch: filterBranch,
       });
+      if (!response || typeof response !== 'object') {
+        throw new Error('Dashboard data is unavailable from the server.');
+      }
       setData(response);
+    } catch (cause) {
+      setData(null);
+      setError(cause?.message || 'Unable to load dashboard data.');
     } finally {
       setLoading(false);
     }
@@ -43,6 +51,15 @@ export const Dashboard = () => {
   }, [filterPeriod, filterBranch]);
 
   if (loading) return <Loader />;
+  if (error || !data) {
+    return (
+      <section className="dashboard-page dashboard-load-failure" role="alert">
+        <h2>Unable to load dashboard</h2>
+        <p>{error || 'The server returned no dashboard data.'}</p>
+        <button type="button" onClick={fetchDashboard}>Retry Dashboard</button>
+      </section>
+    );
+  }
 
   return (
     <div className="dashboard-page">
