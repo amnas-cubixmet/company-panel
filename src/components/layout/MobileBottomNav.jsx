@@ -12,7 +12,7 @@ const mobileLabels = {
   credits: 'Account',
   dashboard: 'Home',
   jobs: 'Jobs',
-  stock: 'Stock',
+  stock: 'Inventory',
 };
 
 export const MobileBottomNav = () => {

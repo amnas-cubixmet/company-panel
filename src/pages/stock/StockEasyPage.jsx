@@ -180,7 +180,7 @@ export default function StockEasyPage() {
     <div className="cg-easy-stock">
       <header className="cg-easy-head">
         <div>
-          <h1>Stock</h1>
+          <h1>Inventory Management</h1>
           <p>Find parts, receive stock and track what your workshop uses.</p>
         </div>
         <div className="cg-easy-actions">

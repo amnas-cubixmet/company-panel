@@ -90,7 +90,7 @@ export const resourceConfigs = {
   },
 
   stock: {
-    title: 'Stock Management',
+    title: 'Inventory Management',
     subtitle: 'All stock items with on-hand, reserved, available and reorder controls.',
     addLabel: 'Add Stock Item',
     service: resource(API_ENDPOINTS.STOCK, 'stock-items', [
