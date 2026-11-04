@@ -76,7 +76,7 @@ export function AccountOverview({
   ];
   const actions = [
     { title: 'Credit Wallet', description: 'Balance and credit purchase', href: '/account', icon: ReceiptText, permission: 'billing.view' },
-    { title: 'Feature Controls', description: 'Activate or disable paid tools', href: '/account/credits/features', icon: CreditCard, permission: 'billing.view' },
+    { title: 'Feature Controls', description: 'Activate or disable paid tools', href: '/account#module-pricing', icon: CreditCard, permission: 'billing.view' },
     { title: 'Credit Logs', description: 'Verified credits and charges', href: '/account/credits/logs', icon: ReceiptText, permission: 'billing.view' },
     { title: 'Media Storage', description: 'Uploads and usage history', href: '/account/storage', icon: HardDrive, permission: 'storage.view' },
     { title: 'Invoice Templates', description: 'Workshop document styling', href: '/account/templates', icon: FilePenLine, permission: 'settings.view' },

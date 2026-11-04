@@ -124,3 +124,6 @@
 .cg-bundle-marketplace .cg-bundle-features span,
 .cg-bundle-marketplace .cg-credit-pill,
 .cg-bundle-marketplace .cg-bundle-actions button{font-size:14px;line-height:1.5}
+
+/* Wallet Overview Manage Features anchor clears the sticky account tabs. */
+.cg-credit-page #module-pricing{scroll-margin-top:85px;outline-offset:4px}

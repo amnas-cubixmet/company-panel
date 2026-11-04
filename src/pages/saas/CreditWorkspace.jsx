@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowDownLeft, ArrowUpRight, Coins, CreditCard, Database, FileClock, RefreshCcw, ShieldCheck, Users, Wallet, Zap } from 'lucide-react';
 import { creditWalletService, notifyCreditChange, purchaseCredits } from '../../services/creditWallet.service';
 import { AccountHeader } from '../../components/account';
@@ -28,6 +28,8 @@ const ratePeriod = (period) => ({
 
 export function CreditWorkspace({ section = 'overview' }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const modulePricingRef = useRef(null);
   const { user } = useAuth();
   const featureAccess = useFeatureAccess();
   const [wallet, setWallet] = useState(null);
@@ -92,6 +94,35 @@ export function CreditWorkspace({ section = 'overview' }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // The old Feature Controls route was retired. Its pricing and activation
+  // controls now live lower down on this overview, so navigate to that section
+  // instead of re-opening the same Wallet Overview.
+  const scrollToModulePricing = useCallback(() => {
+    const sectionElement = modulePricingRef.current;
+    if (!sectionElement) return;
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    sectionElement.scrollIntoView({
+      behavior: reduceMotion ? 'auto' : 'smooth',
+      block: 'start',
+    });
+    sectionElement.focus({ preventScroll: true });
+  }, []);
+
+  const openModulePricing = () => {
+    scrollToModulePricing();
+    if (location.hash !== '#module-pricing') {
+      navigate(`${location.pathname}#module-pricing`, { replace: true });
+    }
+  };
+
+  // Deep links from other Account pages must also land on the real marketplace.
+  useEffect(() => {
+    if (section === 'overview' && location.hash === '#module-pricing') {
+      modulePricingRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
+      modulePricingRef.current?.focus({ preventScroll: true });
+    }
+  }, [section, location.hash]);
 
   // Razorpay redirects back with a purchase ID. Confirm status with Django,
   // which independently fetches the payment from Razorpay before adding credits.
@@ -287,7 +318,7 @@ export function CreditWorkspace({ section = 'overview' }) {
     {low && <div className="cg-credit-low" role="alert"><Coins size={20}/><div><strong>Your credit balance is running low.</strong><span>Buy more credits so paid modules can renew when due.</span></div><button onClick={() => navigate('/account/credits/buy')}>Buy Credits </button></div>}
 
     {section === 'overview' && featureAccess.paidAccessRequired && featureAccess.modules.length === 0 &&
-      <div className="cg-credit-low" role="status"><Zap size={20}/><div><strong>Welcome — activate your workshop modules</strong><span>Start by buying credits and selecting features. Only modules activated by the owner become available.</span></div><button onClick={() => navigate('/account/credits')}>Choose Features </button></div>}
+      <div className="cg-credit-low" role="status"><Zap size={20}/><div><strong>Welcome — activate your workshop modules</strong><span>Start by buying credits and selecting features. Only modules activated by the owner become available.</span></div><button type="button" onClick={openModulePricing} aria-controls="module-pricing">Choose Features </button></div>}
 
     {section === 'overview' && <section className="cg-credit-panel" aria-label="Free modules">
       <header><div><span>INCLUDED — NO CREDITS</span><h2>Free modules for your company</h2></div><ShieldCheck size={22}/></header>
@@ -332,7 +363,7 @@ export function CreditWorkspace({ section = 'overview' }) {
         })}
       </div> : <p className="cg-credit-empty">No active feature labels. Activate a published label to unlock paid workshop modules.</p>}
       <div className="cg-credit-actions">
-        <button type="button" className="primary" onClick={() => navigate('/account/credits')}>View Prices &amp; Activation </button>
+        <button type="button" className="primary" onClick={openModulePricing} aria-controls="module-pricing">View Prices &amp; Activation </button>
         <button type="button" onClick={() => navigate('/account/credits/logs')}>Check Wallet Cash Flow <FileClock size={16}/></button>
       </div>
     </section>}
@@ -343,7 +374,7 @@ export function CreditWorkspace({ section = 'overview' }) {
         <p>Buy wallet credits as needed. {wallet?.billingMode === 'monthly_postpaid'
         ? 'Monthly feature usage and actual storage GB-time accumulate in the backend and settle after month-end.'
         : 'Feature activation and renewals are recorded in the company wallet ledger.'}</p>
-        <div className="cg-credit-actions"><button className="primary" onClick={() => navigate('/account/credits/buy')}><CreditCard size={17}/> Buy Credits</button><button onClick={() => navigate('/account/credits')}>Manage Features </button></div>
+        <div className="cg-credit-actions"><button className="primary" onClick={() => navigate('/account/credits/buy')}><CreditCard size={17}/> Buy Credits</button><button type="button" onClick={openModulePricing} aria-controls="module-pricing">Manage Features </button></div>
         {account && <div className="cg-credit-inline"><span>Company subdomain identifier</span><strong>{account.subdomain}</strong></div>}
         {account?.configuredTenantUrl && <p><a href={account.configuredTenantUrl}>{account.configuredTenantUrl}</a></p>}
         <div className="cg-credit-inline"><span>Low credit alert threshold</span><strong>{credits(wallet?.lowThreshold)} credits</strong></div>
@@ -355,7 +386,7 @@ export function CreditWorkspace({ section = 'overview' }) {
         <button className="cg-credit-link" onClick={() => navigate('/account/credits/logs')}>View all logs </button>
       </section>
       <section className="cg-credit-panel cg-credit-wide"><header><div><span>MANAGE YOUR TOOLS</span><h2>Features and storage</h2></div><Zap size={22}/></header>
-        <div className="cg-credit-shortcuts"><button onClick={() => navigate('/account/credits')}><Zap size={19}/><strong>Module Pricing</strong><small>Review activation and renewal prices</small></button>{featureAccess.isCompanyOwner && featureAccess.can('billing.view') && <button onClick={() => navigate('/account/storage')}><Database size={19}/><strong>Storage Usage</strong><small>Files, GB and real storage event history</small></button>}<button onClick={() => navigate('/account/credits/logs')}><FileClock size={19}/><strong>Wallet Logs</strong><small>Charges, top-ups and adjustments</small></button></div>
+        <div className="cg-credit-shortcuts"><button type="button" onClick={openModulePricing} aria-controls="module-pricing"><Zap size={19}/><strong>Module Pricing</strong><small>Review activation and renewal prices</small></button>{featureAccess.isCompanyOwner && featureAccess.can('billing.view') && <button onClick={() => navigate('/account/storage')}><Database size={19}/><strong>Storage Usage</strong><small>Files, GB and real storage event history</small></button>}<button onClick={() => navigate('/account/credits/logs')}><FileClock size={19}/><strong>Wallet Logs</strong><small>Charges, top-ups and adjustments</small></button></div>
       </section>
     </div>}
 
@@ -369,7 +400,7 @@ export function CreditWorkspace({ section = 'overview' }) {
       <p className="cg-credit-note"><ShieldCheck size={16}/> UPI, bank cards and net banking are provided by Razorpay when enabled for your merchant account.</p>
     </section>}
 
-    {section === 'overview' && <section className="cg-credit-panel cg-bundle-marketplace" aria-label="Available modules">
+    {section === 'overview' && <section className="cg-credit-panel cg-bundle-marketplace" id="module-pricing" ref={modulePricingRef} tabIndex={-1} aria-label="Available modules">
       <header><div><span>MODULE PRICING</span><h2>Paid workshop modules ({paidBundles.length})</h2></div><Coins size={22}/></header>
       <p>Free modules above do not need a purchase. Postpaid module credits accrue only while access is ON, using the period selected by the administrator. Usage is logged now and paid on the configured due date next month, not after every period.</p>
       <div className="cg-bundle-grid">
