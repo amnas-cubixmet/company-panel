@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const months = [
   'January','February','March','April','May','June',
@@ -51,7 +51,7 @@ export const AttendanceOverviewHeader = ({
         <p>Only attendance from your joining date is available.</p>
       </div>
 
-      <div className="attendance-month-controls">
+      <div className="attendance-month-controls" role="group" aria-label="Attendance month navigation">
         <button
           type="button"
           onClick={onPreviousMonth}
@@ -62,18 +62,23 @@ export const AttendanceOverviewHeader = ({
         </button>
 
         <div className="attendance-month-selects">
-          <CalendarDays size={14} />
-          <select value={month} onChange={(event) => onMonthChange(Number(event.target.value))}>
-            {availableMonths.map(({ name, index }) => (
-              <option key={name} value={index}>{name}</option>
-            ))}
-          </select>
-
-          <select value={year} onChange={(event) => onYearChange(Number(event.target.value))}>
-            {years.map((item) => (
-              <option key={item} value={item}>{item}</option>
-            ))}
-          </select>
+          <CalendarDays size={18} aria-hidden="true" />
+          <div className="attendance-month-select-field attendance-month-select-field--month">
+            <select aria-label="Month" value={month} onChange={(event) => onMonthChange(Number(event.target.value))}>
+              {availableMonths.map(({ name, index }) => (
+                <option key={name} value={index}>{name}</option>
+              ))}
+            </select>
+            <ChevronDown size={16} aria-hidden="true" />
+          </div>
+          <div className="attendance-month-select-field attendance-month-select-field--year">
+            <select aria-label="Year" value={year} onChange={(event) => onYearChange(Number(event.target.value))}>
+              {years.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+            <ChevronDown size={16} aria-hidden="true" />
+          </div>
         </div>
 
         <button
@@ -84,9 +89,8 @@ export const AttendanceOverviewHeader = ({
         >
           <ChevronRight size={15} />
         </button>
+        <span className="attendance-current-month-label" aria-live="polite">{monthLabel}</span>
       </div>
-
-      <span className="attendance-current-month-label">{monthLabel}</span>
     </section>
   );
 };
