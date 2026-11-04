@@ -115,7 +115,7 @@ export function WorkshopPlaceSearch({ selectedName, latitude, longitude, onSelec
           {searching ? 'Searching…' : 'Search Place'}
         </button>
       </form>
-      {error && <p className="attendance-location-feedback" role="status">{error}</p>}
+      {error && <p className="attendance-location-feedback is-error" role="alert">{error}</p>}
       {results.length > 0 && (
         <div className="attendance-place-results" aria-label="Matching locations">
           {results.map((place) => (
