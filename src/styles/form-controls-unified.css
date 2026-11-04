@@ -17,7 +17,7 @@
   min-width: 0;
   max-width: 100%;
   font-family: var(--cg-font-family, inherit);
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 400;
   border: 1px solid var(--cg-field-border);
   border-radius: var(--cg-field-radius);
@@ -147,7 +147,7 @@
   height: 16px;
 }
 :is(body, #root) .outside-labour-search input {
-  font-size: 13px !important;
+  font-size: 16px !important;
   line-height: normal;
 }
 :is(body, #root) .outside-labour-search input::placeholder {
@@ -191,4 +191,14 @@
   ) input:not([type="checkbox"]) {
     font-size: 16px !important;
   }
+}
+/* Shared touch height and disabled state; page-specific form UI stays in control. */
+:root{--cg-field-height:44px}
+@media screen{
+  :where(.app-shell,.saas-account-shell,.login-page,.responsive-modal-sheet,[role="dialog"])
+  :where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([type="hidden"]),select):not(:where(.ui-input-shell input,.attendance-month-select-field select)){
+    min-height:var(--cg-field-height);
+  }
+  :where(.app-shell,.saas-account-shell,.login-page,.responsive-modal-sheet,[role="dialog"])
+  :where(input,select,textarea):disabled{opacity:.65;cursor:not-allowed}
 }

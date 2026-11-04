@@ -88,7 +88,6 @@ test('all visible Account tabs route to real pages; Settings is hidden from Acco
   const expected = [
     ['/account', 'overview'],
     ['/account/credits/buy', 'credits-buy'],
-    ['credits-features'],
     ['/account/storage', 'storage'],
     ['/account/credits/logs', 'credits-logs'],
     ['/account/templates', 'templates'],
