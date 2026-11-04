@@ -70,7 +70,7 @@ export function WhatsAppSettingsPage() {
   }, [load]);
 
   useEffect(() => {
-    if (!info?.configured || info.connected) return undefined;
+    if (!info?.configured) return undefined;
     const handleMetaEvent = (event) => {
       if (!FACEBOOK_ORIGINS.has(event.origin)) return;
       let value;
