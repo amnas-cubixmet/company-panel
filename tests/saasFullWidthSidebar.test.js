@@ -25,7 +25,7 @@ test('sidebar groups account and backend-authorized modules, not all possible st
   assert.match(layout, /workshopSections\.map/);
   assert.match(layout, /Workshop modules appear here when an active feature label and your role allow access/);
   assert.doesNotMatch(layout, /const workshopLinks = routeConfig;/);
-  assert.match(layout, /<NavLink to="\/account\/credits\/features"/);
+  assert.match(layout, /<NavLink to="\/account"/);
 });
 
 test('mobile menu opens accessibly and closes on navigation or backdrop', () => {
@@ -48,6 +48,6 @@ test('overview shows authorized module count and server-based price/cash-flow ra
   assert.match(workspace, /bundle\.billingType === 'permanent'/);
   assert.match(workspace, /Check Wallet Cash Flow/);
   assert.doesNotMatch(workspace, /section === 'features' && !featureAccess\.labelOnly/);
-  assert.match(workspace, /section === 'features' && <section className="cg-credit-panel cg-bundle-marketplace"/);
+  assert.match(workspace, /section === 'overview' && <section className="cg-credit-panel cg-bundle-marketplace"/);
   assert.match(workspace, /notifyCreditChange\(\)/);
 });
