@@ -202,6 +202,7 @@ export const Login = () => {
             </div>
 
             {isMockMode && <div className="login-mock">Development mock mode</div>}
+            <p className="login-description">New workshop? <Link to="/signup">Register using mobile number</Link></p>
           </div>
         </section>
       </div>
