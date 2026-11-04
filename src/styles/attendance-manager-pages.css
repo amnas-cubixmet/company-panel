@@ -286,3 +286,14 @@
 .attendance-location-advanced{margin:6px 0 12px}
 .attendance-location-advanced summary{cursor:pointer;font-size:13px;color:var(--text-secondary);padding:8px 0}
 .attendance-location-advanced .attendance-rule-form-grid{margin-top:9px}
+
+/* Explicit retry actions remain legible in both error and success themes. */
+.attendance-rules-page .attendance-rules-feedback-retry{
+  margin-left:12px;min-height:40px;padding:7px 12px;
+  border:1px solid var(--danger);border-radius:8px;
+  background:var(--surface);color:var(--danger);
+  font-size:14px;font-weight:700;cursor:pointer;
+}
+.attendance-rules-page .attendance-rules-feedback-retry:focus-visible{
+  outline:2px solid var(--danger);outline-offset:2px;
+}
