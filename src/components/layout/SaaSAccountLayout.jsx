@@ -99,7 +99,7 @@ export function SaaSAccountLayout({ children }) {
             <ShieldCheck size={18} aria-hidden="true"/>
             <p>Workshop modules appear here when an active feature label and your role allow access.</p>
             {access.isCompanyOwner && access.can('billing.view') &&
-              <NavLink to="/account/credits/features" onClick={() => setMenuOpen(false)}>View feature prices</NavLink>}
+              <NavLink to="/account" onClick={() => setMenuOpen(false)}>View feature prices</NavLink>}
           </div>}
         </div>
         <div className="saas-owner-sidebar-foot">
