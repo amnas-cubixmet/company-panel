@@ -80,10 +80,10 @@ test('login and recovery forms show red input/link validation on failures', () =
   }
 });
 
-test('Add Staff validates invite email, restricts owner roles and describes onboarding', () => {
+test('Add Staff supports mobile login without email and restricts owner roles', () => {
   assert.match(addStaff, /!role\.isProtected && !role\.is_system/);
   assert.match(addStaff, /showFormFieldError\(formRef\.current, 'email'/);
   assert.match(addStaff, /showFormFieldError\(formRef\.current, 'role'/);
   assert.match(addStaff, /name="role"/);
-  assert.match(addStaff, /secure password setup invitation/);
+  assert.match(addStaff, /secure 24-hour password link/);
 });
