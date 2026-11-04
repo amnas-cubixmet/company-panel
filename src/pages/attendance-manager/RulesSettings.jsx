@@ -11,6 +11,7 @@ import {
   TriangleAlert,
 } from 'lucide-react';
 import { AttendanceModeSelector } from '../../components/attendance-manager/AttendanceModeSelector';
+import { WorkshopPlaceSearch } from '../../components/attendance-manager/WorkshopPlaceSearch';
 import { attendanceManagerService } from '../../services/attendanceManager.service';
 
 const defaults = {
@@ -25,6 +26,7 @@ const defaults = {
   locationRequired: false,
   locationTrackingEnabled: false,
   punchLocationMode: 'anywhere',
+  workshopLocationName: '',
   workshopLatitude: null,
   workshopLongitude: null,
   punchRadiusMeters: 100,
@@ -109,14 +111,15 @@ export const RulesSettings = () => {
       ({ coords }) => {
         setRules((current) => ({
           ...current,
+          workshopLocationName: '',
           workshopLatitude: Number(coords.latitude.toFixed(7)),
           workshopLongitude: Number(coords.longitude.toFixed(7)),
         }));
-        setLocationStatus('Location selected. Check the coordinates and save the rules.');
+        setLocationStatus('Workshop GPS location selected. View it on the map, then save the rules.');
         setLocating(false);
       },
       () => {
-        setLocationStatus('Location unavailable. Allow browser permission or enter coordinates manually.');
+        setLocationStatus('Location unavailable. Allow browser permission, search for a place, or enter coordinates manually.');
         setLocating(false);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
@@ -135,7 +138,7 @@ export const RulesSettings = () => {
           !Number.isFinite(lat) || lat < -90 || lat > 90 ||
           !Number.isFinite(lon) || lon < -180 || lon > 180 ||
           !Number.isInteger(radius) || radius < 50 || radius > 5000) {
-        setMessage('Set valid workshop latitude, longitude and a radius of 50–5000 metres.');
+        setMessage('Select a workshop place or enter valid coordinates and a radius of 50–5000 metres.');
         return;
       }
     }
@@ -376,13 +379,30 @@ export const RulesSettings = () => {
 
           {rules.punchLocationMode === 'workshop' && (
             <div className="attendance-punch-location-settings">
-              <div className="attendance-rule-form-grid">
-                <label className="attendance-rule-field">
-                  <span>Workshop Latitude</span>
+              <WorkshopPlaceSearch
+                selectedName={rules.workshopLocationName}
+                latitude={rules.workshopLatitude}
+                longitude={rules.workshopLongitude}
+                disabled={saving}
+                onSelect={({ name, latitude, longitude }) => {
+                  setRules((current) => ({
+                    ...current,
+                    workshopLocationName: name,
+                    workshopLatitude: latitude,
+                    workshopLongitude: longitude,
+                  }));
+                  setLocationStatus('Workshop location selected. Review it on the map and Save Rules.');
+                }}
+              />
+              <details className="attendance-location-advanced">
+                <summary>Advanced: Edit coordinates manually</summary>
+                <div className="attendance-rule-form-grid">
+                  <label className="attendance-rule-field">
+                    <span>Workshop Latitude</span>
                   <input
                     type="number" step="any" min="-90" max="90"
                     value={rules.workshopLatitude ?? ''}
-                    onChange={(event) => change('workshopLatitude', event.target.value === '' ? null : Number(event.target.value))}
+                    onChange={(event) => setRules((current) => ({ ...current, workshopLocationName: '', workshopLatitude: event.target.value === '' ? null : Number(event.target.value) }))}
                     placeholder="e.g. 11.250000"
                   />
                 </label>
@@ -391,10 +411,13 @@ export const RulesSettings = () => {
                   <input
                     type="number" step="any" min="-180" max="180"
                     value={rules.workshopLongitude ?? ''}
-                    onChange={(event) => change('workshopLongitude', event.target.value === '' ? null : Number(event.target.value))}
+                    onChange={(event) => setRules((current) => ({ ...current, workshopLocationName: '', workshopLongitude: event.target.value === '' ? null : Number(event.target.value) }))}
                     placeholder="e.g. 75.800000"
                   />
                 </label>
+                </div>
+              </details>
+              <div className="attendance-rule-form-grid">
                 <label className="attendance-rule-field attendance-rule-field-wide">
                   <span>Allowed Punch Radius (metres)</span>
                   <small>Set 50 to 5000 metres from the workshop location.</small>
@@ -414,7 +437,7 @@ export const RulesSettings = () => {
                 <MapPin size={15} aria-hidden="true" />
                 {locating ? 'Finding location…' : 'Use Current Location'}
               </button>
-              <small>Use this only when physically at the workshop. GPS permission is requested when you click the button. Save Rules to apply the boundary.</small>
+              <small>You can search for a place or use GPS when physically at the workshop. Browser GPS permission is requested only when clicking Use Current Location. Save Rules to apply the selected pin.</small>
               {locationStatus && <p className="attendance-location-feedback" role="status">{locationStatus}</p>}
             </div>
           )}
