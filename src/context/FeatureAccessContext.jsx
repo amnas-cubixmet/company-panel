@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import apiClient from '../api/apiClient';
 import { useLocation } from 'react-router-dom';
 import { isAccountOnly } from '../utils/accountWorkspace';
@@ -49,8 +49,10 @@ export function FeatureAccessProvider({ children }) {
   const userKey = userIdentity(user);
   const [access, setAccess] = useState(LOCKED);
   const [loading, setLoading] = useState(false);
+  const latestRequestRef = useRef(0);
 
   const refresh = useCallback(async () => {
+    const requestId = ++latestRequestRef.current;
     if (!isAuthenticated || !userKey) {
       setAccess(LOCKED);
       setLoading(false);
@@ -67,6 +69,9 @@ export function FeatureAccessProvider({ children }) {
       if (expectedCompany && response.companyId && String(expectedCompany) !== String(response.companyId)) {
         throw new Error('Access response belongs to a different company');
       }
+      // Route changes or browser focus may overlap requests; ignore stale
+      // permission responses so they cannot overwrite the current tenant.
+      if (requestId !== latestRequestRef.current) return;
       setAccess({
         userKey,
         companyId: response.companyId,
@@ -91,9 +96,9 @@ export function FeatureAccessProvider({ children }) {
       });
     } catch {
       // Offline/invalid entitlement results never unlock another tenant's modules.
-      setAccess({ ...LOCKED, userKey });
+      if (requestId === latestRequestRef.current) setAccess({ ...LOCKED, userKey });
     } finally {
-      setLoading(false);
+      if (requestId === latestRequestRef.current) setLoading(false);
     }
   }, [isAuthenticated, userKey]);
 

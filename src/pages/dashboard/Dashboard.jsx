@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import {
   DashboardBottomGrid,
@@ -21,10 +21,12 @@ export const Dashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const latestDashboardRequest = useRef(0);
   const [filterPeriod, setFilterPeriod] = useState('today');
   const [filterBranch, setFilterBranch] = useState('main');
 
   const fetchDashboard = async () => {
+    const requestId = ++latestDashboardRequest.current;
     setLoading(true);
     setError('');
     try {
@@ -35,12 +37,14 @@ export const Dashboard = () => {
       if (!response || typeof response !== 'object') {
         throw new Error('Dashboard data is unavailable from the server.');
       }
-      setData(response);
+      if (requestId === latestDashboardRequest.current) setData(response);
     } catch (cause) {
-      setData(null);
-      setError(cause?.message || 'Unable to load dashboard data.');
+      if (requestId === latestDashboardRequest.current) {
+        setData(null);
+        setError(cause?.message || 'Unable to load dashboard data.');
+      }
     } finally {
-      setLoading(false);
+      if (requestId === latestDashboardRequest.current) setLoading(false);
     }
   };
 
@@ -48,6 +52,7 @@ export const Dashboard = () => {
     // Dashboard is a free module. Django strips data from paid modules the
     // user's role has not purchased, and widgets have their own can() checks.
     fetchDashboard();
+    return () => { latestDashboardRequest.current += 1; };
   }, [filterPeriod, filterBranch]);
 
   if (loading) return <Loader />;
