@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { jobService } from '../../services/job.service';
+import { vehiclePhotoService } from '../../services/vehiclePhoto.service';
+import { VehicleCameraQueue } from '../../components/vehicles/VehicleCameraQueue';
 import { staffService } from '../../services/staff.service';
 import { payrollService } from '../../services/payroll.service';
 import { JobBreadcrumbs } from '../../components/jobs/JobBreadcrumbs';
@@ -21,6 +23,9 @@ export const JobCreatePage = () => {
   const formRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [pendingPhotos, setPendingPhotos] = useState([]);
+  const [savedJobId, setSavedJobId] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [staff, setStaff] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerVehicles, setCustomerVehicles] = useState([]);
@@ -198,7 +203,7 @@ export const JobCreatePage = () => {
     setError('');
 
     try {
-      const created = await jobService.createJob({
+      const created = savedJobId ? { id: savedJobId } : await jobService.createJob({
         ...form,
         ...(selectedCustomer?.id ? { customer: selectedCustomer.id } : {}),
         checkInTime: form.jobDateTime,
@@ -224,7 +229,9 @@ export const JobCreatePage = () => {
         billing: { advancePaid: 0, paidAmount: 0, outstandingBalance: 0 }
       });
 
-      if (created?.id && form.assignedEmployeeId) {
+      if (!created?.id) throw new Error('Job Card could not be saved.');
+      setSavedJobId(created.id);
+      if (!savedJobId && created?.id && form.assignedEmployeeId) {
         try {
           await payrollService.createJobTimerAssignment(created.id, form.assignedEmployeeId);
         } catch (assignmentError) {
@@ -233,6 +240,13 @@ export const JobCreatePage = () => {
         }
       }
 
+      for (let i = 0; i < pendingPhotos.length; i += 1) {
+        const photo = pendingPhotos[i];
+        setUploadProgress(i + 1);
+        await vehiclePhotoService.upload({ jobId: created.id, ...photo });
+        setPendingPhotos((items) => items.filter((entry) => entry.id !== photo.id));
+      }
+      setUploadProgress(0);
       navigate(`/jobs/${created.id}`, { replace: true });
     } catch (err) {
       const shownInline = showServerFormErrors(formRef.current, err, {
@@ -240,9 +254,10 @@ export const JobCreatePage = () => {
         registration: 'vehicleReg', vehicle_registration: 'vehicleReg',
       });
       // Non-field/network errors still need a visible page-level message.
-      setError(shownInline ? '' : (err?.message || 'Unable to create job card.'));
+      setError(shownInline ? '' : (err?.message || 'Unable to create job card.') + (savedJobId ? ' Job Card saved; retry to attach remaining photos.' : ''));
     } finally {
       setSaving(false);
+      setUploadProgress(0);
     }
   };
 
@@ -394,6 +409,10 @@ export const JobCreatePage = () => {
               <textarea rows={3} value={form.notes} onChange={(e) => set('notes', e.target.value)} className="mt-1 min-h-24 w-full rounded-xl border border-line bg-surface-2 p-3 text-sm text-content outline-none focus:border-primary"/>
             </label>
           </div>
+        </section>
+
+        <section className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5">
+          <VehicleCameraQueue photos={pendingPhotos} onChange={setPendingPhotos} disabled={saving} uploading={uploadProgress}/>
         </section>
 
         <div className="job-create-actions sticky bottom-0 z-20 flex gap-2 border-t border-line bg-surface/95 p-3 backdrop-blur md:static md:justify-end md:border-0 md:bg-transparent md:p-0" aria-label="Job Card form actions">
