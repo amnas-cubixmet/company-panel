@@ -6,6 +6,8 @@ import {
   Building2,
   CalendarDays,
   Clock3,
+  Copy,
+  ExternalLink,
   FilePlus2,
   FileText,
   Gauge,
@@ -175,6 +177,8 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
   const [inviteNotice, setInviteNotice] = useState(() => staffInviteDeliveryMessage(location.state?.emailDeliveryStatus));
   const [error, setError] = useState('');
   const [inviteError, setInviteError] = useState('');
+  const [setupLink, setSetupLink] = useState(() => location.state?.setupLink || '');
+  const [inviteStatus, setInviteStatus] = useState(() => location.state?.whatsappInviteStatus || '');
 
   const [roles, setRoles] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -197,6 +201,7 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
     String(user.employeeProfileId) === String(staffId);
 
   const canEdit = can('staff.edit');
+  const canManageLogin = canEdit && can('company.manage');
   const canReadRoles = can('company.manage');
   const canViewJobs = can('jobs.view');
   const canManageAttendance = can('attendance.manage');
@@ -393,14 +398,14 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
   const handleSendInvite = async () => {
     setInviteError('');
     setInviteNotice('');
-    if (!staff?.email) {
-      setInviteError('Add an email address before sending an invite.');
-      return;
-    }
+    setSetupLink('');
     try {
       const result = await staffService.sendLoginInvite(staff.id);
-      const info = staffInviteDeliveryMessage(result?.emailDeliveryStatus)
-        || result?.message || 'Invite request accepted by server.';
+      setSetupLink(result?.setupLink || '');
+      setInviteStatus(result?.whatsappInviteStatus || '');
+      const info = result?.whatsappInviteStatus === 'queued'
+        ? 'Workshop WhatsApp onboarding message queued.'
+        : 'Secure link issued. Copy/share it using a verified staff contact.';
       setInviteNotice(info);
       showToast(info);
       await refreshAll();
@@ -411,17 +416,25 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
 
   const handleToggleAccount = async () => {
     try {
-      await staffService.toggleAccountStatus(staff.id);
-      showToast(
-        staff.accountStatus === 'Active'
-          ? 'Account deactivated.'
-          : 'Account activated.',
-      );
+      await staffService.setLoginAccess(staff.id, staff.loginStatus === 'Disabled' || staff.loginStatus === 'Not Invited');
+      showToast(staff.loginStatus === 'Disabled' ? 'Login enabled. Send a new setup link if required.' : 'Login disabled without changing payroll or employment status.');
+      setSetupLink('');
       await refreshAll();
     } catch (requestError) {
-      showToast(requestError?.message || 'Unable to change account status.');
+      showToast(requestError?.message || 'Unable to change login access.');
     }
   };
+
+  const handleCopySetup = async () => {
+    if (!setupLink) return;
+    try {
+      await navigator.clipboard.writeText(setupLink);
+      setInviteNotice('Secure setup link copied. Share only with this staff member.');
+    } catch {
+      setInviteError('Clipboard is unavailable. Select and copy the secure URL.');
+    }
+  };
+
 
   const handleEdit = async (payload) => {
     await staffService.updateStaff(staff.id, payload);
@@ -501,7 +514,7 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
                 Daily Wage Account
               </button>
             )}
-            {canEdit && (
+            {canManageLogin && (
               <>
                 <button type="button" className="staff360-secondary-button" onClick={() => setEditOpen(true)}>
                   <Pencil size={14}/>
@@ -512,14 +525,34 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
                   Send Login Invite
                 </button>
                 <button type="button" onClick={handleToggleAccount} className="staff360-secondary-button">
-                  {staff.accountStatus === 'Active' ? <Lock size={14}/> : <Unlock size={14}/>}
-                  {staff.accountStatus === 'Active' ? 'Deactivate' : 'Activate'}
+                  {staff.loginStatus === 'Disabled' ? <Unlock size={14}/> : <Lock size={14}/>}
+                  {staff.loginStatus === 'Disabled' ? 'Enable Login' : 'Disable Login'}
                 </button>
               </>
             )}
           </div>
         )}
       </section>
+
+      {canManageLogin && (
+        <section className="staff-setup-link-panel" aria-label="Staff mobile login invitation">
+          <h3>Mobile + Password Login</h3>
+          <p><strong>Status:</strong> {staff.loginStatus || 'Not Invited'}
+            {staff.whatsappInviteStatus && ` · WhatsApp: ${staff.whatsappInviteStatus}`}</p>
+          {setupLink && <>
+            <label htmlFor="staff-setup-url">Latest one-time setup URL (valid for 24 hours)</label>
+            <input id="staff-setup-url" type="text" readOnly value={setupLink}
+              onFocus={(event) => event.target.select()}/>
+            <div className="staff-setup-link-actions">
+              <button type="button" onClick={handleCopySetup}><Copy size={16}/> Copy Setup Link</button>
+              {staff.phone && <a href={`https://wa.me/${String(staff.phone).replace(/\D/g,'')}?text=${encodeURIComponent(`Welcome to CubeGears. Set your workshop password within 24 hours: ${setupLink}`)}`}
+                target="_blank" rel="noreferrer"><ExternalLink size={16}/> Share via WhatsApp</a>}
+            </div>
+            <p>Do not post this private password link in public groups or shared channels.</p>
+          </>}
+          {inviteStatus === 'manual' && <p role="status">Automated WhatsApp delivery unavailable. Use the manual secure link above.</p>}
+        </section>
+      )}
 
       <nav className="staff-profile-tabs staff360-tabs" aria-label="Staff profile sections">
         <div className="scroll-hidden">
