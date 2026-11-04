@@ -62,12 +62,12 @@ test('backend validation errors are mapped from both DRF and wrapped API payload
 test('Django 400 and 401 invalid credentials display input errors', () => {
   const login = read('src/pages/auth/Login.jsx');
   assert.match(login, /\[400, 401\]\.includes\(error\?\.status\)/);
-  assert.match(login, /email: credentialError, password: credentialError/);
+  assert.match(login, /identifier: credentialError, password: credentialError/);
 });
 
 test('login requires real backend user identity', () => {
   const context = read('src/context/AuthContext.jsx');
-  assert.match(context, /!resolvedUser\?\.id \|\| !resolvedUser\?\.email/);
+  assert.match(context, /!resolvedUser\\?\\.id \\|\\| !\\(resolvedUser\\?\\.email \\|\\| resolvedUser\\?\\.phone\\)/);
 });
 
 test('recovery does not announce whether a user exists', () => {
