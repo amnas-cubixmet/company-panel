@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Camera, Trash2 } from 'lucide-react';
 import { LiveVehicleCamera } from './LiveVehicleCamera';
+import '../../styles/vehicle-camera-queue.css';
 
 function QueuedPhoto({ item, onRemove, disabled }) {
   const [url, setUrl] = useState('');
