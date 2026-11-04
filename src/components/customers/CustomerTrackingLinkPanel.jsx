@@ -1,3 +1,4 @@
+import { appConfirm } from '../common/appDialogs';
 import { useEffect, useState } from 'react';
 import { Copy, Link2, RefreshCw, ShieldOff } from 'lucide-react';
 import apiClient from '../../api/apiClient';
@@ -34,7 +35,7 @@ export function CustomerTrackingLinkPanel({ customerId, whatsapp, canManage = fa
     const text = action === 'revoke'
       ? 'Revoke this customer link? Anyone with the old URL will lose access.'
       : 'Regenerate the tracking URL? The previous link will stop working.';
-    if (!window.confirm(text)) return;
+    if (!await appConfirm(text)) return;
     setBusy(true);
     setError('');
     setNotice('');
