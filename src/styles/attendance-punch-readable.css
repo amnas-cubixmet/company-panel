@@ -161,3 +161,20 @@
     grid-column: auto;
   }
 }
+/* Accurate GPS can take several readings; show progress and a retry action. */
+.my-attendance-pages .attendance-punch-gps-progress{
+  margin:8px 0; padding:10px 12px; border-radius:10px;
+  background:var(--surface-2); color:var(--text-secondary);
+  font-size:14px; line-height:1.5;
+}
+.my-attendance-pages .attendance-punch-error p{margin:5px 0 0;line-height:1.5}
+.my-attendance-pages .attendance-punch-error strong{display:block;font-weight:700}
+.my-attendance-pages .attendance-punch-retry{
+  min-height:44px; padding:9px 14px; margin-top:10px;
+  border:1px solid var(--border); border-radius:10px;
+  background:var(--surface); color:var(--text-primary);
+  font-size:14px; font-weight:650; cursor:pointer;
+}
+.my-attendance-pages .attendance-punch-retry:focus-visible{
+  outline:2px solid var(--primary);outline-offset:2px;
+}

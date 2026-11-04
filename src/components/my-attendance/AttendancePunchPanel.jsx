@@ -39,6 +39,8 @@ export const AttendancePunchPanel = ({ onChanged }) => {
   const [state, setState] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [locationProgress, setLocationProgress] = useState('');
+  const [locationProblem, setLocationProblem] = useState(false);
   const [now, setNow] = useState(Date.now());
 
   const load = async () => {
@@ -71,19 +73,28 @@ export const AttendancePunchPanel = ({ onChanged }) => {
 
     setBusy(true);
     setError('');
+    setLocationProgress('');
+    setLocationProblem(false);
 
     try {
       await attendanceService.punchAttendance(state.nextAction, {
         locationRequired: Boolean(state?.rule?.locationRequired),
         locationTrackingEnabled: Boolean(state?.rule?.locationTrackingEnabled),
         punchLocationMode: state?.rule?.punchLocationMode || 'anywhere',
+        punchRadiusMeters: state?.rule?.punchRadiusMeters,
+        onLocationProgress: ({ accuracy, radius }) => {
+          setLocationProgress(`Checking GPS: about ${accuracy} m accuracy · ${radius} m allowed radius…`);
+        },
       });
       await load();
       onChanged?.();
     } catch (err) {
+      setLocationProblem(err?.code === 'LOCATION_ACCURACY_LOW' ||
+        /location accuracy is too low/i.test(err?.message || ''));
       setError(err?.message || 'Attendance punch failed.');
     } finally {
       setBusy(false);
+      setLocationProgress('');
     }
   };
 
@@ -185,6 +196,8 @@ export const AttendancePunchPanel = ({ onChanged }) => {
         ) : null}
       </div>
 
+      {locationProgress && <p className="attendance-punch-gps-progress" role="status" aria-live="polite">{locationProgress}</p>}
+
       {sessions.length > 0 && (
         <div className="attendance-session-strip">
           {sessions.map((session, index) => {
@@ -237,7 +250,13 @@ export const AttendancePunchPanel = ({ onChanged }) => {
         </div>
       )}
 
-      {error && <div className="attendance-punch-error">{error}</div>}
+      {error && <div className="attendance-punch-error" role="alert">
+        <strong>{state.nextAction === 'check_out' ? 'Check Out not recorded.' : 'Check In not recorded.'}</strong>
+        <p>{error}</p>
+        {locationProblem && <button type="button" className="attendance-punch-retry" onClick={punch} disabled={busy}>
+          Retry with Precise GPS
+        </button>}
+      </div>}
     </section>
   );
 };

@@ -1,4 +1,5 @@
 import apiClient from '../api/apiClient';
+import { acquireWorkshopLocation } from '../utils/attendanceGeolocation';
 
 const dayName = (dateValue) => {
   if (!dateValue) return '';
@@ -120,7 +121,13 @@ export const punchAttendance = async (action, options = {}) => {
     // Optional location recording should never block an employee from punching.
     // Workshop-radius or required-location policies still fail closed.
     try {
-      location = await getBrowserLocation(locationMandatory);
+      location = options.punchLocationMode === 'workshop'
+        ? await acquireWorkshopLocation(
+            navigator.geolocation,
+            options.punchRadiusMeters,
+            options.onLocationProgress,
+          )
+        : await getBrowserLocation(locationMandatory);
     } catch (error) {
       if (locationMandatory) throw error;
     }
