@@ -10,9 +10,16 @@ const cash = (value) => new Intl.NumberFormat('en-IN', {
   style: 'currency', currency: 'INR', maximumFractionDigits: 2,
 }).format(Number(value) || 0);
 const number = (value) => Number(value) || 0;
+// Presets are convenience choices, not a substitute for the HSN-specific
+// tax rate. The item catalogue stores the total GST percentage, not a
+// separate CGST/SGST/IGST breakdown.
+const GST_RATE_PRESETS = ['0', '3', '5', '12', '18', '28', '40'];
+const validGstRate = (value) =>
+  /^\d{1,3}(?:\.\d{1,2})?$/.test(String(value)) &&
+  Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 100;
 const list = (result) => Array.isArray(result) ? result : (result?.results || []);
 const initialPart = { partName: '', sku: '', brand: '', category: '', unit: 'Piece',
-  costPrice: '', sellingPrice: '', minimumStock: '5', location: '' };
+  costPrice: '', sellingPrice: '', tax: '0', hsnCode: '', minimumStock: '5', location: '' };
 const initialMove = { mode: 'in', itemId: '', quantity: '1', invoiceNo: '', notes: '', costPrice: '', sellingPrice: '', priceMode: '' };
 
 function stockState(item) {
@@ -114,12 +121,16 @@ export default function StockEasyPage() {
         !Number.isFinite(Number(part.sellingPrice)) || Number(part.sellingPrice) < 0) {
       setError('Enter a part name, SKU, valid purchase cost and selling price.'); return;
     }
+    if (!validGstRate(part.tax)) {
+      setError('Choose a valid GST rate between 0% and 100% (up to two decimals).'); return;
+    }
     setSaving(true);
     setError('');
     try {
       const created = await stockCatalogService.createItem({
         ...part, onHand: 0, reserved: 0, reorderLevel: number(part.minimumStock),
         costPrice: number(part.costPrice), sellingPrice: number(part.sellingPrice),
+        tax: Number(part.tax), hsnCode: part.hsnCode.trim(),
         minimumStock: number(part.minimumStock),
       });
       setPartOpen(false);
@@ -290,6 +301,39 @@ export default function StockEasyPage() {
               <label>Purchase Cost / Unit (₹) *<input required type="number" min="0" step="0.01" value={part.costPrice} onChange={(e) => setPart({ ...part, costPrice: e.target.value })}/></label>
               <label>Selling Price / Unit (₹) *<input required type="number" min="0" step="0.01" value={part.sellingPrice} onChange={(e) => setPart({ ...part, sellingPrice: e.target.value })}/></label>
             </div>
+            <div className="cg-easy-fields">
+              <label>GST Rate (total %) *
+                <select
+                  aria-label="GST Rate"
+                  value={GST_RATE_PRESETS.includes(String(part.tax)) ? String(part.tax) : 'custom'}
+                  onChange={(e) => setPart({ ...part, tax: e.target.value === 'custom' ? '' : e.target.value })}
+                >
+                  {GST_RATE_PRESETS.map((rate) => <option key={rate} value={rate}>{rate}% GST</option>)}
+                  <option value="custom">Other rate (custom %)</option>
+                </select>
+              </label>
+              <label>HSN / SAC Code (optional)
+                <input
+                  aria-label="HSN or SAC Code"
+                  maxLength={20}
+                  value={part.hsnCode}
+                  onChange={(e) => setPart({ ...part, hsnCode: e.target.value })}
+                  placeholder="Enter HSN / SAC code"
+                />
+              </label>
+            </div>
+            {!GST_RATE_PRESETS.includes(String(part.tax)) && (
+              <label>Custom GST Rate (%)
+                <input
+                  type="number" min="0" max="100" step="0.01" required
+                  aria-label="Custom GST Rate"
+                  value={part.tax}
+                  onChange={(e) => setPart({ ...part, tax: e.target.value })}
+                  placeholder="e.g. 7.5"
+                />
+              </label>
+            )}
+            <p className="cg-easy-hint">Choose the total GST rate applicable to this part. HSN/SAC is optional. Product GST is saved with the inventory item; invoice taxes follow the billing form and place-of-supply rules.</p>
             <div className="cg-easy-fields"><label>Minimum stock<input type="number" min="0" step="0.01" value={part.minimumStock} onChange={(e) => setPart({ ...part, minimumStock: e.target.value })}/></label>
               <label>Rack / location<input value={part.location} onChange={(e) => setPart({ ...part, location: e.target.value })}/></label></div>
             <p className="cg-easy-hint">Save the product with zero stock. The Receive Stock form opens next to enter the initial quantity.</p>

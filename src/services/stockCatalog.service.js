@@ -16,6 +16,8 @@ const toPart = (item) => ({
   available: number(item.available ?? (number(item.onHand) - number(item.reserved))),
   costPrice: number(item.costPrice ?? item.cost),
   sellingPrice: number(item.sellingPrice ?? item.price),
+  tax: number(item.tax),
+  hsnCode: item.hsnCode || item.hsn_code || '',
   minimumStock: number(item.minimumStock ?? item.minimum),
 });
 
@@ -95,6 +97,8 @@ export const stockCatalogService = {
         reserved: 0,
         costPrice: number(payload.costPrice),
         sellingPrice: number(payload.sellingPrice),
+        tax: number(payload.tax),
+        hsnCode: payload.hsnCode || '',
         minimumStock: number(payload.minimumStock),
         location: payload.location || '',
         status: 'Active',
