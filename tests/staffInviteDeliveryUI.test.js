@@ -14,7 +14,9 @@ test('staff creation forwards actual delivery status to staff profile', () => {
 
 test('staff profile resend reports server status instead of claiming a sent email', () => {
   assert.match(profile, /const result = await staffService\.sendLoginInvite\(staff\.id\)/);
-  assert.match(profile, /staffInviteDeliveryMessage\(result\?\.emailDeliveryStatus\)/);
+  assert.match(profile, /result\?\.whatsappInviteStatus/);
+  assert.match(profile, /result\?\.setupLink/);
+  assert.match(profile, /Copy Setup Link/);
   assert.doesNotMatch(profile, /showToast\('Login invite sent by email\.'\)/);
 });
 
