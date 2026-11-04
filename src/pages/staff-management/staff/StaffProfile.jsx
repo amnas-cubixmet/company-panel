@@ -178,6 +178,7 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
   const [inviteNotice, setInviteNotice] = useState(() => staffInviteDeliveryMessage(location.state?.emailDeliveryStatus));
   const [error, setError] = useState('');
   const [inviteError, setInviteError] = useState('');
+  const [inviteBusy, setInviteBusy] = useState(false);
   const [setupLink, setSetupLink] = useState(() => location.state?.setupLink || '');
   const [inviteStatus, setInviteStatus] = useState(() => location.state?.whatsappInviteStatus || '');
 
@@ -397,6 +398,8 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
   }, [jobs, staff]);
 
   const handleSendInvite = async () => {
+    if (inviteBusy) return;
+    setInviteBusy(true);
     setInviteError('');
     setInviteNotice('');
     setSetupLink('');
@@ -412,6 +415,8 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
       await refreshAll();
     } catch (requestError) {
       setInviteError(staffInviteErrorMessage(requestError));
+    } finally {
+      setInviteBusy(false);
     }
   };
 
@@ -521,7 +526,7 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
                   <Pencil size={14}/>
                   Edit Profile
                 </button>
-                <button type="button" onClick={handleSendInvite} className="staff360-secondary-button">
+                <button type="button" onClick={handleSendInvite} disabled={inviteBusy} className="staff360-secondary-button">
                   <Send size={14}/>
                   Send Login Invite
                 </button>
