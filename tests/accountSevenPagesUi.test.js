@@ -15,20 +15,19 @@ const security = read('../src/pages/account/AccountSecurity.jsx');
 const routeTable = [
   ['/account', 'overview'],
   ['/account/credits/buy', 'credits-buy'],
-  ['/account/credits/features', 'credits-features'],
   ['/account/storage', 'storage'],
   ['/account/credits/logs', 'credits-logs'],
   ['/account/templates', 'templates'],
   ['/account/security', 'security'],
 ];
 
-test('seven account routes share one navigation and correct active state', () => {
+test('six account routes share one navigation and correct active state', () => {
   for (const [path,key] of routeTable) {
     assert.ok(routes.includes(`path="${path}"`), 'Missing route '+path);
     assert.ok(tabs.includes(`['${key}'`), 'Missing active tab '+key);
     assert.ok(tabs.includes(`'${path}'`), 'Missing nav target '+path);
   }
-  assert.doesNotMatch(tabs, /\['settings'|\['company'/);
+  assert.doesNotMatch(tabs, /\['settings'|\['company'|\['credits-features'/);
   assert.match(tabs, /aria-current=\{active===key\?'page':undefined\}/);
   assert.match(tabs, /account-dashboard-eyebrow/);
   assert.match(tabs, /account-dashboard-section-count/);
