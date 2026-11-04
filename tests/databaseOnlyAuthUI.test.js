@@ -33,9 +33,9 @@ test('registered email error is shown at the recovery input only', () => {
 });
 
 test('failed login never redirects and includes inline mobile-or-email/password errors', () => {
-  assert.match(login, /await login\\(\\{ identifier: identity/);
+  assert.match(login, /await login\(\{ identifier: identity/);
   assert.match(login, /catch \(error\)/);
   assert.match(login, /setFieldErrors\(/);
-  assert.match(login, /aria-invalid=\{Boolean\(fieldErrors\.email\)\}/);
+  assert.match(login, /aria-invalid=\{Boolean\(fieldErrors\.identifier\)\}/);
   assert.match(login, /aria-invalid=\{Boolean\(fieldErrors\.password\)\}/);
 });
