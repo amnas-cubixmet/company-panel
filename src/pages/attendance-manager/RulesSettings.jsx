@@ -57,7 +57,9 @@ export const RulesSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('');
   const [locationStatus, setLocationStatus] = useState('');
+  const [locationStatusType, setLocationStatusType] = useState('');
   const [locating, setLocating] = useState(false);
   const [holidays, setHolidays] = useState([]);
   const [holidayForm, setHolidayForm] = useState({
@@ -102,7 +104,9 @@ export const RulesSettings = () => {
 
   const selectCurrentLocation = () => {
     setLocationStatus('');
+    setLocationStatusType('');
     if (!navigator.geolocation || !window.isSecureContext) {
+      setLocationStatusType('error');
       setLocationStatus('Device location requires a secure HTTPS connection and browser support.');
       return;
     }
@@ -115,10 +119,12 @@ export const RulesSettings = () => {
           workshopLatitude: Number(coords.latitude.toFixed(7)),
           workshopLongitude: Number(coords.longitude.toFixed(7)),
         }));
+        setLocationStatusType('success');
         setLocationStatus('Workshop GPS location selected. View it on the map, then save the rules.');
         setLocating(false);
       },
       () => {
+        setLocationStatusType('error');
         setLocationStatus('Location unavailable. Allow browser permission, search for a place, or enter coordinates manually.');
         setLocating(false);
       },
@@ -129,6 +135,7 @@ export const RulesSettings = () => {
   const save = async () => {
     if (!dirty || saving) return;
     setMessage('');
+    setMessageType('');
     if (rules.punchLocationMode === 'workshop') {
       const lat = Number(rules.workshopLatitude);
       const lon = Number(rules.workshopLongitude);
@@ -138,6 +145,7 @@ export const RulesSettings = () => {
           !Number.isFinite(lat) || lat < -90 || lat > 90 ||
           !Number.isFinite(lon) || lon < -180 || lon > 180 ||
           !Number.isInteger(radius) || radius < 50 || radius > 5000) {
+        setMessageType('error');
         setMessage('Select a workshop place or enter valid coordinates and a radius of 50–5000 metres.');
         return;
       }
@@ -148,8 +156,10 @@ export const RulesSettings = () => {
       const saved = normalizeRules(await attendanceManagerService.saveRules(rules));
       setRules(saved);
       setInitialRules(saved);
+      setMessageType('success');
       setMessage('Attendance rules saved.');
     } catch (error) {
+      setMessageType('error');
       setMessage(error?.message || 'Unable to save attendance rules.');
     } finally {
       setSaving(false);
@@ -203,7 +213,7 @@ export const RulesSettings = () => {
         </button>
       </header>
 
-      {message && <div className="attendance-rules-message">{message}</div>}
+      {message && <div className={`attendance-rules-message is-${messageType || 'error'}`} role={messageType === 'success' ? 'status' : 'alert'}>{message}</div>}
 
       <section className="attendance-rule-section">
         <div className="attendance-rule-title">
@@ -370,6 +380,7 @@ export const RulesSettings = () => {
                   locationTrackingEnabled: mode === 'workshop',
                 }));
                 setLocationStatus('');
+                setLocationStatusType('');
               }}
             >
               <option value="anywhere">Allow Punch Anywhere</option>
@@ -391,6 +402,7 @@ export const RulesSettings = () => {
                     workshopLatitude: latitude,
                     workshopLongitude: longitude,
                   }));
+                  setLocationStatusType('success');
                   setLocationStatus('Workshop location selected. Review it on the map and Save Rules.');
                 }}
               />
@@ -438,7 +450,7 @@ export const RulesSettings = () => {
                 {locating ? 'Finding location…' : 'Use Current Location'}
               </button>
               <small>You can search for a place or use GPS when physically at the workshop. Browser GPS permission is requested only when clicking Use Current Location. Save Rules to apply the selected pin.</small>
-              {locationStatus && <p className="attendance-location-feedback" role="status">{locationStatus}</p>}
+              {locationStatus && <p className={`attendance-location-feedback is-${locationStatusType || 'error'}`} role={locationStatusType === 'success' ? 'status' : 'alert'}>{locationStatus}</p>}
             </div>
           )}
 
