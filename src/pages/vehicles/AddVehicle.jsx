@@ -10,6 +10,8 @@ import { SearchableSelect } from '../../components/common/forms/SearchableSelect
 import { FileUpload } from '../../components/common/forms/FileUpload';
 import { customerService } from '../../services/customer.service';
 import { vehicleService } from '../../services/vehicle.service';
+import { vehiclePhotoService } from '../../services/vehiclePhoto.service';
+import { VehicleCameraQueue } from '../../components/vehicles/VehicleCameraQueue';
 import { Car, Calendar, Gauge, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import '../../styles/vehicle-management.css';
 
@@ -21,6 +23,10 @@ export const AddVehicle = () => {
   const [customers, setCustomers] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
+  const [error, setError] = useState('');
+  const [photos, setPhotos] = useState([]);
+  const [savedVehicleId, setSavedVehicleId] = useState('');
+  const [uploadingPhoto, setUploadingPhoto] = useState(0);
 
   const [formData, setFormData] = useState({
     customerId: preselectedCustId || 'CUS-0001',
@@ -47,22 +53,38 @@ export const AddVehicle = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+    setSubmitting(true);
+    setError('');
     try {
-      setSubmitting(true);
-      const selectedCustomer = customers.find((customer) => customer.id === formData.customerId);
-      const payload = {
-        ...formData,
-        customerName: selectedCustomer?.name || ''
-      };
-      const created = vehicleService && vehicleService.createVehicle
-        ? await vehicleService.createVehicle(payload)
-        : await customerService.addCustomerVehicle(formData.customerId, payload);
+      let vehicleId = savedVehicleId;
+      if (!vehicleId) {
+        const selectedCustomer = customers.find((customer) => customer.id === formData.customerId);
+        const payload = {
+          ...formData,
+          customerName: selectedCustomer?.name || '',
+        };
+        const created = await vehicleService.createVehicle(payload);
+        vehicleId = created?.id;
+        if (!vehicleId) throw new Error('Vehicle was saved but no vehicle reference was returned.');
+        setSavedVehicleId(vehicleId);
+      }
 
-      setToastMsg('Vehicle registered successfully.');
-      setTimeout(() => navigate(created?.id ? `/vehicles/${created.id}` : '/vehicles'), 700);
-    } catch (err) {
-      console.error("Error adding vehicle:", err);
+      // Do not discard captured files on validation or network failures.
+      // Subsequent Save clicks resume uploads without creating duplicate vehicles.
+      for (let i = 0; i < photos.length; i += 1) {
+        const photo = photos[i];
+        setUploadingPhoto(i + 1);
+        await vehiclePhotoService.upload({ vehicleId, ...photo });
+        setPhotos((items) => items.filter((entry) => entry.id !== photo.id));
+      }
+      setUploadingPhoto(0);
+      setToastMsg('Vehicle and inspection photos saved.');
+      navigate(`/vehicles/${vehicleId}`);
+    } catch (cause) {
+      setError(cause?.message || 'Unable to save vehicle or photos. Retry to continue without duplication.');
     } finally {
+      setUploadingPhoto(0);
       setSubmitting(false);
     }
   };
@@ -78,6 +100,7 @@ export const AddVehicle = () => {
       title="Add Vehicle"
       description="Register a new customer vehicle for workshop service and job card creation."
     >
+      {error && <div role="alert" className="vehicle-dashboard-error">{error} {savedVehicleId && 'The vehicle was saved; retry to upload remaining photos.'}</div>}
       {toastMsg && (
         <div style={{ backgroundColor: 'var(--success)', color: '#ffffff', padding: '10px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <CheckCircle2 size={16} />
@@ -198,6 +221,10 @@ export const AddVehicle = () => {
             value={formData.engineNo}
             onChange={(e) => setFormData({ ...formData, engineNo: e.target.value })}
           />
+        </FormSection>
+
+        <FormSection title="Vehicle Inspection Camera" description="Capture multiple views before saving the vehicle. Photos remain private.">
+          <VehicleCameraQueue photos={photos} onChange={setPhotos} disabled={submitting} uploading={uploadingPhoto}/>
         </FormSection>
 
         {/* SERVICE & INSURANCE DATES */}
