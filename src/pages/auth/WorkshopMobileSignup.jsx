@@ -5,7 +5,7 @@ import { API_BASE_URL } from '../../api/apiConfig';
 import '../../styles/login-system.css';
 
 export default function WorkshopMobileSignup() {
-  const [form, setForm] = useState({ workshopName: '', ownerName: '', mobile: '', email: '' });
+  const [form, setForm] = useState({ workshopName: '', ownerName: '', mobile: '', email: '', whatsappConsent: false });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [registered, setRegistered] = useState(null);
@@ -19,6 +19,10 @@ export default function WorkshopMobileSignup() {
       setError('Enter workshop name, owner name and an international mobile number with country code.');
       return;
     }
+    if (!form.email.trim() && !form.whatsappConsent) {
+      setError('To register without email, agree to receive your secure password setup link via official WhatsApp.');
+      return;
+    }
     setSubmitting(true);
     try {
       const response = await fetch(`${API_BASE_URL}/auth/signup`, {
@@ -26,7 +30,8 @@ export default function WorkshopMobileSignup() {
         headers:{'Content-Type':'application/json',Accept:'application/json'},
         body:JSON.stringify({
           workshop_name:form.workshopName.trim(), owner_name:form.ownerName.trim(),
-          mobile:form.mobile.trim(), ...(form.email.trim() ? {email:form.email.trim()} : {}),
+          mobile:form.mobile.trim(), whatsapp_consent: Boolean(form.whatsappConsent),
+          ...(form.email.trim() ? {email:form.email.trim()} : {}),
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -81,6 +86,12 @@ export default function WorkshopMobileSignup() {
                 <input className="login-input" type="email" autoComplete="email"
                   value={form.email} onChange={(e) => change('email',e.target.value)}
                   placeholder="name@example.com"/></div></label>
+            <label className="block" style={{display:'flex',alignItems:'flex-start',gap:'10px',fontSize:'14px',lineHeight:'1.5'}}>
+              <input type="checkbox" checked={form.whatsappConsent}
+                onChange={(event) => change('whatsappConsent',event.target.checked)}
+                style={{width:'20px',height:'20px',minWidth:'20px',marginTop:'2px'}}/>
+              I agree to receive my secure account setup invitation through the official CubeGears WhatsApp Business channel.
+            </label>
             <button className="login-submit" type="submit" disabled={submitting}>
               {submitting ? 'Creating workshop…' : 'Register Workshop'}
             </button>
