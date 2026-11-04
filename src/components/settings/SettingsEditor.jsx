@@ -1,9 +1,10 @@
 
 import { RotateCcw, Save } from 'lucide-react';
+import { SettingsCompanyLogo } from './SettingsCompanyLogo';
 
 export const SettingsEditor = ({
   active, sections, schema, data, themeMode, setThemeMode,
-  onUpdate, onReset, onSave, saving, dirty
+  onUpdate, onReset, onSave, saving, dirty, canManageLogo
 }) => {
   const current = sections.find((item) => item.id === active);
   return (
@@ -33,6 +34,7 @@ export const SettingsEditor = ({
           </select>
         </div>
       )}
+      {active === 'company' && <SettingsCompanyLogo canManage={canManageLogo} />}
       <div className="settings-form-grid">
         {(schema || []).map(([key, label, type, options]) => {
           const value = data?.[key] ?? (type === 'checkbox' ? false : '');

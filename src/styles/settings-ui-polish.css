@@ -337,3 +337,17 @@
   .settings-page .settings-theme > span,
   .settings-page .settings-footer-hint {flex:0 1 auto;width:100%}
 }
+
+/* Company branding: uploaded tenant logo, not a JSON settings field. */
+.settings-page .settings-logo-panel{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:16px 22px 0;padding:15px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)}
+.settings-page .settings-logo-preview{flex:0 0 92px;width:92px;height:92px;display:grid;place-items:center;overflow:hidden;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text-muted)}
+.settings-page .settings-logo-preview img{display:block;width:100%;height:100%;object-fit:contain}
+.settings-page .settings-logo-description{display:flex;flex:1 1 220px;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}
+.settings-page .settings-logo-description strong{font-size:16px;color:var(--text-primary)}
+.settings-page .settings-logo-description p,.settings-page .settings-logo-description small{font-size:13px;line-height:1.45;color:var(--text-secondary)}
+.settings-page .settings-logo-file-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;font-size:16px}
+.settings-page .settings-logo-upload-button{margin-top:5px;min-height:44px}
+.settings-page .settings-logo-status{display:block;font-size:13px;line-height:1.4}
+.settings-page .settings-logo-status.is-success{color:var(--success)}
+.settings-page .settings-logo-status.is-error{color:var(--danger)}
+@media(max-width:700px){.settings-page .settings-logo-panel{margin:14px 15px 0;padding:13px}}

@@ -207,6 +207,7 @@ export const Settings = () => {
           onSave={save}
           saving={saving}
           dirty={dirty}
+          canManageLogo={can('company.manage')}
         />
       </div>
     </div>
