@@ -93,17 +93,29 @@ apiClient.interceptors.response.use(
     ) {
       originalRequest._cubixgearRetried = true;
 
+      let access;
       try {
-        const access = await refreshAccessToken();
-        originalRequest.headers = originalRequest.headers || {};
-        originalRequest.headers.Authorization = `Bearer ${access}`;
-
-        const response = await apiClient.request(originalRequest);
-        return response;
-      } catch {
-        clearAuth();
-        redirectToLogin();
+        access = await refreshAccessToken();
+      } catch (refreshError) {
+        // Invalid/revoked refresh credentials end the session. A temporary
+        // API outage must NOT destroy a valid saved session on every page.
+        if ([400, 401, 403].includes(refreshError?.response?.status)) {
+          clearAuth();
+          redirectToLogin();
+          const expired = new Error('Your session expired. Please sign in again.');
+          expired.status = 401;
+          return Promise.reject(expired);
+        }
+        const unavailable = new Error('Unable to verify your session. Check the Django API connection and retry.');
+        unavailable.status = 503;
+        return Promise.reject(unavailable);
       }
+
+      originalRequest.headers = originalRequest.headers || {};
+      originalRequest.headers.Authorization = `Bearer ${access}`;
+      // A failed *data* request after a successful refresh must keep its
+      // own status (403/500/network error), not accidentally log the user out.
+      return apiClient.request(originalRequest);
     } else if (status === 401 && !isAuthRequest) {
       clearAuth();
       redirectToLogin();
@@ -134,11 +146,16 @@ apiClient.interceptors.response.use(
       payload?.detail ||
       fieldErrors.non_field_errors ||
       firstFieldError ||
-      error?.message ||
+      (error?.code === 'ECONNABORTED'
+        ? 'The API request timed out. Check the Django server and retry.'
+        : error?.code === 'ERR_NETWORK'
+          ? 'Could not connect to CubeGears backend. Check that Django is running and the API URL is correct.'
+          : error?.message) ||
       'Something went wrong. Please try again.';
 
     const normalized = new Error(message);
     normalized.status = status;
+    normalized.code = error?.code;
     normalized.data = payload;
     normalized.fieldErrors = fieldErrors;
     // DRF throttling includes Retry-After. Preserve the duration for UI

@@ -1,4 +1,4 @@
-import { createContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 import apiClient from '../api/apiClient';
 
 export const AuthContext = createContext(null);
@@ -18,10 +18,14 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(readStoredUser);
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(localStorage.getItem('auth_token')));
   const [loading, setLoading] = useState(() => Boolean(localStorage.getItem('auth_token')));
+  const [sessionError, setSessionError] = useState('');
+  const [sessionRetryKey, setSessionRetryKey] = useState(0);
+  const retrySession = useCallback(() => setSessionRetryKey((key) => key + 1), []);
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
     if (!token) {
+      setSessionError('');
       setLoading(false);
       setIsAuthenticated(false);
       setUser(null);
@@ -29,6 +33,8 @@ export const AuthProvider = ({ children }) => {
     }
 
     let active = true;
+    setLoading(true);
+    setSessionError('');
 
     apiClient.get('/auth/me')
       .then((profile) => {
@@ -36,13 +42,21 @@ export const AuthProvider = ({ children }) => {
         const resolvedUser = profile?.user || profile;
         setUser(resolvedUser);
         setIsAuthenticated(true);
+        setSessionError('');
         localStorage.setItem('auth_user', JSON.stringify(resolvedUser));
       })
-      .catch(() => {
+      .catch((error) => {
         if (!active) return;
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_refresh_token');
-        localStorage.removeItem('auth_user');
+        // A network outage / 5xx response is not proof that a stored JWT
+        // expired. Lock the workspace and show Retry without deleting tokens.
+        if ([401, 403].includes(error?.status)) {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_refresh_token');
+          localStorage.removeItem('auth_user');
+          setSessionError('');
+        } else {
+          setSessionError(error?.message || 'Unable to verify your session. Check your API connection.');
+        }
         setUser(null);
         setIsAuthenticated(false);
       })
@@ -53,7 +67,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [sessionRetryKey]);
 
   const login = async (credentials) => {
     setLoading(true);
@@ -78,6 +92,7 @@ export const AuthProvider = ({ children }) => {
 
       setUser(resolvedUser || null);
       setIsAuthenticated(true);
+      setSessionError('');
 
       return resolvedUser;
     } finally {
@@ -97,12 +112,13 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('auth_user');
       setUser(null);
       setIsAuthenticated(false);
+      setSessionError('');
     }
   };
 
   const value = useMemo(
-    () => ({ user, isAuthenticated, loading, login, logout, isMockMode: false }),
-    [user, isAuthenticated, loading]
+    () => ({ user, isAuthenticated, loading, sessionError, retrySession, login, logout, isMockMode: false }),
+    [user, isAuthenticated, loading, sessionError, retrySession]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
