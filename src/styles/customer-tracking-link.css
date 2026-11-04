@@ -1,0 +1,10 @@
+.customer-tracking-panel{padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;display:grid;gap:12px}
+.customer-tracking-heading h2{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:750;color:var(--text-primary);margin:0}
+.customer-tracking-heading p{font-size:14px;color:var(--text-secondary);line-height:1.5;margin:5px 0 0}
+.customer-tracking-panel>label{font-size:13px;font-weight:650;color:var(--text-secondary)}
+.customer-tracking-panel>input{min-width:0;width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text-primary);font-size:16px}
+.customer-tracking-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.customer-tracking-actions button,.customer-tracking-actions a{display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:10px 13px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text-primary);font-size:14px;font-weight:650;text-decoration:none;cursor:pointer}
+.customer-tracking-actions button:disabled{opacity:.5;cursor:not-allowed}
+.customer-tracking-error{color:var(--danger);font-size:14px}
+.customer-tracking-success{color:var(--success);font-size:14px}
