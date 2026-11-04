@@ -260,3 +260,10 @@
   .am-leave-type-grid{grid-template-columns:1fr}
   .am-leave-type-form-grid,.am-leave-type-toggles{grid-template-columns:1fr}
 }
+
+/* Attendance Rules: optional workshop-radius location settings. */
+.attendance-punch-location-settings{min-width:0;margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)}
+.attendance-punch-location-settings>.attendance-rule-form-grid{margin-bottom:10px}
+.attendance-punch-location-settings>small{display:block;margin-top:10px;color:var(--text-muted);font-size:13px;line-height:1.5}
+.attendance-punch-location-settings .attendance-location-pick{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 14px;font-size:14px}
+.attendance-punch-location-settings .attendance-location-feedback{margin:8px 0 0;color:var(--text-secondary);font-size:14px;line-height:1.5}

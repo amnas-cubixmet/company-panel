@@ -76,6 +76,7 @@ export const AttendancePunchPanel = ({ onChanged }) => {
       await attendanceService.punchAttendance(state.nextAction, {
         locationRequired: Boolean(state?.rule?.locationRequired),
         locationTrackingEnabled: Boolean(state?.rule?.locationTrackingEnabled),
+        punchLocationMode: state?.rule?.punchLocationMode || 'anywhere',
       });
       await load();
       onChanged?.();

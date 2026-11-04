@@ -63,7 +63,7 @@ export const getCalendarEvents = async (month, year) => {
   return Array.isArray(rows) ? rows : rows?.results || [];
 };
 
-const getBrowserLocation = () =>
+const getBrowserLocation = (strict = false) =>
   new Promise((resolve, reject) => {
     if (!navigator?.geolocation) {
       reject(new Error('Location is not supported by this browser.'));
@@ -84,7 +84,7 @@ const getBrowserLocation = () =>
       {
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 60000,
+        maximumAge: strict ? 0 : 60000,
       },
     );
   });
@@ -115,8 +115,15 @@ export const getAttendanceStatus = async () => {
 export const punchAttendance = async (action, options = {}) => {
   let location = {};
 
-  if (options.locationRequired || options.locationTrackingEnabled) {
-    location = await getBrowserLocation();
+  const locationMandatory = Boolean(options.locationRequired || options.punchLocationMode === 'workshop');
+  if (locationMandatory || options.locationTrackingEnabled) {
+    // Optional location recording should never block an employee from punching.
+    // Workshop-radius or required-location policies still fail closed.
+    try {
+      location = await getBrowserLocation(locationMandatory);
+    } catch (error) {
+      if (locationMandatory) throw error;
+    }
   }
 
   return apiClient.post('/attendance/toggle', {
