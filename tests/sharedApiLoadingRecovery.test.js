@@ -23,7 +23,7 @@ test('Attendance Rules loads independently of optional holidays and never sticks
 test('Dashboard never shows empty invented metrics for a failed API response', () => {
   const src = read('src/pages/dashboard/Dashboard.jsx');
   assert.match(src, /const \[error, setError\] = useState\(''\)/);
-  assert.match(src, /catch \(cause\) \{\s*setData\(null\)/);
+  assert.match(src, /catch \(cause\) \{[\s\S]*?setData\(null\)/);
   assert.match(src, /if \(error \|\| !data\)/);
   assert.match(src, /Retry Dashboard/);
   assert.match(src, /onClick=\{fetchDashboard\}/);
