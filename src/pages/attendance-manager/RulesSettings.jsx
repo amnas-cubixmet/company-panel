@@ -55,6 +55,8 @@ export const RulesSettings = () => {
   const [initialRules, setInitialRules] = useState(null);
   const [rules, setRules] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [holidayError, setHolidayError] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
@@ -71,17 +73,50 @@ export const RulesSettings = () => {
 
   const loadRules = async () => {
     setLoading(true);
+    setLoadError('');
+    setHolidayError('');
     try {
-      const [ruleData, holidayRows] = await Promise.all([
+      // Holidays are optional to the rules editor: do not block editing when
+      // only the holidays API is unavailable.
+      const [ruleResult, holidayResult] = await Promise.allSettled([
         attendanceManagerService.getRules(),
         attendanceManagerService.getHolidays(),
       ]);
-      const data = normalizeRules(ruleData);
-      setRules(data);
-      setInitialRules(data);
-      setHolidays(Array.isArray(holidayRows) ? holidayRows : []);
+      if (ruleResult.status === 'fulfilled' && ruleResult.value &&
+          typeof ruleResult.value === 'object' && !Array.isArray(ruleResult.value)) {
+        const data = normalizeRules(ruleResult.value);
+        setRules(data);
+        setInitialRules(data);
+      } else {
+        setRules(null);
+        setLoadError(
+          ruleResult.status === 'rejected'
+            ? ruleResult.reason?.message || 'Attendance rules could not be loaded.'
+            : 'The attendance rules response was invalid.',
+        );
+      }
+
+      if (holidayResult.status === 'fulfilled') {
+        setHolidays(Array.isArray(holidayResult.value) ? holidayResult.value : []);
+      } else {
+        setHolidays([]);
+        setHolidayError(holidayResult.reason?.message || 'Holidays could not be loaded.');
+      }
+    } catch (error) {
+      setRules(null);
+      setLoadError(error?.message || 'Unable to load attendance rules.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const retryHolidays = async () => {
+    setHolidayError('');
+    try {
+      const rows = await attendanceManagerService.getHolidays();
+      setHolidays(Array.isArray(rows) ? rows : []);
+    } catch (error) {
+      setHolidayError(error?.message || 'Unable to load holidays.');
     }
   };
 
@@ -169,26 +204,46 @@ export const RulesSettings = () => {
   const addHoliday = async (event) => {
     event.preventDefault();
     if (!holidayForm.date || !holidayForm.name.trim()) return;
-    await attendanceManagerService.createHoliday({
-      ...holidayForm,
-      name: holidayForm.name.trim(),
-    });
-    setHolidayForm({
-      date: '',
-      name: '',
-      holiday_type: 'Company',
-      is_optional: false,
-    });
-    setHolidays(await attendanceManagerService.getHolidays());
+    setHolidayError('');
+    try {
+      await attendanceManagerService.createHoliday({
+        ...holidayForm,
+        name: holidayForm.name.trim(),
+      });
+      setHolidayForm({
+        date: '',
+        name: '',
+        holiday_type: 'Company',
+        is_optional: false,
+      });
+      await retryHolidays();
+    } catch (error) {
+      setHolidayError(error?.message || 'Unable to create holiday.');
+    }
   };
 
   const removeHoliday = async (id) => {
-    await attendanceManagerService.deleteHoliday(id);
-    setHolidays((current) => current.filter((item) => item.id !== id));
+    setHolidayError('');
+    try {
+      await attendanceManagerService.deleteHoliday(id);
+      setHolidays((current) => current.filter((item) => item.id !== id));
+    } catch (error) {
+      setHolidayError(error?.message || 'Unable to delete holiday.');
+    }
   };
 
-  if (loading || !rules) {
-    return <div className="attendance-rules-loading">Loading attendance rules…</div>;
+  if (loading) {
+    return <div className="attendance-rules-loading" role="status">Loading attendance rules…</div>;
+  }
+  if (!rules) {
+    return (
+      <section className="attendance-rules-page">
+        <div className="attendance-rules-message is-error" role="alert">
+          {loadError || 'Unable to load attendance rules. Check the backend connection and retry.'}
+        </div>
+        <button type="button" className="attendance-rules-save" onClick={loadRules}>Retry Loading Rules</button>
+      </section>
+    );
   }
 
   const autoMode = ['auto_checkout', 'hybrid'].includes(rules.attendanceMode);
@@ -214,6 +269,12 @@ export const RulesSettings = () => {
       </header>
 
       {message && <div className={`attendance-rules-message is-${messageType || 'error'}`} role={messageType === 'success' ? 'status' : 'alert'}>{message}</div>}
+      {holidayError && (
+        <div className="attendance-rules-message is-error" role="alert">
+          Holiday data could not load: {holidayError}
+          <button type="button" className="attendance-rules-feedback-retry" onClick={retryHolidays}>Retry Holidays</button>
+        </div>
+      )
 
       <section className="attendance-rule-section">
         <div className="attendance-rule-title">
