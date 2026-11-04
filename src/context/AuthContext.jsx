@@ -78,7 +78,7 @@ export const AuthProvider = ({ children }) => {
       const refreshToken = response?.refresh || response?.refreshToken || response?.refresh_token;
       const resolvedUser = response?.user || response?.profile;
 
-      if (!token || !resolvedUser?.id || !resolvedUser?.email) {
+      if (!token || !resolvedUser?.id || !(resolvedUser?.email || resolvedUser?.phone)) {
         throw new Error('Login response did not include a verified user session.');
       }
 
