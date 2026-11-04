@@ -1,0 +1,23 @@
+.wa-settings{max-width:1120px;margin:auto;padding:20px 16px 90px;display:grid;gap:16px;color:var(--text-primary)}
+.wa-header{display:flex;align-items:start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.wa-header h1{font-size:clamp(22px,3vw,28px);font-weight:800;margin:6px 0}
+.wa-header p,.wa-header span,.wa-header a{font-size:14px;color:var(--text-secondary)}
+.wa-settings button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:1px solid var(--border);border-radius:10px;padding:9px 14px;font-size:14px;font-weight:650;color:var(--text-primary);background:var(--surface);cursor:pointer}
+.wa-settings button.wa-primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.wa-settings button:disabled{opacity:.5;cursor:not-allowed}
+.wa-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:clamp(14px,2.5vw,22px);display:grid;gap:13px}
+.wa-card h2{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:750}
+.wa-card p{font-size:14px;color:var(--text-secondary);line-height:1.5}
+.wa-card label{display:grid;gap:7px;font-size:14px;font-weight:600}
+.wa-card input:not([type=checkbox]),.wa-card select{min-width:0;max-width:100%;width:100%;min-height:44px;padding:9px 11px;font-size:16px;color:var(--text-primary);background:var(--surface-2);border:1px solid var(--border);border-radius:10px}
+.wa-fields,.wa-event-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.wa-card label.wa-toggle{display:flex;align-items:center;gap:10px;padding:10px 0;line-height:1.4;text-transform:capitalize}
+.wa-toggle input[type=checkbox]{width:19px;height:19px;flex:0 0 19px;accent-color:var(--primary)}
+.wa-warning{display:flex;align-items:start;gap:8px;color:var(--text-secondary);font-size:13px}
+.wa-log-table,.wa-template-list{display:grid;gap:8px;max-height:480px;overflow:auto}
+.wa-log{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;border-bottom:1px solid var(--border);padding:9px 0;font-size:13px}
+.wa-log small{grid-column:1/-1;color:var(--text-muted)}
+.wa-log .wa-error-text{color:var(--danger)}
+.wa-error,.wa-success{display:flex;align-items:start;gap:9px;font-size:14px;line-height:1.5;padding:12px 14px;border:1px solid var(--danger);border-radius:11px;color:var(--danger);background:var(--danger-soft)}
+.wa-success{color:var(--success);border-color:var(--success);background:var(--success-soft)}
+@media(max-width:640px){.wa-settings{padding:15px 12px 85px}.wa-fields,.wa-event-grid{grid-template-columns:1fr}.wa-card{gap:11px}}
