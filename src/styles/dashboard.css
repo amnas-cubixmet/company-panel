@@ -508,3 +508,17 @@
   font-size:8.5px;
   font-weight:650;
 }
+
+/* API errors are not empty dashboard metrics; show a recoverable error. */
+.dashboard-page.dashboard-load-failure{
+  padding:20px;border:1px solid var(--danger);border-radius:14px;
+  background:var(--danger-soft);color:var(--danger);font-size:14px;
+}
+.dashboard-load-failure h2{margin:0 0 8px;font-size:18px;font-weight:750}
+.dashboard-load-failure p{margin:0 0 14px;line-height:1.5;overflow-wrap:anywhere}
+.dashboard-load-failure button{
+  min-height:44px;padding:9px 16px;border:1px solid var(--danger);
+  border-radius:10px;background:var(--surface);color:var(--danger);
+  font-weight:700;cursor:pointer;
+}
+.dashboard-load-failure button:focus-visible{outline:2px solid var(--danger);outline-offset:2px}
