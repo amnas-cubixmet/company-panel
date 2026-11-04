@@ -125,13 +125,13 @@ export const Login = () => {
                     clearField('identifier');
                   }}
                   placeholder="+919876543210 or email@example.com"
-                  aria-invalid={Boolean(fieldErrors.email)}
-                  aria-describedby={fieldErrors.email ? 'login-identifier-error' : undefined}
+                  aria-invalid={Boolean(fieldErrors.identifier)}
+                  aria-describedby={fieldErrors.identifier ? 'login-identifier-error' : undefined}
                 />
               </div>
-              {fieldErrors.email && (
-                <span id="login-email-error" className="auth-field-error" role="alert">
-                  {fieldErrors.email}
+              {fieldErrors.identifier && (
+                <span id="login-identifier-error" className="auth-field-error" role="alert">
+                  {fieldErrors.identifier}
                 </span>
               )}
             </label>
