@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from 'react-router-dom';
 import { customerService } from '../../services/customer.service';
 import { CustomerTrackingLinkPanel } from '../../components/customers/CustomerTrackingLinkPanel';
+import { CustomerWhatsAppConsent } from '../../components/customers/CustomerWhatsAppConsent';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/customer-tracking-link.css';
 import { paymentService } from '../../services/payment.service';
@@ -388,6 +389,11 @@ export const CustomerDetails = () => {
         key={customer.id}
         customerId={customer.id}
         whatsapp={customer.whatsapp || customer.phone}
+        canManage={featureAccess.can('customers.edit')}
+      />
+
+      <CustomerWhatsAppConsent
+        customerId={customer.id}
         canManage={featureAccess.can('customers.edit')}
       />
 
