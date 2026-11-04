@@ -15,7 +15,9 @@ export const Login = () => {
   const suggestedEmail = params.get('email') || '';
   const resetComplete = params.get('reset') === 'success';
 
-  const [email, setEmail] = useState(isMockMode ? 'admin@cubixgear.com' : suggestedEmail);
+  const [identifier, setIdentifier] = useState(isMockMode ? 'admin@cubixgear.com' : suggestedEmail);
+  const [workshop, setWorkshop] = useState('');
+  const [needsWorkshop, setNeedsWorkshop] = useState(false);
   const [password, setPassword] = useState(isMockMode ? 'password123' : '');
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState('');
@@ -35,11 +37,13 @@ export const Login = () => {
     event.preventDefault();
     if (loading) return;
 
-    const cleanEmail = normalizeEmail(email);
+    const identity = identifier.trim();
     const nextErrors = {};
-
-    if (!cleanEmail) nextErrors.email = 'Email address is required.';
-    else if (!isValidEmail(cleanEmail)) nextErrors.email = 'Enter a valid email address.';
+    if (!identity) nextErrors.identifier = 'Email or mobile number is required.';
+    else if (identity.includes('@') && !isValidEmail(normalizeEmail(identity)))
+      nextErrors.identifier = 'Enter a valid email address.';
+    else if (!identity.includes('@') && !/^\+[\d\s().-]{8,22}$/.test(identity))
+      nextErrors.identifier = 'Enter mobile with country code, e.g. +919876543210.';
     if (!password) nextErrors.password = 'Password is required.';
 
     if (Object.keys(nextErrors).length) {
@@ -52,22 +56,21 @@ export const Login = () => {
     setFormError('');
 
     try {
-      const authenticatedUser = await login({ email: cleanEmail, password });
+      const authenticatedUser = await login({ identifier: identity.includes('@') ? normalizeEmail(identity) : identity, password, ...(workshop.trim() ? { workshop: workshop.trim().toLowerCase() } : {}) });
       navigate(getStaffLandingPath(authenticatedUser, params.get('next')), { replace: true });
     } catch (error) {
       const backendFields = getAuthFieldErrors(error);
       const credentialError = getCredentialError(error);
 
-      const hasFieldError = Boolean(backendFields.email || backendFields.password);
-      const isCredentialFailure = [400, 401].includes(error?.status) &&
-        !hasFieldError &&
-        /invalid email or password|invalid credentials|no active account/i.test(credentialError);
+      const needsSelection = Boolean(backendFields.workshop);
+      setNeedsWorkshop(needsSelection || needsWorkshop);
+      const hasFieldError = Boolean(backendFields.identifier || backendFields.password || backendFields.workshop);
       setFieldErrors({
-        ...(backendFields.email ? { email: backendFields.email } : {}),
+        ...(backendFields.identifier ? { identifier: backendFields.identifier } : {}),
+        ...(backendFields.workshop ? { workshop: backendFields.workshop } : {}),
         ...(backendFields.password ? { password: backendFields.password } : {}),
-        ...(!hasFieldError && isCredentialFailure
-          ? { email: credentialError, password: credentialError }
-          : {}),
+        ...(!hasFieldError && [400, 401].includes(error?.status)
+          ? { identifier: credentialError, password: credentialError } : {}),
       });
       setFormError(hasFieldError ? '' : credentialError);
     }
@@ -88,7 +91,7 @@ export const Login = () => {
 
             <h1 className="login-title">Welcome back</h1>
             <p className="login-description">
-              Sign in with the same email and password configured for your CubixGear account.
+              Sign in with your international mobile number or email and password. OTP is not required.
             </p>
           </div>
 
@@ -106,24 +109,24 @@ export const Login = () => {
 
           <form onSubmit={handleSubmit} className="login-form" noValidate>
             <label className="block">
-              <span className="login-field-label">Email address</span>
-              <div className={'login-input-shell ' + (fieldErrors.email ? 'is-error' : '')}>
+              <span className="login-field-label">Mobile number or email</span>
+              <div className={'login-input-shell ' + (fieldErrors.identifier ? 'is-error' : '')}>
                 <span className="login-input-icon" aria-hidden="true">
                   <Mail size={16} strokeWidth={1.8} />
                 </span>
                 <input
                   className="login-input"
-                  type="email"
-                  autoComplete="email"
-                  inputMode="email"
-                  value={email}
+                  type="text"
+                  autoComplete="username"
+                  inputMode="text"
+                  value={identifier}
                   onChange={(event) => {
-                    setEmail(event.target.value);
-                    clearField('email');
+                    setIdentifier(event.target.value);
+                    clearField('identifier');
                   }}
-                  placeholder="name@company.com"
+                  placeholder="+919876543210 or email@example.com"
                   aria-invalid={Boolean(fieldErrors.email)}
-                  aria-describedby={fieldErrors.email ? 'login-email-error' : undefined}
+                  aria-describedby={fieldErrors.email ? 'login-identifier-error' : undefined}
                 />
               </div>
               {fieldErrors.email && (
@@ -132,6 +135,18 @@ export const Login = () => {
                 </span>
               )}
             </label>
+
+            {needsWorkshop && <label className="block">
+              <span className="login-field-label">Workshop code</span>
+              <div className={'login-input-shell ' + (fieldErrors.workshop ? 'is-error' : '')}>
+                <input className="login-input" type="text" autoComplete="organization"
+                  value={workshop} onChange={(event) => {
+                    setWorkshop(event.target.value);
+                    clearField('workshop');
+                  }} placeholder="e.g. my-auto-workshop" />
+              </div>
+              {fieldErrors.workshop && <span className="auth-field-error" role="alert">{fieldErrors.workshop}</span>}
+            </label>}
 
             <label className="block">
               <div className="login-password-label">
