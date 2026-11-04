@@ -1,3 +1,4 @@
+import { appConfirm } from '../../components/common/appDialogs';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, Link2, RefreshCw, Send, ShieldCheck, Unplug, AlertTriangle } from 'lucide-react';
@@ -125,8 +126,8 @@ export function WhatsAppSettingsPage() {
     finally { setBusy(false); }
   };
 
-  const disconnect = () => {
-    if (!window.confirm('Disconnect this workshop WhatsApp Business account? Automated notifications will stop.')) return;
+  const disconnect = async () => {
+    if (!await appConfirm('Disconnect this workshop WhatsApp Business account? Automated notifications will stop.')) return;
     action(() => apiClient.post('/whatsapp/disconnect'));
   };
 
