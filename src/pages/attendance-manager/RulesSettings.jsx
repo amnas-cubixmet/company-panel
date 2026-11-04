@@ -274,7 +274,7 @@ export const RulesSettings = () => {
           Holiday data could not load: {holidayError}
           <button type="button" className="attendance-rules-feedback-retry" onClick={retryHolidays}>Retry Holidays</button>
         </div>
-      )
+      )}
 
       <section className="attendance-rule-section">
         <div className="attendance-rule-title">
