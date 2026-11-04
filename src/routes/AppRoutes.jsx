@@ -8,6 +8,7 @@ import { ProtectedRoute } from './ProtectedRoute';
 const CreditWorkspace = lazyPage(() => import('../pages/saas/CreditWorkspace'), 'CreditWorkspace');
 
 const Login = lazyPage(() => import('../pages/auth/Login'), 'Login');
+const CustomerPortalPage = lazyPage(() => import('../pages/customer-portal/CustomerPortalPage'), 'default');
 const ForgotPassword = lazyPage(() => import('../pages/auth/ForgotPassword'), 'ForgotPassword');
 const ResetPassword = lazyPage(() => import('../pages/auth/ResetPassword'), 'ResetPassword');
 const SetupPassword = lazyPage(() => import('../pages/auth/SetupPassword'), 'SetupPassword');
@@ -70,6 +71,7 @@ export const AppRoutes = () => (
   <Routes>
     <Route path="/" element={<RootRedirect />} />
     <Route path="/login" element={<Login />} />
+    <Route path="/c/:token" element={<CustomerPortalPage />} />
     <Route path="/plans" element={<Navigate to="/account/credits/buy" replace />} />
     <Route path="/signup" element={<Navigate to="/login" replace />} />
     <Route path="/forgot-password" element={<ForgotPassword />} />
