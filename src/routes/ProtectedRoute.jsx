@@ -8,7 +8,7 @@ import { getPermissionForPath } from '../utils/permissions';
 import { useFeatureAccess, moduleIsVisible } from '../context/FeatureAccessContext';
 
 export const ProtectedRoute = () => {
-  const { isAuthenticated, loading, user } = useAuth();
+  const { isAuthenticated, loading, user, sessionError, retrySession } = useAuth();
   const featureAccess = useFeatureAccess();
   const location = useLocation();
 
@@ -28,6 +28,25 @@ export const ProtectedRoute = () => {
       >
         Loading CubixGear…
       </div>
+    );
+  }
+
+  if (sessionError) {
+    return (
+      <section className="api-session-error" role="alert" style={{
+        minHeight: '100dvh', display: 'grid', placeContent: 'center',
+        gap: '12px', padding: '24px', background: 'var(--app-bg)',
+        color: 'var(--text-primary)', textAlign: 'center'
+      }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 750, margin: 0 }}>Unable to load your workspace</h2>
+        <p style={{ fontSize: '14px', margin: 0, maxWidth: '520px', lineHeight: 1.5 }}>
+          {sessionError}
+        </p>
+        <button type="button" onClick={retrySession} style={{
+          minHeight: '44px', padding: '10px 16px', borderRadius: '10px',
+          background: 'var(--primary)', color: '#fff', cursor: 'pointer'
+        }}>Retry Connection</button>
+      </section>
     );
   }
 
