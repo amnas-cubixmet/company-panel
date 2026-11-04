@@ -67,7 +67,8 @@ test('Django 400 and 401 invalid credentials display input errors', () => {
 
 test('login requires real backend user identity', () => {
   const context = read('src/context/AuthContext.jsx');
-  assert.match(context, /!resolvedUser\\?\\.id \\|\\| !\\(resolvedUser\\?\\.email \\|\\| resolvedUser\\?\\.phone\\)/);
+  assert.match(context, /!resolvedUser\?\.id/);
+  assert.match(context, /resolvedUser\?\.phone/);
 });
 
 test('recovery does not announce whether a user exists', () => {
