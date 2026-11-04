@@ -1,8 +1,11 @@
 import { appConfirm } from '../../components/common/appDialogs';
+import { useAuth } from '../../hooks/useAuth';
+import { hasPermission } from '../../utils/permissions';
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { BarChart3, Calendar, CheckCircle2, CircleDollarSign, Edit3, FileText, IndianRupee, Layers3, Receipt, Trash2, Upload, WalletCards } from "lucide-react";
+import { BarChart3, Calendar, CheckCircle2, CircleDollarSign, Edit3, FileText, IndianRupee, Layers3, Receipt, Trash2, Link2, WalletCards } from "lucide-react";
 import { expenseService } from '../../services/expense.service';
+import { localDate } from '../../services/expense.mapper';
 import {
   ExpenseListView,
   ExpenseOverview,
@@ -11,11 +14,13 @@ import {
   ExpenseTabs,
 } from '../../components/expenses';
 import '../../styles/expense-management.css';
+import '../../styles/expense-ui-polish.css';
 
 const money = new Intl.NumberFormat('en-IN', {
   style: 'currency',
   currency: 'INR',
-  maximumFractionDigits: 0
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
 });
 
 const expenseCategories = [
@@ -35,7 +40,7 @@ const expenseCategories = [
 
 const paymentMethods = ['Cash', 'UPI', 'Bank Transfer', 'Company Card', 'Cheque'];
 
-const today = () => new Date().toISOString().split('T')[0];
+const today = () => localDate();
 
 const emptyForm = {
   title: '',
@@ -48,25 +53,8 @@ const emptyForm = {
   taxAmount: '',
   status: 'approved',
   notes: '',
-  receiptName: ''
+  receiptUrl: ''
 };
-
-const normalize = (expense = {}) => ({
-  ...expense,
-  title: expense.title || expense.description || expense.category || 'Workshop Expense',
-  category: expense.category || 'Miscellaneous',
-  amount: Number(expense.amount || 0),
-  expenseDate: expense.expenseDate || expense.date || today(),
-  vendor: expense.vendor || 'General Supplier',
-  paymentMethod: expense.paymentMethod || expense.method || 'Cash',
-  referenceNo: expense.referenceNo || expense.reference || '',
-  taxAmount: Number(expense.taxAmount || 0),
-  status: String(expense.status || 'approved').toLowerCase(),
-  notes: expense.notes || '',
-  receiptName: expense.receiptName || ''
-});
-
-const statusClass = (status = '') => `is-${String(status).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 
 const Metric = ({ label, value, icon: Icon, tone = 'primary', note }) => (
   <article className="expense-metric-card">
@@ -92,17 +80,19 @@ const ExpenseForm = ({
   setValues,
   onSubmit,
   onCancel,
-  submitting
+  submitting,
+  error
 }) => (
   <div className="expense-form-page cg-expenses">
     <header className="expense-form-header">
       <div>
         <h1>{title}</h1>
-        <p>Record workshop operational costs, vendor bills, payment method, reference and receipt.</p>
+        <p>Record workshop operational costs, vendor bills, payment method, reference and receipt link.</p>
       </div>
     </header>
 
     <form className="expense-form" onSubmit={onSubmit}>
+      {error ? <div className="expense-alert" role="alert">{error}</div> : null}
       <section className="expense-form-section">
         <div className="expense-section-header">
           <div>
@@ -135,6 +125,7 @@ const ExpenseForm = ({
               <option value="draft">Draft</option>
               <option value="pending approval">Pending Approval</option>
               <option value="approved">Approved</option>
+              <option value="paid">Paid</option>
               <option value="rejected">Rejected</option>
             </select>
           </Field>
@@ -151,7 +142,7 @@ const ExpenseForm = ({
 
         <div className="expense-form-grid">
           <Field label="Expense Amount">
-            <input type="number" min="0" step="0.01" required value={values.amount} onChange={(e)=>setValues({...values,amount:e.target.value})}/>
+            <input type="number" min="0.01" step="0.01" required value={values.amount} onChange={(e)=>setValues({...values,amount:e.target.value})}/>
           </Field>
 
           <Field label="Tax / GST Amount">
@@ -179,14 +170,21 @@ const ExpenseForm = ({
         </div>
 
         <div className="expense-form-grid">
-          <label className="expense-upload is-wide">
-            <Upload size={16}/>
-            <div>
-              <strong>{values.receiptName || 'Attach Receipt / Bill'}</strong>
-              <span>Image or PDF filename will be stored with this mock record.</span>
+          <Field label="Receipt / Bill URL" wide>
+            <div className="expense-receipt-input">
+              <Link2 size={18} aria-hidden="true" />
+              <input
+                type="url"
+                value={values.receiptUrl}
+                onChange={(e) => setValues({ ...values, receiptUrl: e.target.value })}
+                placeholder="https://example.com/workshop-bill.pdf"
+                aria-describedby="expense-receipt-help"
+              />
             </div>
-            <input type="file" onChange={(e)=>setValues({...values,receiptName:e.target.files?.[0]?.name || ''})}/>
-          </label>
+            <small id="expense-receipt-help" className="expense-field-help">
+              Paste a secure link to an existing receipt. Direct file upload is not yet supported.
+            </small>
+          </Field>
 
           <Field label="Notes" wide>
             <textarea rows="4" value={values.notes} onChange={(e)=>setValues({...values,notes:e.target.value})} placeholder="Expense purpose, approval notes, recurring details..."/>
@@ -196,7 +194,7 @@ const ExpenseForm = ({
 
       <div className="expense-form-actions">
         <button type="button" onClick={onCancel}>Cancel</button>
-        <button className="is-primary" disabled={submitting}>{submitting ? 'Saving...' : 'Save Expense'}</button>
+        <button type="submit" className="is-primary" disabled={submitting}>{submitting ? 'Saving...' : 'Save Expense'}</button>
       </div>
     </form>
   </div>
@@ -206,6 +204,9 @@ export const ExpenseList = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user } = useAuth();
+  const canEdit = hasPermission(user, 'expenses.edit');
+  const canDelete = hasPermission(user, 'expenses.delete');
 
   const isNew = location.pathname === '/expenses/new';
   const isEdit = Boolean(id && location.pathname.endsWith('/edit'));
@@ -213,18 +214,24 @@ export const ExpenseList = () => {
 
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [activeView, setActiveView] = useState('overview');
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() => ({ ...emptyForm, expenseDate: today() }));
 
   const load = async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const rows = await expenseService.getExpenses();
-      setExpenses(rows.map(normalize));
+      setExpenses(rows);
+    } catch (error) {
+      setExpenses([]);
+      setLoadError(error?.message || 'Unable to load expenses. Please retry.');
     } finally {
       setLoading(false);
     }
@@ -236,7 +243,7 @@ export const ExpenseList = () => {
 
   useEffect(() => {
     if (!isEdit || !id || !expenses.length) return;
-    const expense = expenses.find((item)=>item.id===id);
+    const expense = expenses.find((item)=>String(item.id)===String(id));
     if (!expense) return;
     setForm({
       title: expense.title || '',
@@ -249,12 +256,12 @@ export const ExpenseList = () => {
       taxAmount: expense.taxAmount || '',
       status: expense.status || 'approved',
       notes: expense.notes || '',
-      receiptName: expense.receiptName || ''
+      receiptUrl: expense.receiptUrl || ''
     });
   }, [isEdit, id, expenses]);
 
   const selectedExpense = useMemo(
-    () => expenses.find((expense)=>expense.id===id) || null,
+    () => expenses.find((expense)=>String(expense.id)===String(id)) || null,
     [expenses, id]
   );
 
@@ -275,9 +282,9 @@ export const ExpenseList = () => {
     });
   }, [expenses, query, categoryFilter, statusFilter]);
 
-  const currentMonth = new Date().toISOString().slice(0,7);
+  const currentMonth = today().slice(0, 7);
   const currentMonthRows = expenses.filter((expense)=>String(expense.expenseDate).startsWith(currentMonth));
-  const approvedRows = expenses.filter((expense)=>expense.status==='approved');
+  const approvedRows = expenses.filter((expense)=>['approved', 'paid'].includes(expense.status));
   const pendingRows = expenses.filter((expense)=>expense.status==='pending approval');
   const todayRows = expenses.filter((expense)=>expense.expenseDate===today());
 
@@ -304,33 +311,49 @@ export const ExpenseList = () => {
   const saveExpense = async (event) => {
     event.preventDefault();
     setSubmitting(true);
+    setActionError('');
     try {
-      const payload = {
-        ...form,
-        amount: Number(form.amount || 0),
-        taxAmount: Number(form.taxAmount || 0)
-      };
+      const payload = { ...form };
 
       if (isEdit && id) {
-        await expenseService.updateExpense(id, payload);
+        const updated = await expenseService.updateExpense(id, payload);
+        if (updated) {
+          setExpenses((current) => current.map((item) =>
+            String(item.id) === String(id) ? updated : item
+          ));
+        }
         navigate(`/expenses/${id}`);
       } else {
         const created = await expenseService.createExpense(payload);
+        if (created?.id) setExpenses((current) => [created, ...current]);
         navigate(created?.id ? `/expenses/${created.id}` : '/expenses');
       }
+    } catch (error) {
+      setActionError(error?.message || 'Could not save expense. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
   const removeExpense = async (expense) => {
-    if (!await appConfirm(`Delete expense ${expense.id}?`)) return;
-    await expenseService.deleteExpense(expense.id);
-    if (isDetail) navigate('/expenses');
-    else await load();
+    if (!canDelete || !await appConfirm(`Delete expense ${expense.id}?`)) return;
+    setActionError('');
+    try {
+      await expenseService.deleteExpense(expense.id);
+      if (isDetail) navigate('/expenses');
+      else await load();
+    } catch (error) {
+      setActionError(error?.message || 'Could not delete expense. Please retry.');
+    }
   };
 
-  if (loading) return <div className="expense-empty">Loading expenses...</div>;
+  if (loading) return <div className="expense-empty" role="status">Loading expenses...</div>;
+  if (loadError) return (
+    <div className="expense-alert" role="alert">
+      <p>{loadError}</p>
+      <button type="button" onClick={load}>Retry</button>
+    </div>
+  );
 
   if (isNew) {
     return (
@@ -341,6 +364,7 @@ export const ExpenseList = () => {
         onSubmit={saveExpense}
         onCancel={()=>navigate('/expenses')}
         submitting={submitting}
+        error={actionError}
       />
     );
   }
@@ -355,6 +379,7 @@ export const ExpenseList = () => {
         onSubmit={saveExpense}
         onCancel={()=>navigate(`/expenses/${id}`)}
         submitting={submitting}
+        error={actionError}
       />
     );
   }
@@ -364,6 +389,7 @@ export const ExpenseList = () => {
 
     return (
       <div className="expense-management-page expense-detail-page cg-expenses">
+        {actionError ? <div className="expense-alert" role="alert">{actionError}</div> : null}
         <header className="expense-detail-header">
           <div>
             <span>{selectedExpense.id}</span>
@@ -372,8 +398,8 @@ export const ExpenseList = () => {
           </div>
 
           <div className="expense-detail-actions">
-            <button onClick={()=>navigate(`/expenses/${selectedExpense.id}/edit`)}><Edit3 size={14}/> Edit</button>
-            <button className="is-danger" onClick={()=>removeExpense(selectedExpense)}><Trash2 size={14}/> Delete</button>
+            {canEdit ? <button type="button" onClick={()=>navigate(`/expenses/${selectedExpense.id}/edit`)}><Edit3 size={16}/> Edit</button> : null}
+            {canDelete ? <button type="button" className="is-danger" onClick={()=>removeExpense(selectedExpense)}><Trash2 size={16}/> Delete</button> : null}
           </div>
         </header>
 
@@ -417,7 +443,11 @@ export const ExpenseList = () => {
             <div className="expense-receipt-box">
               <FileText size={20}/>
               <div>
-                <strong>{selectedExpense.receiptName || 'No receipt attached'}</strong>
+                {selectedExpense.receiptUrl ? (
+                  <a href={selectedExpense.receiptUrl} target="_blank" rel="noopener noreferrer">Open Receipt / Bill</a>
+                ) : (
+                  <strong>No receipt link provided</strong>
+                )}
                 <span>{selectedExpense.referenceNo || 'No bill reference'}</span>
               </div>
             </div>
@@ -433,6 +463,7 @@ export const ExpenseList = () => {
 
   return (
     <div className="expense-management-page cg-expenses">
+      {actionError ? <div className="expense-alert" role="alert">{actionError}</div> : null}
       <ExpensesHeader onAdd={()=>navigate('/expenses/new')} />
 
       <ExpenseOverviewStats

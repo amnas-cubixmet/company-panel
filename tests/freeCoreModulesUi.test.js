@@ -80,18 +80,18 @@ test('dashboard retains free overview widgets but hides paid data/actions by per
   assert.match(panels, /can\('payments\.view'\)/);
 });
 
-test('free module cards appear on SaaS account and feature controls without purchase action', () => {
+test('free module cards appear on the SaaS account overview without purchase action', () => {
   const wallet = source('src/pages/saas/CreditWorkspace.jsx');
   assert.match(wallet, /featureAccess\.freeModules\?\.includes\(route\.permission\.split\('\.'\)\[0\]\)/);
   assert.match(wallet, /featureAccess\.can\(route\.permission\)/);
   assert.match(wallet, /aria-label="Free modules"/);
   assert.match(wallet, /Free • allowed by your role/);
-  assert.match(wallet, /section === 'features'/);
+  assert.match(wallet, /section === 'overview'/);
   assert.match(wallet, /'credits', 'dashboard', 'settings', 'staff-management'/);
   assert.match(wallet, /Paid workshop modules \(\{paidBundles\.length\}\)/);
   assert.match(wallet, /paidBundles\.map\(\(bundle\)/);
   assert.match(wallet, /!featureAccess\.freeModules\?\.includes/);
-  assert.match(wallet, /features\.filter\(feature => !freeKeys\.includes\(feature\.key\)\)/);
+  assert.doesNotMatch(wallet, /features\.filter\(feature => !freeKeys\.includes\(feature\.key\)\)\.map/);
   assert.match(wallet, /purchaseDisabledReason === 'FREE_MODULES_ONLY'/);
   assert.match(wallet, /freeKeys = \['dashboard', 'settings', 'staff', 'roles', 'billing'\]/);
   assert.match(wallet, /featureAccess\.freeModules\?\.includes\('roles'\)/);

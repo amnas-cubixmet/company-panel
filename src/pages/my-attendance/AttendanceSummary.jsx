@@ -1,257 +1,157 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Calendar, Clock, CheckCircle2, AlertTriangle, FileText, AlertCircle, TrendingUp } from "lucide-react";
+import {
+  ChevronLeft, ChevronRight, Calendar, Clock, CheckCircle2,
+  AlertTriangle, FileText, AlertCircle, TrendingUp, RefreshCw,
+} from 'lucide-react';
+import { attendanceService } from '../../services/attendance.service';
+import { minutesToHours } from '../../components/my-attendance/attendance.utils';
+import { buildAttendanceSummary } from './attendanceSummary.utils';
+
+const monthKey = (date) => date.getFullYear() * 12 + date.getMonth();
+const atMonthStart = (date) => new Date(date.getFullYear(), date.getMonth(), 1);
 
 export const AttendanceSummary = () => {
   const navigate = useNavigate();
-  const [currentMonthIndex, setCurrentMonthIndex] = useState(0);
+  const [monthDate, setMonthDate] = useState(() => atMonthStart(new Date()));
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+  const today = useMemo(() => new Date(), []);
 
-  const months = ['September 2026', 'August 2026', 'July 2026'];
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    setError('');
+    setSummary(null);
 
-  const handlePrevMonth = () => {
-    if (currentMonthIndex < months.length - 1) setCurrentMonthIndex(currentMonthIndex + 1);
+    Promise.all([
+      attendanceService.getPersonalAttendanceLogs({
+        month: monthDate.getMonth() + 1,
+        year: monthDate.getFullYear(),
+      }),
+      attendanceService.getCalendarEvents(monthDate.getMonth() + 1, monthDate.getFullYear()),
+      attendanceService.getAttendanceStatus(),
+    ]).then(([logs, events, attendanceStatus]) => {
+      if (!mounted) return;
+      // A failure or missing profile must never produce invented zero statistics.
+      if (!attendanceStatus?.employee) {
+        throw new Error('No linked employee attendance profile was returned by the server.');
+      }
+      setSummary(buildAttendanceSummary({ logs, events, attendanceStatus, monthDate, now: today }));
+    }).catch((cause) => {
+      if (mounted) setError(cause?.message || 'Unable to load attendance summary. Try again.');
+    }).finally(() => {
+      if (mounted) setLoading(false);
+    });
+
+    return () => { mounted = false; };
+  }, [monthDate, reloadKey, today]);
+
+  const monthLabel = monthDate.toLocaleDateString('en-US', {
+    month: 'long', year: 'numeric',
+  });
+  const canGoBack = !loading && summary && monthKey(monthDate) > monthKey(summary.joiningDate);
+  const canGoForward = !loading && monthKey(monthDate) < monthKey(today);
+  const isCurrentMonth = monthKey(monthDate) === monthKey(today);
+
+  const changeMonth = (offset) => {
+    const next = new Date(monthDate.getFullYear(), monthDate.getMonth() + offset, 1);
+    if (monthKey(next) > monthKey(today)) return;
+    if (summary && monthKey(next) < monthKey(summary.joiningDate)) return;
+    setMonthDate(next);
   };
 
-  const handleNextMonth = () => {
-    if (currentMonthIndex > 0) setCurrentMonthIndex(currentMonthIndex - 1);
-  };
+  const metrics = summary?.metrics;
+  const cards = metrics ? [
+    { label: 'Present Days', value: metrics.presentDays, icon: CheckCircle2, tone: 'success' },
+    { label: 'Absent Days', value: metrics.absentDays, icon: AlertTriangle, tone: 'danger' },
+    { label: 'Leave Days', value: metrics.leaveDays, icon: FileText, tone: 'info' },
+    { label: 'Holidays & Off', value: metrics.holidayDays + metrics.weeklyOffDays, icon: Calendar, tone: 'warning' },
+    { label: 'Worked Hours', value: minutesToHours(metrics.workedMinutes), icon: Clock, tone: 'info' },
+    { label: 'Overtime Hours', value: minutesToHours(metrics.overtimeMinutes), icon: TrendingUp, tone: 'primary' },
+    { label: 'Late Days', value: metrics.lateDays, icon: AlertCircle, tone: 'warning' },
+  ] : [];
 
-  const handleCurrentMonth = () => {
-    setCurrentMonthIndex(0);
-  };
-
-  const summaryMetrics = [
-    { label: "Present Days", value: "22", icon: CheckCircle2, accent: "var(--success)" },
-    { label: "Absent Days", value: "1", icon: AlertTriangle, accent: "var(--danger)" },
-    { label: "Leave Days", value: "2", icon: FileText, accent: "var(--info)" },
-    { label: "Holidays & Off", value: "5", icon: Calendar, accent: "var(--warning)" },
-    { label: "Worked Hours", value: "176h 30m", icon: Clock, accent: "var(--info)" },
-    { label: "Overtime Hours", value: "6h 15m", icon: TrendingUp, accent: "var(--primary)" },
-    { label: "Late Days", value: "3", icon: AlertCircle, accent: "var(--warning)" }
-  ];
-
-  const monthlyBreakdown = [
-    { label: "Working Days", value: "26 Days", color: "var(--text-primary)" },
-    { label: "Present", value: "22 Days", color: "var(--success)" },
-    { label: "Absent", value: "1 Day", color: "var(--danger)" },
-    { label: "Leave", value: "2 Days", color: "var(--primary)" },
-    { label: "Holiday", value: "1 Day", color: "var(--warning)" },
-    { label: "Weekly Off", value: "4 Days", color: "var(--text-muted)" }
-  ];
-
-  const attendanceFlags = [
-    { label: "Missing Clock Out", count: "1 Record", route: "/my-attendance/history?status=Missing Clock Out", badgeColor: "var(--danger)" },
-    { label: "Pending Punch Corrections", count: "1 Request", route: "/my-attendance/history?status=Missing Clock Out", badgeColor: "var(--warning)" }
-  ];
+  const breakdown = metrics ? [
+    { label: 'Working Days', value: metrics.workingDays },
+    { label: 'Present', value: metrics.presentDays },
+    { label: 'Absent', value: metrics.absentDays },
+    { label: 'Leave', value: metrics.leaveDays },
+    { label: 'Holiday', value: metrics.holidayDays },
+    { label: 'Weekly Off', value: metrics.weeklyOffDays },
+  ] : [];
 
   return (
-    <div className="my-attendance-summary-page attendance-module attendance-summary-page" style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
-      {/* 2. Compact Month Selector Card */}
-      <div className="month-selector-card" style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: '14px',
-        padding: '10px 14px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            onClick={handlePrevMonth}
-            disabled={currentMonthIndex === months.length - 1}
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              backgroundColor: 'var(--surface-2)',
-              border: '1px solid var(--border)',
-              color: 'var(--text-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              opacity: currentMonthIndex === months.length - 1 ? 0.5 : 1
-            }}
-          >
-            <ChevronLeft size={16} />
+    <div className="my-attendance-summary-page attendance-module attendance-summary-page">
+      <div className="cg-summary-month-selector" role="group" aria-label="Attendance summary month">
+        <div className="cg-summary-month-navigation">
+          <button type="button" className="cg-summary-nav-button" onClick={() => changeMonth(-1)}
+            disabled={!canGoBack} aria-label="Previous month">
+            <ChevronLeft size={18} aria-hidden="true" />
           </button>
-          <span style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
-            {months[currentMonthIndex]}
-          </span>
-          <button
-            onClick={handleNextMonth}
-            disabled={currentMonthIndex === 0}
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              backgroundColor: 'var(--surface-2)',
-              border: '1px solid var(--border)',
-              color: 'var(--text-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              opacity: currentMonthIndex === 0 ? 0.5 : 1
-            }}
-          >
-            <ChevronRight size={16} />
+          <span className="cg-summary-month-label" aria-live="polite">{monthLabel}</span>
+          <button type="button" className="cg-summary-nav-button" onClick={() => changeMonth(1)}
+            disabled={!canGoForward} aria-label="Next month">
+            <ChevronRight size={18} aria-hidden="true" />
           </button>
         </div>
-
-        <button
-          onClick={handleCurrentMonth}
-          style={{
-            padding: '5px 10px',
-            borderRadius: '6px',
-            backgroundColor: 'var(--surface-2)',
-            border: '1px solid var(--border)',
-            color: 'var(--text-secondary)',
-            fontSize: '12px',
-            fontWeight: '600',
-            cursor: 'pointer'
-          }}
-        >
+        <button type="button" className="cg-summary-current-button" disabled={isCurrentMonth}
+          onClick={() => setMonthDate(atMonthStart(today))}>
           Current Month
         </button>
       </div>
 
-      {/* 3. Summary KPI Grid (2x2 Mobile / 4 Desktop) */}
-      <div className="summary-kpi-grid">
-        {summaryMetrics.map((item, idx) => {
-          const IconComp = item.icon;
-          return (
-            <div
-              key={idx}
-              className="summary-kpi-card"
-              style={{
-                backgroundColor: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: '14px',
-                padding: '12px 14px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                minHeight: '88px',
-                boxSizing: 'border-box'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {item.label}
-                </span>
-                <div style={{
-                  width: '26px',
-                  height: '26px',
-                  borderRadius: '6px',
-                  backgroundColor: 'var(--surface-2)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: item.accent,
-                  flexShrink: 0
-                }}>
-                  <IconComp size={14} />
+      {loading && <div className="cg-summary-state" role="status">Loading attendance summary from the server…</div>}
+      {!loading && error && (
+        <div className="cg-summary-state cg-summary-error" role="alert">
+          <span>{error}</span>
+          <button type="button" onClick={() => setReloadKey((key) => key + 1)}>
+            <RefreshCw size={16} aria-hidden="true" /> Retry
+          </button>
+        </div>
+      )}
+      {!loading && !error && metrics && (
+        <>
+          <div className="cg-summary-kpi-grid" aria-label="Attendance metrics">
+            {cards.map(({ label, value, icon: Icon, tone }) => (
+              <article className="cg-summary-kpi-card" key={label}>
+                <div className="cg-summary-kpi-top">
+                  <span>{label}</span>
+                  <span className={`cg-summary-kpi-icon is-${tone}`}><Icon size={18} aria-hidden="true" /></span>
                 </div>
-              </div>
+                <strong>{value}</strong>
+              </article>
+            ))}
+          </div>
 
-              <div style={{ fontSize: '22px', fontWeight: '700', color: 'var(--text-primary)', marginTop: '4px' }}>
-                {item.value}
-              </div>
+          <section className="cg-summary-panel" aria-label="Monthly day distribution">
+            <h2>Monthly Day Distribution</h2>
+            <p>Only dates from your joining date through today are included.</p>
+            <div className="cg-summary-list">
+              {breakdown.map(({ label, value }) => (
+                <div className="cg-summary-list-row" key={label}>
+                  <span>{label}</span><strong>{value} {value === 1 ? 'Day' : 'Days'}</strong>
+                </div>
+              ))}
             </div>
-          );
-        })}
-      </div>
+          </section>
 
-      {/* 5. Monthly Breakdown Section */}
-      <div className="attendance-card attendance-monthly-card" style={{
-        backgroundColor: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: '14px',
-        padding: '14px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-        width: '100%',
-        boxSizing: 'border-box'
-      }}>
-        <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-primary)' }}>
-          Monthly Day Distribution
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {monthlyBreakdown.map((row, i) => (
-            <div
-              key={i}
-              className="attendance-data-row"
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '8px 10px',
-                borderRadius: '8px',
-                backgroundColor: 'var(--surface-2)',
-                fontSize: '13px'
-              }}
-            >
-              <span style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
-              <span style={{ fontWeight: '700', color: row.color }}>{row.value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 6. Attendance Flags & Review Items Section */}
-      <div className="attendance-card attendance-flags-card" style={{
-        backgroundColor: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: '14px',
-        padding: '14px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-        width: '100%',
-        boxSizing: 'border-box'
-      }}>
-        <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-primary)' }}>
-          Attendance Flags & Action Items
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {attendanceFlags.map((flag, idx) => (
-            <div
-              key={idx}
-              className="attendance-data-row attendance-flag-row"
-              onClick={() => navigate(flag.route)}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '10px 12px',
-                borderRadius: '10px',
-                backgroundColor: 'var(--surface-2)',
-                border: '1px solid var(--border)',
-                cursor: 'pointer',
-                fontSize: '13px'
-              }}
-            >
-              <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{flag.label}</span>
-              <span style={{
-                fontSize: '11px',
-                fontWeight: '700',
-                padding: '2px 8px',
-                borderRadius: '6px',
-                backgroundColor: 'var(--surface-3)',
-                color: flag.badgeColor
-              }}>
-                {flag.count}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+          <section className="cg-summary-panel" aria-label="Attendance flags and action items">
+            <h2>Attendance Flags &amp; Action Items</h2>
+            {metrics.missingClockOut > 0 ? (
+              <button type="button" className="cg-summary-flag"
+                onClick={() => navigate('/my-attendance/history')}>
+                <span>Missing Clock Out</span>
+                <strong>{metrics.missingClockOut} {metrics.missingClockOut === 1 ? 'Record' : 'Records'}</strong>
+              </button>
+            ) : (
+              <p className="cg-summary-empty">No missing clock-outs recorded for this month.</p>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 };
-

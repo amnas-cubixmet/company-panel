@@ -11,7 +11,7 @@ export const ExpenseListView=({expenses,query,onQueryChange,categoryFilter,onCat
   <section className="expense-dashboard-toolbar">
     <label className="expense-dashboard-search"><Search size={16} aria-hidden="true"/><input type="search" aria-label="Search expenses" value={query} onChange={e=>onQueryChange(e.target.value)} placeholder="Search title, vendor, ID or reference"/></label>
     <select aria-label="Filter by expense category" value={categoryFilter} onChange={e=>onCategoryChange(e.target.value)}><option>All</option>{categories.map(c=><option key={c}>{c}</option>)}</select>
-    <select aria-label="Filter by expense status" value={statusFilter} onChange={e=>onStatusChange(e.target.value)}><option>All</option><option>Approved</option><option>Pending Approval</option><option>Draft</option><option>Rejected</option></select>
+    <select aria-label="Filter by expense status" value={statusFilter} onChange={e=>onStatusChange(e.target.value)}><option>All</option><option>Approved</option><option>Paid</option><option>Pending Approval</option><option>Draft</option><option>Rejected</option></select>
   </section>
   <div className="expense-card-grid">{expenses.map(expense=><article key={expense.id} className="expense-card">
     <div className="expense-card__head"><div><span>{expense.id}</span><strong>{expense.title}</strong></div><b className={'expense-status '+statusClass(expense.status)}>{expense.status}</b></div>

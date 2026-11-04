@@ -330,6 +330,60 @@ try {
             }
           }
         }
+        if(path==='/account/security' && (profile.width===390 || profile.width===1440)) {
+          // Real computed styles: the password input must not paint a second
+          // inset rectangle or overflow its lock/visibility controls.
+          const form=page.locator('.account-security-form');
+          await form.waitFor({state:'visible'});
+          const measured=await form.evaluate(node=>
+            [...node.querySelectorAll('.account-security-input-row')].map(row=>{
+              const input=row.querySelector('input');
+              const icon=row.querySelector('svg.account-security-field-icon');
+              const toggle=row.querySelector('button.account-security-visibility-toggle');
+              const outer=getComputedStyle(row);
+              const inner=getComputedStyle(input);
+              const box=row.getBoundingClientRect();
+              const textBox=input.getBoundingClientRect();
+              const toggleBox=toggle.getBoundingClientRect();
+              const iconBox=icon.getBoundingClientRect();
+              return {
+                border:parseFloat(outer.borderLeftWidth),
+                height:Math.round(box.height),
+                innerBorder:parseFloat(inner.borderLeftWidth),
+                innerBackground:inner.backgroundColor,
+                innerRadius:parseFloat(inner.borderTopLeftRadius),
+                font:parseFloat(inner.fontSize),
+                iconFits:iconBox.left>=box.left && iconBox.right<textBox.left,
+                toggleFits:toggleBox.left>=textBox.right-1 && toggleBox.right<=box.right+1,
+                buttonHeight:Math.round(toggleBox.height),
+                width:Math.round(textBox.width),
+              };
+            })
+          );
+          if(measured.length!==3 || measured.some(field=>
+              field.border>0 || field.height<50 || field.innerBorder>0 ||
+              field.innerBackground!=='rgba(0, 0, 0, 0)' || field.innerRadius>0 ||
+              field.font<16 || field.buttonHeight<44 || field.width<100 ||
+              !field.iconFits || !field.toggleFits)) {
+            throw Error('Account Security password input layout mismatch: '+
+              JSON.stringify({width:profile.width,measured}));
+          }
+          const current=page.locator('input[aria-label="Current password"]');
+          await current.fill('test-password-only');
+          await page.getByRole('button',{name:'Show current password'}).click();
+          if(await current.getAttribute('type')!=='text') {
+            throw Error('Account Security visibility toggle failed');
+          }
+          await page.getByRole('button',{name:'Hide current password'}).click();
+          if(await current.getAttribute('type')!=='password') {
+            throw Error('Account Security password did not hide');
+          }
+          const confirm=page.locator('input[aria-label="Confirm new password"]');
+          await page.getByRole('button',{name:'Show confirmed password'}).click();
+          if(await confirm.getAttribute('type')!=='text') {
+            throw Error('Account Security confirmed password visibility failed');
+          }
+        }
         // Customer creation popup: inspect rendered fields (not only CSS text).
         // Keep it read-only; never submit a customer in CI.
         if(path==='/customers' && (profile.width===390 || profile.width===1440)) {

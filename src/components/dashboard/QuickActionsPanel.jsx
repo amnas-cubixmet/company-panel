@@ -1,17 +1,5 @@
 
-import {
-  ArrowRight,
-  Car,
-  CreditCard,
-  FileText,
-  PackageSearch,
-  Plus,
-  ReceiptText,
-  HardHat,
-  WalletCards,
-  UserPlus,
-  Wrench,
-} from 'lucide-react';
+import { Car, CreditCard, FileText, PackageSearch, Plus, ReceiptText, HardHat, WalletCards, UserPlus, Wrench } from 'lucide-react';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 
 const actions = [
@@ -43,7 +31,7 @@ export const QuickActionsPanel = ({ onNavigate }) => {
               <Icon size={12} />
               <span>{label}</span>
             </span>
-            <ArrowRight size={12} />
+            
           </button>
         ))}
     </div>

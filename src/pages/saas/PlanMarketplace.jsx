@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, Layers3, Mail, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Check, CheckCircle2, Layers3, Mail, ShieldCheck } from 'lucide-react';
 import { AccountHeader } from '../../components/account';
 import { planCatalogService } from '../../services/planCatalog.service';
 import '../../styles/saas-plans.css';
@@ -125,7 +125,7 @@ export function PlanMarketplace() {
         <button type="button" className="cg-plan-action" disabled={Boolean(action) || (current?.key === plan.key && current?.cycle === cycle)}
           onClick={() => request === plan.id ? submitPlan(plan) : setRequest(plan.id)}>
           {current?.key === plan.key && current?.cycle === cycle ? 'Current Plan' : action === 'plan:' + plan.id ? 'Sending…' : request === plan.id ? 'Confirm Plan Request' : 'Request This Plan'}
-          {!(current?.key === plan.key && current?.cycle === cycle) && <ArrowRight size={16}/>}
+          
         </button>
         {request === plan.id && <button type="button" className="cg-plan-cancel" onClick={() => setRequest(null)}>Cancel</button>}
       </article>)}

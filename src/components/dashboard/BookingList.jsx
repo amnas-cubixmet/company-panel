@@ -1,5 +1,5 @@
 
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { dashboardText, statusClass } from './dashboard.utils';
 
 export const BookingList = ({
@@ -10,13 +10,30 @@ export const BookingList = ({
   onSelectBooking,
 }) => (
   <div className="booking-pane">
-    <div className="dashboard-search">
-      <Search size={14} />
+    <div className="dashboard-search" role="search" aria-label="Filter service bookings">
+      <Search size={18} className="dashboard-search-icon" aria-hidden="true" />
       <input
+        type="search"
         value={search}
         onChange={(event) => onSearchChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && search) onSearchChange('');
+        }}
         placeholder="Search customer, vehicle or job"
+        aria-label="Search bookings by customer, vehicle or job"
+        autoComplete="off"
+        spellCheck={false}
       />
+      {search && (
+        <button
+          className="dashboard-search-clear"
+          type="button"
+          onClick={() => onSearchChange('')}
+          aria-label="Clear booking search"
+        >
+          <X size={16} aria-hidden="true" />
+        </button>
+      )}
     </div>
 
     <div className="booking-list">

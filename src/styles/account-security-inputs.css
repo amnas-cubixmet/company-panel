@@ -1,0 +1,158 @@
+/* Account Security > Change Password.
+ * High-specificity component rules deliberately win over older global form CSS
+ * that caused inset dark blocks, cramped placeholders and offset icons.
+ * Scoped to this form; password API/auth logic stays unchanged.
+ */
+.app-content .account-security-page .account-security-form {
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+  min-width: 0;
+}
+.app-content .account-security-page .account-security-form .account-security-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 14px !important;
+  font-weight: 650;
+  line-height: 1.45;
+}
+.app-content .account-security-page .account-security-form .account-security-field > span {
+  font-size: 14px !important;
+  line-height: 1.45;
+}
+.app-content .account-security-page .account-security-form .account-security-input-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  height: 52px !important;
+  min-height: 52px !important;
+  padding: 0 6px 0 14px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  outline: none;
+  background: var(--surface-2) !important;
+  box-shadow: none !important;
+  box-sizing: border-box;
+}
+.app-content .account-security-page .account-security-form .account-security-input-row:focus-within {
+  border: 0 !important;
+  outline: 2px solid var(--primary) !important;
+  outline-offset: 2px;
+  box-shadow: none !important;
+}
+.app-content .account-security-page .account-security-form .account-security-field-icon {
+  flex: 0 0 18px !important;
+  width: 18px !important;
+  height: 18px !important;
+  margin: 0 !important;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.app-content .account-security-page .account-security-form input.account-security-password-input {
+  display: block !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 50px !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+  -webkit-text-fill-color: var(--text-primary);
+  font-family: inherit;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  line-height: normal;
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-text-size-adjust: 100%;
+  box-sizing: border-box;
+}
+.app-content .account-security-page .account-security-form input.account-security-password-input:focus,
+.app-content .account-security-page .account-security-form input.account-security-password-input:focus-visible {
+  outline: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+.app-content .account-security-page .account-security-form input.account-security-password-input::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 1;
+}
+.app-content .account-security-page .account-security-form input.account-security-password-input:-webkit-autofill,
+.app-content .account-security-page .account-security-form input.account-security-password-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text-primary) !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--surface-2) inset !important;
+  box-shadow: 0 0 0 1000px var(--surface-2) inset !important;
+  caret-color: var(--text-primary);
+}
+.app-content .account-security-page .account-security-form .account-security-visibility-toggle {
+  display: inline-grid !important;
+  place-items: center;
+  flex: 0 0 44px !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px;
+  min-height: 44px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.app-content .account-security-page .account-security-form .account-security-visibility-toggle:hover {
+  background: var(--surface-3) !important;
+}
+.app-content .account-security-page .account-security-form .account-security-visibility-toggle:focus-visible {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: -3px;
+}
+.app-content .account-security-page .account-security-form .account-security-visibility-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+.app-content .account-security-page .account-security-form > button.account-security-primary {
+  min-height: 50px !important;
+  border-radius: 11px;
+  padding: 11px 16px;
+  font-size: 15px !important;
+  font-weight: 750;
+  line-height: 1.4;
+}
+.app-content .account-security-page .account-security-card-head strong {
+  font-size: 17px !important;
+}
+.app-content .account-security-page .account-security-card-head span {
+  font-size: 14px !important;
+  line-height: 1.5;
+}
+@media (max-width: 600px) {
+  .app-content .account-security-page .account-security-form .account-security-input-row {
+    gap: 10px;
+    padding: 0 5px 0 12px !important;
+  }
+  .app-content .account-security-page .account-security-form > button.account-security-primary {
+    width: 100%;
+    min-height: 52px !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-content .account-security-page .account-security-form :is(input,button) {
+    transition: none;
+  }
+}

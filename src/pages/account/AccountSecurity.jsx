@@ -5,6 +5,7 @@ import { Eye, EyeOff, KeyRound, Link2, Lock, ShieldCheck } from 'lucide-react';
 import { authRecoveryService } from '../../services/authRecovery.service';
 import { useAuth } from '../../hooks/useAuth';
 import '../../styles/account-security.css';
+import '../../styles/account-security-inputs.css';
 
 export const AccountSecurity = () => {
   const { user } = useAuth();
@@ -14,6 +15,7 @@ export const AccountSecurity = () => {
   const [confirm, setConfirm] = useState('');
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [magicLoading, setMagicLoading] = useState(false);
@@ -65,10 +67,53 @@ export const AccountSecurity = () => {
         <section className="account-security-card">
           <div className="account-security-card-head"><KeyRound size={18}/><div><strong>Change Password</strong><span>Update your current account password.</span></div></div>
           <form onSubmit={change} className="account-security-form">
-            <label>Current Password<div><Lock size={15}/><input autoComplete="current-password" aria-label="Current password" type={showCurrent ? 'text' : 'password'} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required/><button type="button" aria-label={showCurrent ? "Hide current password" : "Show current password"} onClick={() => setShowCurrent((v) => !v)}>{showCurrent ? <EyeOff size={15}/> : <Eye size={15}/>}</button></div></label>
-            <label>New Password<div><Lock size={15}/><input autoComplete="new-password" minLength={8} aria-label="New password" type={showNew ? 'text' : 'password'} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Minimum 8 characters" required/><button type="button" aria-label={showNew ? "Hide new password" : "Show new password"} onClick={() => setShowNew((v) => !v)}>{showNew ? <EyeOff size={15}/> : <Eye size={15}/>}</button></div></label>
-            <label>Confirm New Password<div><Lock size={15}/><input type="password" autoComplete="new-password" minLength={8} aria-label="Confirm new password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required/></div></label>
-            <button type="submit" className="account-security-primary" disabled={loading}>{loading ? 'Updating…' : 'Change Password'}</button>
+            <label className="account-security-field">
+              <span>Current Password</span>
+              <div className="account-security-input-row">
+                <Lock className="account-security-field-icon" size={18} aria-hidden="true" />
+                <input className="account-security-password-input" autoComplete="current-password"
+                  aria-label="Current password" type={showCurrent ? 'text' : 'password'}
+                  value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} required />
+                <button className="account-security-visibility-toggle" type="button"
+                  aria-label={showCurrent ? "Hide current password" : "Show current password"}
+                  aria-pressed={showCurrent} onClick={() => setShowCurrent((v) => !v)}>
+                  {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </label>
+            <label className="account-security-field">
+              <span>New Password</span>
+              <div className="account-security-input-row">
+                <Lock className="account-security-field-icon" size={18} aria-hidden="true" />
+                <input className="account-security-password-input" autoComplete="new-password"
+                  minLength={8} aria-label="New password" type={showNew ? 'text' : 'password'}
+                  value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimum 8 characters" required />
+                <button className="account-security-visibility-toggle" type="button"
+                  aria-label={showNew ? "Hide new password" : "Show new password"}
+                  aria-pressed={showNew} onClick={() => setShowNew((v) => !v)}>
+                  {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </label>
+            <label className="account-security-field">
+              <span>Confirm New Password</span>
+              <div className="account-security-input-row">
+                <Lock className="account-security-field-icon" size={18} aria-hidden="true" />
+                <input className="account-security-password-input" type={showConfirm ? 'text' : 'password'}
+                  autoComplete="new-password" minLength={8} aria-label="Confirm new password"
+                  value={confirm} onChange={(e) => setConfirm(e.target.value)}
+                  placeholder="Confirm your new password" required />
+                <button className="account-security-visibility-toggle" type="button"
+                  aria-label={showConfirm ? "Hide confirmed password" : "Show confirmed password"}
+                  aria-pressed={showConfirm} onClick={() => setShowConfirm((v) => !v)}>
+                  {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </label>
+            <button type="submit" className="account-security-primary" disabled={loading}>
+              {loading ? 'Updating…' : 'Change Password'}
+            </button>
           </form>
         </section>
 

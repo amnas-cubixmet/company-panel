@@ -12,7 +12,6 @@ const accountRoute = {
   children: [
     { id: 'credits-overview', label: 'Credit Overview', path: '/account' },
     { id: 'credits-buy', label: 'Buy Credits', path: '/account/credits/buy' },
-    { id: 'credits-features', label: 'Feature Controls', path: '/account/credits/features' },
     { id: 'credits-storage', label: 'Storage', path: '/account/storage' },
     { id: 'credits-logs', label: 'Credit Logs', path: '/account/credits/logs' }
   ]

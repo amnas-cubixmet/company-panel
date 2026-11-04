@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, CreditCard, ShieldCheck, Clock3, RefreshCcw, ArrowRight } from 'lucide-react';
+import { CheckCircle2, CreditCard, ShieldCheck, Clock3, RefreshCcw } from 'lucide-react';
 import { subscriptionApi, openRazorpayCheckout } from '../../services/razorpayCheckout.service';
 import '../../styles/saas-checkout.css';
 
@@ -77,7 +77,7 @@ export function Subscribe() {
           {access?.status === 'active' && (
             <div className="cg-subscribe-active" role="status">
               <CheckCircle2 size={18}/> {access.plan} is active until {new Date(access.expiresAt).toLocaleDateString('en-IN')}.
-              <button type="button" onClick={() => navigate('/dashboard')}>Open dashboard <ArrowRight size={16}/></button>
+              <button type="button" onClick={() => navigate('/dashboard')}>Open dashboard </button>
             </div>
           )}
         </header>

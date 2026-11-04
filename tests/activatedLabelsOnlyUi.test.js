@@ -39,7 +39,8 @@ test('dashboard and account never advertise inactive-label workshop modules', ()
   const account = read('src/pages/saas/CreditWorkspace.jsx');
   assert.match(account, /featureAccess\.can\(route\.permission\)/);
   assert.match(account, /featureAccess\.activeLabelModules\.length/);
-  assert.match(account, /section === 'features' && !featureAccess\.labelOnly/);
+  assert.doesNotMatch(account, /section === 'features' && !featureAccess\.labelOnly/);
+  assert.match(account, /section === 'overview' && <section className="cg-credit-panel cg-bundle-marketplace"/);
   assert.match(account, /notifyCreditChange\(\)/);
 });
 

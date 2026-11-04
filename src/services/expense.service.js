@@ -1,6 +1,7 @@
 import { USE_MOCK_API } from '../api/apiConfig';
 import { API_ENDPOINTS } from '../api/endpoints';
 import apiClient from '../api/apiClient';
+import { expenseToApiPayload, normalizeExpense } from './expense.mapper';
 import {
   getMockExpenses,
   addMockExpense,
@@ -28,33 +29,43 @@ export const getExpenses = async (params) => {
         ].some((value) => String(value || '').toLowerCase().includes(q))
       );
     }
-    return rows;
+    return rows.map(normalizeExpense);
   }
-  return apiClient.get(API_ENDPOINTS.EXPENSES, { params });
+  const response = await apiClient.get(API_ENDPOINTS.EXPENSES, { params });
+  const rows = Array.isArray(response) ? response : response?.results;
+  if (!Array.isArray(rows)) throw new Error('Unexpected expense list response.');
+  return rows.map(normalizeExpense);
 };
 
 export const getExpenseById = async (id) => {
   if (USE_MOCK_API) {
     await delay();
-    return getMockExpenseById(id);
+    const row = getMockExpenseById(id);
+    return row ? normalizeExpense(row) : null;
   }
-  return apiClient.get(`${API_ENDPOINTS.EXPENSES}/${id}`);
+  const row = await apiClient.get(`${API_ENDPOINTS.EXPENSES}/${id}`);
+  return row ? normalizeExpense(row) : null;
 };
 
 export const createExpense = async (data) => {
+  const payload = expenseToApiPayload(data);
   if (USE_MOCK_API) {
     await delay();
-    return addMockExpense(data);
+    return normalizeExpense(addMockExpense(data));
   }
-  return apiClient.post(API_ENDPOINTS.EXPENSES, data);
+  const row = await apiClient.post(API_ENDPOINTS.EXPENSES, payload);
+  return normalizeExpense(row);
 };
 
 export const updateExpense = async (id, data) => {
+  const payload = expenseToApiPayload(data);
   if (USE_MOCK_API) {
     await delay();
-    return updateMockExpense(id, data);
+    const row = updateMockExpense(id, data);
+    return row ? normalizeExpense(row) : null;
   }
-  return apiClient.put(`${API_ENDPOINTS.EXPENSES}/${id}`, data);
+  const row = await apiClient.put(`${API_ENDPOINTS.EXPENSES}/${id}`, payload);
+  return normalizeExpense(row);
 };
 
 export const deleteExpense = async (id) => {

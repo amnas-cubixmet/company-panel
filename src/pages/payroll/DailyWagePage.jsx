@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Banknote, CalendarCheck2, CheckCircle2, Clock3, History, Search, Users, Wallet } from 'lucide-react';
+import { Banknote, CalendarCheck2, CheckCircle2, Clock3, History, Search, Users, Wallet } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { dailyWageService } from '../../services/dailyWage.service';
 import { useAuth } from '../../hooks/useAuth';
@@ -170,7 +170,7 @@ export const DailyWagePage = ({ mode = 'overview' }) => {
                     <td data-label="Extra">{rupees(w.today.extraEarnings)}</td>
                     <td data-label="Unpaid"><strong>{rupees(w.currentBalance)}</strong></td>
                     <td data-label="Last Paid">{w.lastPaymentDate || '—'}</td>
-                    <td data-label="Action"><button className="dw-button is-primary" onClick={() => navigate(`/staff/${w.id}/wages`)} type="button">Wage Account <ArrowRight size={14}/></button></td>
+                    <td data-label="Action"><button className="dw-button is-primary" onClick={() => navigate(`/staff/${w.id}/wages`)} type="button">Wage Account </button></td>
                   </tr>
                 ))}</tbody>
               </table>

@@ -15,20 +15,19 @@ const security = read('../src/pages/account/AccountSecurity.jsx');
 const routeTable = [
   ['/account', 'overview'],
   ['/account/credits/buy', 'credits-buy'],
-  ['/account/credits/features', 'credits-features'],
   ['/account/storage', 'storage'],
   ['/account/credits/logs', 'credits-logs'],
   ['/account/templates', 'templates'],
   ['/account/security', 'security'],
 ];
 
-test('seven account routes share one navigation and correct active state', () => {
+test('six account routes share one navigation and correct active state', () => {
   for (const [path,key] of routeTable) {
     assert.ok(routes.includes(`path="${path}"`), 'Missing route '+path);
     assert.ok(tabs.includes(`['${key}'`), 'Missing active tab '+key);
     assert.ok(tabs.includes(`'${path}'`), 'Missing nav target '+path);
   }
-  assert.doesNotMatch(tabs, /\['settings'|\['company'/);
+  assert.doesNotMatch(tabs, /\['settings'|\['company'|\['credits-features'/);
   assert.match(tabs, /aria-current=\{active===key\?'page':undefined\}/);
   assert.match(tabs, /account-dashboard-eyebrow/);
   assert.match(tabs, /account-dashboard-section-count/);
@@ -56,9 +55,9 @@ test('wallet keeps real payment guards, refresh and staff based charges', () => 
   assert.match(credit, /purchaseCredits\(pack\.id\)/);
   assert.match(credit, /\!wallet\?\.checkoutAvailable \|\| \!wallet\?\.canManage/);
   assert.match(credit, /featureAccess\.refresh\(\)/);
-  assert.match(credit, /feature\.perStaffCredits/);
-  assert.match(credit, /feature\.monthlyCredits/);
-  assert.match(credit, /creditWalletService\.disableFeature/);
+  assert.match(credit, /bundle\.perUserCredits/);
+  assert.match(credit, /credits\(bundle\.totalCredits\)/);
+  assert.match(credit, /creditWalletService\.disableBundle/);
 });
 
 test('storage shows file usage and event history, not subscription price or plan lookup', () => {

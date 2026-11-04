@@ -1,5 +1,5 @@
 
-import { ArrowRight, BarChart3, FileText, Plus, ShieldCheck, UsersRound } from 'lucide-react';
+import { BarChart3, FileText, Plus, ShieldCheck, UsersRound } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
 
@@ -30,7 +30,7 @@ export const StaffQuickActions = ({ onNavigate }) => {
           .map(([label, path, Icon]) => (
             <button key={path} type="button" onClick={() => onNavigate(path)}>
               <span><Icon size={12} />{label}</span>
-              <ArrowRight size={12} />
+              
             </button>
           ))}
       </div>

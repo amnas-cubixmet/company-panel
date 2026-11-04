@@ -1,14 +1,13 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from 'react-router-dom';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
-import { FilePenLine, HardDrive, ShieldCheck, Coins, Zap, FileClock, CreditCard } from 'lucide-react';
+import { FilePenLine, HardDrive, ShieldCheck, Coins, FileClock, CreditCard } from 'lucide-react';
 
 // One shared navigation for every Account route. Settings remains available
 // outside Account; it is intentionally not a wallet tab.
 const tabs=[
  ['overview','Overview','/account',Coins,'billing.view'],
  ['credits-buy','Buy Credits','/account/credits/buy',CreditCard,'billing.view'],
- ['credits-features','Features','/account/credits/features',Zap,'billing.view'],
  ['storage','Storage & Logs','/account/storage',HardDrive,'billing.view'],
  ['credits-logs','Logs','/account/credits/logs',FileClock,'billing.view'],
  ['templates','Templates','/account/templates',FilePenLine,'settings.view'],

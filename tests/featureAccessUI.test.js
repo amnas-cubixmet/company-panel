@@ -43,5 +43,5 @@ test('feature UI distinguishes prepaid charges from month-end usage billing', ()
   assert.match(creditUI, /result\?\.billingMode === 'monthly_postpaid'/);
   assert.match(creditUI, /nothing was debited today/);
   assert.match(creditUI, /postpaidAccruedCredits/);
-  assert.match(creditUI, /metered each cycle|Metered each cycle/i);
+  assert.match(creditUI, /Active · usage metered|Switch ON · pay next month/);
 });

@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from 'react-router-dom';
-import {
-  AlertTriangle, ArrowRight, Boxes, History, PackageMinus, PackagePlus,
-  Plus, RefreshCw, Search, ShoppingCart, Wrench,
-} from 'lucide-react';
+import { AlertTriangle, Boxes, History, PackageMinus, PackagePlus, Plus, RefreshCw, Search, ShoppingCart, Wrench } from 'lucide-react';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { stockCatalogService } from '../../services/stockCatalog.service';
 import '../../styles/stock-easy.css';
@@ -209,10 +206,10 @@ export default function StockEasyPage() {
       </section>
 
       <section className="cg-easy-shortcuts" aria-label="Quick actions">
-        <button type="button" onClick={() => beginMove('in')}><PackagePlus size={19}/><span>Receive Stock</span><ArrowRight size={16}/></button>
-        <button type="button" onClick={() => beginMove('out')}><PackageMinus size={19}/><span>Internal Use</span><ArrowRight size={16}/></button>
-        <Link to="/jobs"><Wrench size={19}/><span>Job Card Parts</span><ArrowRight size={16}/></Link>
-        <a href="#stock-history"><History size={19}/><span>Stock History</span><ArrowRight size={16}/></a>
+        <button type="button" onClick={() => beginMove('in')}><PackagePlus size={19}/><span>Receive Stock</span></button>
+        <button type="button" onClick={() => beginMove('out')}><PackageMinus size={19}/><span>Internal Use</span></button>
+        <Link to="/jobs"><Wrench size={19}/><span>Job Card Parts</span></Link>
+        <a href="#stock-history"><History size={19}/><span>Stock History</span></a>
       </section>
 
       <section className="cg-easy-panel">
@@ -268,7 +265,7 @@ export default function StockEasyPage() {
               {matchingParts.length ? matchingParts.map((item) => (
                 <button key={item.id} type="button" onClick={() => { setPartOpen(false); beginMove('in', item.id, item); }}>
                   <span><strong>{item.partName || item.name}</strong><small>{item.sku || 'No SKU'} · {item.available} available</small></span>
-                  <span>Receive <ArrowRight size={15}/></span>
+                  <span>Receive </span>
                 </button>
               )) : <p className="cg-easy-hint">No existing products matched your search.</p>}
             </div>
@@ -313,7 +310,7 @@ export default function StockEasyPage() {
               {receiptMatches.map((item) => (
                 <button key={item.id} type="button" onClick={() => selectMovePart(item)}>
                   <span><strong>{item.partName || item.name}</strong><small>{item.sku || 'No SKU'} · {item.available} available</small></span>
-                  <span>Select <ArrowRight size={15}/></span>
+                  <span>Select </span>
                 </button>
               ))}
               {!receiptMatches.length && <p className="cg-easy-hint">No part found. Add the product first.</p>}

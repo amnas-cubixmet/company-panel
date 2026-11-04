@@ -232,11 +232,12 @@ export const AppRoutes = () => (
       <Route path="/settings" element={<Settings />} />
       <Route path="/account" element={<CreditWorkspace section="overview" />} />
       <Route path="/account/credits/buy" element={<CreditWorkspace section="buy" />} />
-      <Route path="/account/credits/features" element={<CreditWorkspace section="features" />} />
+      <Route path="/account/credits" element={<CreditWorkspace section="overview" />} />
+      <Route path="/account/credits/features" element={<Navigate to="/account/credits" replace />} />
       <Route path="/account/credits/logs" element={<CreditWorkspace section="logs" />} />
       <Route path="/account/company" element={<OwnerCompanyProfile />} />
       <Route path="/account/billing" element={<Navigate to="/account" replace />} />
-      <Route path="/account/plans" element={<Navigate to="/account/credits/features" replace />} />
+      <Route path="/account/plans" element={<Navigate to="/account/credits" replace />} />
       <Route path="/account/storage" element={<SaaSAccount section="storage" />} />
       <Route path="/account/storage/history" element={<StorageHistory />} />
       <Route path="/account/storage/history/:date" element={<StorageDayDetails />} />

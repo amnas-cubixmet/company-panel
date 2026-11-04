@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 const routes = readFileSync(new URL('../src/routes/AppRoutes.jsx', import.meta.url), 'utf8');
 
 test('former plans route redirects to credits, no legacy marketplace', () => {
-  assert.match(routes, /path="\/account\/plans" element=\{<Navigate to="\/account\/credits\/features" replace \/>\}/);
+  assert.match(routes, /path="\/account\/plans" element=\{<Navigate to="\/account\/credits" replace \/>\}/);
   assert.doesNotMatch(routes, /<PlanMarketplace\s*\/>/);
 });
 

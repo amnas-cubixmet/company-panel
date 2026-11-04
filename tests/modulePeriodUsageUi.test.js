@@ -12,7 +12,7 @@ test('owner module usage logs are fetched from Django with no browser-created pr
   assert.match(page, /featureUsage\.readings/);
   assert.match(page, /row\.coveredSeconds/);
   assert.match(page, /row\.accruedCredits/);
-  assert.match(page, /currentMonthLoggedCredits/);
+  assert.doesNotMatch(page, /currentMonthLoggedCredits/);
   assert.doesNotMatch(page, /localStorage\.setItem\(['"]moduleUsage/);
 });
 
@@ -21,10 +21,10 @@ test('all selected rate periods are distinguished from a monthly payment due day
   for (const period of ['ten_seconds', 'hourly', 'daily', 'weekly', 'monthly', 'permanent']) {
     assert.ok(page.includes(period), period);
   }
-  assert.match(page, /Module Time Usage/);
-  assert.match(page, /ON \/ OFF/);
+  assert.doesNotMatch(page, /Module Time Usage/);
+  assert.doesNotMatch(page, /ON \/ OFF/);
   assert.match(page, /configured due date/);
-  assert.match(page, /Turning OFF stops new usage/);
+  assert.doesNotMatch(page, /Turning OFF stops new usage/);
   assert.match(page, /Monthly usage statements/);
 });
 

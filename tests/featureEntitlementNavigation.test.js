@@ -39,7 +39,7 @@ test('dashboard and direct routes block disabled workshop modules', () => {
 
 test('feature activation remains server-validated and refreshes account access', () => {
   const source = file('src/pages/saas/CreditWorkspace.jsx');
-  assert.match(source, /creditWalletService\.enableFeature\(feature\.key\)/);
+  assert.match(source, /creditWalletService\.purchaseBundle\(bundle\.id\)/);
   assert.match(source, /notifyCreditChange\(\)/);
   assert.match(source, /Company feature access/);
 });

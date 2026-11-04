@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Plus, RefreshCcw, Search, ShieldCheck, UserCheck, Users, UserX } from 'lucide-react';
+import { Plus, RefreshCcw, Search, ShieldCheck, UserCheck, Users, UserX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
@@ -98,7 +98,7 @@ export const SimpleStaffOverview = () => {
         <div className="staff-simple-list-head">
           <div><h3>Employees</h3><p>Search the people added to your company.</p></div>
           <button type="button" onClick={() => navigate('/staff-management/staff')}>
-            View All Staff <ArrowRight size={16} />
+            View All Staff 
           </button>
         </div>
         <label className="staff-simple-search">
@@ -128,7 +128,7 @@ export const SimpleStaffOverview = () => {
                 </span>
                 <span className="staff-simple-person-branch">{readable(person.branch)}</span>
                 <span className="staff-simple-status">{readable(person.employmentStatus)}</span>
-                <ArrowRight size={17} aria-hidden="true" />
+                
               </button>
             ))}
             {matchingStaff.length > 8 && <p className="staff-simple-more">Showing 8 of {matchingStaff.length} matching staff. Use View All Staff for the full list.</p>}

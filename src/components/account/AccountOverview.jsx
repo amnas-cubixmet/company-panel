@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  ArrowRight, Building2, CalendarDays, CheckCircle2, CreditCard, FilePenLine,
-  HardDrive, LockKeyhole, Mail, MapPin, Phone, ReceiptText, Save, Settings2,
-  ShieldCheck, Users,
-} from 'lucide-react';
+import { Building2, CalendarDays, CheckCircle2, CreditCard, FilePenLine, HardDrive, LockKeyhole, Mail, MapPin, Phone, ReceiptText, Save, Settings2, ShieldCheck, Users } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { creditWalletService } from '../../services/creditWallet.service';
@@ -173,7 +169,7 @@ export function AccountOverview({
             <button type="button" key={href} onClick={()=>onNavigate(href)}>
               <i><Icon size={20}/></i>
               <strong>{title}</strong><span>{description}</span>
-              <ArrowRight size={16} className="account-overview-arrow"/>
+              
             </button>
           ))}
         </div>

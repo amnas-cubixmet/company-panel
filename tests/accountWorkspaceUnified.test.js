@@ -10,11 +10,12 @@ const saas = read('../src/pages/saas/SaaSAccount.jsx');
 const templates = read('../src/pages/saas/DocumentTemplates.jsx');
 const security = read('../src/pages/account/AccountSecurity.jsx');
 
-test('all five Account pages use shared navigation with semantic active tab', () => {
-  for (const path of ['/account', '/account/credits/buy', '/account/credits/features', '/account/storage', '/account/credits/logs', '/account/templates', '/account/security']) {
+test('active Account pages use shared navigation with semantic active tab', () => {
+  for (const path of ['/account', '/account/credits/buy', '/account/storage', '/account/credits/logs', '/account/templates', '/account/security']) {
     assert.ok(tabs.includes(path), 'Missing account route: ' + path);
   }
   assert.match(tabs, /aria-current=\{active===key\?'page':undefined\}/);
+  assert.doesNotMatch(tabs, /credits-features|\/account\/credits\/features/);
   assert.match(tabs, /type="button"/);
   assert.match(saas, /<AccountHeader/);
   assert.match(templates, /<AccountHeader/);
@@ -77,7 +78,7 @@ test('Company tab is hidden without deleting existing company profile route', ()
   const routes = read('../src/routes/AppRoutes.jsx');
   assert.doesNotMatch(tabs, /\['company','Company','\/account\/company'/);
   assert.match(routes, /path="\/account\/company"/);
-  for (const path of ['/account', '/account/credits/buy', '/account/credits/features', '/account/storage', '/account/credits/logs']) {
+  for (const path of ['/account', '/account/credits/buy', '/account/storage', '/account/credits/logs']) {
     assert.ok(tabs.includes(path), 'Expected credit wallet tab ' + path);
   }
 });
@@ -87,7 +88,6 @@ test('all visible Account tabs route to real pages; Settings is hidden from Acco
   const expected = [
     ['/account', 'overview'],
     ['/account/credits/buy', 'credits-buy'],
-    ['/account/credits/features', 'credits-features'],
     ['/account/storage', 'storage'],
     ['/account/credits/logs', 'credits-logs'],
     ['/account/templates', 'templates'],
@@ -101,7 +101,7 @@ test('all visible Account tabs route to real pages; Settings is hidden from Acco
   assert.doesNotMatch(tabs, /\['settings','Settings','\/settings'/);
   assert.match(routes, /path="\/settings"/);
   assert.match(routes, /path="\/account\/billing" element=\{<Navigate to="\/account" replace \/>\}/);
-  assert.match(routes, /path="\/account\/plans" element=\{<Navigate to="\/account\/credits\/features" replace \/>\}/);
+  assert.match(routes, /path="\/account\/plans" element=\{<Navigate to="\/account\/credits" replace \/>\}/);
 });
 
 test('account route changes reset the actual dashboard scroll container to the top', () => {

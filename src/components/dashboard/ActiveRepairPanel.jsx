@@ -1,5 +1,5 @@
 
-import { Activity, ArrowRight, Car, PackageSearch } from 'lucide-react';
+import { Activity, Car, PackageSearch } from 'lucide-react';
 import { dashboardText } from './dashboard.utils';
 import { jobWorkflowProgress } from './jobWorkflowProgress';
 
@@ -51,7 +51,7 @@ export const ActiveRepairPanel = ({ activeRepair, stockAlerts, onOpenJob, onRevi
 
       <div className="active-repair-open-hint">
         <span>Open Job Card</span>
-        <ArrowRight size={11} />
+        
       </div>
     </button>
 

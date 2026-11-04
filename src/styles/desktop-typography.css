@@ -459,3 +459,29 @@
   color: var(--success);
 }
 }
+/* Final theme-safe shell reset: prevent a second border/background inside
+   icon and search controls; preserve borderless Stock/Customer styling. */
+@media screen {
+  :is(body,#root) :is(
+    .global-search-field,.crud-search,.dashboard-search,
+    .attendance-history-search,.ui-input-shell,[data-cg-input-shell="true"],
+    .login-input-shell,.outside-labour-search,.customer-lookup-input,
+    .customer-dashboard-search,.job-customer-search,.job-quick-catalog-field,
+    .cg-inspection-search,.stock-search,.service-search,.service-dashboard-search,
+    .vehicle-search,.vehicle-dashboard-search,.staff-directory-search,
+    .staff-simple-search,.expense-search,.expense-dashboard-search,
+    .payments-dashboard-search,.am-search-field,.payroll-all-staff__search
+  ) input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+  :is(body,#root) .attendance-month-select-field select,
+  :is(body,#root) .customer-directory-form [data-cg-input-shell="true"] select {
+    min-width:0!important;border:0!important;border-radius:0!important;
+    outline:0!important;box-shadow:none!important;
+    background:transparent!important;background-color:transparent!important;
+  }
+  :is(body,#root) :is(
+    .global-search-field,.crud-search,.dashboard-search,.attendance-history-search,
+    .ui-input-shell,.attendance-month-select-field,.outside-labour-search
+  ):focus-within {
+    border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft);
+  }
+}

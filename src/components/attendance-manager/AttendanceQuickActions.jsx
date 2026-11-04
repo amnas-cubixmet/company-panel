@@ -1,5 +1,5 @@
 
-import { ArrowRight, BarChart3, CalendarDays, ClipboardCheck, Clock3, Settings } from 'lucide-react';
+import { BarChart3, CalendarDays, ClipboardCheck, Clock3, Settings } from 'lucide-react';
 
 const actions = [
   ['Daily Attendance', '/attendance-manager/daily', ClipboardCheck],
@@ -23,7 +23,7 @@ export const AttendanceQuickActions = ({ onNavigate }) => (
       {actions.map(([label, path, Icon]) => (
         <button key={path} type="button" onClick={() => onNavigate(path)}>
           <span><Icon size={12} />{label}</span>
-          <ArrowRight size={12} />
+          
         </button>
       ))}
     </div>

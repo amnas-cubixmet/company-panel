@@ -1,5 +1,5 @@
 
-import { Download, Search } from 'lucide-react';
+import { Download, Search, X } from 'lucide-react';
 import { formatAttendanceTime, minutesToHours, parseAttendanceLocalDate, statusTone } from './attendance.utils';
 
 export const AttendanceHistoryTable = ({
@@ -17,17 +17,29 @@ export const AttendanceHistoryTable = ({
       </div>
 
       <div className="attendance-history-actions">
-        <label className="attendance-history-search">
-          <Search size={13} />
+        <div className="attendance-history-search" role="search">
+          <Search size={18} aria-hidden="true" />
           <input
+            type="search"
+            aria-label="Search attendance"
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Search attendance..."
           />
-        </label>
+          {search && (
+            <button
+              type="button"
+              className="attendance-search-clear"
+              onClick={() => onSearchChange('')}
+              aria-label="Clear attendance search"
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+          )}
+        </div>
 
         <button type="button" className="attendance-export-button" onClick={onExport}>
-          <Download size={13} />
+          <Download size={18} aria-hidden="true" />
           Export
         </button>
       </div>
