@@ -12,7 +12,7 @@ export function JobComplaintEntries({ complaints, onChange, disabled = false, er
   return (
     <div className="job-complaint-editor" aria-label="Customer complaints">
       <div className="job-complaint-header">
-        <div><h3>Customer Complaints</h3><p>Add each complaint separately so none are overwritten.</p></div>
+        <p className="job-complaint-guidance">Add each complaint separately so none are overwritten.</p>
         <button type="button" disabled={disabled} className="job-complaint-add"
           onClick={() => onChange((rows) => [...rows, newComplaint()])}>
           <Plus size={17} aria-hidden="true"/> Add Complaint
