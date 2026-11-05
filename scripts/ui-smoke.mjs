@@ -298,6 +298,63 @@ try {
           return nodes.filter(node=>node.clientWidth>0&&node.scrollWidth>node.clientWidth+2).map(node=>node.className||node.tagName);
         });
         if(overflow.length)throw Error('Horizontal page overflow: '+overflow.join(', '));
+        if(path==='/jobs') {
+          // All viewport/theme profiles exercise the actual rendered toolbar.
+          const grid = page.locator('.jobs-toolbar-combined');
+          await grid.waitFor({state:'visible'});
+          const metrics = await grid.evaluate(root => {
+            const dashboard = root.closest('.jobs-dashboard');
+            const elements = [...root.querySelectorAll('.jobs-filter-field,.jobs-toolbar-actions')];
+            const fields = elements.map(node => {
+              const rect = node.getBoundingClientRect();
+              const label = node.querySelector('.jobs-filter-label')?.getBoundingClientRect();
+              const control = node.querySelector('.jobs-search,select,input,.jobs-toolbar-actions-content')?.getBoundingClientRect();
+              return {left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,
+                labelAbove:!label||!control||label.bottom<=control.top+1};
+            });
+            const rows = new Set(fields.map(rect=>Math.round(rect.top/3)*3)).size;
+            const overlaps = fields.some((a,i)=>fields.some((b,j)=>
+              j>i && a.left<b.right-2 && b.left<a.right-2 && a.top<b.bottom-2 && b.top<a.bottom-2));
+            const controls = [...root.querySelectorAll('input,select')].map(node=>({
+              height:node.getBoundingClientRect().height,
+              font:parseFloat(getComputedStyle(node).fontSize),
+            }));
+            return {containerWidth:dashboard?.getBoundingClientRect().width,
+              rows,overlaps,labelAbove:fields.every(x=>x.labelAbove),
+              fieldCount:fields.length,controls,
+              positions:elements.map((node,i)=>({field:node.className,top:fields[i].top,height:fields[i].bottom-fields[i].top})),
+              columns:getComputedStyle(root).gridTemplateColumns};
+          });
+          if(metrics.fieldCount!==8 || metrics.overlaps || !metrics.labelAbove) {
+            throw Error('Job Cards filter grid has missing or overlapping fields: '+JSON.stringify(metrics));
+          }
+          if(metrics.containerWidth>=920 && metrics.rows!==2) {
+            throw Error('Desktop job filter toolbar must have exactly two rows: '+JSON.stringify(metrics));
+          }
+          if(metrics.controls.some(x=>x.height<43 || x.height>49)) {
+            throw Error('Job filter inputs are not consistent 44–48px controls: '+JSON.stringify(metrics));
+          }
+          if(profile.width<=640 && metrics.controls.some(x=>x.font<15.5)) {
+            throw Error('Mobile job filter value font below 16px: '+JSON.stringify(metrics));
+          }
+          if(profile.width===390 || profile.width===1440) {
+            const search = page.getByRole('searchbox',{name:'Search job cards'});
+            await search.fill('KL10');
+            await page.waitForFunction(()=>new URL(location.href).searchParams.get('q')==='KL10');
+            await page.getByLabel('Filter job cards by status').selectOption('Active');
+            await page.waitForFunction(()=>new URL(location.href).searchParams.get('status')==='active');
+            await page.getByLabel('Clear job search').click();
+            await page.waitForFunction(()=>!new URL(location.href).searchParams.has('q'));
+            if(new URL(page.url()).searchParams.get('status')!=='active') {
+              throw Error('Clearing Job Cards search unexpectedly cleared status filter');
+            }
+            await page.getByLabel('Job card created from date').fill('2026-01-01');
+            await page.getByLabel('Job card created to date').fill('2026-12-31');
+            await page.waitForFunction(()=>new URL(location.href).searchParams.get('to')==='2026-12-31');
+            await page.getByRole('button',{name:'Reset Filters'}).click();
+            await page.waitForFunction(()=>new URL(location.href).searchParams.toString()==='');
+          }
+        }
         if(profile.width < 768) {
           const undersized = await page.locator('.ui-icon-button').evaluateAll(nodes => nodes
             .filter(node => node.getClientRects().length)
