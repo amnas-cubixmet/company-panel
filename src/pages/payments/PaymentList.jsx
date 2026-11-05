@@ -52,6 +52,7 @@ export function PaymentList() {
   const canCreate = can('payments.create');
   const canReverse = can('payments.reverse') && !USE_MOCK_API;
   const canViewInvoices = can('invoices.view');
+  const canViewPayments = can('payments.view');
 
   const [payments, setPayments] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -70,7 +71,7 @@ export function PaymentList() {
     try {
       // Reading payment history does not imply permission to read invoices.
       const [paymentRows, invoiceRows] = await Promise.all([
-        paymentService.list(),
+        canViewPayments ? paymentService.list() : Promise.resolve([]),
         isNew && canCreate && canViewInvoices ? billingService.list() : Promise.resolve([]),
       ]);
       setPayments((Array.isArray(paymentRows) ? paymentRows : []).map(normalizePaymentRow));
@@ -80,7 +81,7 @@ export function PaymentList() {
     } finally {
       setLoading(false);
     }
-  }, [isNew, canCreate, canViewInvoices]);
+  }, [isNew, canCreate, canViewInvoices, canViewPayments]);
 
   useEffect(() => { load(); }, [load, refreshKey]);
 
