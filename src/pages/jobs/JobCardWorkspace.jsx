@@ -379,6 +379,7 @@ export function JobCardWorkspace() {
   const coreStages = workflow?.stages || GUIDED_STAGES;
   const coreCompleted = workflow?.completed || [];
   const inspectionWasSkipped = workflow?.inspectionStatus === 'Skipped' || job?.inspection?.status === 'Skipped';
+  const estimateWasSkipped = workflow?.estimateDecision?.status === 'Skipped' || workflow?.skipped?.includes('estimate');
   const sectionComplete = {
     overview: coreCompleted.includes('overview'),
     inspection: coreCompleted.includes('inspection'),
@@ -1026,7 +1027,7 @@ export function JobCardWorkspace() {
         <nav ref={workflowTabsRef} className="job-detail-tabs job-workflow-tabs" aria-label="Main Job Card stages">
           {visibleTabs.map(([key, label], index) => {
             const complete = Boolean(sectionComplete[key]);
-            const skipped = key === 'inspection' && inspectionWasSkipped;
+            const skipped = (key === 'inspection' && inspectionWasSkipped) || (key === 'estimate' && estimateWasSkipped);
             const locked = isSectionLocked(key);
             const isActive = activeTab === key || (key === 'work' && activeExtraTab && activeTab !== 'activity' && !locked);
             return (
@@ -1037,7 +1038,7 @@ export function JobCardWorkspace() {
                 disabled={locked}
                 aria-current={isActive ? 'step' : undefined}
                 className={['job-workflow-tab', isActive ? 'is-active' : '', skipped ? 'is-skipped' : complete ? 'is-complete' : '', locked ? 'is-locked' : ''].join(' ')}
-                title={locked ? label + ' – complete the previous stage first' : skipped ? 'Inspection skipped (not completed)' : label}
+                title={locked ? label + ' – complete the previous stage first' : skipped ? label + ' skipped (not approved or completed)' : label}
               >
                 <span className="job-workflow-tab-number" aria-hidden="true">{index + 1}</span>
                 <span className="job-workflow-tab-label">{label}</span>
@@ -1563,7 +1564,7 @@ export function JobCardWorkspace() {
           job={job}
           estimates={estimates}
           findings={findings}
-          canEdit={currentStage === 'estimate' && !activeTabLocked}
+          canEdit={can('jobs.edit') && currentStage === 'estimate' && !activeTabLocked}
           onSaved={() => refreshJobWorkflow()}
           onApprove={() => completeStage('estimate')}
           onSkip={skipEstimate}
