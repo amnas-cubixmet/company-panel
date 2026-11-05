@@ -176,3 +176,19 @@
   .cg-job-detail .job-workspace-tab-label { white-space: normal; }
   .cg-job-detail .job-detail-summary { gap: 8px; }
 }
+
+/* A skipped inspection resolves navigation but is never shown as a completed check. */
+.cg-job-detail .job-workflow-tab.is-skipped {
+  border-color:var(--border);
+}
+.cg-job-detail .job-workflow-tab-skipped {
+  display:inline-block;
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:2px 6px;
+  background:var(--surface-2);
+  color:var(--text-secondary);
+  font-size:11px;
+  font-weight:700;
+  line-height:1.3;
+}
