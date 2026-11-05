@@ -54,5 +54,6 @@ test('Job create shows server and required-field errors inline without duplicate
   assert.match(jobCreate, /const shownInline = showFormFieldError\(/);
   assert.match(jobCreate, /const shownInline = showServerFormErrors\(/);
   assert.match(jobCreate, /setError\(shownInline \? '' : message\)/);
-  assert.match(jobCreate, /setError\(shownInline \? '' : \(err\?\.message/);
+  assert.match(jobCreate, /const message = createdId/);
+  assert.match(jobCreate, /const shownInline = showServerFormErrors\(/);
 });
