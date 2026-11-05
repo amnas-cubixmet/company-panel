@@ -6,7 +6,7 @@ export const ROLE_PERMISSION_MODULES = [
   { key: 'jobs', label: 'Job Cards', actions: ['view', 'create', 'edit', 'delete'] },
   { key: 'stock', label: 'Stock Management', actions: ['view', 'create', 'edit', 'delete'] },
   { key: 'invoices', label: 'Invoices', actions: ['view', 'create', 'edit', 'delete'] },
-  { key: 'payments', label: 'Payments', actions: ['view', 'create', 'edit', 'delete'] },
+  { key: 'payments', label: 'Payments', actions: ['view', 'create', 'edit', 'delete', 'reverse'] },
   { key: 'expenses', label: 'Expenses', actions: ['view', 'create', 'edit', 'delete'] },
   { key: 'attendance', label: 'Attendance', actions: ['self', 'manage', 'team.view', 'records.manage', 'corrections.approve', 'leave.approve', 'overtime.approve', 'shifts.manage', 'rules.manage', 'holidays.manage'] },
   { key: 'staff', label: 'Staff', actions: ['view', 'create', 'edit', 'delete'] },
@@ -66,7 +66,7 @@ export const permissionActionLabel = (action) => {
     'adjustments.manage': 'Manage Wage Adjustments',
     'payments.view': 'View Salary / Wage Payments',
     'payments.record': 'Record Wage / Salary Payment',
-    'payments.reverse': 'Reverse Wage Payment',
+    'payments.reverse': 'Reverse Customer Payment',
     process: 'Process Payroll',
     approve: 'Approve Payroll',
   };
