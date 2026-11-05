@@ -63,7 +63,9 @@ const productPayload = async (payload, { creating = false } = {}) => {
   };
   // Quantity may only change through recorded stock movements.
   if (creating) {
-    part.onHand = 0;
+    // An initial quantity is recorded atomically by StockItemViewSet.perform_create.
+    // This is opening stock, NOT a supplier purchase bill or payable.
+    part.onHand = number(payload.stockQuantity);
     part.reserved = 0;
   }
   return part;
@@ -91,9 +93,10 @@ export const stockCatalogService = {
         partName: payload.partName.trim(),
         sku: payload.sku.trim(),
         brand: payload.brand || '',
+        supplier: payload.supplier || null,
         category: payload.category || '',
         unit: payload.unit || 'Piece',
-        onHand: 0,
+        onHand: number(payload.stockQuantity),
         reserved: 0,
         costPrice: number(payload.costPrice),
         sellingPrice: number(payload.sellingPrice),
