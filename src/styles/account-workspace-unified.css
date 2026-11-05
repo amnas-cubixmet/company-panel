@@ -549,3 +549,24 @@
 @media(max-width:380px) {
   .saas-page.cg-credit-page .cg-credit-log-filters {grid-template-columns:minmax(0,1fr)}
 }
+
+
+.saas-page.cg-credit-page .cg-credit-expandable {
+  padding:10px 14px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--surface);
+  min-width:0;
+}
+.saas-page.cg-credit-page .cg-credit-expandable>summary {
+  display:flex;
+  align-items:center;
+  min-height:44px;
+  cursor:pointer;
+  color:var(--text-primary);
+  font-size:15px;
+  font-weight:650;
+}
+.saas-page.cg-credit-page .cg-credit-expandable[open] {display:grid;gap:12px}
+.saas-page.cg-credit-page .cg-credit-expandable[open]>summary {padding-bottom:6px}
+.saas-page.cg-credit-page .cg-credit-expandable .cg-credit-panel {min-width:0}
