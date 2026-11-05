@@ -798,7 +798,7 @@ export function InvoiceRoutePage() {
             </button>
           </li>
         ))}</ol>
-      </section>
+      </section>}
 
       {loading && mode === 'edit' ? <div className="billing-empty">Loading…</div> : <>
         <div className="invoice-source-grid invoice-source-grid--compact no-print">
