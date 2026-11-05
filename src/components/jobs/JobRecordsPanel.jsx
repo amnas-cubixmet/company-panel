@@ -9,6 +9,7 @@ export const JobRecordsPanel = ({
   loading,
   status,
   searchTerm = '',
+  hasActiveFilters = false,
   onOpenJob,
 }) => (
   <section className="jobs-records-panel">
@@ -24,7 +25,7 @@ export const JobRecordsPanel = ({
       <div className="jobs-state">Loading job cards…</div>
     ) : jobs.length === 0 ? (
       <div className="jobs-state is-empty">
-        {searchTerm || status !== 'All' ? 'No jobs match these filters. Clear search or change the status.' : 'No Job Cards yet. Create your first Job Card to begin.'}
+        {hasActiveFilters || searchTerm || status !== 'All' ? 'No jobs match these filters. Adjust a filter or reset to view all jobs.' : 'No Job Cards yet. Create your first Job Card to begin.'}
       </div>
     ) : (
       <>
