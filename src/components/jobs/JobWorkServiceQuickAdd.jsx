@@ -81,7 +81,13 @@ export function JobWorkServiceQuickAdd({ jobId, staff = [], canEdit, onSaved }) 
       setSearch('');
       setCategoryId('');
       setNotice('Service saved to Job Card. Worker charge is not a payroll payment.');
-      await onSaved?.();
+      try {
+        await onSaved?.();
+      } catch {
+        // Posting succeeded. A failed refresh must never be reported as a
+        // failed write or cause a retry that creates a second service.
+        setNotice('Service saved. Refresh the Job Card to update the list.');
+      }
       searchRef.current?.focus();
     } catch (err) {
       // Keep requestId unchanged so retries cannot duplicate the entry.
