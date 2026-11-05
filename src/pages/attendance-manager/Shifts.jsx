@@ -111,7 +111,7 @@ export const ShiftSettings = () => {
     <div className="attendance-manager-module attendance-manager-shifts">
       <section className="am-section-header">
         <div>
-          <h2><Clock3 size={17}/> Shift Settings</h2>
+          <h2><Clock3 size={17}/> Shifts</h2>
         </div>
       </section>
 
