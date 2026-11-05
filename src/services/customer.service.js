@@ -47,6 +47,13 @@ export const getCustomers = async (params = {}) => {
   return apiClient.get(API_ENDPOINTS.CUSTOMERS, { params });
 };
 
+/** Tenant-scoped options, authorized by customers.view on Django. */
+export const getCustomerBranches = async () => {
+  if (USE_MOCK_API) return [];
+  const rows = await apiClient.get(`${API_ENDPOINTS.CUSTOMERS}/branch-options`);
+  return Array.isArray(rows) ? rows : [];
+};
+
 export const getCustomerById = async (id) => {
   if (USE_MOCK_API) {
     await delay();
@@ -220,7 +227,7 @@ export const addCustomerVehicle = async (customerId, payload) => {
 };
 
 export const customerService = {
-  getCustomers,
+  getCustomers, getCustomerBranches,
   getCustomerById,
   createCustomer,
   updateCustomer,
