@@ -198,6 +198,11 @@ export const completeJobStage = async (id, stage, options = {}) => {
   return apiClient.post(`${API_ENDPOINTS.JOBS}/${id}/workflow`, { stage, ...options });
 };
 
+export const addJobService = async (id, values) => {
+  if (USE_MOCK_API) throw new Error('Job service posting requires the live backend workflow.');
+  return apiClient.post(`${API_ENDPOINTS.JOBS}/${id}/work/services`, values);
+};
+
 export const skipJobWork = async (id, reason, options = {}) => {
   const normalized = String(reason || '').trim();
   if (normalized.length < 3 || normalized.length > 160) {
@@ -316,6 +321,7 @@ export const jobService = {
   updateJobComplaintStatus,
   completeJobStage,
   skipJobWork,
+  addJobService,
   createJobEstimate,
   saveQuickJobEstimate,
   skipJobEstimate,
