@@ -6,9 +6,9 @@ const read = (file) => readFileSync(new URL('../' + file, import.meta.url), 'utf
 
 test('Add New Part form offers a total GST rate dropdown and custom rate', () => {
   const page = read('src/pages/stock/StockEasyPage.jsx');
-  assert.match(page, /GST Rate \(total %\)/);
+  assert.match(page, /label="GST Rate"/);
   assert.match(page, /GST_RATE_PRESETS = \['0', '3', '5', '12', '18', '28', '40'\]/);
-  assert.match(page, /<select[\s\S]*?aria-label="GST Rate"/);
+  assert.match(page, /<OutlinedSelect label="GST Rate"/);
   assert.match(page, /Other rate \(custom %\)/);
   assert.match(page, /Custom GST Rate \(%\)/);
   assert.match(page, /max="100" step="0\.01" required/);
@@ -32,7 +32,7 @@ test('GST is item metadata, not a change to Receive Stock or Issue Stock behavio
   const service = read('src/services/stockCatalog.service.js');
   assert.match(page, /stockCatalogService\.stockIn\(payload\)/);
   assert.match(page, /stockCatalogService\.stockOut\(payload\)/);
-  assert.match(page, /onHand: 0, reserved: 0/);
+  assert.match(page, /stockQuantity: openingQuantity/);
   assert.match(page, /beginMove\('in', created\.id, created\)/);
   assert.match(service, /hsnCode: item\.hsnCode \|\| item\.hsn_code \|\| ''/);
 });
