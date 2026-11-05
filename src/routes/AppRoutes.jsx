@@ -41,6 +41,8 @@ const JobDetails = lazyPage(() => import('../pages/jobs/JobDetails'), 'JobDetail
 const JobStatus = lazyPage(() => import('../pages/jobs/JobStatus'), 'JobStatus');
 const JobReports = lazyPage(() => import('../pages/jobs/JobReports'), 'JobReports');
 const StockEasyPage = lazyPage(() => import('../pages/stock/StockEasyPage'), 'default');
+const SupplierWorkspace = lazyPage(() => import('../pages/suppliers/SupplierWorkspace'), 'default');
+const SuppliersPage = lazyPage(() => import('../pages/suppliers/SuppliersPage'), 'default');
 const SupplierFinancePage = lazyPage(() => import('../pages/stock/SupplierFinancePage'), 'default');
 const SuppliersPage = lazyPage(() => import('../pages/suppliers/SuppliersPage'), 'SuppliersPage');
 const SupplierWorkspace = lazyPage(() => import('../pages/suppliers/SupplierWorkspace'), 'SupplierWorkspace');
@@ -197,9 +199,9 @@ export const AppRoutes = () => (
       <Route path="/jobs/:id/*" element={<JobDetails />} />
 
       <Route path="/suppliers" element={<SuppliersPage />} />
-      <Route path="/suppliers/credits" element={<SupplierWorkspace />} />
-      <Route path="/suppliers/purchases" element={<SupplierWorkspace />} />
-      <Route path="/suppliers/payments" element={<SupplierWorkspace />} />
+      <Route path="/suppliers/credits" element={<Navigate to="/stock/suppliers?tab=overview" replace />} />
+      <Route path="/suppliers/purchases" element={<Navigate to="/stock/suppliers?tab=overview" replace />} />
+      <Route path="/suppliers/payments" element={<Navigate to="/stock/suppliers?tab=payment" replace />} />
       <Route path="/suppliers/:id" element={<SuppliersPage />} />
       <Route path="/stock" element={<StockEasyPage />} />
       <Route path="/stock/suppliers" element={<SupplierFinancePage />} />
