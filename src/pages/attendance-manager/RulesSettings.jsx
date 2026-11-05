@@ -6,7 +6,6 @@ import {
   MapPin,
   Plus,
   Save,
-  ShieldCheck,
   Trash2,
   TriangleAlert,
 } from 'lucide-react';
@@ -254,7 +253,6 @@ export const RulesSettings = () => {
       <header className="attendance-rules-header">
         <div>
           <h2>Attendance Rules</h2>
-          <p>Choose how employees punch attendance and how missed punches are handled.</p>
         </div>
 
         <button
@@ -281,7 +279,6 @@ export const RulesSettings = () => {
           <Clock3 size={16} />
           <div>
             <h3>Punch Mode</h3>
-            <p>Company-wide attendance behavior for check-in and check-out.</p>
           </div>
         </div>
 
@@ -293,7 +290,7 @@ export const RulesSettings = () => {
         {multiMode && (
           <label className="attendance-rule-field">
             <span>Maximum Sessions Per Day</span>
-            <small>Use 0 for unlimited sessions.</small>
+            <small>0 = unlimited</small>
             <input
               type="number"
               min="0"
@@ -310,7 +307,6 @@ export const RulesSettings = () => {
             <Clock3 size={16} />
             <div>
               <h3>Shift Timing</h3>
-              <p>Used for late calculation, overtime and automatic checkout.</p>
             </div>
           </div>
 
@@ -334,7 +330,7 @@ export const RulesSettings = () => {
             {autoMode && (
               <label className="attendance-rule-field attendance-rule-field-wide">
                 <span>Auto Checkout Worker Grace</span>
-                <small>System waits this many minutes before processing, but worked time closes at shift end.</small>
+                <small>Processing delay (worked time ends at shift end).</small>
                 <input
                   type="number"
                   min="0"
@@ -351,7 +347,6 @@ export const RulesSettings = () => {
             <TriangleAlert size={16} />
             <div>
               <h3>Missing Punch Policy</h3>
-              <p>What happens if an employee forgets to check out.</p>
             </div>
           </div>
 
@@ -370,7 +365,7 @@ export const RulesSettings = () => {
           <label className="attendance-rule-toggle">
             <span>
               <strong>Send Missing Punch Reminder</strong>
-              <small>Notify the employee when shift end passes with an open punch.</small>
+              
             </span>
             <input
               type="checkbox"
@@ -382,7 +377,7 @@ export const RulesSettings = () => {
           {rules.missingPunchReminderEnabled && (
             <label className="attendance-rule-field">
               <span>Reminder Delay After Shift End</span>
-              <small>Minutes after scheduled shift end.</small>
+              <small>Minutes after shift end.</small>
               <input
                 type="number"
                 min="0"
@@ -395,7 +390,7 @@ export const RulesSettings = () => {
           <label className="attendance-rule-toggle">
             <span>
               <strong>Correction Requires Approval</strong>
-              <small>Manager must approve employee punch corrections.</small>
+              
             </span>
             <input
               type="checkbox"
@@ -407,7 +402,7 @@ export const RulesSettings = () => {
           <label className="attendance-rule-toggle">
             <span>
               <strong>Prevent Manager Self-Approval</strong>
-              <small>Recommended for audit safety.</small>
+              
             </span>
             <input
               type="checkbox"
@@ -422,13 +417,12 @@ export const RulesSettings = () => {
             <MapPin size={16} />
             <div>
               <h3>Punch Location</h3>
-              <p>Store phone/browser GPS coordinates with check-in and check-out.</p>
             </div>
           </div>
 
           <label className="attendance-rule-field">
             <span>Punch Location Setting</span>
-            <small>Choose whether staff may punch anywhere or only within the workshop boundary.</small>
+            
             <select
               aria-label="Punch location setting"
               value={rules.punchLocationMode || 'anywhere'}
@@ -493,7 +487,7 @@ export const RulesSettings = () => {
               <div className="attendance-rule-form-grid">
                 <label className="attendance-rule-field attendance-rule-field-wide">
                   <span>Allowed Punch Radius (metres)</span>
-                  <small>Set 50 to 5000 metres from the workshop location.</small>
+                  <small>50–5000 metres</small>
                   <input
                     type="number" min="50" max="5000" step="1"
                     value={rules.punchRadiusMeters}
@@ -510,7 +504,7 @@ export const RulesSettings = () => {
                 <MapPin size={15} aria-hidden="true" />
                 {locating ? 'Finding location…' : 'Use Current Location'}
               </button>
-              <small>You can search for a place or use GPS when physically at the workshop. Browser GPS permission is requested only when clicking Use Current Location. Save Rules to apply the selected pin.</small>
+              <small>Verify the pin before saving. GPS permission is requested only when selecting Use Current Location.</small>
               {locationStatus && <p className={`attendance-location-feedback is-${locationStatusType || 'error'}`} role={locationStatusType === 'success' ? 'status' : 'alert'}>{locationStatus}</p>}
             </div>
           )}
@@ -518,7 +512,7 @@ export const RulesSettings = () => {
           <label className="attendance-rule-toggle">
             <span>
               <strong>Store Punch Location</strong>
-              <small>When OFF, new punches do not store or display GPS coordinates.</small>
+              
             </span>
             <input
               type="checkbox"
@@ -538,7 +532,7 @@ export const RulesSettings = () => {
           <label className="attendance-rule-toggle">
             <span>
               <strong>Require Device Location</strong>
-              <small>Reject the punch when location permission is unavailable.</small>
+              <small>Blocks punching without GPS.</small>
             </span>
             <input
               type="checkbox"
@@ -554,7 +548,6 @@ export const RulesSettings = () => {
             <CalendarDays size={16} />
             <div>
               <h3>Weekly Off</h3>
-              <p>Configure non-working days and optional attendance.</p>
             </div>
           </div>
 
@@ -583,7 +576,7 @@ export const RulesSettings = () => {
           <label className="attendance-rule-toggle">
             <span>
               <strong>Alternate Saturday</strong>
-              <small>Apply a recurring Saturday off pattern.</small>
+              
             </span>
             <input
               type="checkbox"
@@ -620,14 +613,13 @@ export const RulesSettings = () => {
           <BellRing size={16} />
           <div>
             <h3>Attendance Notifications</h3>
-            <p>Control manager alerts for employee requests.</p>
           </div>
         </div>
 
         <label className="attendance-rule-toggle">
           <span>
             <strong>Leave Request Notifications</strong>
-            <small>Notify attendance managers when staff submits a leave request.</small>
+            
           </span>
           <input
             type="checkbox"
@@ -639,7 +631,7 @@ export const RulesSettings = () => {
         <label className="attendance-rule-toggle">
           <span>
             <strong>Overtime Request Notifications</strong>
-            <small>Notify attendance managers when staff submits overtime.</small>
+            
           </span>
           <input
             type="checkbox"
@@ -654,7 +646,6 @@ export const RulesSettings = () => {
           <CalendarDays size={16} />
           <div>
             <h3>Company Holidays</h3>
-            <p>Add Onam, Christmas and other non-weekend holidays to the attendance calendar.</p>
           </div>
         </div>
 
@@ -706,12 +697,6 @@ export const RulesSettings = () => {
         </div>
       </section>
 
-      <section className="attendance-rule-note">
-        <ShieldCheck size={16} />
-        <span>
-          Rules are enforced by the backend API, not only hidden in the UI. Employees cannot bypass punch mode restrictions by calling the endpoint directly.
-        </span>
-      </section>
     </div>
   );
 };
