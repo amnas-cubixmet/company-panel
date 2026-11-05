@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import apiClient from '../../api/apiClient';
+import { USE_MOCK_API } from '../../api/apiConfig';
 import { AlertTriangle, Boxes, History, PackageMinus, PackagePlus, Plus, RefreshCw, Search, ShoppingCart, Wrench } from 'lucide-react';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { stockCatalogService } from '../../services/stockCatalog.service';
@@ -30,6 +32,35 @@ function stockState(item) {
 }
 
 export default function StockEasyPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = (searchParams.get('search') || '').slice(0, 120);
+  const filterValue = searchParams.get('filter') || 'all';
+  const filter = ['all', 'low', 'out'].includes(filterValue) ? filterValue : 'all';
+  const supplierId = searchParams.get('supplier') || '';
+  const updateQueryParam = (key, value) => {
+    const next = new URLSearchParams(searchParams);
+    if (!value || value === 'all') next.delete(key);
+    else next.set(key, value);
+    setSearchParams(next, { replace: key === 'search' });
+  };
+  const setQuery = (value) => updateQueryParam('search', value);
+  const setFilter = (value) => updateQueryParam('filter', value);
+  const [supplier, setSupplier] = useState(null);
+  const [supplierError, setSupplierError] = useState('');
+  useEffect(() => {
+    if (!supplierId) { setSupplier(null); setSupplierError(''); return undefined; }
+    let alive = true;
+    setSupplier(null);
+    setSupplierError('');
+    if (USE_MOCK_API) {
+      setSupplierError('Supplier details require the live Django backend.');
+      return undefined;
+    }
+    apiClient.get(`/stock/suppliers/${encodeURIComponent(supplierId)}`)
+      .then((data) => { if (alive) setSupplier(data); })
+      .catch((cause) => { if (alive) setSupplierError(cause?.message || 'Supplier not found or unavailable.'); });
+    return () => { alive = false; };
+  }, [supplierId]);
   const [items, setItems] = useState([]);
   const [ledger, setLedger] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -38,8 +69,6 @@ export default function StockEasyPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState('all');
   const [partOpen, setPartOpen] = useState(false);
   const [part, setPart] = useState(initialPart);
   const [partLookup, setPartLookup] = useState('');
@@ -202,6 +231,23 @@ export default function StockEasyPage() {
 
       {error && !partOpen && !moveOpen && <div className="cg-easy-alert" role="alert">{error}</div>}
       {success && <div className="cg-easy-success" role="status">{success}<button type="button" onClick={() => setSuccess('')}>Dismiss</button></div>}
+      {supplierId && (
+        <section className="cg-easy-supplier-detail" aria-label="Selected supplier details">
+          <div>
+            <h2>{supplier?.name || 'Supplier details'}</h2>
+            {!supplier && !supplierError && <p role="status">Loading supplier…</p>}
+            {supplierError && <p role="alert">{supplierError}</p>}
+            {supplier && <>
+              <p>Contact: {supplier.contactPerson || supplier.contact_person || '—'}</p>
+              <p>Phone: {supplier.phone || '—'}</p>
+              <p>Email: {supplier.email || '—'}</p>
+              <p>GSTIN: {supplier.gstin || '—'}</p>
+              <p>{supplier.address || ''}</p>
+            </>}
+          </div>
+          <button type="button" onClick={() => updateQueryParam('supplier', '')}>Close Supplier Details</button>
+        </section>
+      )}
 
       <section className="cg-easy-metrics" aria-label="Inventory summary">
         {[
