@@ -12,7 +12,7 @@ test('Workshop location supports place-name search with selectable results', () 
   assert.match(page, /workshopLatitude: latitude/);
   assert.match(page, /workshopLongitude: longitude/);
   assert.match(page, /workshopLocationName: ''/);
-  assert.match(page, /Advanced: Edit coordinates manually/);
+  assert.match(page, /Advanced coordinates/);
   assert.match(page, /attendanceManagerService\.saveRules\(rules\)/);
   assert.match(search, /Workshop Location \/ Place/);
   assert.match(search, /Search Place/);
@@ -40,7 +40,7 @@ test('Original punch geofence and GPS controls remain unchanged', () => {
   const service = read('src/services/attendance.service.js');
   assert.match(page, /Only Within Workshop Radius/);
   assert.match(page, /Use Current Location/);
-  assert.match(page, /Allowed Punch Radius \(metres\)/);
+  assert.match(page, /Allowed Radius \(metres\)/);
   assert.match(page, /workshopLatitude: Number\(coords\.latitude\.toFixed\(7\)\)/);
   assert.match(service, /getBrowserLocation\(locationMandatory\)/);
   assert.match(service, /apiClient\.post\('\/attendance\/toggle'/);
