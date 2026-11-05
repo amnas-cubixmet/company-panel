@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { STATUS_OPTIONS } from '../../components/jobs/jobs.utils';
 import {
   JobRecordsPanel,
   JobsHeader,
@@ -14,12 +15,31 @@ import '../../styles/jobs-dashboard.css';
 
 export const JobList = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = (searchParams.get('q') || '').slice(0, 100);
+  const rawStatus = (searchParams.get('status') || '').toLowerCase();
+  const status = STATUS_OPTIONS.find((option) =>
+    option.toLowerCase().replace(/\s+/g, '-') === rawStatus
+  ) || 'All';
+  const branch = searchParams.get('branch') || 'all';
+  const technician = searchParams.get('technician') || 'all';
+  const priority = searchParams.get('priority') || 'all';
+  const from = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get('from') || '') ? searchParams.get('from') : '';
+  const to = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get('to') || '') ? searchParams.get('to') : '';
+  const changeFilter = (key, value) => {
+    const next = new URLSearchParams(searchParams);
+    if (!value || value === 'all' || value === 'All') next.delete(key);
+    else if (key === 'status') next.set(key, value.toLowerCase().replace(/\s+/g, '-'));
+    else next.set(key, value);
+    next.delete('page');
+    setSearchParams(next);
+  };
+  const setQuery = (value) => changeFilter('q', value);
+  const setStatus = (value) => changeFilter('status', value);
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
-  const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('All');
 
   useEffect(() => {
     let active = true;
@@ -62,9 +82,39 @@ export const JobList = () => {
           String(value || '').toLowerCase().includes(search),
         );
 
-      return matchesStatus && matchesSearch;
+      const matchesBranch = branch === 'all' || String(job.branchId || '') === branch;
+      const matchesTechnician = technician === 'all' || String(job.assignedEmployeeId || '') === technician;
+      const matchesPriority = priority === 'all' || String(job.priority || '').toLowerCase() === priority.toLowerCase();
+      const created = String(job.createdDate || job.created_at || '').slice(0, 10);
+      const matchesDate = (!from || created >= from) && (!to || created <= to);
+      return matchesStatus && matchesSearch && matchesBranch && matchesTechnician && matchesPriority && matchesDate;
     });
-  }, [jobs, query, status]);
+  }, [jobs, query, status, branch, technician, priority, from, to]);
+
+  const branchOptions = useMemo(() => [...new Map(
+    jobs.filter((job) => job.branchId).map((job) => [String(job.branchId), {
+      id: String(job.branchId), label: job.branchName || String(job.branchId)
+    }])
+  ).values()].sort((a, b) => a.label.localeCompare(b.label)), [jobs]);
+  const technicianOptions = useMemo(() => [...new Map(
+    jobs.filter((job) => job.assignedEmployeeId).map((job) => [String(job.assignedEmployeeId), {
+      id: String(job.assignedEmployeeId), label: job.assignedEmployeeName || 'Technician'
+    }])
+  ).values()].sort((a, b) => a.label.localeCompare(b.label)), [jobs]);
+  const priorityOptions = useMemo(() => [...new Set(jobs.map((job) => job.priority).filter(Boolean))].sort(), [jobs]);
+  const pageSize = 15;
+  const pageCount = Math.max(1, Math.ceil(filteredJobs.length / pageSize));
+  const requestedPage = Number(searchParams.get('page'));
+  const currentPage = Number.isSafeInteger(requestedPage) && requestedPage > 0
+    ? Math.min(requestedPage, pageCount) : 1;
+  const pagedJobs = filteredJobs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const setPage = (value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value <= 1) next.delete('page');
+    else next.set('page', String(Math.min(pageCount, value)));
+    setSearchParams(next);
+  };
+  const resetFilters = () => setSearchParams(new URLSearchParams());
 
   const vehicleLookup = useMemo(() => {
     const registrationQuery = normalizeRegistration(query);
@@ -146,6 +196,15 @@ export const JobList = () => {
         onQueryChange={setQuery}
         status={status}
         onStatusChange={setStatus}
+        branch={branch} onBranchChange={(value) => changeFilter('branch', value)} branchOptions={branchOptions}
+        technician={technician} onTechnicianChange={(value) => changeFilter('technician', value)}
+        technicianOptions={technicianOptions}
+        priority={priority} onPriorityChange={(value) => changeFilter('priority', value)} priorityOptions={priorityOptions}
+        from={from} to={to}
+        onFromChange={(value) => changeFilter('from', value)}
+        onToChange={(value) => changeFilter('to', value)}
+        resultCount={filteredJobs.length}
+        onReset={resetFilters}
       />
 
       <VehicleLookupPanel
@@ -164,12 +223,21 @@ export const JobList = () => {
         </div>
       )}
       <JobRecordsPanel
-        jobs={filteredJobs}
+        jobs={pagedJobs}
+        totalCount={filteredJobs.length}
         loading={loading}
         status={status}
         searchTerm={query}
         onOpenJob={openJob}
       />
+      {!loading && filteredJobs.length > pageSize && (
+        <nav className="jobs-filter-pagination" aria-label="Job list pagination">
+          <span>Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredJobs.length)} of {filteredJobs.length}</span>
+          <button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>Previous</button>
+          <span>Page {currentPage} of {pageCount}</span>
+          <button type="button" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)}>Next</button>
+        </nav>
+      )}
     </div>
   );
 };
