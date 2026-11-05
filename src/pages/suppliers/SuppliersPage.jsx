@@ -42,7 +42,7 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
       onSaved(saved);
     } catch (cause) {
       const data = cause?.response?.data;
-      setError(asText(data?.name?.[0] || data?.detail || data?.message || cause?.message || 'Unable to save supplier.'));
+      setError(asText(data?.name?.[0] || data?.gstNo?.[0] || data?.phone?.[0] || data?.detail || data?.message || cause?.message || 'Unable to save supplier.'));
     } finally { setBusy(false); }
   };
   const labels = {
