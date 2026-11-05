@@ -148,7 +148,6 @@ export const LeaveRequestsManager = () => {
       <section className="am-section-header">
         <div>
           <h2>Leave Requests</h2>
-          <p>Review requested dates, duration, reason and approval notes.</p>
         </div>
         <span className="am-count-badge">{pendingCount} Pending</span>
       </section>
