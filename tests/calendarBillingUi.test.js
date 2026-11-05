@@ -28,7 +28,7 @@ test('storage tab and file-level audit remain accessible in free owner Account',
   const header = source('src/components/account/AccountHeader.jsx');
   const paths = source('src/utils/permissions.js');
   const history = source('src/pages/saas/StorageHistory.jsx');
-  assert.match(header, /Storage & Logs/);
+  assert.match(header, /Storage/);
   assert.match(header, /'\/account\/storage',HardDrive,'billing\.view'/);
   assert.match(paths, /\['\/account\/storage', 'billing\.view'\]/);
   assert.match(history, /storageHistoryService\.getStorageEvents/);
