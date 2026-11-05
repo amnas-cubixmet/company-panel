@@ -777,59 +777,9 @@ export function JobCardWorkspace() {
   };
 
   const createInvoice = () => {
-    const invoiceItems = [
-      ...parts.map((item) => ({
-        id: `ROW-${item.id}`,
-        type: 'Stock Part',
-        description: item.name || item.partName || 'Part',
-        code: item.sku || item.partNo || '',
-        qty: cleanNumber(item.qty || 1),
-        purchasePrice: cleanNumber(item.purchasePrice || item.costPrice || 0),
-        rate: cleanNumber(item.unitPrice || item.sellingPrice || 0),
-        discount: 0,
-        inventoryId: item.partId || ''
-      })),
-      ...outsidePurchases.map((item) => ({
-        id: `ROW-${item.id}`,
-        type: 'Outside Purchase',
-        description: item.partName || item.name || 'Outside purchase',
-        code: item.partNumber || item.billNo || '',
-        qty: cleanNumber(item.qty || 1),
-        purchasePrice: cleanNumber(item.purchasePrice || 0),
-        rate: cleanNumber(item.sellingPrice || item.purchasePrice || 0),
-        discount: 0,
-        inventoryId: ''
-      })),
-      ...labourRecords.map((item) => ({
-        id: `ROW-${item.id}`,
-        type: 'Labour',
-        description: item.service || 'Labour',
-        code: '',
-        qty: 1,
-        purchasePrice: cleanNumber(item.internalCost || 0),
-        rate: cleanNumber(item.customerCharge || cleanNumber(item.hours) * cleanNumber(item.rate)),
-        discount: 0,
-        inventoryId: ''
-      }))
-    ];
-
-    localStorage.setItem('cubixgear:invoice-job-prefill', JSON.stringify({
-      jobId: job.id,
-      jobNumber: job.jobNumber || job.id,
-      customer: {
-        name: job.customerName || '',
-        phone: job.customerPhone || '',
-        address: job.customer?.address || ''
-      },
-      vehicle: {
-        registration: job.vehicleReg || '',
-        makeModel: job.vehicleInfo || '',
-        odometer: job.kilometre || '',
-        vin: job.vin || job.vehicle?.vin || ''
-      },
-      items: invoiceItems
-    }));
-
+    // The invoice editor reads billable actuals from the authorized server.
+    // No browser-stored snapshot, unapproved quote, purchase cost, or
+    // mechanic wage can silently become customer revenue.
     navigate(`/invoices/new?kind=invoice&jobId=${encodeURIComponent(job.id)}`);
   };
 

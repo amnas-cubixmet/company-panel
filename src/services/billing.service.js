@@ -143,7 +143,7 @@ const getJobInvoicePrefill = () => {
 export const blankBillingDocument = (kind = 'invoice', { emptyInputs = false, jobId = '' } = {}) => {
   // A normal New Invoice must start blank even when an old Job Card prefill
   // remains in localStorage. Only an explicit jobId deep link may use it.
-  const storedPrefill = kind === 'invoice' ? getJobInvoicePrefill() : null;
+  const storedPrefill = USE_MOCK_API && kind === 'invoice' ? getJobInvoicePrefill() : null;
   const linkedJobId = String(jobId || '').trim();
   const prefill = storedPrefill && (
     !emptyInputs || (linkedJobId && String(storedPrefill.jobId) === linkedJobId)
@@ -343,6 +343,11 @@ export const billingService = {
       });
     }
     return calculateDocumentTotals(document);
+  },
+  async getJobInvoiceDraft(jobId) {
+    if (!jobId) throw new Error('Select a Job Card first.');
+    if (USE_MOCK_API) throw new Error('Verified Job Card invoice drafts require the live backend.');
+    return apiClient.get('/billing/documents/job-draft', { params: { jobId } });
   },
   async getGstContext() {
     if (!USE_MOCK_API) return apiClient.get('/billing/documents/gst-context');
