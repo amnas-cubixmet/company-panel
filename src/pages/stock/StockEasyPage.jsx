@@ -284,11 +284,6 @@ export default function StockEasyPage() {
 
   return (
     <div className="cg-easy-stock">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Link to="/stock/suppliers" className="inline-flex min-h-11 items-center rounded-xl border border-line bg-surface px-4 text-sm font-semibold text-content">
-          Supplier Credit & Payments
-        </Link>
-      </div>
       <header className="cg-easy-head">
         <div>
           <h1>Inventory Management</h1>
