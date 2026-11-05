@@ -54,7 +54,7 @@
 .live-camera-panel {
   display: flex;
   flex-direction: column;
-  width: min(94vw, 780px);
+  width:min(94vw,780px);
   max-width: 100%;
   height: auto;
   max-height: min(92dvh, 800px);
@@ -117,7 +117,8 @@
   justify-content: center;
   width: 100%;
   min-height: 170px;
-  height: min(45dvh, 440px);
+  aspect-ratio:16/9;
+  height: auto;
   max-height: min(45dvh, 440px);
   overflow: hidden;
   background: #091321; /* Camera viewport, not the form/theme surface. */
@@ -303,6 +304,7 @@
   }
   .live-camera-stage {
     flex: 1 1 auto;
+    aspect-ratio: auto;
     min-height: 145px;
     height: auto;
     max-height: none;
