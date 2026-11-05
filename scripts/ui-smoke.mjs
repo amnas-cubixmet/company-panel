@@ -209,7 +209,7 @@ try {
         if(path==='/jobs/new') {
           const sectionOrder=await page.evaluate(()=>[...document.querySelectorAll('.job-create-form > .job-create-section')]
             .map(node=>node.querySelector('h2')?.textContent.trim() || ''));
-          if(sectionOrder.slice(0,5).map(label=>label.replace(/^\\d+\\s*/, '')).join(' | ') !==
+          if(sectionOrder.slice(0,5).map(label=>label.replace(/^\d+\s*/, '')).join(' | ') !==
             'Customer & Job Details | Customer Complaints | Vehicle Details | Technician & Service Assignment | Vehicle Photos / Inspection')
             throw Error('Job Card section order is incorrect: '+sectionOrder.join(' | '));
           if(await page.getByRole('heading',{name:/Customer Complaints/}).count()!==1)
@@ -248,7 +248,7 @@ try {
             throw Error('Five uploaded pictures should generate five independent thumbnails');
           const grid=await page.locator('.vehicle-camera-queue-grid').evaluate(el=>{
             const rect=el.getBoundingClientRect();
-            const columns=getComputedStyle(el).gridTemplateColumns.split(/\\s+/).filter(Boolean);
+            const columns=getComputedStyle(el).gridTemplateColumns.split(/\s+/).filter(Boolean);
             const image=el.querySelector('.vehicle-camera-preview-button img');
             const thumb=image?.getBoundingClientRect();
             return {columns:columns.length, right:rect.right,
