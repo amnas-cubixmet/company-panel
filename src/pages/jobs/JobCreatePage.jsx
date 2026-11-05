@@ -9,6 +9,7 @@ import { staffService } from '../../services/staff.service';
 import { payrollService } from '../../services/payroll.service';
 import { JobBreadcrumbs } from '../../components/jobs/JobBreadcrumbs';
 import { JobCustomerPicker } from '../../components/jobs/JobCustomerPicker';
+import { PhoneInput } from '../../components/common/PhoneInput';
 import { customerService } from '../../services/customer.service';
 import { branchService } from '../../services/branch.service';
 import { JobComplaintEntries } from '../../components/jobs/JobComplaintEntries';
@@ -358,6 +359,23 @@ export const JobCreatePage = () => {
 
   const inputClass = 'mt-1 h-11 w-full rounded-xl border border-line bg-surface-2 px-3 text-sm font-normal text-content outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10';
   const labelClass = 'text-xs font-semibold text-secondary';
+  const phoneParts = splitInternationalPhone(form.customerPhone);
+
+  if (createdJob && pendingPhotos.length === 0) {
+    return <div className="job-management-page job-create-page" data-job-creation-success>
+      <JobBreadcrumbs current="Job Card Created" />
+      <div className="job-create-success-banner"><CheckCircle2 size={22}/>
+        Job Card {createdJob.jobNumber || createdJob.job_number || createdJob.number || ''} saved successfully.
+      </div>
+      <JobCardReview form={form} complaints={buildJobComplaints(complaints)}
+        photos={pendingPhotos} jobNumber={createdJob.jobNumber || createdJob.job_number || createdJob.number || ''}
+        created onPrint={() => window.print()}/>
+      <div className="job-create-actions no-print">
+        <button type="button" onClick={() => navigate('/jobs')}>Back to Jobs</button>
+        <button type="button" onClick={() => navigate('/jobs/' + createdJob.id)}>Open Job Card</button>
+      </div>
+    </div>;
+  }
 
   return (
     <div className="job-management-page job-create-page flex w-full min-w-0 flex-col gap-4">
@@ -367,7 +385,13 @@ export const JobCreatePage = () => {
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-content">Create Job Card</h1>
           <p className="mt-1 max-w-2xl text-xs leading-5 text-muted">Add customer and vehicle details, then create a Job Card to start inspection.</p>
           <div className="job-create-steps" aria-label="Job setup steps">
-            <span><b>01</b> Customer</span><span><b>02</b> Vehicle</span><span><b>03</b> Assignment</span>
+            <span><b>01</b> Customer</span><span><b>02</b> Vehicle</span>
+            <span><b>03</b> Complaints</span><span><b>04</b> Assignment</span>
+            <span><b>05</b> Photos</span><span className={review ? 'is-current' : ''}><b>06</b> Review</span>
+          </div>
+          <div className="job-create-mode-switch" role="group" aria-label="Job Card mode">
+            <button type="button" aria-pressed={jobMode === 'simple'} className={jobMode === 'simple' ? 'is-active' : ''} onClick={() => setJobMode('simple')}>Simple</button>
+            <button type="button" aria-pressed={jobMode === 'advanced'} className={jobMode === 'advanced' ? 'is-active' : ''} onClick={() => setJobMode('advanced')}>Advanced</button>
           </div>
         </div>
       </header>
@@ -391,9 +415,12 @@ export const JobCreatePage = () => {
             <label className={labelClass}>Customer Name *
               <input name="customerName" required readOnly={Boolean(selectedCustomer)} autoComplete="name" value={form.customerName} onChange={(e) => set('customerName', e.target.value)} placeholder="Customer name" className={inputClass}/>
             </label>
-            <label className={labelClass}>Phone *
-              <input name="customerPhone" required readOnly={Boolean(selectedCustomer)} type="tel" autoComplete="tel" inputMode="tel" value={form.customerPhone} onChange={(e) => set('customerPhone', e.target.value)} placeholder="+91..." className={inputClass}/>
-            </label>
+            <PhoneInput label="Phone *" name="customerPhone" required
+              value={phoneParts.national} countryCode={phoneParts.country} countries={JOB_COUNTRY_CODES.map(([code, label]) => ({code, label, flag:''}))}
+              readOnly={Boolean(selectedCustomer)} disabled={saving}
+              onCountryCodeChange={(code) => set('customerPhone', joinInternationalPhone(code, phoneParts.national))}
+              onChange={(e) => set('customerPhone', joinInternationalPhone(phoneParts.country, e.target.value))}
+              placeholder="9876543210" className="job-create-phone"/>
             <label className={labelClass}>Email
               <input name="customerEmail" readOnly={Boolean(selectedCustomer)} type="email" autoComplete="email" value={form.customerEmail} onChange={(e) => set('customerEmail', e.target.value)} placeholder="Optional" className={inputClass}/>
             </label>
@@ -402,8 +429,10 @@ export const JobCreatePage = () => {
                 onChange={(e) => set('customerAddress', e.target.value)} placeholder="Optional" className={inputClass}/>
             </label>
             <label className={labelClass}>Branch
-              <select value={form.branch} onChange={(e) => set('branch', e.target.value)} className={inputClass}>
-                <option>Main Garage Branch</option><option>Kochi South Branch</option>
+              <select name="branchId" value={form.branchId} disabled={!maySelectBranch}
+                onChange={(e) => set('branchId', e.target.value)} className={inputClass}>
+                <option value="">My assigned workshop branch</option>
+                {branches.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}
               </select>
             </label>
             <label className={labelClass}>Service Type
