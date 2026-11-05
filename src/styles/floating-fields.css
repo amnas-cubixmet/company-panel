@@ -1,6 +1,6 @@
 :root{--cg-floating-height: 48px;--cg-floating-radius: 10px;--cg-floating-bg:var(--field-bg,var(--surface-2))}
 .cg-floating-field>[data-cg-input-shell]{position:relative;height:var(--cg-floating-height);min-height:var(--cg-floating-height);border-radius:var(--cg-floating-radius);background:var(--cg-floating-bg)}
-.cg-floating-field .cg-floating-control{font-size: 16px !important;font-weight:400!important}
+.cg-floating-field .cg-floating-control{font-size: 16px !important;font-weight:400!important;color:var(--text-primary)}
 .cg-floating-field>[data-cg-input-shell]>.cg-floating-control{height:100%;min-height:0!important;border:0!important;background:transparent!important;outline:0!important;box-shadow:none!important}
 .cg-floating-field .cg-floating-label{position:absolute;top:50%;left:14px;transform:translateY(-50%);font-size:14px!important;color:var(--text-secondary);font-weight:500;white-space:nowrap;z-index:1}
 .cg-floating-field [data-cg-floating-icon=true]>.cg-floating-label{left:40px}
