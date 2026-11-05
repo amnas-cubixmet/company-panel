@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, CreditCard, Plus, RefreshCw, Wallet } from 'lucide-react';
 import { supplierFinanceService as finance } from '../../services/supplierFinance.service';
 
@@ -13,6 +13,7 @@ const line = () => ({ itemId: '', description: '', quantity: '1', purchaseRate: 
 const paymentKey = () => globalThis.crypto?.randomUUID?.() || ('PAY-' + Date.now() + '-' + Math.random().toString(36).slice(2));
 
 export default function SupplierFinancePage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [suppliers, setSuppliers] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [bills, setBills] = useState([]);
@@ -36,7 +37,10 @@ export default function SupplierFinancePage() {
     paidOn: today(), reference: '', allocations: {},
   });
   const [applyDraft, setApplyDraft] = useState({ paymentId: '', billId: '', amount: '' });
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    const requested = searchParams.get('tab');
+    return ['overview', 'bill', 'payment', 'accounts'].includes(requested) ? requested : 'overview';
+  });
   const requestKey = useRef(paymentKey());
   const inFlight = useRef(false);
 
