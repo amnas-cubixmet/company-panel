@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Search, X, Users, Car, ClipboardList, FileText, Package, UserCheck,
@@ -22,112 +21,96 @@ const GROUP_ICONS = {
   Payments: CreditCard,
 };
 
-export const GlobalSearch = ({ isMobileView = false, onMobileClose = null }) => {
+// Exactly one mounted search input for desktop and mobile. No modal or portal.
+export const GlobalSearch = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { can } = useFeatureAccess();
-  const [open, setOpen] = useState(false);
+  const instanceId = useId();
+  const resultsId = instanceId + '-results';
+  const rootRef = useRef(null);
+  const inputRef = useRef(null);
+  const resultsRef = useRef(null);
+  const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [active, setActive] = useState(-1);
-  const [retry, setRetry] = useState(0);
-  const inputRef = useRef(null);
-  const dialogRef = useRef(null);
-  const lastFocus = useRef(null);
-  const mountedRef = useRef(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [retryCount, setRetryCount] = useState(0);
 
-  const visible = useMemo(() => results.filter((item) => {
+  // Django enforces tenancy and RBAC, and the header checks route permissions.
+  const permitted = useMemo(() => results.filter((item) => {
     const path = item?.route;
-    if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//')) return false;
+    if (typeof path !== 'string' || !path.startsWith('/') ||
+        path.startsWith('//') || path.includes('\\')) return false;
     const permission = getPermissionForPath(path.split(/[?#]/)[0]);
     return Boolean(permission && can(permission));
   }), [results, can]);
 
   const groups = useMemo(() => {
-    const out = [];
-    for (const item of visible) {
-      const group = item.group || 'Other';
-      let target = out.find((row) => row.name === group);
-      if (!target) {
-        target = { name: group, items: [] };
-        out.push(target);
-      }
-      target.items.push(item);
+    const map = new Map();
+    for (const item of permitted) {
+      const name = item.group || 'Other';
+      if (!map.has(name)) map.set(name, []);
+      map.get(name).push(item);
     }
-    return out;
-  }, [visible]);
+    return [...map].map(([name, items]) => ({ name, items }));
+  }, [permitted]);
+  const options = useMemo(() => groups.flatMap((group) => group.items), [groups]);
+  const trimmed = query.trim();
 
-  const openDialog = () => {
-    lastFocus.current = document.activeElement;
-    setOpen(true);
-  };
-
-  const closeDialog = () => {
-    setOpen(false);
+  const clearSearch = () => {
     setQuery('');
     setResults([]);
     setError('');
-    setActive(-1);
-    onMobileClose?.();
-    requestAnimationFrame(() => lastFocus.current?.isConnected && lastFocus.current.focus());
+    setLoading(false);
+    setActiveIndex(-1);
+    setExpanded(false);
+    inputRef.current?.focus();
   };
 
   useEffect(() => {
-    // Only the mounted desktop widget handles Ctrl/⌘+K; mobile search mounts on demand.
-    const shortcut = (event) => {
+    const onShortcut = (event) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
-        openDialog();
+        inputRef.current?.focus();
+        setExpanded(true);
       }
     };
-    window.addEventListener('keydown', shortcut);
-    return () => window.removeEventListener('keydown', shortcut);
+    document.addEventListener('keydown', onShortcut);
+    return () => document.removeEventListener('keydown', onShortcut);
   }, []);
 
-  // Restore background state and focus when search closes/unmounts.
   useEffect(() => {
-    if (!open) return undefined;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    inputRef.current?.focus();
-    const keys = (event) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        closeDialog();
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const buttons = dialogRef.current?.querySelectorAll(
-        'button:not(:disabled),input:not(:disabled),a[href]'
-      );
-      const focusable = [...(buttons || [])];
-      if (!focusable.length) return;
-      const first = focusable[0], last = focusable.at(-1);
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
+    const onPointerDown = (event) => {
+      if (!rootRef.current?.contains(event.target)) setExpanded(false);
     };
-    document.addEventListener('keydown', keys);
+    const onFocusIn = (event) => {
+      if (!rootRef.current?.contains(event.target)) setExpanded(false);
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('focusin', onFocusIn);
     return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener('keydown', keys);
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('focusin', onFocusIn);
     };
-  }, [open]);
+  }, []);
 
-  // Never display a stale response after typing quickly, closing, or navigating.
+  // Navigating from any page, including back/forward, closes and clears search.
   useEffect(() => {
-    if (!open) return undefined;
-    const value = query.trim();
-    setActive(-1);
+    setExpanded(false);
+    setQuery('');
+    setResults([]);
+    setActiveIndex(-1);
+    setError('');
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    setActiveIndex(-1);
     setError('');
     setResults([]);
-    if (value.length < 2) {
+    if (!expanded || trimmed.length < 2) {
       setLoading(false);
       return undefined;
     }
@@ -135,118 +118,140 @@ export const GlobalSearch = ({ isMobileView = false, onMobileClose = null }) => 
     setLoading(true);
     const timeout = window.setTimeout(async () => {
       try {
-        const rows = await searchWorkspace(value, { signal: controller.signal });
-        if (!controller.signal.aborted) setResults(rows);
+        const found = await searchWorkspace(trimmed, { signal: controller.signal });
+        if (!controller.signal.aborted) setResults(found);
       } catch (cause) {
-        if (controller.signal.aborted || cause?.code === 'ERR_CANCELED') return;
-        setError(cause?.message || 'Search is unavailable. Try again.');
+        if (!controller.signal.aborted && cause?.code !== 'ERR_CANCELED') {
+          setError(cause?.message || 'Unable to search right now. Please retry.');
+        }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
-    }, 280);
+    }, 260);
     return () => {
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [open, query, retry]);
+  }, [expanded, trimmed, retryCount]);
 
-  const pathKey = location.key;
   useEffect(() => {
-    // Navigation from elsewhere also closes the dialog and restores scrolling.
-    if (mountedRef.current) setOpen(false);
-    mountedRef.current = true;
-  }, [pathKey]);
+    if (activeIndex < 0) return;
+    const option = resultsRef.current?.querySelector('[data-search-index="' + activeIndex + '"]');
+    option?.scrollIntoView({ block: 'nearest' });
+  }, [activeIndex]);
 
   const select = (item) => {
-    const path = item?.route;
-    if (!visible.includes(item) || !path) return;
-    closeDialog();
+    if (!options.includes(item)) return;
+    const path = item.route;
+    setExpanded(false);
+    setQuery('');
+    setResults([]);
+    setActiveIndex(-1);
     navigate(path);
   };
 
-  const inputKeys = (event) => {
-    if (event.key === 'ArrowDown') {
+  const onKeyDown = (event) => {
+    if (event.key === 'Escape') {
+      if (expanded) {
+        event.preventDefault();
+        setExpanded(false);
+        setActiveIndex(-1);
+      }
+    } else if (event.key === 'ArrowDown' && expanded) {
       event.preventDefault();
-      setActive((index) => Math.min(index + 1, visible.length - 1));
-    } else if (event.key === 'ArrowUp') {
+      setActiveIndex((previous) => Math.min(previous + 1, options.length - 1));
+    } else if (event.key === 'ArrowUp' && expanded) {
       event.preventDefault();
-      setActive((index) => Math.max(-1, index - 1));
-    } else if (event.key === 'Enter' && visible.length) {
+      setActiveIndex((previous) => Math.max(previous - 1, -1));
+    } else if (event.key === 'Enter' && expanded && options.length) {
       event.preventDefault();
-      select(visible[Math.max(active, 0)]);
+      select(options[Math.max(activeIndex, 0)]);
     }
   };
 
-  let rowIndex = -1;
+  let optionIndex = -1;
   return (
-    <div className={`global-search ${isMobileView ? 'is-mobile' : ''}`}>
-      <button type="button" className="global-search-launch" onClick={openDialog}
-        aria-haspopup="dialog" aria-expanded={open} aria-label="Open workspace search">
-        <Search size={17} aria-hidden="true" />
-        <span>Search customers, vehicles, jobs…</span>
-        <kbd>⌘ K</kbd>
-      </button>
-      {open && createPortal(
-        <div className="global-search-backdrop" onMouseDown={(event) => {
-          if (event.target === event.currentTarget) closeDialog();
-        }}>
-          <section ref={dialogRef} role="dialog" aria-modal="true"
-            aria-label="Search the CubeGears workspace" className="global-search-dialog">
-            <header className="global-search-dialog-header">
-              <Search size={20} aria-hidden="true" />
-              <input ref={inputRef} type="search" value={query} maxLength={100}
-                aria-label="Search customers, vehicles, jobs, invoices and other records"
-                aria-controls="global-workspace-search-results"
-                aria-autocomplete="list" aria-activedescendant={active >= 0 ? `workspace-search-result-${active}` : undefined}
-                placeholder="Search by name, phone, registration or reference"
-                autoComplete="off" onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={inputKeys} />
-              {query && <button type="button" aria-label="Clear search" onClick={() => {
-                setQuery(''); setResults([]); setActive(-1); inputRef.current?.focus();
-              }}><X size={18} /></button>}
-              <button type="button" className="global-search-close" aria-label="Close search"
-                onClick={closeDialog}><X size={20} /></button>
-            </header>
-            <div className="global-search-results" id="global-workspace-search-results"
-              role="listbox" aria-label="Workspace search results">
-              {loading && <p role="status" className="global-search-feedback">
-                <Loader2 size={18} className="global-search-spin" /> Searching workspace…
-              </p>}
-              {!loading && error && <div role="alert" className="global-search-feedback">
-                <AlertCircle size={18}/><span>{error}</span>
-                <button type="button" onClick={() => setRetry((v) => v + 1)}>Retry</button>
-              </div>}
-              {!loading && !error && query.trim().length < 2 &&
-                <p className="global-search-feedback">Enter at least 2 characters to search real workshop records.</p>}
-              {!loading && !error && query.trim().length >= 2 && !visible.length &&
-                <p role="status" className="global-search-feedback">No matching records found.</p>}
-              {!loading && !error && groups.map((group) => {
-                const Icon = GROUP_ICONS[group.name] || Search;
-                return <div key={group.name} role="group" aria-label={group.name} className="global-search-group">
-                  <h3 className="global-search-group-title">{group.name} ({group.items.length})</h3>
-                  {group.items.map((item) => {
-                    rowIndex += 1;
-                    const index = rowIndex;
-                    return <button key={item.id} id={`workspace-search-result-${index}`}
-                      role="option" aria-selected={active === index}
-                      type="button" className={`global-search-result-row ${active === index ? 'is-selected' : ''}`}
-                      onMouseMove={() => setActive(index)} onClick={() => select(item)}>
-                      <Icon size={19} aria-hidden="true" />
-                      <span className="global-search-result-copy">
-                        <strong>{item.title}</strong><small>{item.subtitle}</small>
-                      </span>
-                      {item.status && <span className="global-search-result-status">{item.status}</span>}
-                    </button>;
-                  })}
-                </div>;
+    <div ref={rootRef} className="global-search">
+      <div className="global-search-field">
+        <Search className="global-search-leading-icon" size={17} aria-hidden="true" />
+        <input
+          ref={inputRef}
+          type="search"
+          role="combobox"
+          aria-label="Search customers, vehicles, jobs, complaints, staff, suppliers, inventory, invoices and payments"
+          aria-autocomplete="list"
+          aria-expanded={expanded}
+          aria-controls={resultsId}
+          aria-activedescendant={expanded && activeIndex >= 0 ? instanceId + '-option-' + activeIndex : undefined}
+          placeholder="Search customers, vehicles, jobs…"
+          autoComplete="off"
+          maxLength={100}
+          value={query}
+          onFocus={() => setExpanded(true)}
+          onClick={() => setExpanded(true)}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setExpanded(true);
+          }}
+          onKeyDown={onKeyDown}
+        />
+        {query ? (
+          <button className="global-search-clear" type="button" aria-label="Clear search" onClick={clearSearch}>
+            <X size={16} aria-hidden="true" />
+          </button>
+        ) : (
+          <kbd aria-hidden="true" className="global-search-shortcut">⌘ K</kbd>
+        )}
+      </div>
+      {expanded && (
+        <div ref={resultsRef} className="global-search-results" id={resultsId} role="listbox" aria-label="Workspace search results">
+          {loading && <div className="global-search-feedback" role="status">
+            <Loader2 className="global-search-spin" size={18} aria-hidden="true" />
+            Searching workspace…
+          </div>}
+          {!loading && error && <div className="global-search-feedback is-error" role="alert">
+            <AlertCircle size={18} aria-hidden="true" />
+            <span>{error}</span>
+            <button type="button" onClick={() => setRetryCount((value) => value + 1)}>Retry</button>
+          </div>}
+          {!loading && !error && trimmed.length < 2 && (
+            <div className="global-search-feedback">Type at least 2 characters to search your workshop.</div>
+          )}
+          {!loading && !error && trimmed.length >= 2 && !options.length && (
+            <div className="global-search-feedback" role="status">No matching records found.</div>
+          )}
+          {!loading && !error && groups.map((group) => {
+            const Icon = GROUP_ICONS[group.name] || Search;
+            return <div className="global-search-group" role="group" aria-label={group.name} key={group.name}>
+              <div className="global-search-group-title">{group.name} ({group.items.length})</div>
+              {group.items.map((item) => {
+                optionIndex += 1;
+                const index = optionIndex;
+                return (
+                  <button
+                    key={item.id}
+                    id={instanceId + '-option-' + index}
+                    data-search-index={index}
+                    type="button"
+                    role="option"
+                    aria-selected={activeIndex === index}
+                    className={'global-search-result-row' + (activeIndex === index ? ' is-selected' : '')}
+                    onMouseEnter={() => setActiveIndex(index)}
+                    onClick={() => select(item)}
+                  >
+                    <span className="global-search-result-icon"><Icon size={18} aria-hidden="true" /></span>
+                    <span className="global-search-result-copy">
+                      <strong>{item.title}</strong>
+                      {item.subtitle && <small>{item.subtitle}</small>}
+                    </span>
+                    {item.status && <span className="global-search-result-status">{item.status}</span>}
+                  </button>
+                );
               })}
-            </div>
-            <footer className="global-search-dialog-footer">
-              <span>↑ ↓ Navigate · Enter Open · Esc Close</span>
-              <span>Results are limited to your workshop permissions</span>
-            </footer>
-          </section>
-        </div>, document.body
+            </div>;
+          })}
+          <div className="global-search-footnote" aria-hidden="true">↑ ↓ Navigate · Enter Open · Esc Close</div>
+        </div>
       )}
     </div>
   );
