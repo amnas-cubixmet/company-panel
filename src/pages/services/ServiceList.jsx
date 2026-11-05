@@ -84,7 +84,7 @@ const ServiceForm = ({
     <header className="service-form-header">
       <div>
         <h1>{title}</h1>
-        <p>Configure workshop labour service, pricing, duration, category and checklist.</p>
+        
       </div>
     </header>
 
@@ -93,7 +93,7 @@ const ServiceForm = ({
         <div className="service-section-header">
           <div>
             <h2>Service Information</h2>
-            <p>Core service identity and workshop category.</p>
+            
           </div>
         </div>
 
@@ -147,7 +147,7 @@ const ServiceForm = ({
         <div className="service-section-header">
           <div>
             <h2>Pricing & Time</h2>
-            <p>Default labour charge, pricing method and estimated duration.</p>
+            
           </div>
         </div>
 
@@ -172,7 +172,7 @@ const ServiceForm = ({
         <div className="service-section-header">
           <div>
             <h2>Description & Checklist</h2>
-            <p>Workshop scope and standard technician checklist.</p>
+            
           </div>
         </div>
 
@@ -426,7 +426,7 @@ export const ServiceList = () => {
             <div className="service-section-header">
               <div>
                 <h2>Service Details</h2>
-                <p>Workshop scope and default pricing setup.</p>
+                
               </div>
             </div>
             <div className="service-info-grid">
@@ -447,7 +447,7 @@ export const ServiceList = () => {
             <div className="service-section-header">
               <div>
                 <h2>Technician Checklist</h2>
-                <p>Standard work steps for this service.</p>
+                
               </div>
             </div>
 

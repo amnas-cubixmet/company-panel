@@ -54,7 +54,7 @@ export const AddCustomer = () => {
   return (
     <FormPage
       title="Add Customer"
-      description="Create a new customer profile for workshop operations and billing."
+      
     >
       <CustomerManagementTabs />
 
@@ -70,7 +70,7 @@ export const AddCustomer = () => {
         {/* BASIC INFORMATION */}
         <FormSection
           title="Basic Information"
-          description="Customer personal details and contact methods."
+          
         >
           <div className="form-grid-full">
             <Input
@@ -140,7 +140,7 @@ export const AddCustomer = () => {
         {/* ADDRESS DETAILS */}
         <FormSection
           title="Address Details"
-          description="Location & workshop branch assignment."
+          
         >
           <div className="form-grid-full">
             <Textarea
@@ -184,7 +184,7 @@ export const AddCustomer = () => {
         {/* ADDITIONAL PREFERENCES */}
         <FormSection
           title="Additional Preferences"
-          description="Staff notes and automated messaging settings."
+          
         >
           <div className="form-grid-full">
             <Textarea

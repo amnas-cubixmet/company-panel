@@ -298,6 +298,53 @@ try {
           return nodes.filter(node=>node.clientWidth>0&&node.scrollWidth>node.clientWidth+2).map(node=>node.className||node.tagName);
         });
         if(overflow.length)throw Error('Horizontal page overflow: '+overflow.join(', '));
+        // Shared real form components: outlined labels, proper border ownership,
+        // filled-state label persistence, and keyboard-accessible searchable picker.
+        if ((path==='/customers/new' || path==='/vehicles/new') &&
+            (profile.width===390 || profile.width===1440)) {
+          const controls = page.locator('.cg-floating-field > [data-cg-input-shell]');
+          if(await controls.count()<3) throw Error('Shared outlined fields are missing on '+path);
+          const state = await controls.first().evaluate(shell=>{
+            const input = shell.querySelector('input,select');
+            const styles = getComputedStyle(shell);
+            const inner = getComputedStyle(input);
+            return {outerBorder:parseFloat(styles.borderLeftWidth),
+              innerBorder:parseFloat(inner.borderLeftWidth),
+              height:shell.getBoundingClientRect().height,
+              font:parseFloat(inner.fontSize),
+              label:!!shell.querySelector('label[for]')};
+          });
+          if(!state.label || state.outerBorder<.9 || state.innerBorder>.1 ||
+              state.height<44 || state.height>51 || state.font<15.5) {
+            throw Error('Invalid shared field shell: '+JSON.stringify(state));
+          }
+          if(path==='/customers/new') {
+            const name=page.getByLabel('Customer Name',{exact:false});
+            await name.fill('Test Workshop Customer');
+            await name.blur();
+            const float=await name.evaluate(field=>{
+              const shell=field.closest('[data-cg-input-shell]');
+              const label=shell.querySelector('.cg-floating-label');
+              return {labelBottom:label.getBoundingClientRect().bottom,
+                shellTop:shell.getBoundingClientRect().top};
+            });
+            if(float.labelBottom>float.shellTop+4) {
+              throw Error('Filled Customer Name label does not float: '+JSON.stringify(float));
+            }
+          }
+          if(path==='/vehicles/new') {
+            const picker=page.getByRole('combobox',{name:'Customer Owner'});
+            await picker.click();
+            const search=page.getByRole('searchbox',{name:'Search Customer Owner'});
+            await search.waitFor({state:'visible'});
+            await search.press('ArrowDown');
+            await search.press('ArrowUp');
+            await search.press('Enter');
+            if(await picker.getAttribute('aria-expanded')!=='false') {
+              throw Error('Searchable Customer Owner select did not close after keyboard selection');
+            }
+          }
+        }
         if(path==='/jobs') {
           // All viewport/theme profiles exercise the actual rendered toolbar.
           const grid = page.locator('.jobs-toolbar-combined');

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
 import { USE_MOCK_API } from '../../api/apiConfig';
-import { AlertTriangle, Boxes, History, PackageMinus, PackagePlus, Plus, RefreshCw, Search, ShoppingCart, Wrench } from 'lucide-react';
+import { AlertTriangle, Boxes, History, PackageMinus, PackagePlus, Plus, RefreshCw, Search, Info, ShoppingCart, Wrench } from 'lucide-react';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { stockCatalogService } from '../../services/stockCatalog.service';
 import '../../styles/stock-easy.css';
@@ -314,7 +314,7 @@ export default function StockEasyPage() {
       <ResponsiveModalSheet isOpen={partOpen} onClose={() => !saving && setPartOpen(false)} title="Add New Part" maxWidth="600px">
         {partMode === 'find' ? (
           <div className="cg-easy-form">
-            <p className="cg-easy-hint">Search the product catalogue first. Select an existing part to receive stock without creating a duplicate.</p>
+            
             <label>Search part name / SKU / barcode
               <div className="cg-easy-picker-search"><Search size={17}/><input autoFocus placeholder="Search existing products..." value={partLookup} onChange={(event) => setPartLookup(event.target.value)} /></div>
             </label>
@@ -379,10 +379,13 @@ export default function StockEasyPage() {
                 />
               </label>
             )}
-            <p className="cg-easy-hint">Choose the total GST rate applicable to this part. HSN/SAC is optional. Product GST is saved with the inventory item; invoice taxes follow the billing form and place-of-supply rules.</p>
+            <details className="cg-easy-tax-guidance">
+              <summary><Info size={16} aria-hidden="true" /> GST guidance</summary>
+              <p>Use the applicable total GST rate for this part. HSN/SAC is optional where permitted; invoice tax follows the billing form and place-of-supply rules.</p>
+            </details>
             <div className="cg-easy-fields"><label>Minimum stock<input type="number" min="0" step="0.01" value={part.minimumStock} onChange={(e) => setPart({ ...part, minimumStock: e.target.value })}/></label>
               <label>Rack / location<input value={part.location} onChange={(e) => setPart({ ...part, location: e.target.value })}/></label></div>
-            <p className="cg-easy-hint">Save the product with zero stock. The Receive Stock form opens next to enter the initial quantity.</p>
+            
             <div className="cg-easy-form-actions"><button type="button" onClick={() => setPartOpen(false)}>Cancel</button><button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Product & Receive Stock'}</button></div>
           </form>
         )}

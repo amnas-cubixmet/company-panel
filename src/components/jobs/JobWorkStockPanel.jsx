@@ -114,7 +114,7 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], onChanged, focusSea
           <span className="job-work-stock-icon" aria-hidden="true"><PackagePlus size={18}/></span>
           <div>
             <h3>Stock & Parts Used</h3>
-            <p>Find a part and issue it to the Job Card</p>
+            
           </div>
         </div>
         <button type="button" className="job-work-stock-refresh" onClick={refresh} disabled={loading || busy}>
@@ -195,7 +195,7 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], onChanged, focusSea
               </div>
             ))}
           </div>
-        ) : <p className="job-work-stock-empty">No stock issued for this Job Card yet.</p>}
+        ) : <p className="job-work-stock-empty">No parts issued.</p>}
       </div>
     </section>
   );

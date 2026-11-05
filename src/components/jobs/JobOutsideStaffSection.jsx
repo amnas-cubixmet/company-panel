@@ -33,7 +33,7 @@ export function JobOutsideStaffSection({ jobId, onChanged, quickAddToken = 0 }) 
         <span className="job-outside-staff-icon" aria-hidden="true"><HardHat size={18}/></span>
         <div className="job-outside-staff-heading">
           <h3>Outside Staff</h3>
-          <p>Freelancers and outside charges</p>
+          
         </div>
         <div className="job-outside-staff-actions">
           {canView && canCreate && (
