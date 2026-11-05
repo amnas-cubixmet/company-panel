@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, BellRing, CalendarDays, ChevronDown, LogOut, Search, Settings, User } from 'lucide-react';
+import { Bell, BellRing, CalendarDays, ChevronDown, LogOut, Settings, User } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { GlobalSearch } from '../common/GlobalSearch';
@@ -31,7 +31,6 @@ export const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   const [pageTitle, setPageTitle] = useState(() =>
     resolveStaticPageTitle(location.pathname),
@@ -192,7 +191,6 @@ export const Header = () => {
 
           <div className="mobile-header-actions">
             <CreditBalanceChip compact />
-            <button type="button" onClick={() => setSearchOpen((value) => !value)} aria-label={searchOpen ? "Close workspace search" : "Open workspace search"} aria-expanded={searchOpen}><Search size={15}/></button>
             {canViewNotifications && (
               <button type="button" className={`mobile-notification-button ${location.pathname === '/notifications' ? 'is-notifications-active' : ''}`} onClick={() => navigate('/notifications')} aria-label={`Notifications, ${notificationCount} unread`} aria-current={location.pathname === '/notifications' ? 'page' : undefined}>
                 {notificationCount ? <BellRing size={19}/> : <Bell size={19}/>}
@@ -212,7 +210,6 @@ export const Header = () => {
           </div>
         </div>
 
-        {searchOpen && <div className="mobile-search-wrap"><GlobalSearch isMobileView onMobileClose={() => setSearchOpen(false)} /></div>}
       </div>
     </header>
   );

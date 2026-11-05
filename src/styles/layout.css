@@ -325,3 +325,38 @@
   font-variant-numeric: tabular-nums;
   font-weight: 750;
 }
+
+
+/* Single mounted GlobalSearch in the desktop header row is also the mobile
+   search field. The mobile brand/actions remain in their original top row. */
+@media (max-width: 1023px) {
+  .app-header { display: flex; flex-direction: column; }
+  .mobile-header { order: 1; }
+  .desktop-header-row {
+    display: flex;
+    order: 2;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 0;
+    padding: 0 12px 10px;
+    overflow: visible;
+  }
+  .desktop-header-row > .header-page-title { display: none; }
+  .desktop-header-row > .header-actions {
+    display: flex;
+    justify-content: stretch;
+    width: 100%;
+    min-width: 0;
+  }
+  .desktop-header-row > .header-actions > :not(.header-search-wrap) {
+    display: none;
+  }
+  .desktop-header-row .header-search-wrap {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    flex: 1 1 auto;
+  }
+}
