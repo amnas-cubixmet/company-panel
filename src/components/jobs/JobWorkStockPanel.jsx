@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, PackageCheck, PackagePlus, RefreshCw, Search } from 'lucide-react';
 import { stockService } from '../../services/stock.service';
 import { jobService } from '../../services/job.service';
@@ -15,11 +15,15 @@ const available = item => Math.max(0, num(item.available ?? (num(item.onHand) - 
 /** Stock entries are issued through Django's atomic Job.issue_part action.
  * Selecting/searching a part never deducts inventory.
  */
-export function JobWorkStockPanel({ jobId, issuedParts = [], onChanged }) {
+export function JobWorkStockPanel({ jobId, issuedParts = [], onChanged, focusSearchToken = 0 }) {
   const { user } = useAuth();
   const canView = hasPermission(user, 'stock.view');
   const canIssue = hasPermission(user, 'stock.edit') && hasPermission(user, 'jobs.edit');
   const [inventory, setInventory] = useState([]);
+  const searchInputRef = useRef(null);
+  useEffect(() => {
+    if (focusSearchToken > 0 && canIssue) searchInputRef.current?.focus();
+  }, [focusSearchToken, canIssue]);
   const [lookup, setLookup] = useState('');
   const [selectedId, setSelectedId] = useState('');
   const [quantity, setQuantity] = useState('1');
@@ -110,7 +114,7 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], onChanged }) {
           <span className="job-work-stock-icon" aria-hidden="true"><PackagePlus size={18}/></span>
           <div>
             <h3>Stock & Parts Used</h3>
-            <p>Choose an existing Stock product and record actual use on this Job Card.</p>
+            <p>Find a part and issue it to the Job Card</p>
           </div>
         </div>
         <button type="button" className="job-work-stock-refresh" onClick={refresh} disabled={loading || busy}>
@@ -127,7 +131,7 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], onChanged }) {
             <label htmlFor="job-work-stock-search">Find Stock Item</label>
             <div className="job-work-stock-search">
               <Search size={17} aria-hidden="true"/>
-              <input id="job-work-stock-search" autoComplete="off" value={lookup}
+              <input ref={searchInputRef} id="job-work-stock-search" autoComplete="off" value={lookup}
                 disabled={busy} placeholder="Search part name, SKU, barcode or brand"
                 onChange={event => { setLookup(event.target.value); setSelectedId(''); setSuccess(''); }}/>
             </div>
@@ -172,7 +176,7 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], onChanged }) {
               <PackageCheck size={17} aria-hidden="true"/> {busy ? 'Issuing…' : 'Issue Stock to Job'}
             </button>
           </div>
-          <p className="job-work-stock-note">Search and select does not reduce stock. Only confirmed Issue Stock deducts inventory and creates a Job Card issue record.</p>
+          <p className="job-work-stock-note">Stock is deducted only after confirming Issue Stock.</p>
         </form>
       )}
 
