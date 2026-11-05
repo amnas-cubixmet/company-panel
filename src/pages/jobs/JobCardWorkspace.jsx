@@ -135,6 +135,9 @@ export function JobCardWorkspace() {
   const [outsideQuickToken, setOutsideQuickToken] = useState(0);
   const [stockQuickToken, setStockQuickToken] = useState(0);
   const [assignQuickToken, setAssignQuickToken] = useState(0);
+  const [workSkipConfirm, setWorkSkipConfirm] = useState(false);
+  const [workSkipReason, setWorkSkipReason] = useState('No Work Required');
+  const [workSkipOther, setWorkSkipOther] = useState('');
   const [vehicleHistory, setVehicleHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -479,6 +482,30 @@ export function JobCardWorkspace() {
     } catch (e) {
       const details = e?.response?.data;
       setError(details?.stage || details?.message || e?.message || 'Unable to complete this stage.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const skipWorkStage = async (event) => {
+    event.preventDefault();
+    if (!job || !can('jobs.edit') || activeTab !== 'work' || currentStage !== 'work' || saving) return;
+    const reason = workSkipReason === 'Other' ? workSkipOther.trim() : workSkipReason;
+    if (reason.length < 3 || reason.length > 160) {
+      setError('Enter a skip reason between 3 and 160 characters.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const result = await jobService.skipJobWork(job.id, reason);
+      if (result.job) setJob(result.job);
+      setWorkflow(result);
+      setWorkSkipConfirm(false);
+      navigate('/jobs/' + job.id + '/' + (result.current || 'qc'), { replace: true });
+    } catch (e) {
+      const details = e?.response?.data;
+      setError(details?.work || details?.stage || details?.reason || details?.detail || details?.message || e?.message || 'Unable to skip Work stage.');
     } finally {
       setSaving(false);
     }
@@ -1060,6 +1087,12 @@ export function JobCardWorkspace() {
           {activeTabLocked ? <LockKeyhole size={13} aria-hidden="true"/> : activeTabComplete ? <CheckCircle2 size={13} aria-hidden="true"/> : <Clock3 size={13} aria-hidden="true"/>}
           {activeTabLocked ? 'Locked' : activeTabComplete ? 'Complete' : 'In progress'}
         </span>}
+        {!activeTabLocked && !activeTabComplete && activeTab === currentStage && activeTab === 'work' && can('jobs.edit') && (
+          <button type="button" className="job-work-skip-trigger" disabled={saving}
+            aria-expanded={workSkipConfirm} onClick={() => setWorkSkipConfirm((previous) => !previous)}>
+            <SkipForward size={16} aria-hidden="true" /> Skip Work
+          </button>
+        )}
         {!activeTabLocked && !activeTabComplete && activeTab === currentStage && activeTab !== 'qc' && (
           <button type="button" className="job-stage-complete-button" disabled={saving} onClick={() => completeStage(activeTab)}>
             <CheckCircle2 size={15} aria-hidden="true" />
@@ -1067,6 +1100,35 @@ export function JobCardWorkspace() {
           </button>
         )}
       </section>
+      {activeTab === 'work' && currentStage === 'work' && !activeTabLocked && can('jobs.edit') && workSkipConfirm && (
+        <form className="job-work-skip-confirm" onSubmit={skipWorkStage} aria-label="Confirm skip work">
+          <div>
+            <strong>Skip Work & continue to QC?</strong>
+            <p>Only when no labour or parts were used. Existing work cannot be skipped, and QC stays required.</p>
+          </div>
+          <label>Reason
+            <select value={workSkipReason} disabled={saving} onChange={(event) => setWorkSkipReason(event.target.value)}>
+              <option value="No Work Required">No Work Required</option>
+              <option value="Customer Declined Work">Customer Declined Work</option>
+              <option value="Job Cancelled Before Work">Job Cancelled Before Work</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          {workSkipReason === 'Other' && (
+            <label>Other reason
+              <textarea rows={2} required maxLength={160} value={workSkipOther}
+                onChange={(event) => setWorkSkipOther(event.target.value)}
+                placeholder="Why was no work performed?" disabled={saving}/>
+            </label>
+          )}
+          <div className="job-work-skip-confirm-actions">
+            <button type="button" disabled={saving} onClick={() => setWorkSkipConfirm(false)}>Cancel</button>
+            <button type="submit" disabled={saving || (workSkipReason === 'Other' && workSkipOther.trim().length < 3)}>
+              {saving ? 'Skipping…' : 'Confirm Skip & Continue'}
+            </button>
+          </div>
+        </form>
+      )}
 
       {!showWorkTools && activeTab !== 'activity' && (
       <div className={'job-workflow-gate ' + (activeTabLocked ? 'is-locked' : activeTabComplete ? 'is-complete' : 'is-pending')}>
