@@ -112,7 +112,6 @@ export const ShiftSettings = () => {
       <section className="am-section-header">
         <div>
           <h2><Clock3 size={17}/> Shift Settings</h2>
-          <p>Create workshop shifts and assign them to teams or individual staff.</p>
         </div>
       </section>
 
@@ -123,7 +122,6 @@ export const ShiftSettings = () => {
           <div className="am-panel__header">
             <div>
               <h2>{shiftForm.shiftId ? 'Edit Shift' : 'Create Shift'}</h2>
-              <p>Shift time drives late, early exit, working hours and overtime.</p>
             </div>
           </div>
 
@@ -181,8 +179,7 @@ export const ShiftSettings = () => {
             <label className="am-rule-toggle-row">
               <span>
                 <strong>Active Shift</strong>
-                <small>Available for staff assignment.</small>
-              </span>
+                </span>
               <input
                 type="checkbox"
                 checked={shiftForm.isActive}
@@ -213,7 +210,6 @@ export const ShiftSettings = () => {
           <div className="am-panel__header">
             <div>
               <h2>Available Shifts</h2>
-              <p>Current shift definitions and assigned staff.</p>
             </div>
           </div>
 
@@ -242,7 +238,6 @@ export const ShiftSettings = () => {
         <div className="am-panel__header">
           <div>
             <h2><UsersRound size={15}/> Assign Shift</h2>
-            <p>Assign a shift to a full team or selected staff members.</p>
           </div>
         </div>
 
