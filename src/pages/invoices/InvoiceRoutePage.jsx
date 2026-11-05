@@ -87,6 +87,8 @@ export function InvoiceRoutePage() {
   const [verifiedTotals, setVerifiedTotals] = useState(null);
   const [backendPreviewError, setBackendPreviewError] = useState('');
   const [branchStateMismatch, setBranchStateMismatch] = useState(false);
+  const [jobDraftWarnings, setJobDraftWarnings] = useState([]);
+  const [jobDraftLoading, setJobDraftLoading] = useState(false);
   const registrationMismatch = branchStateMismatch || Boolean(workshopTaxProfile?.registrationStateMismatch);
   const previewFingerprint = useMemo(() => JSON.stringify({
     invoiceType: form.invoiceType,
@@ -187,6 +189,45 @@ export function InvoiceRoutePage() {
       loadList({ withReferences: true });
     } else loadDocument();
   }, [location.pathname, location.search, id]);
+
+  // Job Card is an explicit server-scoped link, not a browser-local draft.
+  // No invoice is created until the user reviews and clicks Save Draft.
+  useEffect(() => {
+    const jobId = new URLSearchParams(location.search).get('jobId');
+    if (mode !== 'create' || kindFromUrl !== 'invoice' || !jobId) {
+      setJobDraftWarnings([]);
+      setJobDraftLoading(false);
+      return undefined;
+    }
+    let active = true;
+    setJobDraftWarnings([]);
+    setJobDraftLoading(true);
+    billingService.getJobInvoiceDraft(jobId).then((draft) => {
+      if (!active) return;
+      if (draft.existingInvoiceId) {
+        navigate('/invoices/' + encodeURIComponent(draft.existingInvoiceId), { replace: true });
+        return;
+      }
+      // GSTIN, invoiceType, and applicable tax are set independently by the
+      // verified workshop profile, never imported from Job Card claims.
+      setForm((old) => ({
+        ...old, sourceJobId: draft.jobId, jobCardNo: draft.jobNumber,
+        customer: { ...old.customer, ...(draft.customer || {}) },
+        vehicle: { ...old.vehicle, ...(draft.vehicle || {}) },
+        items: (draft.items || []).map((item) => ({
+          ...item, inventoryId: '',
+        })),
+        notes: draft.jobNumber ? 'Draft from Job Card ' + draft.jobNumber : old.notes,
+      }));
+      setJobDraftWarnings(draft.warnings || []);
+    }).catch((err) => {
+      if (!active) return;
+      const data = err?.response?.data || {};
+      setError(data?.jobId || data?.detail || err?.message ||
+        'Unable to load verified Job Card charges.');
+    }).finally(() => { if (active) setJobDraftLoading(false); });
+    return () => { active = false; };
+  }, [mode, kindFromUrl, location.search, navigate]);
 
   useEffect(() => {
     if (mode !== 'create') return undefined;
@@ -770,13 +811,13 @@ export function InvoiceRoutePage() {
         </div>
         <div className="billing-head-actions">
           <button type="button" className="bill-btn secondary" onClick={() => navigate(`/invoices?kind=${form.kind === 'estimate' ? 'estimate' : 'invoice'}`)}>Back to List</button>
-          <button className="bill-btn secondary" disabled={saving || !newInvoiceTaxReady} onClick={save}>Save Draft</button>
+          <button className="bill-btn secondary" disabled={saving || jobDraftLoading || !newInvoiceTaxReady} onClick={save}>Save Draft</button>
           <button className="bill-btn secondary" type="button" disabled={!form.id || saving || pdfLoading}
             title={form.id ? 'Download saved invoice (unsaved edits are not included)' : 'Save Draft first to download PDF'}
             onClick={() => downloadPdf(form)}>
             <Download size={16}/>{pdfLoading ? 'Generating PDF…' : 'Download Saved PDF'}
           </button>
-          <button className="bill-btn" disabled={saving || !newInvoiceTaxReady} onClick={finalize}>
+          <button className="bill-btn" disabled={saving || jobDraftLoading || !newInvoiceTaxReady} onClick={finalize}>
             <CheckCircle2 size={16}/>{form.kind === 'estimate' ? 'Issue Estimate' : 'Finalize Invoice'}
           </button>
         </div>
@@ -787,6 +828,13 @@ export function InvoiceRoutePage() {
         {workshopTaxError}
         <button type="button" className="bill-btn secondary" onClick={() => setWorkshopTaxRetry((n) => n + 1)}>Retry Verification</button>
       </div>}
+      {jobDraftLoading && <p className="billing-empty no-print" role="status">Loading verified Job Card charges…</p>}
+      {jobDraftWarnings.length > 0 && (
+        <section className="billing-error no-print" role="status" aria-label="Job Card billing review">
+          <strong>Review Job Card items before saving</strong>
+          <ul>{jobDraftWarnings.map((notice, index) => <li key={index}>{notice}</li>)}</ul>
+        </section>
+      )}
       {error && <div className="billing-error no-print" role="alert" data-invoice-error-summary>{error}</div>}
       {Object.keys(fieldErrors).length > 0 && <section className="invoice-error-checklist no-print" aria-label="Invoice fields needing correction">
         <h3>{Object.keys(fieldErrors).length} field{Object.keys(fieldErrors).length === 1 ? '' : 's'} need correction</h3>
