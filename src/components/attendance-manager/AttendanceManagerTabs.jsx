@@ -23,8 +23,11 @@ export const attendanceManagerTabs = [
 export const AttendanceManagerTabs = ({ activeTab, onNavigate }) => {
   const navRef = useRef(null);
   useEffect(() => {
-    const selected = navRef.current?.querySelector('[aria-current="page"]');
-    selected?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    const nav = navRef.current;
+    const selected = nav?.querySelector('[aria-current="page"]');
+    if (!nav || !selected) return;
+    const left = selected.offsetLeft - nav.offsetLeft;
+    nav.scrollLeft = Math.max(0, left - (nav.clientWidth - selected.offsetWidth) / 2);
   }, [activeTab]);
   return <nav ref={navRef} className="attendance-manager-dashboard-tabs" aria-label="Attendance Manager navigation">
     {attendanceManagerTabs.map(({ id, label, icon: Icon, path }) => (
