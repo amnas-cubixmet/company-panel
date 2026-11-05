@@ -50,7 +50,7 @@ test('mobile payroll cards preserve labels and avoid page-wide overflow', () => 
 });
 
 test('presentation updates do not change wage calculation or permission enforcement', () => {
-  assert.match(page,/const canView = hasPermission\(user, 'payroll.view'\)/);
+  assert.match(page,/const canView = can\(mode === 'payments' \? 'payroll.payments.view' : 'payroll.view'\)/);
   assert.match(page,/dailyWageService\.dashboard\(\)/);
   assert.match(page,/dailyWageService\.history\(/);
   assert.match(page,/dailyWageService\.payments\(\)/);
