@@ -135,6 +135,7 @@ export function JobCardWorkspace() {
   const [saving, setSaving] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState('');
+  const [inspectionActionNotice, setInspectionActionNotice] = useState('');
   const [pdfOffer, setPdfOffer] = useState(null);
   const [pdfError, setPdfError] = useState('');
   const [pdfFilename, setPdfFilename] = useState('');
@@ -1080,6 +1081,7 @@ export function JobCardWorkspace() {
         </>
       )}
 
+      {inspectionActionNotice && <div role="status" className="rounded-xl border border-line bg-surface px-4 py-3 text-sm font-semibold text-content">{inspectionActionNotice}</div>}
       {error ? <div role="alert" className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-xs font-bold text-red-600">{error}</div> : null}
 
       {activeTabLocked ? (
@@ -1340,6 +1342,7 @@ export function JobCardWorkspace() {
           onChanged={async (operation) => {
             try {
               await refreshJobWorkflow(['complete', 'skip'].includes(operation) ? 'inspection' : null);
+              if (operation === 'skip') setInspectionActionNotice('Inspection skipped successfully. The Estimate stage is now available; checklist and photos were preserved.');
             } catch (e) {
               setError(e?.message || 'Could not refresh job details.');
               throw e;
