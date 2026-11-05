@@ -1,5 +1,5 @@
 
-import { Activity, Car, PackageSearch } from 'lucide-react';
+import { Activity, PackageSearch } from 'lucide-react';
 import { dashboardText } from './dashboard.utils';
 import { jobWorkflowProgress } from './jobWorkflowProgress';
 
@@ -13,8 +13,6 @@ export const ActiveRepairPanel = ({ activeRepair, stockAlerts, onOpenJob, onRevi
       onClick={onOpenJob}
       aria-label="Open active repair job"
     >
-      <div className="vehicle-visual"><Car size={52} strokeWidth={1.1} /></div>
-
       <div className="active-repair-main">
         <div>
           <strong>{dashboardText(activeRepair?.vehicle, 'Vehicle')}</strong>
@@ -23,10 +21,9 @@ export const ActiveRepairPanel = ({ activeRepair, stockAlerts, onOpenJob, onRevi
         <span className="status-pill is-info">{dashboardText(activeRepair?.status, 'Status unavailable')}</span>
       </div>
 
-      <div className="repair-meta">
-        <div><small>Customer</small><strong>{dashboardText(activeRepair?.customer)}</strong></div>
-        <div><small>Mechanic</small><strong>{dashboardText(activeRepair?.mechanic, 'Unassigned')}</strong></div>
-      </div>
+      {activeRepair?.mechanic && <div className="repair-meta">
+        <div><small>Mechanic</small><strong>{dashboardText(activeRepair.mechanic)}</strong></div>
+      </div>}
 
       <div className="overall-progress">
         <div className="overall-progress-heading">
@@ -42,7 +39,7 @@ export const ActiveRepairPanel = ({ activeRepair, stockAlerts, onOpenJob, onRevi
             : 'Workflow progress not yet available'}>
           <span style={{ width: `${progress?.percentage ?? 0}%` }} />
         </div>
-        <small className="overall-progress-caption">
+        <small className="overall-progress-caption dashboard-visually-hidden">
           {progress
             ? `${progress.completed} of ${progress.total} job stages completed`
             : 'No job workflow progress available'}
@@ -55,7 +52,7 @@ export const ActiveRepairPanel = ({ activeRepair, stockAlerts, onOpenJob, onRevi
       </div>
     </button>
 
-    {canViewStock && <div className="insights-card">
+    {canViewStock && (stockAlerts || []).length > 0 && <div className="insights-card">
       <div className="insights-title"><Activity size={13} /><strong>Smart Insights</strong></div>
       <div className="insight-list">
         {(stockAlerts || []).slice(0, 2).map((alert) => (
