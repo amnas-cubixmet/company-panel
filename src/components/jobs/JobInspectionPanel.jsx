@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Camera, CheckCircle2, ClipboardCheck, Plus, RefreshCcw, Search, Trash2, Wrench } from 'lucide-react';
+import { Camera, CheckCircle2, ClipboardCheck, Plus, RefreshCcw, Search, SkipForward, Trash2, Wrench } from 'lucide-react';
 import { jobInspectionService, DEFAULT_INSPECTION_CATEGORIES } from '../../services/jobInspection.service';
 
 const newFinding = () => ({
@@ -15,7 +15,7 @@ const readImage = (file) => new Promise((resolve, reject) => {
   reader.readAsDataURL(file);
 });
 
-export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEditing = false, onDoneEditing }) {
+export function JobInspectionPanel({ job, onChanged, canCorrect = false, canSkip = false, startEditing = false, onDoneEditing }) {
   const [inspection, setInspection] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
@@ -25,6 +25,9 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEd
   const [editing, setEditing] = useState(startEditing);
   const [finding, setFinding] = useState(newFinding());
   const [diagnostic, setDiagnostic] = useState({ code: '', description: '' });
+  const [skipConfirm, setSkipConfirm] = useState(false);
+  const [skipReason, setSkipReason] = useState('Quick Service');
+  const [skipOther, setSkipOther] = useState('');
 
   const reload = useCallback(async () => {
     const result = await jobInspectionService.getInspection(job.id);
@@ -72,6 +75,7 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEd
   const photos = inspection?.photos || [];
   const codes = inspection?.diagnosticScan?.codes || [];
   const isCompleted = inspection?.status === 'Completed';
+  const isSkipped = inspection?.status === 'Skipped';
   const isStarted = inspection?.status === 'In Progress' || isCompleted;
   const editable = isStarted && (!isCompleted || (canCorrect && editing));
   const progress = total ? Math.round((completed / total) * 100) : 0;
@@ -126,6 +130,17 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEd
   };
 
 
+  const submitSkip = async (event) => {
+    event.preventDefault();
+    const reason = skipReason === 'Other' ? skipOther.trim() : skipReason;
+    if (reason.length < 3 || reason.length > 300) {
+      setError('Enter a skip reason between 3 and 300 characters.');
+      return;
+    }
+    const saved = await perform('skip', () => jobInspectionService.skipInspection(job.id, reason));
+    if (saved) setSkipConfirm(false);
+  };
+
   if (loading) return <div className="cg-inspection-loading" role="status">Loading vehicle inspection…</div>;
 
   return (
@@ -135,11 +150,11 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEd
           <div className="cg-inspection-overview-copy">
             <span className="cg-inspection-kicker">Vehicle inspection</span>
             <h3>{job.vehicleReg || job.vehicle?.registration || 'Vehicle'} <span>· {inspection?.status || 'Not Started'}</span></h3>
-            <p>Check the vehicle, record issues, then complete inspection to continue.</p>
+            <p>{isSkipped ? 'Inspection was skipped. Existing inspection findings remain available.' : 'Check the vehicle and record issues, or skip when inspection is not required.'}</p>
           </div>
           <div className="cg-inspection-header-actions">
             <button type="button" className="cg-inspection-icon-button" aria-label="Refresh inspection" disabled={!!busy} onClick={() => perform('refresh', async () => {})}><RefreshCcw size={16} /></button>
-            {!isStarted && (
+            {!isStarted && !isSkipped && (
               <button type="button" className="cg-inspection-primary" disabled={!!busy} onClick={() => perform('start', () => jobInspectionService.startInspection(job.id))}>
                 {busy === 'start' ? 'Starting…' : 'Start inspection'}
               </button>
@@ -183,7 +198,7 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEd
             <input aria-label="Search inspection items" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search checks"/>
           </label>
         </div>
-        {!isStarted && <p className="cg-inspection-hint">Start inspection to enable checklist options.</p>}
+        {!isStarted && !isSkipped && <p className="cg-inspection-hint">Start inspection to enable checklist options, or use Skip Inspection below.</p>}
         <div className="cg-inspection-category-row">
           <label htmlFor="cg-inspection-category">Category</label>
           <select
@@ -319,19 +334,58 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEd
         </div>
       </details>
 
+      {skipConfirm && !isSkipped && !isCompleted && canSkip && (
+        <form className="cg-inspection-skip-confirm" onSubmit={submitSkip} aria-label="Confirm skip inspection">
+          <div>
+            <strong>Skip this inspection?</strong>
+            <p>Unchecked items will remain Not Checked. Skipping is recorded in the Job Card history.</p>
+          </div>
+          <label htmlFor="inspection-skip-reason">Reason for skipping
+            <select id="inspection-skip-reason" value={skipReason} disabled={!!busy} onChange={(event) => setSkipReason(event.target.value)}>
+              <option value="Quick Service">Quick Service</option>
+              <option value="Customer Declined Inspection">Customer Declined Inspection</option>
+              <option value="Inspection Not Required">Inspection Not Required</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          {skipReason === 'Other' && (
+            <label htmlFor="inspection-skip-other">Specify reason
+              <textarea id="inspection-skip-other" rows={2} maxLength={300} required value={skipOther}
+                onChange={(event) => setSkipOther(event.target.value)}
+                placeholder="Why is the inspection being skipped?" disabled={!!busy} />
+            </label>
+          )}
+          <div className="cg-inspection-skip-confirm-actions">
+            <button type="button" disabled={!!busy} onClick={() => setSkipConfirm(false)}>Cancel</button>
+            <button type="submit" disabled={!!busy || (skipReason === 'Other' && skipOther.trim().length < 3)}>
+              {busy === 'skip' ? 'Skipping…' : 'Confirm Skip & Continue'}
+            </button>
+          </div>
+        </form>
+      )}
       <footer className="cg-inspection-footer">
-        <div>
-          <strong>{isCompleted ? 'Inspection completed' : !isStarted ? 'Start the inspection' : completed ? 'Ready to finish inspection' : 'Check the vehicle to continue'}</strong>
-          <p>{isCompleted
-            ? canCorrect ? 'Use Edit Inspection to correct checks before estimate approval.' : 'Inspection is approved and read-only.'
-            : 'Save at least one checklist result before completing.'}</p>
+        <div className="cg-inspection-footer-message">
+          <strong>{isSkipped ? 'Inspection skipped' : isCompleted ? 'Inspection completed' : !isStarted ? 'Start or skip inspection' : completed ? 'Ready to finish inspection' : 'Check the vehicle to continue'}</strong>
+          <p>{isSkipped ? 'Reason: ' + (inspection?.skipReason || 'Not specified')
+            : isCompleted ? canCorrect ? 'Use Edit Inspection to correct checks before estimate approval.' : 'Inspection is approved and read-only.'
+            : 'Complete at least one check, or skip with a recorded reason.'}</p>
         </div>
-        {isCompleted ? (
+        {isSkipped ? (
+          <span className="cg-inspection-skipped"><SkipForward size={16}/> Skipped</span>
+        ) : isCompleted ? (
           <span className="cg-inspection-done"><CheckCircle2 size={16}/> {editing ? 'Editing' : 'Completed'}</span>
         ) : (
-          <button type="button" className="cg-inspection-primary" disabled={!isStarted || completed === 0 || !!busy} onClick={() => perform('complete', () => jobInspectionService.completeInspection(job.id, true))}>
-            <CheckCircle2 size={16}/> {busy === 'complete' ? 'Finishing…' : 'Complete inspection'}
-          </button>
+          <div className="cg-inspection-footer-actions">
+            {canSkip && (
+              <button type="button" className="cg-inspection-skip-button" disabled={!!busy}
+                onClick={() => setSkipConfirm((value) => !value)}>
+                <SkipForward size={16}/> Skip Inspection
+              </button>
+            )}
+            <button type="button" className="cg-inspection-primary" disabled={!isStarted || completed === 0 || !!busy} onClick={() => perform('complete', () => jobInspectionService.completeInspection(job.id, true))}>
+              <CheckCircle2 size={16}/> {busy === 'complete' ? 'Finishing…' : 'Complete inspection'}
+            </button>
+          </div>
         )}
       </footer>
     </div>
