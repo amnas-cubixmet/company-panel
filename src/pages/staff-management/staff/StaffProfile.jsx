@@ -546,9 +546,12 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
                   <Pencil size={14}/>
                   Edit Profile
                 </button>
-                <button type="button" onClick={handleSendInvite} disabled={inviteBusy} className="staff360-secondary-button">
+                <button type="button" onClick={handleSendInvite}
+                  disabled={inviteBusy || staff.loginStatus === 'Disabled'}
+                  title={staff.loginStatus === 'Disabled' ? 'Enable staff login before issuing a link' : undefined}
+                  className="staff360-secondary-button">
                   <Send size={14}/>
-                  Resend Setup Link
+                  {staff.loginStatus === 'Active' ? 'Send Password Reset Link' : 'Resend Setup Link'}
                 </button>
                 <button type="button" onClick={handleToggleAccount} className="staff360-secondary-button">
                   {staff.loginStatus === 'Disabled' ? <Unlock size={14}/> : <Lock size={14}/>}
