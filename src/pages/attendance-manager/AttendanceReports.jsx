@@ -38,7 +38,6 @@ export const AttendanceReports = () => {
       <section className="am-section-header">
         <div>
           <h2>Attendance Reports</h2>
-          <p>Daily, monthly, late, absence, overtime and employee-wise reports.</p>
         </div>
         <div className="am-header-actions">
           <button onClick={exportCsv} className="am-secondary-button"><Download size={14}/>Export CSV</button>
