@@ -697,7 +697,7 @@ export function InvoiceRoutePage() {
         </div>
 
         <div className="billing-head-actions">
-          {form.kind === "invoice" && form.finalizedAt && form.status !== "Cancelled" && <WhatsAppManualShareButton targetType="invoice" targetId={form.id || id} />}
+          {form.kind === "invoice" && (form.finalizedAt || ["Finalized", "Paid", "Issued"].includes(form.status)) && form.status !== "Cancelled" && <WhatsAppManualShareButton targetType="invoice" targetId={form.id || id} />}
           {form.status !== 'Converted' && (
             <button className="bill-btn secondary" onClick={() => navigate(`/invoices/${id}/edit`)}>
               <Edit3 size={16}/>Edit
