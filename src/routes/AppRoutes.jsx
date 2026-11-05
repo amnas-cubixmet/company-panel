@@ -50,6 +50,7 @@ const Reports = lazyPage(() => import('../pages/reports/Reports'), 'Reports');
 const Notifications = lazyPage(() => import('../pages/notifications/Notifications'), 'Notifications');
 const Settings = lazyPage(() => import('../pages/settings/Settings'), 'Settings');
 const WhatsAppSettingsPage = lazyPage(() => import('../pages/settings/WhatsAppSettingsPage'), 'default');
+const CustomerWebsiteSettingsPage = lazyPage(() => import('../pages/settings/CustomerWebsiteSettingsPage'), 'default');
 const Profile = lazyPage(() => import('../pages/profile/Profile'), 'Profile');
 const SaaSAccount = lazyPage(() => import('../pages/saas/SaaSAccount'), 'SaaSAccount');
 
@@ -237,6 +238,7 @@ export const AppRoutes = () => (
       <Route path="/profile" element={<Profile />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/settings/whatsapp" element={<WhatsAppSettingsPage />} />
+      <Route path="/settings/customer-website" element={<CustomerWebsiteSettingsPage />} />
       <Route path="/account" element={<CreditWorkspace section="overview" />} />
       <Route path="/account/credits/buy" element={<CreditWorkspace section="buy" />} />
       <Route path="/account/credits" element={<CreditWorkspace section="overview" />} />
