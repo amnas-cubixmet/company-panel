@@ -22,6 +22,7 @@ import '../../styles/job-estimate-iphone.css';
 import '../../styles/job-four-stage-forms.css';
 import '../../styles/job-work-mechanic-panel.css';
 import '../../styles/job-work-stock-panel.css';
+import '../../styles/job-work-quick-actions.css';
 import { JobWorkerAssignments } from '../../components/jobs/JobWorkerAssignments';
 import { JobOutsideStaffSection } from '../../components/jobs/JobOutsideStaffSection';
 import { JobWorkTimerPanel } from '../../components/jobs/JobWorkTimerPanel';
@@ -79,7 +80,7 @@ const SECTION_DETAILS = {
   complaints: 'Customer concerns and work requests.',
   inspection: 'Vehicle checks and inspection findings.',
   estimate: 'Labour, parts, estimates and customer approval.',
-  work: 'Technician assignments and workshop work.',
+  work: 'Track work, mechanics and parts.',
   parts: 'Spare parts request, issue and usage.',
   updates: 'Technician notes and work updates.',
   qc: 'Quality inspection and final checks.',
@@ -130,6 +131,10 @@ export function JobCardWorkspace() {
   const [billingError, setBillingError] = useState('');
   const [staff, setStaff] = useState([]);
   const [timerRefreshVersion, setTimerRefreshVersion] = useState(0);
+  const [workQuickSection, setWorkQuickSection] = useState('mechanic');
+  const [outsideQuickToken, setOutsideQuickToken] = useState(0);
+  const [stockQuickToken, setStockQuickToken] = useState(0);
+  const [assignQuickToken, setAssignQuickToken] = useState(0);
   const [vehicleHistory, setVehicleHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1355,36 +1360,75 @@ export function JobCardWorkspace() {
 
       {activeTab === 'work' && (
         <div className="job-work-payroll-stack job-work-simple">
-          <JobOutsideStaffSection
-            jobId={job.id}
-            onChanged={() => setTimerRefreshVersion((value) => value + 1)}
-          />
+          <nav className="job-work-quick-actions" aria-label="Work quick actions">
+            {[
+              { key: 'mechanic', label: 'Mechanic / Hours', icon: Wrench },
+              { key: 'assign', label: 'Assign Staff', icon: UserRound },
+              { key: 'outside', label: 'Add Outside Staff', icon: Plus },
+              ...(hasStockAccess ? [{ key: 'stock', label: 'Stock & Parts Used', icon: PackageSearch }] : []),
+            ].map(({ key, label, icon: ActionIcon }) => (
+              <button
+                type="button"
+                key={key}
+                className={workQuickSection === key ? 'is-active' : ''}
+                aria-pressed={workQuickSection === key}
+                aria-controls={'work-quick-' + key}
+                onClick={() => {
+                  setWorkQuickSection(key);
+                  if (key === 'outside') setOutsideQuickToken((value) => value + 1);
+                  if (key === 'stock') setStockQuickToken((value) => value + 1);
+                  if (key === 'assign') setAssignQuickToken((value) => value + 1);
+                }}
+              >
+                <ActionIcon size={17} aria-hidden="true"/>
+                {label}
+              </button>
+            ))}
+          </nav>
 
-          <JobWorkerAssignments
-            key={timerRefreshVersion}
-            jobId={job.id}
-            staff={staff}
-            onChanged={() => setTimerRefreshVersion((value) => value + 1)}
-          />
+          <div id="work-quick-mechanic" hidden={workQuickSection !== 'mechanic'}>
+            <JobWorkTimerPanel
+              jobId={job.id}
+              jobStatus={normalizeJobStatus(job.status)}
+              labourRecords={labourRecords}
+              onChanged={() => setTimerRefreshVersion((value) => value + 1)}
+            />
+          </div>
 
-          <JobWorkTimerPanel
-            jobId={job.id}
-            jobStatus={normalizeJobStatus(job.status)}
-            labourRecords={labourRecords}
-            onChanged={() => setTimerRefreshVersion((value) => value + 1)}
-          />
+          <div id="work-quick-assign" hidden={workQuickSection !== 'assign'}>
+            <JobWorkerAssignments
+              key={timerRefreshVersion}
+              jobId={job.id}
+              staff={staff}
+              focusToken={assignQuickToken}
+              onChanged={() => setTimerRefreshVersion((value) => value + 1)}
+            />
+          </div>
+
+          <div id="work-quick-outside" hidden={workQuickSection !== 'outside'}>
+            <JobOutsideStaffSection
+              jobId={job.id}
+              quickAddToken={outsideQuickToken}
+              onChanged={() => setTimerRefreshVersion((value) => value + 1)}
+            />
+          </div>
 
           {hasStockAccess && (
-            <JobWorkStockPanel
-              jobId={job.id}
-              issuedParts={job.parts || []}
-              onChanged={async () => {
-                const updated = await jobService.getJobById(job.id);
-                if (updated) setJob(updated);
-              }}
-            />
+            <div id="work-quick-stock" hidden={workQuickSection !== 'stock'}>
+              <JobWorkStockPanel
+                jobId={job.id}
+                issuedParts={job.parts || []}
+                focusSearchToken={stockQuickToken}
+                onChanged={async () => {
+                  const updated = await jobService.getJobById(job.id);
+                  if (updated) setJob(updated);
+                }}
+              />
+            </div>
           )}
 
+          <details className="job-work-records-details">
+            <summary>Labour & Work Items <span>{labourRecords.length} {labourRecords.length === 1 ? 'entry' : 'entries'}</span></summary>
           <section className="job-panel job-work-items-panel rounded-2xl border border-line bg-surface p-4" aria-label="Labour and Work Items">
             <header className="job-work-items-head">
               <div>
@@ -1413,6 +1457,7 @@ export function JobCardWorkspace() {
               </p>
             )}
           </section>
+          </details>
         </div>
       )}
 
