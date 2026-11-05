@@ -24,10 +24,11 @@ test('forgot, magic, reset and password setup only use real Django endpoints', (
   assert.doesNotMatch(recovery, /USE_MOCK_API|mock-password|mock-magic|previewUrl/);
 });
 
-test('registered email error is shown at the recovery input only', () => {
-  assert.match(forgot, /setFieldError\(backend\.email \|\| ''\)/);
-  assert.match(forgot, /setMessage\(backend\.email \? '' :/);
-  assert.match(forgot, /aria-invalid=\{Boolean\(fieldError\)\}/);
+test('recovery validates WhatsApp mobile and workshop inline without disclosing accounts', () => {
+  assert.match(forgot, /mobile: backend\.mobile/);
+  assert.match(forgot, /workshop: backend\.workshop/);
+  assert.match(forgot, /aria-invalid=\{Boolean\(fieldErrors\.mobile\)\}/);
+  assert.match(forgot, /aria-invalid=\{Boolean\(fieldErrors\.workshop\)\}/);
   assert.match(forgot, /auth-field-error.*role="alert"/);
   assert.doesNotMatch(forgot, /same confirmation whether an email is registered or not/);
 });
