@@ -11,6 +11,14 @@ export const ROUTE_SECTIONS = {
   ANALYTICS_SYSTEM: 'Analytics & Settings'
 };
 
+// Suppliers uses the existing single parent route. Children have separate access.
+export const supplierSubmenu = [
+  { id: 'supplier-all', label: 'All Suppliers', path: '/suppliers', permission: 'stock.view' },
+  { id: 'supplier-credits', label: 'Credit Management', path: '/suppliers/credits', permission: 'expenses.view' },
+  { id: 'supplier-purchases', label: 'Purchase History', path: '/suppliers/purchases', permission: 'stock.view' },
+  { id: 'supplier-payments', label: 'Supplier Payments', path: '/suppliers/payments', permission: 'expenses.view' },
+];
+
 export const routeConfig = [
   { id: 'credits', label: 'SaaS Account', path: '/account', icon: Coins, section: ROUTE_SECTIONS.MAIN, mobilePrimary: false, permission: 'billing.view' },
   { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, section: ROUTE_SECTIONS.MAIN, mobilePrimary: true, permission: 'dashboard.view' },

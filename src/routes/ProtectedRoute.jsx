@@ -69,6 +69,9 @@ export const ProtectedRoute = () => {
     return <Navigate to="/access-denied" replace />;
   }
   const requiredPermission = getPermissionForPath(location.pathname);
+  // Finance screens need Inventory AND Expenses authorization.
+  const missingSupplierAccess = ['/suppliers/credits', '/suppliers/payments'].includes(location.pathname)
+    && (!featureAccess.can('stock.view') || !featureAccess.can('expenses.view'));
   // Nested Job Card sections require BOTH the Jobs label and their own
   // Stock/Invoices label; knowing a URL must not bypass either subscription.
   const nestedJobModule = /^\/jobs\/[^/]+\/(?:invoice|parts)(?:\/|$)/.test(location.pathname);
@@ -81,7 +84,7 @@ export const ProtectedRoute = () => {
   if (
     location.pathname !== '/access-denied' &&
     requiredPermission &&
-    (missingJobAccess || !moduleIsVisible(featureAccess, requiredPermission) ||
+    (missingJobAccess || missingSupplierAccess || !moduleIsVisible(featureAccess, requiredPermission) ||
       ((!isOwnStaffProfile || featureAccess.labelOnly) && !featureAccess.can(requiredPermission)))
   ) {
     return (
