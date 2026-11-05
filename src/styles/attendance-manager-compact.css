@@ -1,0 +1,409 @@
+/* CubeGears Attendance Manager — focused route-local UX refinements.
+   Use existing theme tokens; never change attendance data or global form rules. */
+.cg-attendance-manager.attendance-manager-pages {
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  gap:14px;
+  overflow-x:clip;
+}
+.cg-attendance-manager .attendance-manager-pages-content,
+.cg-attendance-manager .attendance-manager-module,
+.cg-attendance-manager .attendance-rules-page {
+  min-width:0;
+  max-width:100%;
+}
+.cg-attendance-manager .attendance-manager-dashboard-header {
+  padding:6px 0;
+  gap:10px;
+  align-items:center;
+}
+.cg-attendance-manager .attendance-manager-dashboard-header h1 {
+  margin:0;
+  font-size:22px !important;
+  font-weight:650;
+  line-height:1.3;
+}
+.cg-attendance-manager .attendance-manager-header-actions .dw-button {
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+}
+.cg-attendance-manager.attendance-manager-pages .attendance-manager-dashboard-tabs {
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  grid-template-columns:none !important;
+  width:100%;
+  min-width:0;
+  overflow-x:auto;
+  overflow-y:hidden;
+  gap:4px;
+  padding:4px;
+  scroll-padding:10px;
+  overscroll-behavior-inline:contain;
+  scrollbar-width:none;
+  border:1px solid var(--border);
+  border-radius:12px;
+  box-shadow:none;
+  background:var(--surface);
+}
+.cg-attendance-manager .attendance-manager-dashboard-tabs::-webkit-scrollbar {display:none}
+.cg-attendance-manager .attendance-manager-dashboard-tabs button {
+  flex:1 0 auto;
+  min-width:max-content;
+  min-height:44px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:7px;
+  padding:9px 12px;
+  border:0;
+  border-radius:8px;
+  font-size:14px !important;
+  font-weight:550;
+  white-space:nowrap;
+}
+.cg-attendance-manager .attendance-manager-dashboard-tabs button.is-active {
+  color:var(--primary);
+  background:var(--primary-soft);
+}
+.cg-attendance-manager .attendance-manager-dashboard-tabs button:focus-visible {
+  outline:2px solid var(--primary);
+  outline-offset:-2px;
+}
+.cg-attendance-manager .attendance-manager-module :is(.am-section-header,.am-daily-heading,.am-calendar-header,.am-panel__header),
+.cg-attendance-manager .attendance-rules-header {
+  gap:10px;
+  min-width:0;
+}
+.cg-attendance-manager.attendance-manager-pages .attendance-manager-module :is(.am-section-header,.am-daily-heading,.am-calendar-header,.am-panel__header) h2,
+.cg-attendance-manager.attendance-manager-pages .attendance-rules-page .attendance-rules-header h2 {
+  font-size:18px !important;
+  line-height:1.35 !important;
+  font-weight:650;
+  margin:0;
+}
+.cg-attendance-manager .attendance-manager-module :is(.am-panel,.am-approval-card,.am-dashboard-panel,.am-report-filter,.am-shift-assignment-panel),
+.cg-attendance-manager .attendance-rule-section {
+  padding:14px !important;
+  border-radius:12px;
+  box-shadow:none;
+  min-width:0;
+}
+.cg-attendance-manager .am-dashboard-stats {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+.cg-attendance-manager .am-dashboard-stat-card {
+  min-width:0;
+  min-height:94px;
+  padding:12px !important;
+  border-radius:12px;
+  box-shadow:none;
+}
+.cg-attendance-manager .am-dashboard-stat-top strong {font-size:25px !important}
+.cg-attendance-manager .am-dashboard-bottom-grid {gap:12px}
+.cg-attendance-manager .am-dashboard-attention-list > div {min-height:44px}
+.cg-attendance-manager .am-dashboard-quick-actions button {min-height:44px}
+.cg-attendance-manager .am-approval-grid {gap:12px}
+.cg-attendance-manager .am-approval-card {padding:14px !important}
+.cg-attendance-manager .am-approval-details {gap:8px;margin-top:10px}
+.cg-attendance-manager .am-approval-details > div {padding:9px;min-height:56px}
+.cg-attendance-manager .am-leave-status-filters {
+  display:flex;
+  gap:6px;
+  flex-wrap:nowrap;
+  overflow-x:auto;
+  width:100%;
+  padding:3px 0;
+  scrollbar-width:none;
+}
+.cg-attendance-manager .am-leave-status-filters button {
+  flex:0 0 auto;
+  min-height:44px;
+  padding:8px 13px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  color:var(--text-secondary);
+  background:var(--surface);
+  cursor:pointer;
+  font-size:14px;
+}
+.cg-attendance-manager .am-leave-status-filters button.is-active {
+  border-color:var(--primary);
+  background:var(--primary-soft);
+  color:var(--primary);
+}
+.cg-attendance-manager .am-leave-request-details {
+  margin-top:10px;
+  padding:0 10px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  font-size:14px;
+}
+.cg-attendance-manager .am-leave-request-details summary {
+  display:flex;
+  align-items:center;
+  min-height:44px;
+  cursor:pointer;
+  font-weight:600;
+}
+.cg-attendance-manager .am-leave-request-details p {
+  margin:0 0 9px;
+  overflow-wrap:anywhere;
+  line-height:1.45;
+}
+.cg-attendance-manager .am-approval-actions {margin-top:12px;padding-top:10px}
+.cg-attendance-manager .am-approval-actions button {min-height:44px !important}
+
+/* One outlined control, usable labels, no input nesting double borders. */
+.cg-attendance-manager :is(.am-filter-card,.am-calendar-filter-card,.am-report-filter) {
+  gap:10px;
+  min-width:0;
+}
+.cg-attendance-manager :is(
+  .attendance-rule-field input,.attendance-rule-field select,
+  .am-shift-form input,.am-shift-assignment-controls select,
+  .am-report-filter input,.am-report-filter select,
+  .am-daily-date input,.am-filter-card > select,
+  .am-calendar-filter-card > select,
+  .attendance-holiday-form > input,.attendance-holiday-form > select
+) {
+  box-sizing:border-box;
+  min-width:0;
+  width:100%;
+  min-height:44px;
+  height:46px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--field-bg,var(--surface));
+  color:var(--text-primary);
+  font-size:16px !important;
+  line-height:1.35;
+  box-shadow:none;
+}
+.cg-attendance-manager :is(
+  .attendance-rule-field input,.attendance-rule-field select,
+  .am-shift-form input,.am-shift-assignment-controls select,
+  .am-report-filter input,.am-report-filter select,
+  .attendance-holiday-form > input,.attendance-holiday-form > select
+):focus-visible {
+  outline:2px solid var(--primary);
+  outline-offset:1px;
+}
+.cg-attendance-manager .attendance-rule-field {
+  position:relative;
+  padding-top:9px;
+  gap:0;
+}
+.cg-attendance-manager .attendance-rule-field > span {
+  position:absolute;
+  z-index:1;
+  top:0;
+  left:11px;
+  padding:0 5px;
+  background:var(--surface);
+  color:var(--text-secondary);
+  font-size:12px !important;
+  line-height:1.3;
+  font-weight:600;
+}
+.cg-attendance-manager .attendance-rule-field > small {
+  padding:5px 2px 0;
+  font-size:12px !important;
+}
+.cg-attendance-manager .attendance-mode-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+}
+.cg-attendance-manager .attendance-mode-card {
+  min-width:0;
+  min-height:95px;
+  padding:12px !important;
+  border-radius:10px;
+  box-shadow:none;
+}
+.cg-attendance-manager .attendance-mode-copy .am-mode-description {
+  display:block;
+  margin-top:3px;
+  font-size:13px !important;
+  line-height:1.4;
+}
+.cg-attendance-manager .attendance-rule-title h3 {font-size:17px !important}
+.cg-attendance-manager .attendance-rule-form-grid {gap:12px}
+.cg-attendance-manager .attendance-rules-columns {gap:12px}
+.cg-attendance-manager .attendance-rule-toggle {
+  min-height:44px;
+  gap:10px;
+}
+.cg-attendance-manager .attendance-rule-toggle input[type="checkbox"] {flex-shrink:0}
+.cg-attendance-manager details.attendance-rule-disclosure > summary {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:44px;
+  cursor:pointer;
+}
+.cg-attendance-manager details.attendance-rule-disclosure > summary::after {
+  content:'⌄';
+  color:var(--text-secondary);
+  margin-left:auto;
+}
+.cg-attendance-manager details.attendance-rule-disclosure:not([open]) > summary::after {
+  transform:rotate(-90deg);
+}
+.cg-attendance-manager .attendance-weekdays {
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:4px;
+}
+.cg-attendance-manager .attendance-weekdays button {
+  min-height:44px;
+  padding:7px 0;
+  font-size:13px !important;
+}
+.cg-attendance-manager .attendance-holiday-form {
+  display:grid;
+  grid-template-columns:minmax(130px,1fr) minmax(160px,2fr) minmax(130px,1fr) auto auto;
+  gap:9px;
+  align-items:center;
+}
+.cg-attendance-manager .attendance-holiday-form > button {min-height:44px;font-size:14px !important}
+.cg-attendance-manager .attendance-holiday-list > div {min-height:44px}
+.cg-attendance-manager .attendance-holiday-list button {min-width:44px;min-height:44px}
+.cg-attendance-manager .attendance-location-advanced summary {min-height:44px;display:flex;align-items:center;cursor:pointer}
+.cg-attendance-manager .attendance-place-form {gap:10px}
+.cg-attendance-manager .attendance-place-form .attendance-rule-field {flex:1 1 200px}
+.cg-attendance-manager .attendance-place-form input {min-height:46px;font-size:16px !important}
+.cg-attendance-manager .attendance-place-form button {min-height:44px}
+.cg-attendance-manager .am-calendar-month-controls {gap:7px;min-width:0}
+.cg-attendance-manager .am-calendar-month-controls > button,
+.cg-attendance-manager .am-calendar-month-controls > label,
+.cg-attendance-manager .am-calendar-month-controls > select {
+  min-height:44px !important;
+  height:44px !important;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--surface);
+  box-shadow:none;
+  min-width:0;
+}
+.cg-attendance-manager .am-calendar-month-controls > label {
+  display:flex;
+  align-items:center;
+  padding:0 8px;
+  gap:5px;
+}
+.cg-attendance-manager .am-calendar-month-controls > label select {
+  min-width:0;
+  width:100%;
+  height:42px;
+  border:0 !important;
+  box-shadow:none !important;
+  outline:0;
+  background:transparent !important;
+  font-size:16px !important;
+}
+.cg-attendance-manager .am-calendar-month-controls > select {font-size:16px !important}
+.cg-attendance-manager .am-calendar-month-controls button:disabled {opacity:.4;cursor:not-allowed}
+.cg-attendance-manager .am-calendar-scroll {min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
+
+.cg-attendance-manager .am-staff-attendance-list {display:grid;gap:6px}
+.cg-attendance-manager .am-staff-attendance-row {
+  display:flex;justify-content:space-between;align-items:center;gap:9px;
+  min-height:44px;padding:8px 10px;border:1px solid var(--border);
+  border-radius:10px;background:var(--surface);
+  color:var(--text-primary);cursor:pointer;text-align:left;
+}
+.cg-attendance-manager .am-staff-attendance-row span {min-width:0;overflow-wrap:anywhere;font-size:14px}
+.cg-attendance-manager .am-staff-attendance-row strong {
+  flex:0 0 auto;max-width:45%;font-size:13px !important;
+  color:var(--text-secondary);text-align:right;overflow-wrap:anywhere;
+}
+.cg-attendance-manager .am-productivity-details {
+  margin-top:10px;border-top:1px solid var(--border);padding-top:5px;
+}
+.cg-attendance-manager .am-productivity-details summary {
+  min-height:44px;display:flex;align-items:center;cursor:pointer;
+  font-size:14px;font-weight:600;color:var(--text-secondary);
+}
+.cg-attendance-manager .am-day--late {background:var(--warning-soft);color:var(--warning)}
+/* Reports: responsive rows, real record count, filtering without fabricated values. */
+.cg-attendance-manager .am-report-filter {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(160px,1fr));
+  gap:10px;
+  align-items:end;
+}
+.cg-attendance-manager .am-report-filter label {display:grid;gap:5px;min-width:0}
+.cg-attendance-manager .am-report-filter label > span {font-size:13px !important}
+.cg-attendance-manager .am-report-count {min-height:44px;display:flex;align-items:center;gap:8px}
+.cg-attendance-manager .am-report-mobile-list {display:none}
+.cg-attendance-manager .am-report-mobile-card {
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:13px;
+  background:var(--surface);
+  min-width:0;
+}
+.cg-attendance-manager .am-report-mobile-card > div:first-child {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.cg-attendance-manager .am-report-mobile-card strong {font-size:15px}
+.cg-attendance-manager .am-report-mobile-card span {font-size:13px;color:var(--text-secondary)}
+.cg-attendance-manager .am-report-mobile-card small {font-size:13px}
+.cg-attendance-manager .am-report-mobile-card dl {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:8px;
+  margin:10px 0 0;
+}
+.cg-attendance-manager .am-report-mobile-card dl div {min-width:0}
+.cg-attendance-manager .am-report-mobile-card dt {font-size:12px;color:var(--text-secondary)}
+.cg-attendance-manager .am-report-mobile-card dd {margin:3px 0 0;font-size:14px;overflow-wrap:anywhere}
+
+@media(max-width:1100px) {
+  .cg-attendance-manager .attendance-holiday-form {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cg-attendance-manager .am-report-filter {grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px) {
+  .cg-attendance-manager .attendance-manager-dashboard-header h1 {font-size:20px !important}
+  .cg-attendance-manager .attendance-manager-header-actions {width:auto}
+  .cg-attendance-manager .attendance-manager-dashboard-tabs button {flex:0 0 auto}
+  .cg-attendance-manager .am-dashboard-stats {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cg-attendance-manager .attendance-mode-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cg-attendance-manager .attendance-rule-form-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cg-attendance-manager .am-report-filter {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cg-attendance-manager .am-calendar-month-controls {
+    display:grid;
+    grid-template-columns:44px minmax(0,1.4fr) minmax(78px,1fr) 44px;
+  }
+  .cg-attendance-manager .am-calendar-month-controls > button {width:44px}
+  .cg-attendance-manager .am-approval-grid {grid-template-columns:minmax(0,1fr)}
+  .cg-attendance-manager .am-panel,.cg-attendance-manager .attendance-rule-section {padding:12px !important}
+  .cg-attendance-manager .am-report-table {display:none}
+  .cg-attendance-manager .am-report-mobile-list {display:grid;gap:10px}
+}
+@media(max-width:480px) {
+  .cg-attendance-manager .attendance-rules-columns {display:grid;grid-template-columns:minmax(0,1fr)}
+  .cg-attendance-manager .attendance-holiday-form {grid-template-columns:minmax(0,1fr)}
+  .cg-attendance-manager .attendance-holiday-form > button {grid-column:auto}
+  .cg-attendance-manager .attendance-weekdays button {font-size:11px !important}
+  .cg-attendance-manager .attendance-mode-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cg-attendance-manager .attendance-rule-form-grid {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cg-attendance-manager .am-calendar-header {display:grid;gap:10px}
+  .cg-attendance-manager .am-report-filter {grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:360px) {
+  .cg-attendance-manager .attendance-rule-form-grid {grid-template-columns:minmax(0,1fr)}
+  .cg-attendance-manager .attendance-mode-grid {grid-template-columns:minmax(0,1fr)}
+}
+@media(prefers-reduced-motion:reduce) {
+  .cg-attendance-manager .attendance-manager-dashboard-tabs {scroll-behavior:auto}
+}

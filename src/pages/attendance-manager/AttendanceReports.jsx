@@ -5,17 +5,36 @@ import { attendanceManagerService } from '../../services/attendanceManager.servi
 export const AttendanceReports = () => {
   const [team, setTeam] = useState([]);
   const [reportType, setReportType] = useState('Daily Attendance');
+  const [branch, setBranch] = useState('All');
+  const [employee, setEmployee] = useState('All');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    attendanceManagerService.getTeamAttendance().then(setTeam);
+    let mounted = true;
+    attendanceManagerService.getTeamAttendance()
+      .then(data => { if (mounted) setTeam(Array.isArray(data) ? data : []); })
+      .catch(cause => { if (mounted) setError(cause?.message || 'Unable to load attendance reports.'); })
+      .finally(() => { if (mounted) setLoading(false); });
+    return () => { mounted = false; };
   }, []);
 
-  const rows = useMemo(() => {
-    if (reportType === 'Late Report') return team.filter((item) => Number(item.lateMinutes || 0) > 0);
-    if (reportType === 'Absence Report') return team.filter((item) => item.status === 'Absent');
-    if (reportType === 'OT Report') return team.filter((item) => Number(item.overtimeHours || 0) > 0);
-    return team;
-  }, [team, reportType]);
+  const branches = useMemo(() => ['All', ...new Set(team.map(item => item.branch).filter(Boolean))], [team]);
+  const employees = useMemo(() => ['All', ...new Set(team.map(item => item.staffId || item.employeeId || item.name).filter(Boolean))], [team]);
+  const hasRecordDates = team.some(item => item.date || item.attendanceDate || item.createdDate);
+
+
+  const rows = useMemo(() => team.filter(item => {
+    if (reportType === 'Late Report' && Number(item.lateMinutes || 0) <= 0) return false;
+    if (reportType === 'Absence Report' && item.status !== 'Absent') return false;
+    if (['OT Report', 'Overtime Report'].includes(reportType) && Number(item.overtimeHours || 0) <= 0) return false;
+    if (branch !== 'All' && item.branch !== branch) return false;
+    if (employee !== 'All' && (item.staffId || item.employeeId || item.name) !== employee) return false;
+    const date = String(item.date || item.attendanceDate || item.createdDate || '').slice(0, 10);
+    return (!hasRecordDates || ((!from || date >= from) && (!to || date <= to)));
+  }), [team, reportType, branch, employee, from, to, hasRecordDates]);
 
   const exportCsv = () => {
     const header = ['Employee','Role','Branch','Status','Check In','Check Out','Working Hours','OT Hours','Late Minutes'];
@@ -40,8 +59,8 @@ export const AttendanceReports = () => {
           <h2>Attendance Reports</h2>
         </div>
         <div className="am-header-actions">
-          <button onClick={exportCsv} className="am-secondary-button"><Download size={14}/>Export CSV</button>
-          <button onClick={() => window.print()} className="am-secondary-button"><Printer size={14}/>Print</button>
+          <button type="button" onClick={exportCsv} disabled={loading || Boolean(error) || rows.length === 0} className="am-secondary-button"><Download size={14}/>Export CSV</button>
+          <button type="button" onClick={() => window.print()} disabled={loading || Boolean(error) || rows.length === 0} className="am-secondary-button"><Printer size={14}/>Print</button>
         </div>
       </section>
 
@@ -49,13 +68,25 @@ export const AttendanceReports = () => {
         <label>
           <span>Report Type</span>
           <select value={reportType} onChange={(e)=>setReportType(e.target.value)}>
-            {['Daily Attendance','Monthly Attendance','Late Report','Absence Report','OT Report','Employee-wise Report'].map((type)=><option key={type}>{type}</option>)}
+            {['Daily Attendance','Monthly Attendance','Late Report','Absence Report','Overtime Report','Employee-wise Report'].map((type)=><option key={type}>{type}</option>)}
           </select>
         </label>
-        <div className="am-report-count"><span>Records</span><strong>{rows.length}</strong></div>
+        <label><span>Branch</span><select aria-label="Filter report by branch" value={branch} onChange={e=>setBranch(e.target.value)}>
+          {branches.map(value=><option key={value} value={value}>{value}</option>)}
+        </select></label>
+        <label><span>Employee</span><select aria-label="Filter report by employee" value={employee} onChange={e=>setEmployee(e.target.value)}>
+          {employees.map(value=><option key={value} value={value}>{value}</option>)}
+        </select></label>
+        {hasRecordDates && <>
+          <label><span>From</span><input type="date" value={from} max={to || undefined} onChange={e=>setFrom(e.target.value)}/></label>
+          <label><span>To</span><input type="date" value={to} min={from || undefined} onChange={e=>setTo(e.target.value)}/></label>
+        </>}
+        <div className="am-report-count"><span>Records</span><strong>{loading || error ? '—' : rows.length}</strong></div>
       </section>
 
-      <div className="am-table-card am-report-table">
+      {loading && <div className="am-loading-state" role="status">Loading reports…</div>}
+      {error && <div className="am-empty-state" role="alert">{error}</div>}
+      {!loading && !error && <div className="am-table-card am-report-table">
         <table>
           <thead>
             <tr>{['Employee','Role','Branch','Status','Check In','Check Out','Worked','OT','Late'].map((head)=><th key={head}>{head}</th>)}</tr>
@@ -76,7 +107,20 @@ export const AttendanceReports = () => {
             ))}
           </tbody>
         </table>
-      </div>
+        {!rows.length && <p className="am-empty-state">No attendance records.</p>}
+      </div>}
+      {!loading && !error && rows.length > 0 && <div className="am-report-mobile-list">
+        {rows.map(item => <article key={item.id || item.staffId || item.name} className="am-report-mobile-card">
+          <div><strong>{item.name}</strong><span>{item.status || '—'}</span></div>
+          <small>{[item.branch, item.designation].filter(Boolean).join(' · ')}</small>
+          <dl>
+            <div><dt>Check In</dt><dd>{item.clockIn || '—'}</dd></div>
+            <div><dt>Check Out</dt><dd>{item.clockOut || '—'}</dd></div>
+            <div><dt>Worked</dt><dd>{item.worked || '—'}</dd></div>
+            <div><dt>OT</dt><dd>{item.overtimeHours || 0}h</dd></div>
+          </dl>
+        </article>)}
+      </div>}
     </div>
   );
 };

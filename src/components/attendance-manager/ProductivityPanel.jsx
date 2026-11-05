@@ -5,12 +5,23 @@ export const ProductivityPanel = ({ team, productive, idle, onOpenEmployee }) =>
   <article className="am-dashboard-panel">
     <header className="am-dashboard-panel-title">
       <div>
-        <h2>Workshop Productivity</h2>
-        <p>Job hours compared with attendance hours.</p>
-      </div>
+        <h2>Staff Attendance</h2>
+          </div>
       <Activity size={15} />
     </header>
 
+    <div className="am-staff-attendance-list">
+      {team.slice(0, 8).map(item => (
+        <button key={item.id || item.staffId} type="button" onClick={() => onOpenEmployee(item)}
+          className="am-staff-attendance-row">
+          <span>{item.name}</span>
+          <strong>{item.status || 'Not recorded'}</strong>
+        </button>
+      ))}
+      {!team.length && <div className="am-dashboard-empty">No staff attendance records.</div>}
+    </div>
+    <details className="am-productivity-details">
+      <summary>Productivity details</summary>
     <div className="am-dashboard-mini-grid">
       <div><span>Productive Hours</span><strong>{productive.toFixed(1)}h</strong></div>
       <div><span>Idle Hours</span><strong>{idle.toFixed(1)}h</strong></div>
@@ -44,5 +55,6 @@ export const ProductivityPanel = ({ team, productive, idle, onOpenEmployee }) =>
         <div className="am-dashboard-empty">No productivity data yet.</div>
       )}
     </div>
+    </details>
   </article>
 );

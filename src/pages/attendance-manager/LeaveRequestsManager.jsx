@@ -55,6 +55,8 @@ const normalizeLeaveApproval = (item = {}) => {
 
 export const LeaveRequestsManager = () => {
   const [requests, setRequests] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [decision, setDecision] = useState('');
@@ -64,6 +66,7 @@ export const LeaveRequestsManager = () => {
 
   const load = async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const data = await attendanceManagerService.getApprovals();
       const rows = Array.isArray(data) ? data : [];
@@ -72,6 +75,8 @@ export const LeaveRequestsManager = () => {
           .filter((item) => ['Leave', 'Leave Request'].includes(item.type))
           .map(normalizeLeaveApproval),
       );
+    } catch (error) {
+      setLoadError(error?.message || 'Unable to load leave requests.');
     } finally {
       setLoading(false);
     }
@@ -80,6 +85,8 @@ export const LeaveRequestsManager = () => {
   useEffect(() => {
     load();
   }, []);
+
+  const visibleRequests = useMemo(() => statusFilter === 'All' ? requests : requests.filter(item => item.status === statusFilter), [requests, statusFilter]);
 
   const pendingCount = useMemo(
     () => requests.filter((item) => item.status === 'Pending').length,
@@ -152,11 +159,18 @@ export const LeaveRequestsManager = () => {
         <span className="am-count-badge">{pendingCount} Pending</span>
       </section>
 
-      {requests.length === 0 ? (
+      <div className="am-leave-status-filters" role="group" aria-label="Filter leave requests">
+        {['All', 'Pending', 'Approved', 'Rejected'].map((item) => (
+          <button type="button" key={item} className={statusFilter === item ? 'is-active' : ''}
+            aria-pressed={statusFilter === item} onClick={() => setStatusFilter(item)}>{item}</button>
+        ))}
+      </div>
+      {loadError && <div className="am-empty-state" role="alert">{loadError} <button type="button" onClick={load}>Retry</button></div>}
+      {!loadError && (visibleRequests.length === 0 ? (
         <div className="am-empty-state">No leave requests.</div>
       ) : (
         <div className="am-approval-grid">
-          {requests.map((item) => (
+          {visibleRequests.map((item) => (
             <article key={item.id} className="am-approval-card">
               <div className="am-approval-card__head">
                 <div className="am-approval-person">
@@ -199,11 +213,12 @@ export const LeaveRequestsManager = () => {
                   <strong>{formatDate(item.endDate)}</strong>
                 </div>
 
-                <div className="am-approval-details__wide am-leave-reason-cell">
-                  <span>Reason</span>
-                  <strong>{item.reason || 'No reason provided.'}</strong>
-                </div>
+  
               </div>
+              <details className="am-leave-request-details"><summary>View Details</summary>
+                <p><strong>Leave Type:</strong> {item.leaveType || item.leave_type || item.type || 'Leave'}</p>
+                <p><strong>Reason:</strong> {item.reason || 'No reason provided.'}</p>
+              </details>
 
               {item.status === 'Pending' && item.canReview === false ? (
                 <p className="am-approval-blocked-note" role="status">
@@ -233,7 +248,7 @@ export const LeaveRequestsManager = () => {
             </article>
           ))}
         </div>
-      )}
+      ))}
 
       <LeaveApprovalSheet
         item={selected}

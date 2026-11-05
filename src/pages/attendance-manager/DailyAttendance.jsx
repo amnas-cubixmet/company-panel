@@ -183,6 +183,9 @@ export const DailyAttendance = () => {
           <h2>Daily Attendance</h2>
         </div>
 
+      </section>
+
+      <section className="am-filter-card">
         <label className="am-daily-date">
           <input
             type="date"
@@ -191,9 +194,6 @@ export const DailyAttendance = () => {
             onChange={(event) => setSelectedDate(event.target.value)}
           />
         </label>
-      </section>
-
-      <section className="am-filter-card">
         <label className="am-search-field">
           <Search size={15} />
           <input
