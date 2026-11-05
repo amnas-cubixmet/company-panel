@@ -24,9 +24,9 @@ test('stock receiving and internal consumption use backend workflow methods', ()
   assert.match(page, /Number\.isFinite\(quantity\)/);
 });
 
-test('new parts start with zero quantity and are received separately', () => {
-  assert.match(page, /onHand: 0, reserved: 0/);
-  assert.match(page, /beginMove\('in', created\.id, created\)/);
+test('new parts can record optional opening stock exactly once', () => {
+  assert.match(page, /stockQuantity: openingQuantity/);
+  assert.match(page, /if \(!openingQuantity && created\?\.id\) beginMove\('in', created\.id, created\)/);
 });
 
 test('advanced stock management is removed from all navigation', () => {
@@ -41,7 +41,7 @@ test('add product searches existing stock before creating duplicate parts', () =
   assert.match(page, /Search part name \/ SKU \/ barcode/);
   assert.match(page, /Add as New Product/);
   assert.match(page, /beginMove\('in', item\.id, item\)/);
-  assert.match(page, /Save Product & Receive Stock/);
+  assert.match(page, /Save Part & Add Opening Stock/);
 });
 
 test('receiving stock asks whether new prices apply to old stock', () => {
