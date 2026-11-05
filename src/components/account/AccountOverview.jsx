@@ -74,6 +74,7 @@ export function AccountOverview({
   ];
   const actions = [
     { title: 'Buy Credits', href: '/account/credits/buy', icon: CreditCard, permission: 'billing.view' },
+    { title: 'Feature Controls', href: '/account#module-pricing', icon: Zap, permission: 'billing.view' },
     { title: 'View Logs', href: '/account/credits/logs', icon: ReceiptText, permission: 'billing.view' },
     { title: 'Manage Storage', href: '/account/storage', icon: HardDrive, permission: 'billing.view' },
     { title: 'Security Settings', href: '/account/security', icon: ShieldCheck, permission: 'settings.view' },
