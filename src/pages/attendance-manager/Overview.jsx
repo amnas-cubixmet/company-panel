@@ -13,6 +13,7 @@ export const AttendanceOverview = () => {
   const [team, setTeam] = useState([]);
   const [approvals, setApprovals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -26,6 +27,7 @@ export const AttendanceOverview = () => {
         setTeam(Array.isArray(teamData) ? teamData : []);
         setApprovals(Array.isArray(approvalData) ? approvalData : []);
       })
+      .catch((cause) => { if (active) setError(cause?.message || 'Unable to load attendance.'); })
       .finally(() => {
         if (active) setLoading(false);
       });
@@ -65,10 +67,11 @@ export const AttendanceOverview = () => {
   if (loading) {
     return <div className="am-dashboard-loading">Loading attendance overview…</div>;
   }
+  if (error) return <div className="am-loading-state" role="alert">{error}</div>;
 
   return (
     <div className="attendance-manager-module attendance-manager-overview">
-      <AttendanceStats stats={stats} />
+      <AttendanceStats stats={stats} pending={pending} />
 
       <section className="am-dashboard-bottom-grid">
         <ProductivityPanel
