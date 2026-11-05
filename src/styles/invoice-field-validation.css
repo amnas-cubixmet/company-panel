@@ -65,3 +65,31 @@
 .billing-page input[aria-label="Place of Supply"]{
   font-size:16px;min-height:44px;
 }
+
+/* One actionable checklist for all invalid fields, including Django API errors. */
+.billing-page .invoice-error-checklist{
+  margin:12px 0 18px;padding:16px;background:var(--surface-2,#f8fafc);
+  border:1px solid var(--border,#cbd5e1);border-left:4px solid #b91c1c;border-radius:12px;
+  color:var(--text-primary,#1e293b);scroll-margin-block:130px;
+}
+.billing-page .invoice-error-checklist h3{font-size:17px;line-height:1.4;margin:0 0 5px;font-weight:750}
+.billing-page .invoice-error-checklist>p{font-size:14px;color:var(--text-secondary,#475569);margin:0 0 12px;line-height:1.5}
+.billing-page .invoice-error-checklist ol{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:8px;margin:0;padding:0}
+.billing-page .invoice-error-checklist li{min-width:0}
+.billing-page .invoice-error-checklist li button{
+  width:100%;min-height:54px;display:flex;flex-direction:column;align-items:flex-start;
+  gap:3px;padding:10px 12px;background:var(--surface,#fff);color:inherit;
+  border:1px solid var(--border,#cbd5e1);border-radius:9px;cursor:pointer;
+  font:inherit;text-align:left;overflow-wrap:anywhere;
+}
+.billing-page .invoice-error-checklist li button strong{font-size:15px;line-height:1.35}
+.billing-page .invoice-error-checklist li button span{font-size:14px;line-height:1.4;color:#b91c1c;font-weight:650}
+.billing-page .invoice-error-checklist li button small{font-size:12px;line-height:1.4;color:var(--text-secondary,#475569)}
+.billing-page .invoice-error-checklist li button:hover{border-color:#b91c1c}
+.billing-page .invoice-error-checklist li button:focus-visible{outline:2px solid #b91c1c;outline-offset:2px}
+.billing-page [data-invoice-field]{scroll-margin-block:130px}
+@media(max-width:600px){
+ .billing-page .invoice-error-checklist{padding:12px}
+ .billing-page .invoice-error-checklist ol{grid-template-columns:minmax(0,1fr)}
+ .billing-page .invoice-error-checklist li button{min-height:48px}
+}
