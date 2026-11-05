@@ -1,26 +1,89 @@
-import { useEffect, useState } from 'react';
-import { Camera, Trash2, UploadCloud } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Camera, Trash2, UploadCloud, X, Expand } from 'lucide-react';
 import { LiveVehicleCamera } from './LiveVehicleCamera';
 import '../../styles/vehicle-camera-queue.css';
 
-function QueuedPhoto({ item, onRemove, disabled }) {
+function QueuedPhoto({ item, onRemove, disabled, uploadingPhotoId }) {
   const [url, setUrl] = useState('');
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const previewButtonRef = useRef(null);
+  const closeButtonRef = useRef(null);
   useEffect(() => {
     const objectUrl = URL.createObjectURL(item.file);
     setUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [item.file]);
 
+  useEffect(() => {
+    if (!previewOpen) return undefined;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeButtonRef.current?.focus();
+    const handleKey = (event) => {
+      if (event.key === 'Escape') setPreviewOpen(false);
+      // The lightbox has one focusable close control, so prevent tabbing
+      // behind it while open.
+      if (event.key === 'Tab') {
+        event.preventDefault();
+        closeButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = originalOverflow;
+      previewButtonRef.current?.focus();
+    };
+  }, [previewOpen]);
+
+  const isUploading = uploadingPhotoId === item.id;
+  const status = isUploading ? 'Uploading…' : 'Ready to upload';
+  const category = item.category || 'Additional';
+  const phase = item.phase === 'after' ? 'After Service'
+    : item.phase === 'progress' ? 'In Progress' : 'Before Service';
+  const description = item.caption || item.notes || 'No photo notes';
   return (
     <figure className="vehicle-camera-queued">
-      {url && <img src={url} alt={item.caption || item.category || 'Vehicle inspection'} />}
-      <figcaption><strong>{item.category}</strong><small>{item.caption || 'Private until published'}</small></figcaption>
-      <button type="button" onClick={() => onRemove(item.id)} disabled={disabled} aria-label="Remove photo"><Trash2 size={17}/></button>
+      <div className="vehicle-camera-thumbnail">
+        {url && <button type="button" ref={previewButtonRef}
+          className="vehicle-camera-preview-button"
+          onClick={() => setPreviewOpen(true)}
+          aria-label={'Preview ' + category + ' vehicle photo'}>
+          <img src={url} alt={item.caption || category + ' vehicle photo'} loading="lazy"/>
+          <span className="vehicle-camera-zoom"><Expand size={15} aria-hidden="true"/> Preview</span>
+        </button>}
+      </div>
+      <figcaption>
+        <strong>{category} · {phase}</strong>
+        <small title={description}>{description}</small>
+        <span className={isUploading ? 'vehicle-camera-upload-status is-uploading' : 'vehicle-camera-upload-status'} role="status">{status}</span>
+      </figcaption>
+      <button type="button" className="vehicle-camera-remove-photo" onClick={() => onRemove(item.id)}
+        disabled={disabled} aria-label={'Remove ' + category + ' vehicle photo'} title="Remove photo">
+        <Trash2 size={17} aria-hidden="true"/>
+      </button>
+      {previewOpen && url && createPortal(
+        <div className="vehicle-camera-lightbox" role="dialog" aria-modal="true"
+          aria-label="Vehicle photo preview"
+          onMouseDown={(event) => { if (event.target === event.currentTarget) setPreviewOpen(false); }}>
+          <div className="vehicle-camera-lightbox-content">
+            <button type="button" ref={closeButtonRef}
+              className="vehicle-camera-lightbox-close"
+              onClick={() => setPreviewOpen(false)} aria-label="Close photo preview"><X size={20}/></button>
+            <img className="vehicle-camera-preview-image" src={url}
+              alt={item.caption || category + ' vehicle photo (full-size preview)'}/>
+            <div className="vehicle-camera-lightbox-caption">
+              <strong>{category} · {phase}</strong><span>{description}</span>
+            </div>
+          </div>
+        </div>, document.body
+      )}
     </figure>
   );
 }
 
-export function VehicleCameraQueue({ photos = [], onChange, disabled = false, uploading = 0, uploadTotal = 0 }) {
+export function VehicleCameraQueue({ photos = [], onChange, disabled = false, uploading = 0, uploadTotal = 0, uploadingPhotoId = null }) {
   const [category, setCategory] = useState('additional');
   const [phase, setPhase] = useState('before');
   const [caption, setCaption] = useState('');
@@ -90,7 +153,7 @@ export function VehicleCameraQueue({ photos = [], onChange, disabled = false, up
       <div className="vehicle-camera-counter" role="status">{photos.length} photo{photos.length === 1 ? '' : 's'} ready to attach to this Job Card</div>
       {photos.length ? (
         <div className="vehicle-camera-queue-grid">
-          {photos.map((item) => <QueuedPhoto key={item.id} item={item} onRemove={remove} disabled={disabled} />)}
+          {photos.map((item) => <QueuedPhoto key={item.id} item={item} onRemove={remove} disabled={disabled} uploadingPhotoId={uploadingPhotoId} />)}
         </div>
       ) : <p className="vehicle-camera-empty">No photos captured yet. Photos are optional.</p>}
       {uploading > 0 && <p role="status">Saving photo {uploading} of {uploadTotal || photos.length}…</p>}
