@@ -25,7 +25,8 @@ test('existing customer profile exposes revocable customer tracking and consent 
   assert.match(profile, /<CustomerWhatsAppConsent/);
   assert.match(links, /apiClient\.post\(\x60\/customer-portal\/links\/\$\{customerId\}\x60/);
   assert.match(links, /Regenerate Link/);
-  assert.match(links, /Share via WhatsApp/);
+  assert.match(links, /WhatsAppManualShareButton/);
+  assert.match(links, /Send via WhatsApp/);
   assert.match(links, /Revoke Link/);
   assert.match(consent, /optIn: value/);
   assert.match(consent, /Record Explicit WhatsApp Opt In/);
@@ -65,4 +66,24 @@ test('WhatsApp Settings is authenticated, official Meta only, and sending is opt
   assert.match(whatsapp, /notificationsEnabled: enabled, events/);
   assert.match(whatsapp, /apiClient\.get\('\/whatsapp\/logs'\)/);
   assert.doesNotMatch(whatsapp, /whatsapp-web\.js|puppeteer|selenium/i);
+});
+
+test('workshops independently select manual or automatic WhatsApp messages with fallback', () => {
+  const settings = src('src/pages/settings/WhatsAppSettingsPage.jsx');
+  const share = src('src/components/common/WhatsAppManualShareButton.jsx');
+  const customer = src('src/components/customers/CustomerTrackingLinkPanel.jsx');
+  const job = src('src/pages/jobs/JobCardWorkspace.jsx');
+  const invoice = src('src/pages/invoices/InvoiceRoutePage.jsx');
+  const staff = src('src/pages/staff-management/staff/StaffProfile.jsx');
+  assert.match(settings, /messagingMode: mode/);
+  assert.match(settings, /Automatic — Official Cloud API/);
+  assert.match(settings, /Manual — No API needed/);
+  assert.match(settings, /targetType="log"/);
+  assert.match(share, /'\/whatsapp\/manual-share'/);
+  assert.match(share, /Review it in WhatsApp and press Send/);
+  assert.match(share, /window\.open\('', '_blank'\)/);
+  assert.match(customer, /targetType="customer"/);
+  assert.match(job, /targetType="job"/);
+  assert.match(invoice, /targetType="invoice"/);
+  assert.match(staff, /Send via WhatsApp/);
 });

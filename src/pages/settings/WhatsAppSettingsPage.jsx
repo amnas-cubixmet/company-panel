@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, Link2, RefreshCw, Send, ShieldCheck, Unplug, AlertTriangle } from 'lucide-react';
 import apiClient from '../../api/apiClient';
+import { WhatsAppManualShareButton } from '../../components/common/WhatsAppManualShareButton';
 import '../../styles/whatsapp-settings.css';
 
 const FACEBOOK_ORIGINS = new Set(['https://www.facebook.com', 'https://web.facebook.com']);
@@ -16,6 +17,7 @@ export function WhatsAppSettingsPage() {
   const [success, setSuccess] = useState('');
   const [events, setEvents] = useState({});
   const [enabled, setEnabled] = useState(false);
+  const [mode, setMode] = useState('manual');
   const [templateEvent, setTemplateEvent] = useState('job_created');
   const [templateName, setTemplateName] = useState('');
   const [templateLanguage, setTemplateLanguage] = useState('en_US');
@@ -35,6 +37,7 @@ export function WhatsAppSettingsPage() {
       setInfo(settings);
       setEvents(settings.events || {});
       setEnabled(Boolean(settings.notificationsEnabled));
+      setMode(settings.messagingMode || 'manual');
       setLogs(Array.isArray(recent) ? recent : []);
     } catch (cause) {
       setError(cause?.message || 'Unable to load WhatsApp settings.');
@@ -132,8 +135,8 @@ export function WhatsAppSettingsPage() {
   };
 
   const save = () => action(async () => {
-    await apiClient.patch('/whatsapp/settings', { notificationsEnabled: enabled, events });
-    setSuccess('Workshop WhatsApp notification preferences saved.');
+    await apiClient.patch('/whatsapp/settings', { messagingMode: mode, notificationsEnabled: enabled, events });
+    setSuccess(mode === 'manual' ? 'Manual mode saved. Staff will send WhatsApp drafts themselves.' : 'Automatic mode preferences saved. Sending requires a connected approved Meta account.');
   });
   const configureTemplate = () => action(async () => {
     await apiClient.post('/whatsapp/templates', {
@@ -156,12 +159,36 @@ export function WhatsAppSettingsPage() {
       <div className="wa-header"><div>
         <Link to="/settings">Settings</Link><span> / WhatsApp Business</span>
         <h1>WhatsApp Integration</h1>
-        <p>Connect each workshop to its own official Meta WhatsApp Business account.</p>
+        <p>Choose Manual sharing or official automatic notifications separately for each workshop.</p>
       </div><button type="button" onClick={load} disabled={busy}><RefreshCw size={16}/> Refresh</button></div>
       {loading && <p role="status">Loading WhatsApp account details…</p>}
       {error && <div className="wa-error" role="alert"><AlertTriangle size={17}/>{error}</div>}
       {success && <div className="wa-success" role="status"><CheckCircle2 size={17}/>{success}</div>}
       {info && <>
+        <section className="wa-card">
+          <h2>Workshop Messaging Mode</h2>
+          <div className="wa-mode-grid" role="radiogroup" aria-label="WhatsApp messaging mode">
+            <label className={'wa-mode-option' + (mode === 'manual' ? ' is-selected' : '')}>
+              <input type="radio" name="wa-mode" value="manual" checked={mode === 'manual'} disabled={busy}
+                onChange={() => setMode('manual')} />
+              <strong>Manual — No API needed</strong>
+              <span>Staff opens WhatsApp with a prepared message and personally presses Send.</span>
+            </label>
+            <label className={'wa-mode-option' + (mode === 'automatic' ? ' is-selected' : '')}>
+              <input type="radio" name="wa-mode" value="automatic" checked={mode === 'automatic'} disabled={busy}
+                onChange={() => setMode('automatic')} />
+              <strong>Automatic — Official Cloud API</strong>
+              <span>Send approved, consent-based messages through the connected workshop account and Celery worker.</span>
+            </label>
+          </div>
+          {mode === 'automatic' && !info.connected && (
+            <p className="wa-warning" role="alert">
+              Automatic mode is selected but the Cloud API is disconnected. No messages will be sent automatically.
+              Use Send via WhatsApp from customer, job or invoice records until connected.
+            </p>
+          )}
+          <button type="button" className="wa-primary" disabled={busy} onClick={save}>Save Messaging Mode</button>
+        </section>
         <section className="wa-card">
           <h2><Link2 size={20}/> Business Connection</h2>
           <p><strong>Status:</strong> {info.connected ? 'Connected' : 'Not connected'}</p>
@@ -178,21 +205,21 @@ export function WhatsAppSettingsPage() {
               Connect WhatsApp Business
             </button>
           </>}
-          {!info.sendEnabled && <p className="wa-warning"><ShieldCheck size={16}/> Automated sending is OFF until the backend Celery broker and WHATSAPP_SEND_ENABLED are configured.</p>}
+          {mode === "automatic" && !info.sendEnabled && <p className="wa-warning"><ShieldCheck size={16}/> Automated sending is OFF until the backend Celery broker and WHATSAPP_SEND_ENABLED are configured.</p>}
         </section>
 
         <section className="wa-card">
-          <h2>Automated Notifications</h2>
-          <label className="wa-toggle"><input type="checkbox" checked={enabled} disabled={!info.connected || busy}
+          <h2>Automated Notifications {mode === "manual" && "(inactive in Manual Mode)"}</h2>
+          <label className="wa-toggle"><input type="checkbox" checked={enabled} disabled={!info.connected || busy || mode !== "automatic"}
             onChange={(e) => setEnabled(e.target.checked)}/> Enable automatic notifications</label>
           <div className="wa-event-grid">{names.filter((name) => name !== 'test').map((event) => (
             <label className="wa-toggle" key={event}><input type="checkbox" checked={Boolean(events[event])}
-              disabled={!info.connected || busy}
+              disabled={!info.connected || busy || mode !== "automatic"}
               onChange={(e) => setEvents((prev) => ({ ...prev, [event]:e.target.checked }))}/>
               {event.replaceAll('_', ' ')}
             </label>
           ))}</div>
-          <button type="button" className="wa-primary" disabled={!info.connected || busy} onClick={save}>Save Notification Settings</button>
+          <button type="button" className="wa-primary" disabled={busy} onClick={save}>Save Notification Settings</button>
           <p className="wa-info">Messages require an approved Meta template, explicit customer opt-in, and an enabled worker. New consent defaults to OFF.</p>
         </section>
 
@@ -211,10 +238,19 @@ export function WhatsAppSettingsPage() {
         </section>
 
         <section className="wa-card">
+          <h2>Manual Message Preview</h2>
+          <p>Preview only. Live customer links are generated securely from the selected Customer, Job or Invoice details.</p>
+          <div className="wa-manual-example">
+            Hello [Customer], track your vehicle service at [Workshop] using your private link: [Secure Tracking URL]
+          </div>
+          <p>Use <strong>Send via WhatsApp</strong> on a record to open the draft. Press Send inside WhatsApp to deliver.</p>
+        </section>
+
+        <section className="wa-card">
           <h2>Send Test Message</h2>
           <p>Only an opted-in customer with a valid number can receive a test template.</p>
           <label>Customer Record ID<input value={testCustomerId} onChange={(e) => setTestCustomerId(e.target.value)} placeholder="Customer UUID"/></label>
-          <button type="button" disabled={!info.connected || busy || !testCustomerId} onClick={sendTest}><Send size={16}/> Send Test Template</button>
+          <button type="button" disabled={!info.connected || mode !== "automatic" || busy || !testCustomerId} onClick={sendTest}><Send size={16}/> Send Test Template</button>
         </section>
 
         <section className="wa-card">
@@ -224,6 +260,9 @@ export function WhatsAppSettingsPage() {
               <b>{row.event.replaceAll('_', ' ')}</b><span>{row.status}</span>
               <small>{row.phone} · {row.createdAt ? new Date(row.createdAt).toLocaleString() : ''}</small>
               {row.error && <small className="wa-error-text">{row.error}</small>}
+              {['failed', 'skipped'].includes(row.status) && (
+                <WhatsAppManualShareButton targetType="log" targetId={row.id} label="Manual WhatsApp Share" />
+              )}
             </div>
           )) : <p>No WhatsApp notifications recorded.</p>}</div>
         </section>

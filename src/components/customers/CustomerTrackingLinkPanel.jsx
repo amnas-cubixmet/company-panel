@@ -2,9 +2,10 @@ import { appConfirm } from '../common/appDialogs';
 import { useEffect, useState } from 'react';
 import { Copy, Link2, RefreshCw, ShieldOff } from 'lucide-react';
 import apiClient from '../../api/apiClient';
+import { WhatsAppManualShareButton } from '../common/WhatsAppManualShareButton';
 import { USE_MOCK_API } from '../../api/apiConfig';
 
-export function CustomerTrackingLinkPanel({ customerId, whatsapp, canManage = false }) {
+export function CustomerTrackingLinkPanel({ customerId, canManage = false }) {
   const [link, setLink] = useState('');
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -60,10 +61,6 @@ export function CustomerTrackingLinkPanel({ customerId, whatsapp, canManage = fa
     }
   };
 
-  const phone = String(whatsapp || '').replace(/[^0-9]/g, '');
-  const shareUrl = phone && enabled && link
-    ? `https://wa.me/${phone}?text=${encodeURIComponent(`Track your vehicle service: ${link}`)}`
-    : '';
 
   return (
     <section className="customer-tracking-panel" aria-label="Secure customer tracking">
@@ -77,7 +74,7 @@ export function CustomerTrackingLinkPanel({ customerId, whatsapp, canManage = fa
           <input id="customer-tracking-url" value={link} readOnly onFocus={(e) => e.target.select()}/>
           <div className="customer-tracking-actions">
             <button type="button" onClick={copy}><Copy size={16}/> Copy Link</button>
-            {shareUrl && <a target="_blank" rel="noreferrer" href={shareUrl}>Share via WhatsApp</a>}
+            <WhatsAppManualShareButton targetType="customer" targetId={customerId} label="Send via WhatsApp" />
           </div>
         </> : <p role="status">Tracking access is currently disabled.</p>}
         {canManage && <div className="customer-tracking-actions">

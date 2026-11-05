@@ -16,6 +16,7 @@ import '../../styles/invoice-template-sync.css';
 import { customerService } from '../../services/customer.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { InvoicePdfShareSheet } from '../../components/invoices/InvoicePdfShareSheet';
+import { WhatsAppManualShareButton } from '../../components/common/WhatsAppManualShareButton';
 import {
   InvoiceFilterToolbar,
   InvoiceListHeader,
@@ -696,6 +697,7 @@ export function InvoiceRoutePage() {
         </div>
 
         <div className="billing-head-actions">
+          {form.kind === "invoice" && (form.finalizedAt || ["Finalized", "Paid", "Issued"].includes(form.status)) && form.status !== "Cancelled" && <WhatsAppManualShareButton targetType="invoice" targetId={form.id || id} />}
           {form.status !== 'Converted' && (
             <button className="bill-btn secondary" onClick={() => navigate(`/invoices/${id}/edit`)}>
               <Edit3 size={16}/>Edit

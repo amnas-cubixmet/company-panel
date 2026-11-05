@@ -42,6 +42,15 @@ import { staffService } from '../../../services/staff.service';
 import '../../../styles/staff-mobile-onboarding.css';
 import { staffManagementService } from '../../../services/staffManagement.service';
 
+const staffManualWhatsAppUrl = (phone, setupLink) => {
+  if (!setupLink) return '';
+  const raw = String(phone || '').trim();
+  const digits = raw.replace(/\D/g, '');
+  if ((!raw.startsWith('+') && digits.length < 11) || !/^[1-9]\d{7,14}$/.test(digits)) return '';
+  const draft = `Welcome to CubeGears. Set your workshop password within 24 hours: ${setupLink}`;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(draft)}`;
+};
+
 const money = (value) =>
   new Intl.NumberFormat('en-IN', {
     style: 'currency',
@@ -551,10 +560,10 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
               onFocus={(event) => event.target.select()}/>
             <div className="staff-setup-link-actions">
               <button type="button" onClick={handleCopySetup}><Copy size={16}/> Copy Setup Link</button>
-              {staff.phone && <a href={`https://wa.me/${String(staff.phone).replace(/\D/g,'')}?text=${encodeURIComponent(`Welcome to CubeGears. Set your workshop password within 24 hours: ${setupLink}`)}`}
-                target="_blank" rel="noreferrer"><ExternalLink size={16}/> Share via WhatsApp</a>}
+              {staffManualWhatsAppUrl(staff.phone, setupLink) && <a href={staffManualWhatsAppUrl(staff.phone, setupLink)}
+                target="_blank" rel="noreferrer"><ExternalLink size={16}/> Send via WhatsApp</a>}
             </div>
-            <p>Do not post this private password link in public groups or shared channels.</p>
+            <p>WhatsApp opens with a draft; review and press Send. Do not post this private password link in groups or public channels.</p>
           </>}
           {inviteStatus === 'manual' && <p role="status">Automated WhatsApp delivery unavailable. Use the manual secure link above.</p>}
         </section>
