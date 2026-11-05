@@ -11,19 +11,24 @@ test('global workspace search calls authenticated real backend, never storage/mo
   assert.doesNotMatch(service, /searchMockData|localStorage|liveStores|searchPages/);
 });
 
-test('search modal has keyboard, focus, cancellation, grouped real records and errors', () => {
+test('single inline header search supports keyboard, focus, cancellation and grouped results', () => {
   const component = file('src/components/common/GlobalSearch.jsx');
+  const header = file('src/components/layout/Header.jsx');
   const css = file('src/styles/global-search.css');
   for (const fragment of [
-    'createPortal(', 'role="dialog"', 'aria-modal="true"', 'onKeyDown={inputKeys}',
+    'role="combobox"', 'role="listbox"', 'onKeyDown={onKeyDown}',
     "event.key === 'ArrowDown'", "event.key === 'ArrowUp'",
     "event.key === 'Escape'", "event.key === 'Enter'",
+    'event.ctrlKey', 'event.metaKey',
     'new AbortController()', 'controller.abort()', 'aria-label="Clear search"',
-    'aria-label="Close search"', 'global-search-feedback', 'document.body.style.overflow',
+    'global-search-feedback', 'global-search-group', 'global-search-result-row',
   ]) assert.ok(component.includes(fragment), fragment);
-  assert.match(css, /\.global-search-backdrop/);
-  assert.match(css, /max-height:100dvh/);
-  assert.match(css, /font-size:16px/);
+  assert.equal((header.match(/<GlobalSearch\\b/g) || []).length, 1);
+  assert.equal((component.match(/<input\\b/g) || []).length, 1);
+  assert.doesNotMatch(component, /createPortal|aria-modal|role="dialog"/);
+  assert.doesNotMatch(css, /global-search-backdrop|global-search-dialog/);
+  assert.match(css, /position: absolute/);
+  assert.match(css, /font-size: 16px/);
 });
 
 test('job combined filters are URL-backed, preserve browser navigation and reset page', () => {
