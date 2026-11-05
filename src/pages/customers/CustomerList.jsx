@@ -12,6 +12,12 @@ import { customerInvoiceMoney, customerStatusLabel, formatCustomerMoney } from '
 import { CustomerContactActions } from '../../components/customers/CustomerContactActions';
 import { Users, Plus, Filter, Edit, Phone, MessageSquare, Mail, AlertTriangle, ChevronRight } from "lucide-react";
 
+const normalizeCustomerType = (value) =>
+  /business|company/i.test(String(value || '')) ? 'Business / Company' : 'Individual';
+
+const backendCustomerType = (value) =>
+  normalizeCustomerType(value) === 'Business / Company' ? 'business' : 'individual';
+
 export const CustomerList = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -35,6 +41,8 @@ export const CustomerList = () => {
 
   // Core Data State
   const [customers, setCustomers] = useState([]);
+  const [branchChoices, setBranchChoices] = useState([]);
+  const [branchLoadError, setBranchLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
@@ -73,6 +81,13 @@ export const CustomerList = () => {
   // Load the directory once; filtering is local and never refetches all linked jobs on each keystroke.
   useEffect(() => {
     fetchCustomers();
+    let active = true;
+    customerService.getCustomerBranches()
+      .then((rows) => { if (active) setBranchChoices(rows); })
+      .catch((error) => {
+        if (active) setBranchLoadError(error?.message || 'Unable to load workshop branches.');
+      });
+    return () => { active = false; };
   }, []);
 
   const fetchCustomers = async () => {
@@ -138,10 +153,10 @@ export const CustomerList = () => {
   };
 
   const availableBranches = useMemo(() => [...new Set(
-    customers.map((item) => item.branchName).filter(Boolean)
-  )].sort(), [customers]);
+    branchChoices.map((item) => item.name).filter(Boolean)
+  )].sort(), [branchChoices]);
   const availableTypes = useMemo(() => [...new Set(
-    customers.map((item) => item.customerType).filter(Boolean)
+    customers.map((item) => normalizeCustomerType(item.customerType)).filter(Boolean)
   )].sort(), [customers]);
   const availableStatuses = useMemo(() => [...new Set(
     customers.map((item) => item.status).filter(Boolean)
@@ -151,7 +166,7 @@ export const CustomerList = () => {
     return customers.filter((customer) => {
       if (statusFilter !== 'All' && (customer.status || '').toLowerCase() !== statusFilter.toLowerCase()) return false;
       if (branchFilter !== 'All' && String(customer.branchName || '') !== branchFilter) return false;
-      if (typeFilter !== 'All' && String(customer.customerType || '').toLowerCase() !== typeFilter.toLowerCase()) return false;
+      if (typeFilter !== 'All' && normalizeCustomerType(customer.customerType).toLowerCase() !== typeFilter.toLowerCase()) return false;
       if (!q) return true;
       return [customer.name, customer.email, customer.phone, customer.whatsapp, customer.companyName]
         .some((value) => String(value || '').toLowerCase().includes(q)) ||
@@ -197,10 +212,10 @@ export const CustomerList = () => {
     setCity(c.city || 'Kochi');
     setState(c.state || 'Kerala');
     setPincode(c.pincode || '');
-    setCustomerType(c.customerType || 'Individual');
+    setCustomerType(normalizeCustomerType(c.customerType));
     setCompanyName(c.companyName || '');
     setGstNo(c.gstNo || '');
-    setBranch(c.branch || c.branchName || '');
+    setBranch(c.branchId || c.branch || '');
     setNotes(c.notes || '');
     setIsAddCustomerOpen(true);
   };
@@ -233,7 +248,7 @@ export const CustomerList = () => {
       city,
       state,
       pincode,
-      customerType,
+      customerType: backendCustomerType(customerType),
       companyName,
       gstNo,
       branch,
@@ -536,6 +551,7 @@ export const CustomerList = () => {
             placeholder="rahul.k@example.com"
           />
 
+          {branchLoadError && <p role="alert" className="customer-directory-error">{branchLoadError}</p>}
           <div className="customer-directory-form-grid">
             <Select
               label="Customer Type"
@@ -551,8 +567,8 @@ export const CustomerList = () => {
               value={branch}
               onChange={(e) => setBranch(e.target.value)}
             >
-              <option value="">Select workshop branch</option>
-              {availableBranches.map((value) => <option key={value} value={value}>{value}</option>)}
+              <option value="">Use account default branch</option>
+              {branchChoices.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </Select>
           </div>
 
@@ -650,7 +666,7 @@ export const CustomerList = () => {
             <button
               type="button"
               onClick={() => {
-                const payload = { name, phone, whatsapp: whatsapp || phone, email, address, city, state, pincode, customerType, companyName, gstNo, branch, notes };
+                const payload = { name, phone, whatsapp: whatsapp || phone, email, address, city, state, pincode, customerType: backendCustomerType(customerType), companyName, gstNo, branch, notes };
                 saveCustomer(payload);
               }}
               style={{ flex: 1, height: '44px', borderRadius: '11px', border: 'none', backgroundColor: 'var(--primary)', color: '#ffffff', fontWeight: '700' }}
