@@ -41,6 +41,7 @@ const JobDetails = lazyPage(() => import('../pages/jobs/JobDetails'), 'JobDetail
 const JobStatus = lazyPage(() => import('../pages/jobs/JobStatus'), 'JobStatus');
 const JobReports = lazyPage(() => import('../pages/jobs/JobReports'), 'JobReports');
 const StockEasyPage = lazyPage(() => import('../pages/stock/StockEasyPage'), 'default');
+const SupplierFinancePage = lazyPage(() => import('../pages/stock/SupplierFinancePage'), 'default');
 const InvoiceList = lazyPage(() => import('../pages/invoices/InvoiceList'), 'InvoiceList');
 const EWayBillPage = lazyPage(() => import('../pages/invoices/EWayBillPage'), 'EWayBillPage');
 const PaymentList = lazyPage(() => import('../pages/payments/PaymentList'), 'PaymentList');
@@ -194,6 +195,7 @@ export const AppRoutes = () => (
       <Route path="/jobs/:id/*" element={<JobDetails />} />
 
       <Route path="/stock" element={<StockEasyPage />} />
+      <Route path="/stock/suppliers" element={<SupplierFinancePage />} />
       <Route path="/stock/*" element={<Navigate to="/stock" replace />} />
 
       <Route path="/invoices" element={<InvoiceList />} />
