@@ -48,6 +48,7 @@ const SPECIAL_PATH_PERMISSIONS = [
   ['/reports', 'reports.view'],
   ['/notifications', 'notifications.view'],
   ['/settings/customer-website', 'company.manage'],
+  ['/settings/customer-website', 'company.manage'],
   ['/settings', 'settings.view'],
   ['/account/credits', 'billing.view'],
   ['/account/billing', 'billing.view'],
