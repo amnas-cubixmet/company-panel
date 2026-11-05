@@ -26,6 +26,7 @@ import '../../styles/job-work-quick-actions.css';
 import { JobWorkerAssignments } from '../../components/jobs/JobWorkerAssignments';
 import { JobOutsideStaffSection } from '../../components/jobs/JobOutsideStaffSection';
 import { JobWorkTimerPanel } from '../../components/jobs/JobWorkTimerPanel';
+import { JobWorkServiceQuickAdd } from '../../components/jobs/JobWorkServiceQuickAdd';
 import { JobWorkStockPanel } from '../../components/jobs/JobWorkStockPanel';
 import { JobTotalCostPanel } from '../../components/jobs/JobTotalCostPanel';
 import { JobActivityTimeline } from '../../components/jobs/JobActivityTimeline';
@@ -131,7 +132,7 @@ export function JobCardWorkspace() {
   const [billingError, setBillingError] = useState('');
   const [staff, setStaff] = useState([]);
   const [timerRefreshVersion, setTimerRefreshVersion] = useState(0);
-  const [workQuickSection, setWorkQuickSection] = useState('mechanic');
+  const [workQuickSection, setWorkQuickSection] = useState('service');
   const [outsideQuickToken, setOutsideQuickToken] = useState(0);
   const [stockQuickToken, setStockQuickToken] = useState(0);
   const [assignQuickToken, setAssignQuickToken] = useState(0);
@@ -1407,7 +1408,8 @@ export function JobCardWorkspace() {
         <div className="job-work-payroll-stack job-work-simple">
           <nav className="job-work-quick-actions" aria-label="Work quick actions">
             {[
-              { key: 'mechanic', label: 'Mechanic / Hours', icon: Wrench },
+              { key: 'service', label: 'Add Service', icon: Wrench },
+              { key: 'mechanic', label: 'Advanced Work Tracking', icon: Clock3 },
               { key: 'assign', label: 'Assign Staff', icon: UserRound },
               { key: 'outside', label: 'Add Outside Staff', icon: Plus },
               ...(hasStockAccess ? [{ key: 'stock', label: 'Stock & Parts Used', icon: PackageSearch }] : []),
@@ -1430,6 +1432,18 @@ export function JobCardWorkspace() {
               </button>
             ))}
           </nav>
+
+          <div id="work-quick-service" hidden={workQuickSection !== 'service'}>
+            <JobWorkServiceQuickAdd
+              jobId={job.id}
+              staff={staff}
+              canEdit={can('jobs.edit') && currentStage === 'work' && !activeTabLocked}
+              onSaved={async () => {
+                const updated = await jobService.getJobById(job.id);
+                if (updated) setJob(updated);
+              }}
+            />
+          </div>
 
           <div id="work-quick-outside" hidden={workQuickSection !== 'outside'}>
             <JobOutsideStaffSection
