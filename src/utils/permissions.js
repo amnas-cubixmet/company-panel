@@ -36,8 +36,9 @@ const CRUD_PREFIXES = {
 };
 
 const SPECIAL_PATH_PERMISSIONS = [
-  ['/suppliers/credits', 'expenses.view'],
-  ['/suppliers/payments', 'expenses.view'],
+  ['/stock/suppliers', 'payments.view'],
+  ['/suppliers/credits', 'payments.view'],
+  ['/suppliers/payments', 'payments.view'],
   ['/staff-management/roles', 'company.manage'],
   ['/staff-management/add', 'staff.create'],
   ['/staff-management/teams', 'staff.edit'],
