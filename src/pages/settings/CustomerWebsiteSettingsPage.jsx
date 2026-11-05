@@ -89,10 +89,13 @@ export default function CustomerWebsiteSettingsPage(){
     }catch(e){setError(e.message||'Could not disable domain.');}
   }
 
+  const primaryDomain = domains.find(d=>d.isPrimary && d.status==='active' && d.sslStatus==='ready' && d.ownershipVerified && d.dnsConfigured);
+  const websiteHost = primaryDomain?.hostname || subdomain;
+
   async function copyLink(){
-    if(!subdomain)return;
+    if(!websiteHost)return;
     try{
-      await navigator.clipboard.writeText('https://'+subdomain);
+      await navigator.clipboard.writeText('https://'+websiteHost);
       setNotice('Default website address copied.');
     }catch{setError('Unable to copy. Please copy the address manually.');}
   }
@@ -109,9 +112,18 @@ export default function CustomerWebsiteSettingsPage(){
     {notice&&<div className="cws-success" role="status"><Check size={17}/>{notice}</div>}
     <div className="cws-cards">
       <section className="cws-card">
-        <div className="cws-heading"><div className="cws-square"><Globe2 size={23}/></div><div><h2>Default Workshop Subdomain</h2><p>Each workshop keeps its dedicated CubeGears web address.</p></div></div>
-        <div className="cws-domain-url"><span>{subdomain||'Not configured'}</span><button type="button" aria-label="Copy website URL" onClick={copyLink} disabled={!subdomain}><Copy size={17}/></button></div>
-        <div className="cws-hint"><ShieldCheck size={17}/><span>Your default subdomain remains available as a fallback. Changing it requires controlled server-side migration.</span></div>
+        <div className="cws-heading"><div className="cws-square"><Globe2 size={23}/></div><div><h2>Your Customer Website</h2><p>Visitors see your workshop website at the domain root.</p></div></div>
+        <div className="cws-domain-url">
+          <span>{websiteHost ? 'https://'+websiteHost+'/' : 'Website domain not configured'}</span>
+          <button type="button" aria-label="Copy website URL" onClick={copyLink} disabled={!websiteHost}><Copy size={17}/></button>
+        </div>
+        <div className="cws-actions">
+          {websiteHost&&<a className="cws-btn cws-primary" href={'https://'+websiteHost+'/'} target="_blank" rel="noopener noreferrer">Open Website <ArrowUpRight size={16}/></a>}
+          <Link to="/settings/customer-website/domains" className="cws-btn cws-secondary">Domain Settings</Link>
+        </div>
+        <div className="cws-hint"><ShieldCheck size={17}/><span>
+          {primaryDomain ? 'Primary verified domain. Default subdomain: '+subdomain : 'Using default subdomain. DNS and HTTPS must be live before the website opens publicly.'}
+        </span></div>
       </section>
 
       <section className="cws-card">
