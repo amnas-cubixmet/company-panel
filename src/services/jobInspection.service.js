@@ -144,7 +144,7 @@ export const getInitialInspectionData = () => {
   });
 
   return {
-    status: 'In Progress', // Not Started | In Progress | Completed
+    status: 'In Progress', // Not Started | In Progress | Completed | Skipped
     technician: 'Ajmal K',
     startedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
     completedAt: null,
@@ -330,6 +330,17 @@ export const addInspectionPhoto = async (jobId, payload) => {
   return apiClient.post(`${API_ENDPOINTS.JOBS}/${jobId}/inspection/photos`, payload);
 };
 
+/**
+ * Dedicated, authenticated operation: never calls inspection/complete or
+ * synthesizes Good checklist values. The server records staff, reason and time.
+ */
+export const skipInspection = async (jobId, reason) => {
+  if (USE_MOCK_API) {
+    throw new Error('Skipping inspections requires the live Django backend.');
+  }
+  return apiClient.post(`${API_ENDPOINTS.JOBS}/${jobId}/inspection/skip`, { reason });
+};
+
 export const completeInspection = async (jobId, needsApproval = true) => {
   if (USE_MOCK_API) {
     await delay();
@@ -402,5 +413,6 @@ export const jobInspectionService = {
   addDiagnosticCode,
   addInspectionPhoto,
   completeInspection,
+  skipInspection,
   addFindingToEstimate
 };
