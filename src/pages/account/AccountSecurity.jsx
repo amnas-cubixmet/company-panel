@@ -43,8 +43,9 @@ export const AccountSecurity = () => {
     setMagicLoading(true);
     setMessage('');
     try {
-      const result = await authRecoveryService.requestMagicLink(user.email);
-      setMessage(result?.previewUrl ? `Magic link created: ${result.previewUrl}` : 'Magic link sent to your email.');
+      await authRecoveryService.requestMagicLink(user.email);
+      // Never expose preview URLs or one-time authentication tokens in the UI.
+      setMessage('If this email supports magic-link sign-in, check your inbox.');
     } catch (error) {
       setMessage(error?.message || 'Unable to send magic link.');
     } finally {
@@ -55,8 +56,7 @@ export const AccountSecurity = () => {
   return (
     <div className="account-security-page">
       <AccountHeader
-        title="Password & Sign-in"
-        subtitle="Change your password and manage secure account recovery."
+        title="Password & Security"
         active="security"
         onNavigate={navigate}
       />
@@ -65,7 +65,7 @@ export const AccountSecurity = () => {
 
       <div className="account-security-grid">
         <section className="account-security-card">
-          <div className="account-security-card-head"><KeyRound size={18}/><div><strong>Change Password</strong><span>Update your current account password.</span></div></div>
+          <div className="account-security-card-head"><KeyRound size={18}/><div><strong>Change Password</strong></div></div>
           <form onSubmit={change} className="account-security-form">
             <label className="account-security-field">
               <span>Current Password</span>
@@ -118,17 +118,18 @@ export const AccountSecurity = () => {
         </section>
 
         <section className="account-security-card">
-          <div className="account-security-card-head"><Link2 size={18}/><div><strong>Magic Link Sign-in</strong><span>Passwordless one-time access for {user?.email || 'your account'}.</span></div></div>
+          <div className="account-security-card-head"><Link2 size={18}/><div><strong>Magic Link</strong></div></div>
           <div className="account-security-info">
-            <p>Send a one-time secure link to the account email. The link can be exchanged for an authenticated session.</p>
+            <p>Sign in securely using your email.</p>
             <button type="button" className="account-security-secondary" onClick={sendMagic} disabled={magicLoading}>{magicLoading ? 'Sending…' : 'Send Magic Link'}</button>
           </div>
         </section>
 
         <section className="account-security-card account-security-wide">
-          <div className="account-security-card-head"><ShieldCheck size={18}/><div><strong>Recovery Flow</strong><span>Recommended automated access recovery sequence.</span></div></div>
-          <div className="account-security-flow">
-            <span>1. User enters email</span><i>→</i><span>2. Secure token created</span><i>→</i><span>3. Email link opened</span><i>→</i><span>4. Password reset / session granted</span>
+          <div className="account-security-card-head"><ShieldCheck size={18}/><div><strong>Recovery Help</strong></div></div>
+          <div className="account-security-info">
+            <p>Need help accessing your account?</p>
+            <button type="button" className="account-security-secondary" onClick={() => navigate('/forgot-password')}>Reset Password</button>
           </div>
         </section>
       </div>
