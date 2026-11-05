@@ -932,6 +932,7 @@ export function InvoiceRoutePage() {
                     <option value="">Select type</option>
                     {itemTypes.map((type) => <option key={type}>{type}</option>)}
                     </select>
+                  {fieldErrors[`items.${index}.type`] && <small className="invoice-input-error" role="alert">{fieldErrors[`items.${index}.type`]}</small>}
                   </div>
                   <div className="invoice-field-wrap invoice-item-name-field">
                     <span className="invoice-mobile-label">{row.type === 'Stock Part' ? 'Stock item' : 'Item / Service name'}</span>
@@ -942,11 +943,14 @@ export function InvoiceRoutePage() {
                       </select>
                     : <input data-invoice-field={`items.${index}.description`} aria-label="Item name" aria-invalid={Boolean(fieldErrors[`items.${index}.description`])} value={row.description || ''} onChange={(e) => updateItem(row.id, 'description', e.target.value)} placeholder="Item / service name"/>
                   }
+                  {fieldErrors[`items.${index}.inventoryId`] && <small className="invoice-input-error" role="alert">{fieldErrors[`items.${index}.inventoryId`]}</small>}
+                  {fieldErrors[`items.${index}.description`] && <small className="invoice-input-error" role="alert">{fieldErrors[`items.${index}.description`]}</small>}
                   </div>
                 </div>
                 <div className="invoice-field-wrap invoice-hsn-field">
                   <span className="invoice-mobile-label">HSN / SAC</span>
                   <input data-invoice-field={`items.${index}.hsnCode`} type="text" inputMode="text" maxLength={30} autoComplete="off" aria-label="HSN or SAC code" aria-invalid={Boolean(fieldErrors[`items.${index}.hsnCode`])} value={row.hsnCode ?? ''} onChange={(e) => updateItem(row.id, 'hsnCode', normalizeHsnSacCode(e.target.value))} placeholder="e.g. 998729"/>
+                  {fieldErrors[`items.${index}.hsnCode`] && <small className="invoice-input-error" role="alert">{fieldErrors[`items.${index}.hsnCode`]}</small>}
                 </div>
                 <div className="invoice-field-wrap invoice-qty-field">
                   <span className="invoice-mobile-label">Quantity</span>
@@ -959,6 +963,7 @@ export function InvoiceRoutePage() {
                   <option value="">Select unit</option>
                   {unitOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                   </select>
+                  {fieldErrors[`items.${index}.unit`] && <small className="invoice-input-error" role="alert">{fieldErrors[`items.${index}.unit`]}</small>}
                 </div>
                 <div className="invoice-field-wrap invoice-price-field">
                   <span className="invoice-mobile-label">Price / Unit (₹)</span>
