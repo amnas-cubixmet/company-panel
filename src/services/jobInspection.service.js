@@ -332,8 +332,8 @@ export const addInspectionPhoto = async (jobId, payload) => {
 
 export const skipInspection = async (jobId, reason) => {
   const cleanReason = String(reason || '').trim();
-  if (cleanReason.length < 3 || cleanReason.length > 300) {
-    throw new Error('Enter a skip reason between 3 and 300 characters.');
+  if (cleanReason.length < 3 || cleanReason.length > 160) {
+    throw new Error('Enter a skip reason between 3 and 160 characters.');
   }
   if (USE_MOCK_API) {
     await delay();
