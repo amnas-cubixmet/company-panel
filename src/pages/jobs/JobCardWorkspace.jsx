@@ -1409,10 +1409,11 @@ export function JobCardWorkspace() {
           <nav className="job-work-quick-actions" aria-label="Work quick actions">
             {[
               { key: 'service', label: 'Add Service', icon: Wrench },
+              ...(hasStockAccess ? [{ key: 'stock', label: 'Add Spare Part', icon: PackageSearch },
+                { key: 'outsidePurchase', label: 'Outside Purchase', icon: Plus }] : []),
               { key: 'mechanic', label: 'Advanced Work Tracking', icon: Clock3 },
               { key: 'assign', label: 'Assign Staff', icon: UserRound },
               { key: 'outside', label: 'Add Outside Staff', icon: Plus },
-              ...(hasStockAccess ? [{ key: 'stock', label: 'Stock & Parts Used', icon: PackageSearch }] : []),
             ].map(({ key, label, icon: ActionIcon }) => (
               <button
                 type="button"
@@ -1444,6 +1445,16 @@ export function JobCardWorkspace() {
               }}
             />
           </div>
+
+          {hasStockAccess && workQuickSection === 'outsidePurchase' && (
+            <div id="work-quick-outsidePurchase">
+              <JobPartsWorkflow
+                jobId={job.id}
+                assignedTo={job.assignedEmployeeName || ''}
+                initialPanel="outside"
+              />
+            </div>
+          )}
 
           <div id="work-quick-outside" hidden={workQuickSection !== 'outside'}>
             <JobOutsideStaffSection
