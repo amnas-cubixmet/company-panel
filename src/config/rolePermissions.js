@@ -50,6 +50,7 @@ export const permissionMatrixToCodes = (matrix = {}) =>
 export const permissionActionLabel = (action, moduleKey = '') => {
   if (action === 'self') return 'Self Access';
   if (action === 'manage') return 'Manage';
+  if (action === 'reverse' && moduleKey === 'payments') return 'Reverse Customer Payment';
   if (action === 'payments.reverse') return moduleKey === 'payroll' ? 'Reverse Wage Payment' : moduleKey === 'payments' ? 'Reverse Customer Payment' : 'Reverse Payment';
   const names = {
     'team.view': 'View Team Attendance',
@@ -67,7 +68,6 @@ export const permissionActionLabel = (action, moduleKey = '') => {
     'adjustments.manage': 'Manage Wage Adjustments',
     'payments.view': 'View Salary / Wage Payments',
     'payments.record': 'Record Wage / Salary Payment',
-    'payments.reverse': 'Reverse Customer Payment',
     process: 'Process Payroll',
     approve: 'Approve Payroll',
   };
