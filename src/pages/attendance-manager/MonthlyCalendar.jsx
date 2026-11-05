@@ -6,6 +6,7 @@ const tone = {
   P: 'am-day--present',
   A: 'am-day--absent',
   L: 'am-day--leave',
+  LT: 'am-day--late',
   H: 'am-day--half',
   WO: 'am-day--off',
   HD: 'am-day--holiday',
@@ -126,6 +127,7 @@ export const MonthlyAttendanceCalendar = () => {
       <div className="am-calendar-legend">
         <span><i className="am-day am-day--present">P</i> Present</span>
         <span><i className="am-day am-day--absent">A</i> Absent</span>
+        <span><i className="am-day am-day--late">LT</i> Late</span>
         <span><i className="am-day am-day--leave">L</i> Leave</span>
         <span><i className="am-day am-day--half">H</i> Half Day</span>
         <span><i className="am-day am-day--off">WO</i> Weekly Off</span>
