@@ -23,8 +23,8 @@ test('single inline header search supports keyboard, focus, cancellation and gro
     'new AbortController()', 'controller.abort()', 'aria-label="Clear search"',
     'global-search-feedback', 'global-search-group', 'global-search-result-row',
   ]) assert.ok(component.includes(fragment), fragment);
-  assert.equal((header.match(/<GlobalSearch\\b/g) || []).length, 1);
-  assert.equal((component.match(/<input\\b/g) || []).length, 1);
+  assert.equal((header.match(/<GlobalSearch\b/g) || []).length, 1);
+  assert.equal((component.match(/<input\b/g) || []).length, 1);
   assert.doesNotMatch(component, /createPortal|aria-modal|role="dialog"/);
   assert.doesNotMatch(css, /global-search-backdrop|global-search-dialog/);
   assert.match(css, /position: absolute/);
