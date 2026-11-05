@@ -1,0 +1,85 @@
+/* Job Card > Work: compact action-first layout, keeping underlying forms mounted. */
+.cg-job-detail .job-work-simple .job-work-quick-actions {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  padding:12px;
+  border:1px solid var(--border);
+  background:var(--surface);
+  border-radius:14px;
+}
+.cg-job-detail .job-work-simple .job-work-quick-actions button {
+  display:flex;
+  gap:9px;
+  align-items:center;
+  justify-content:center;
+  min-width:0;
+  min-height:48px;
+  padding:10px 12px;
+  border:1px solid var(--border);
+  border-radius:11px;
+  background:var(--surface-2);
+  color:var(--text-primary);
+  font-size:13px;
+  line-height:1.35;
+  font-weight:650;
+  cursor:pointer;
+  text-align:center;
+}
+.cg-job-detail .job-work-simple .job-work-quick-actions button.is-active {
+  background:var(--primary);
+  color:#fff;
+  border-color:var(--primary);
+}
+.cg-job-detail .job-work-simple .job-work-quick-actions button:focus-visible,
+.cg-job-detail .job-work-simple .job-work-records-details summary:focus-visible {
+  outline:2px solid var(--primary);
+  outline-offset:2px;
+}
+.cg-job-detail .job-work-simple .job-work-quick-actions button svg {
+  flex-shrink:0;
+}
+.cg-job-detail .job-work-simple > [hidden] { display:none!important; }
+.cg-job-detail .job-work-simple .job-work-records-details {
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:var(--surface);
+  overflow:hidden;
+}
+.cg-job-detail .job-work-simple .job-work-records-details summary {
+  padding:15px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  font-size:14px;
+  font-weight:700;
+  color:var(--text-primary);
+  cursor:pointer;
+  list-style-position:inside;
+}
+.cg-job-detail .job-work-simple .job-work-records-details summary span {
+  margin-left:auto;
+  font-size:12px;
+  color:var(--text-secondary);
+  font-weight:500;
+}
+.cg-job-detail .job-work-simple .job-work-records-details .job-work-items-panel {
+  margin:0 12px 12px;
+}
+@media(max-width:850px) {
+  .cg-job-detail .job-work-simple .job-work-quick-actions {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:420px) {
+  .cg-job-detail .job-work-simple .job-work-quick-actions {
+    gap:8px;
+    padding:9px;
+  }
+  .cg-job-detail .job-work-simple .job-work-quick-actions button {
+    font-size:12px;
+    padding:9px 7px;
+    min-height:48px;
+  }
+}
