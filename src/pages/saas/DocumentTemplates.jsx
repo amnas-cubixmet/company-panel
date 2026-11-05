@@ -126,6 +126,8 @@ export function DocumentTemplates() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [saved, setSaved] = useState(false);
   const [profileLoaded, setProfileLoaded] = useState(false);
+  const [previewKind, setPreviewKind] = useState('invoice');
+  const [mobilePane, setMobilePane] = useState('edit');
 
   const invoiceTemplate = useMemo(
     () => templates.find((item) => item.id === settings.invoiceTemplate) || templates[0],
@@ -231,7 +233,6 @@ export function DocumentTemplates() {
     <div className="document-templates-page">
       <AccountHeader
         title="PDF Templates"
-        subtitle="Choose how invoices and estimates look when printed or saved as PDF."
         active="templates"
         onNavigate={navigate}
         actions={
@@ -244,15 +245,15 @@ export function DocumentTemplates() {
 
       {settingsError && <p className="template-server-error" role="alert">{settingsError}</p>}
       {settingsLoading && <p className="template-server-loading" role="status">Loading saved company invoice templates…</p>}
-      <p className="template-server-note">Templates are saved per company on the server and used in new invoice and estimate previews, finalized documents and PDFs. Existing finalized documents keep their saved appearance. Legal seller name and GST details come from Company Settings, not visual branding.</p>
-      <section className="template-settings-card business-branding-card">
-        <div className="template-settings-title">
-          <Building2 size={18}/>
-          <div>
-            <strong>Business Identity</strong>
-            <span>Logo, legal details, GST, contact and payment details used on your document templates.</span>
-          </div>
-        </div>
+      <details className="template-server-note"><summary>Document information</summary><p>Templates are company-scoped. Finalized documents retain their saved appearance. Legal seller and GST details come from Company Settings.</p></details>
+      <div className="template-mobile-mode" role="tablist" aria-label="Template editing mode">
+        <button role="tab" type="button" aria-selected={mobilePane === 'edit'} onClick={() => setMobilePane('edit')}>Edit</button>
+        <button role="tab" type="button" aria-selected={mobilePane === 'preview'} onClick={() => setMobilePane('preview')}>Preview</button>
+      </div>
+      <div className="template-editor-preview-layout">
+        <div className={`template-editor-column ${mobilePane === 'preview' ? 'is-mobile-hidden' : ''}`}>
+      <details className="template-settings-card business-branding-card" open>
+        <summary className="template-settings-title"><Building2 size={18}/><strong>Branding</strong></summary>
 
         <div className="business-branding-layout">
           <div className="business-logo-panel">
@@ -282,8 +283,8 @@ export function DocumentTemplates() {
           </div>
         </div>
 
-        <div className="business-subsection">
-          <div className="business-subsection-head"><strong>Bank & Payment Details</strong><span>Optional details shown on invoice / estimate.</span></div>
+        <details className="business-subsection" open={false}>
+          <summary className="business-subsection-head"><strong>Payment Details</strong></summary>
           <div className="business-fields-grid">
             <label>Bank Name<input value={settings.bankName || ''} onChange={(e) => update('bankName', e.target.value)} placeholder="Bank name" aria-invalid={Boolean(fieldErrors.bankName)}/>{fieldErrors.bankName && <small className="template-input-error" role="alert">{fieldErrors.bankName}</small>}</label>
             <label>Account Name<input value={settings.bankAccountName || ''} onChange={(e) => update('bankAccountName', e.target.value)} placeholder="Account holder" aria-invalid={Boolean(fieldErrors.bankAccountName)}/>{fieldErrors.bankAccountName && <small className="template-input-error" role="alert">{fieldErrors.bankAccountName}</small>}</label>
@@ -293,7 +294,7 @@ export function DocumentTemplates() {
             <label>Authorised Signatory<input value={settings.authorizedSignatory || ''} onChange={(e) => update('authorizedSignatory', e.target.value)} placeholder="Name / designation" aria-invalid={Boolean(fieldErrors.authorizedSignatory)}/>{fieldErrors.authorizedSignatory && <small className="template-input-error" role="alert">{fieldErrors.authorizedSignatory}</small>}</label>
             <label className="business-field-wide">Terms & Conditions<textarea value={settings.termsText || ''} onChange={(e) => update('termsText', e.target.value)} placeholder="Payment / warranty / jurisdiction terms" aria-invalid={Boolean(fieldErrors.termsText)}/>{fieldErrors.termsText && <small className="template-input-error" role="alert">{fieldErrors.termsText}</small>}</label>
           </div>
-        </div>
+        </details>
 
         <div className="template-toggle-row">
           <label><input type="checkbox" checked={settings.showBusinessLogo !== false} onChange={(e) => update('showBusinessLogo', e.target.checked)}/><span>Show business logo</span></label>
@@ -301,16 +302,10 @@ export function DocumentTemplates() {
           <label><input type="checkbox" checked={settings.showTerms !== false} onChange={(e) => update('showTerms', e.target.checked)}/><span>Show terms</span></label>
           <label><input type="checkbox" checked={settings.showSignature !== false} onChange={(e) => update('showSignature', e.target.checked)}/><span>Show signature area</span></label>
         </div>
-      </section>
+      </details>
 
-      <section className="template-settings-card">
-        <div className="template-settings-title">
-          <Sparkles size={18}/>
-          <div>
-            <strong>Document Style</strong>
-            <span>Invoice and estimate can use different templates.</span>
-          </div>
-        </div>
+      <details className="template-settings-card" open>
+        <summary className="template-settings-title"><Sparkles size={18}/><strong>Layout &amp; Colors</strong></summary>
 
         <div className="template-control-grid">
           <label>
@@ -318,7 +313,6 @@ export function DocumentTemplates() {
             <select value={settings.invoiceTemplate} aria-invalid={Boolean(fieldErrors.invoiceTemplate)} onChange={(e) => update('invoiceTemplate', e.target.value)}>
               {templates.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
-            <small>{invoiceTemplate.description}</small>
             {fieldErrors.invoiceTemplate && <small className="template-input-error" role="alert">{fieldErrors.invoiceTemplate}</small>}
           </label>
 
@@ -327,7 +321,6 @@ export function DocumentTemplates() {
             <select value={settings.estimateTemplate} aria-invalid={Boolean(fieldErrors.estimateTemplate)} onChange={(e) => update('estimateTemplate', e.target.value)}>
               {templates.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </select>
-            <small>{estimateTemplate.description}</small>
             {fieldErrors.estimateTemplate && <small className="template-input-error" role="alert">{fieldErrors.estimateTemplate}</small>}
           </label>
 
@@ -336,7 +329,6 @@ export function DocumentTemplates() {
             <select value={settings.accent} aria-invalid={Boolean(fieldErrors.accent)} onChange={(e) => update('accent', e.target.value)}>
               {accents.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
             </select>
-            <small>Used for headings, document cards and totals.</small>
             {fieldErrors.accent && <small className="template-input-error" role="alert">{fieldErrors.accent}</small>}
           </label>
         </div>
@@ -353,7 +345,6 @@ export function DocumentTemplates() {
               <div>
                 <span>CUSTOM TEMPLATE MAKER</span>
                 <h3>Build your own PDF template</h3>
-                <p>Change document labels and optional sections. Preview updates instantly.</p>
               </div>
             </div>
 
@@ -375,24 +366,30 @@ export function DocumentTemplates() {
             </div>
           </div>
         )}
-      </section>
+      </details>
+        </div>
 
-      <div className="template-preview-grid">
-        <section className="template-preview-card">
+      <div className={`template-preview-grid ${mobilePane === 'edit' ? 'is-mobile-hidden' : ''}`}>
+        <div className="template-document-toggle" role="tablist" aria-label="Document preview">
+          <button role="tab" type="button" aria-selected={previewKind === 'invoice'} onClick={() => setPreviewKind('invoice')}>Invoice</button>
+          <button role="tab" type="button" aria-selected={previewKind === 'estimate'} onClick={() => setPreviewKind('estimate')}>Estimate</button>
+        </div>
+        {previewKind === 'invoice' && <section className="template-preview-card">
           <div className="template-preview-card-head">
             <div><span>INVOICE</span><h2>{invoiceTemplate.name}</h2></div>
             <ReceiptText size={20}/>
           </div>
           <Preview kind="invoice" settings={settings}/>
-        </section>
+        </section>}
 
-        <section className="template-preview-card">
+        {previewKind === 'estimate' && <section className="template-preview-card">
           <div className="template-preview-card-head">
             <div><span>ESTIMATE</span><h2>{estimateTemplate.name}</h2></div>
             <FileText size={20}/>
           </div>
           <Preview kind="estimate" settings={settings}/>
-        </section>
+        </section>}
+      </div>
       </div>
     </div>
   );

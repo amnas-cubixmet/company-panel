@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus } from 'lucide-react';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { ActiveRepairPanel } from './ActiveRepairPanel';
 import { BookingList } from './BookingList';
@@ -46,10 +45,7 @@ export const ServiceOperations = ({
   return (
     <section className="operations-card">
       <header className="operations-header">
-        <div>
-          <h2>Service Operations</h2>
-          <p>Track today's bookings and repair progress.</p>
-        </div>
+        <h2>Service Operations</h2>
 
         <div className="operations-tools">
           <select value={filterPeriod} onChange={(event) => setFilterPeriod(event.target.value)}>
@@ -63,12 +59,6 @@ export const ServiceOperations = ({
             <option value="express">Express Bay</option>
           </select>
 
-          {can('jobs.create') && (
-            <button type="button" className="dashboard-button is-primary" onClick={() => onNavigate('/jobs/new')}>
-              <Plus size={14} />
-              New Job Card
-            </button>
-          )}
         </div>
       </header>
 

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Building2, Mail, Package, Phone, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { supplierService } from '../../services/supplier.service';
+import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { USE_MOCK_API } from '../../api/apiConfig';
 import '../../styles/suppliers-workspace.css';
@@ -84,6 +85,7 @@ export default function SuppliersPage() {
   const canEdit = access.can('stock.edit') && !USE_MOCK_API;
   const canDelete = access.can('stock.delete') && !USE_MOCK_API;
   const [suppliers, setSuppliers] = useState([]);
+  const [creditBalances, setCreditBalances] = useState(null);
   const [supplier, setSupplier] = useState(null);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -119,6 +121,21 @@ export default function SuppliersPage() {
       .finally(()=>{if(active)setDetailsLoading(false);});
     return()=>{active=false};
   }, [id]);
+
+  useEffect(() => {
+    if (!canViewFinance || USE_MOCK_API) return undefined;
+    let active = true;
+    supplierFinanceService.credits().then(rows => {
+      if (!active) return;
+      const balances = new Map();
+      for (const row of rows) {
+        const key = String(row.supplierId);
+        balances.set(key, (balances.get(key) || 0) + Number(row.outstanding || 0));
+      }
+      setCreditBalances(balances);
+    }).catch(() => { if (active) setCreditBalances(null); });
+    return () => { active = false; };
+  }, [canViewFinance]);
 
   const matches = useMemo(() => {
     const needle=search.trim().toLowerCase();
@@ -202,6 +219,7 @@ export default function SuppliersPage() {
             <span className="cg-supplier-summary">
               <strong>{row.name}</strong>
               <small>{[row.contact_person||row.contactPerson,row.phone].filter(Boolean).join(' · ')||'Contact details not added'}</small>
+              {canViewFinance && <small>Credit outstanding: {creditBalances ? money(creditBalances.get(String(row.id)) || 0) : 'Unavailable'}</small>}
             </span>
             <span className={row.is_active===false?'cg-supplier-status inactive':'cg-supplier-status'}>{status(row)}</span>
           </Link>)}
@@ -220,6 +238,10 @@ export default function SuppliersPage() {
           <div><span>GSTIN</span><strong>{supplier.gstNo||'—'}</strong></div>
           <div className="full"><span>Address</span><strong>{supplier.address||'—'}</strong></div>
         </div>
+        {canViewFinance && <div style={{ marginTop: 10, fontSize: 14 }}>
+          Credit outstanding: <strong>{creditBalances ? money(creditBalances.get(String(supplier.id)) || 0) : 'Unavailable'}</strong>
+          <Link to="/suppliers/credits" style={{ marginLeft: 12, color: 'var(--primary)' }}>Credit Management</Link>
+        </div>}
         <div className="cg-supplier-contacts">
           {supplier.phone&&<a href={'tel:'+String(supplier.phone).replace(/[^\d+]/g,'')}><Phone size={15}/> Call</a>}
           {supplier.email&&<a href={'mailto:'+supplier.email}><Mail size={15}/> Email</a>}

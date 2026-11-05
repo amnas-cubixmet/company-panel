@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from 'react-router-dom';
-import { routeConfig, ROUTE_SECTIONS } from '../../routes/routeConfig';
-import { Laptop, LogOut, Moon, Sun, X, UserRound, Store } from 'lucide-react';
+import { routeConfig, ROUTE_SECTIONS, supplierSubmenu } from '../../routes/routeConfig';
+import { Laptop, LogOut, Moon, Sun, X, UserRound, Store, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
 import { getUserRoleLabel } from '../../utils/authDisplay';
@@ -18,6 +18,11 @@ export const MobileSlideSidebar = ({ isOpen, onClose }) => {
   const avatarInitials = String(user?.name || user?.email || 'CG')
     .trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'CG';
   const activeItemRef = useRef(null);
+  const [supplierExpanded, setSupplierExpanded] = useState(location.pathname.startsWith('/suppliers'));
+
+  useEffect(() => {
+    if (location.pathname.startsWith('/suppliers')) setSupplierExpanded(true);
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -111,6 +116,35 @@ export const MobileSlideSidebar = ({ isOpen, onClose }) => {
                   {items.map((route) => {
                     const IconComp = route.icon;
                     const isActive = isRouteActive(route);
+                    if (route.id === 'suppliers') {
+                      const children = supplierSubmenu.filter(item => featureAccess.can(item.permission));
+                      if (!children.length) return null;
+                      return (
+                        <div key={route.id}>
+                          <button type="button" aria-expanded={supplierExpanded}
+                            aria-controls="supplier-mobile-submenu"
+                            onClick={() => setSupplierExpanded(value => !value)}
+                            className={`mobile-drawer-item ${isActive ? 'is-active' : ''}`}
+                            style={{ width: '100%', border: 0, cursor: 'pointer', textAlign: 'left', background: isActive ? 'var(--primary-soft)' : 'transparent' }}>
+                            <span className="mobile-drawer-item-icon"><IconComp size={17} /></span>
+                            <span className="mobile-drawer-item-label" style={{ flex: 1 }}>Suppliers</span>
+                            <ChevronDown size={15} aria-hidden="true"
+                              style={{ transform: supplierExpanded ? 'rotate(180deg)' : 'none' }} />
+                          </button>
+                          {supplierExpanded && (
+                            <div id="supplier-mobile-submenu" className="mobile-drawer-items" style={{ paddingLeft: 20 }}>
+                              {children.map(item => (
+                                <NavLink key={item.id} to={item.path} end onClick={onClose}
+                                  ref={location.pathname === item.path ? activeItemRef : null}
+                                  className={({ isActive: selected }) => `mobile-drawer-item ${selected ? 'is-active' : ''}`}>
+                                  <span className="mobile-drawer-item-label">{item.label}</span>
+                                </NavLink>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
 
                     return (
                       <NavLink

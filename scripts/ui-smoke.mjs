@@ -85,6 +85,27 @@ function fixture(path) {
       place:'Thrissur',pincode:'680001',stateCode:'32'},branchId:'BR-01',
   };
   if(path.startsWith('/e-way-bills/')) return {id:'EWB-001',status:'Draft',supplyType:'Outward',subSupplyType:'Supply',transactionType:'Regular',documentType:'Tax Invoice',documentNo:'INV-0001',documentDate:'2026-10-19',from:{tradeName:'Test Workshop',stateCode:'32'},to:{tradeName:'Test Customer',stateCode:'32'},items:[],transport:{mode:'Road',distanceKm:'10',vehicleNo:'KL10AB1234'}};
+  // Supplier finance fixtures are read-only. Smoke tests never write tenant data.
+  if(path==='/stock/suppliers') return [
+    {id:'00000000-0000-4000-8000-000000000081',name:'Fixture Auto Parts',phone:'9876543210',email:'parts@example.test'},
+  ];
+  if(path==='/stock/purchases' || path==='/stock/purchase-orders') return [
+    {id:'00000000-0000-4000-8000-000000000082',number:'PO-TEST-01',
+     supplier:'00000000-0000-4000-8000-000000000081',status:'Received',total:'1800.00'},
+  ];
+  if(path==='/stock/supplier-credits') return [
+    {id:'00000000-0000-4000-8000-000000000083',
+     purchaseOrder:'00000000-0000-4000-8000-000000000082',purchaseNumber:'PO-TEST-01',
+     supplierId:'00000000-0000-4000-8000-000000000081',supplierName:'Fixture Auto Parts',
+     total:'1800.00',paid:'200.00',outstanding:'1600.00',
+     dueDate:'2026-12-30',status:'Partially Paid'},
+  ];
+  if(path==='/stock/supplier-payments') return [
+    {id:'00000000-0000-4000-8000-000000000084',creditId:'00000000-0000-4000-8000-000000000083',
+     supplierName:'Fixture Auto Parts',purchaseNumber:'PO-TEST-01',
+     date:'2026-11-05',amount:'200.00',method:'Cash',reference:'',
+     expenseId:'00000000-0000-4000-8000-000000000085'},
+  ];
   if(path==='/employees') return mockStaffList.map(row => ({...row, photo:''}));
   const records = {employees:mockStaffList, customers:customersMock, vehicles:vehiclesMock,
     jobs:jobsMock, invoices:invoicesMock, payments:paymentsMock, expenses:expensesMock};
@@ -204,6 +225,24 @@ try {
         }
         await page.locator('.route-loading').waitFor({state:'hidden',timeout:15000});
         await page.waitForFunction(()=>document.body.innerText.length>=20);
+        // Supplier routes and responsive expandable menu, without money writes.
+        if(path==='/suppliers' && (profile.width===390 || profile.width===1440)) {
+          await page.getByRole('heading',{name:'Suppliers',exact:true}).waitFor({state:'visible'});
+          await page.getByText('Fixture Auto Parts').first().waitFor({state:'visible'});
+          const drawerMode=profile.width<1024;
+          if(drawerMode) await page.getByRole('button',{name:'Open all authorized pages'}).click();
+          const sidebar=page.locator(drawerMode ? '.mobile-drawer' : '.app-sidebar');
+          const toggle=sidebar.getByRole('button',{name:'Suppliers',exact:true});
+          await toggle.waitFor({state:'visible'});
+          if(await toggle.getAttribute('aria-expanded')!=='true') throw Error('Suppliers submenu must start expanded');
+          const submenu=sidebar.locator(drawerMode ? '#supplier-mobile-submenu' : '#supplier-desktop-submenu');
+          if(await submenu.getByRole('link').count()!==4) throw Error('Expected four supplier submenu links');
+          await toggle.click();
+          if(await toggle.getAttribute('aria-expanded')!=='false') throw Error('Collapse suppliers failed');
+          await toggle.click();
+          if(await toggle.getAttribute('aria-expanded')!=='true') throw Error('Expand suppliers failed');
+          if(drawerMode) await sidebar.getByRole('button',{name:'Close menu',exact:true}).click();
+        }
         // Job Card creation: exercise the actual React form, image blob URLs,
         // computed responsive grid, light/dark tokens, and accordion state.
         if(path==='/jobs/new') {
