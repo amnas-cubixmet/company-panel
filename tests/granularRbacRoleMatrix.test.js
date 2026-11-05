@@ -20,7 +20,8 @@ test('nested permission codes round-trip without collapsing permissions', () => 
   assert.equal(matrix.payroll['payments.reverse'], true);
   for (const code of codes) assert.ok(permissionMatrixToCodes(matrix).includes(code), code);
   assert.ok(ROLE_PERMISSION_MODULES.some(m => m.key === 'payroll'));
-  assert.equal(permissionActionLabel('payments.reverse'), 'Reverse Wage Payment');
+  assert.equal(permissionActionLabel('payments.reverse', 'payroll'), 'Reverse Wage Payment');
+  assert.equal(permissionActionLabel('reverse', 'payments'), 'Reverse');
 });
 
 test('attendance approvals do not require payroll and payment history is separate', () => {
