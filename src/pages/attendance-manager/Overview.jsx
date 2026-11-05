@@ -85,7 +85,6 @@ export const AttendanceOverview = () => {
 
         <AttendanceAttentionPanel
           halfDay={stats.halfDay}
-          leave={stats.leave}
           pending={pending}
           missingPunch={missingPunch}
           onOpenDaily={() => navigate('/attendance-manager/daily')}
