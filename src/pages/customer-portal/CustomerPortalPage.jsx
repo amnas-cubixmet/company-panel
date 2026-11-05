@@ -128,6 +128,7 @@ export default function CustomerPortalPage() {
     const controller = new AbortController();
     setLoading(true);
     setError('');
+    setData(null); // Do not render another customer's stale data while a new token loads.
     fetch(`${API_BASE_URL}/c/${encodeURIComponent(token)}`, {
       signal: controller.signal, credentials: 'omit',
       headers: { Accept: 'application/json' }, referrerPolicy: 'no-referrer',
