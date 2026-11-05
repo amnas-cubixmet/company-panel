@@ -311,6 +311,26 @@
 .cg-attendance-manager .am-calendar-month-controls button:disabled {opacity:.4;cursor:not-allowed}
 .cg-attendance-manager .am-calendar-scroll {min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain}
 
+.cg-attendance-manager .am-staff-attendance-list {display:grid;gap:6px}
+.cg-attendance-manager .am-staff-attendance-row {
+  display:flex;justify-content:space-between;align-items:center;gap:9px;
+  min-height:44px;padding:8px 10px;border:1px solid var(--border);
+  border-radius:10px;background:var(--surface);
+  color:var(--text-primary);cursor:pointer;text-align:left;
+}
+.cg-attendance-manager .am-staff-attendance-row span {min-width:0;overflow-wrap:anywhere;font-size:14px}
+.cg-attendance-manager .am-staff-attendance-row strong {
+  flex:0 0 auto;max-width:45%;font-size:13px !important;
+  color:var(--text-secondary);text-align:right;overflow-wrap:anywhere;
+}
+.cg-attendance-manager .am-productivity-details {
+  margin-top:10px;border-top:1px solid var(--border);padding-top:5px;
+}
+.cg-attendance-manager .am-productivity-details summary {
+  min-height:44px;display:flex;align-items:center;cursor:pointer;
+  font-size:14px;font-weight:600;color:var(--text-secondary);
+}
+.cg-attendance-manager .am-day--late {background:var(--warning-soft);color:var(--warning)}
 /* Reports: responsive rows, real record count, filtering without fabricated values. */
 .cg-attendance-manager .am-report-filter {
   display:grid;
