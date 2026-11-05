@@ -1,0 +1,48 @@
+/* Align Vehicle Add with the shared, mobile-safe Job Card photo queue.
+   Do not alter existing business logic or form values. */
+.vehicle-form-page,
+.vehicle-form-page .form-page-container,
+.vehicle-form-page .vehicle-form,
+.vehicle-form-page .form-section,
+.vehicle-form-page .form-grid-full,
+.vehicle-form-page .vehicle-camera-queue{
+  box-sizing:border-box;max-width:100%;width:100%;min-width:0;
+}
+.vehicle-form-page .form-page-container,
+.vehicle-form-page .form-section,
+.vehicle-form-page .vehicle-form{overflow-wrap:anywhere}
+.vehicle-form-page :is(input:not([type=checkbox]),select,textarea){
+  font-size:16px!important;min-width:0;max-width:100%;box-sizing:border-box;
+}
+.vehicle-form-page .vehicle-camera-queue{overflow:hidden}
+.vehicle-form-page .vehicle-camera-heading,
+.vehicle-form-page .vehicle-photo-add-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;min-width:0;max-width:100%}
+.vehicle-form-page .vehicle-camera-heading>div{min-width:0;max-width:100%;flex:1 1 210px}
+.vehicle-form-page .vehicle-photo-add-actions>*{flex:1 1 125px;min-width:0}
+.vehicle-form-page .vehicle-gallery-upload-label{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  max-width:100%;min-height:44px;padding:9px 13px;position:relative;
+  border:1px solid var(--border);border-radius:10px;cursor:pointer;
+  background:var(--surface-2);font-size:14px;font-weight:700;color:var(--text-primary);
+}
+.vehicle-form-page .vehicle-gallery-upload-label input{position:absolute;width:1px;height:1px;opacity:0}
+.vehicle-form-page .vehicle-gallery-upload-label:focus-within{outline:2px solid var(--primary)}
+.vehicle-form-page .vehicle-gallery-upload-metadata{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;
+  width:100%;min-width:0;max-width:100%;
+}
+.vehicle-form-page .vehicle-gallery-upload-metadata label{
+  display:grid;gap:7px;min-width:0;max-width:100%;font-size:13px;
+  font-weight:650;color:var(--text-secondary);
+}
+.vehicle-form-page .vehicle-gallery-upload-metadata :is(input,select){
+  width:100%;min-width:0;max-width:100%;min-height:44px;
+  border:1px solid var(--border);border-radius:10px;padding:9px 11px;
+  background:var(--surface-2);color:var(--text-primary);font-size:16px!important;
+}
+.vehicle-form-page .vehicle-camera-counter{font-size:13px;color:var(--text-secondary);line-height:1.5}
+@media(max-width:650px){
+  .vehicle-form-page .vehicle-gallery-upload-metadata{grid-template-columns:minmax(0,1fr)}
+  .vehicle-form-page .vehicle-photo-add-actions>*{flex:1 1 100%}
+  .vehicle-form-page .vehicle-camera-queue-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}

@@ -17,7 +17,7 @@ import { JobCardReview } from '../../components/jobs/JobCardReview';
 import { JOB_COUNTRY_CODES, splitInternationalPhone, joinInternationalPhone, validInternationalPhone, splitVehicleMakeModel, newComplaint, buildJobComplaints } from '../../utils/jobCreateAdapters';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/job-create-professional.css';
-import { showFormFieldError, showServerFormErrors } from '../../utils/formValidation';
+import { showFormFieldError, showServerFormErrors, findFormField, clearFieldValidation } from '../../utils/formValidation';
 
 const nowLocal = () => {
   const date = new Date();
@@ -86,7 +86,7 @@ export const JobCreatePage = () => {
     setForm((old) => ({
       ...old,
       customerName: customer?.name || '',
-      customerPhone: customer?.phone || '',
+      customerPhone: customer?.phone ? joinInternationalPhone(splitInternationalPhone(customer.phone).country, splitInternationalPhone(customer.phone).national) : '',
       customerEmail: customer?.email || '',
       customerAddress: customer?.address || '',
       vehicleReg: '', vehicleInfo: '', vehicleMake: '', vehicleModel: '',
@@ -181,7 +181,7 @@ export const JobCreatePage = () => {
           setForm((old) => ({
             ...old,
             customerName: selectedCustomer ? old.customerName : old.customerName || latest.customerName || '',
-            customerPhone: selectedCustomer ? old.customerPhone : old.customerPhone || latest.customerPhone || '',
+            customerPhone: selectedCustomer ? old.customerPhone : old.customerPhone || (latest.customerPhone ? joinInternationalPhone(splitInternationalPhone(latest.customerPhone).country, splitInternationalPhone(latest.customerPhone).national) : '') ,
             customerEmail: selectedCustomer ? old.customerEmail : old.customerEmail || latest.customerEmail || '',
             vehicleInfo: old.vehicleInfo || latest.vehicleInfo || '',
             vehicleMake: old.vehicleMake || splitVehicleMakeModel(latest).make,
@@ -204,6 +204,7 @@ export const JobCreatePage = () => {
 
   const set = (key, value) => {
     setError('');
+    clearFieldValidation(findFormField(formRef.current, key));
     setReview(false);
     if (key === 'vehicleMake' || key === 'vehicleModel') {
       setForm((old) => {
@@ -239,6 +240,7 @@ export const JobCreatePage = () => {
 
   const assignStaff = (id) => {
     const selected = staff.find((item) => item.id === id);
+    setReview(false);
     setForm((old) => ({
       ...old,
       assignedEmployeeId: id,
@@ -417,7 +419,7 @@ export const JobCreatePage = () => {
             </label>
             <PhoneInput label="Phone *" name="customerPhone" required
               value={phoneParts.national} countryCode={phoneParts.country} countries={JOB_COUNTRY_CODES.map(([code, label]) => ({code, label, flag:''}))}
-              readOnly={Boolean(selectedCustomer)} disabled={saving}
+              readOnly={Boolean(selectedCustomer)} disabled={saving || Boolean(selectedCustomer)}
               onCountryCodeChange={(code) => set('customerPhone', joinInternationalPhone(code, phoneParts.national))}
               onChange={(e) => set('customerPhone', joinInternationalPhone(phoneParts.country, e.target.value))}
               placeholder="9876543210" className="job-create-phone"/>
