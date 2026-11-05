@@ -4,13 +4,14 @@ import { readFileSync } from 'node:fs';
 
 const src = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 
-test('company panel no longer hosts /c/:token and still manages customer links', () => {
+test('company panel no longer hosts the customer website and keeps link management', () => {
   const routes = src('src/routes/AppRoutes.jsx');
-  const linkPanel = src('src/components/customers/CustomerTrackingLinkPanel.jsx');
-  assert.doesNotMatch(routes, /CustomerPortalPage|path="\\/c\\/:token"/);
-  assert.match(routes, /path="\\/settings\\/customer-website"/);
-  assert.match(linkPanel, /\\/customer-portal\\/links\\//);
-  assert.match(linkPanel, /Send via WhatsApp/);
+  const links = src('src/components/customers/CustomerTrackingLinkPanel.jsx');
+  assert.equal(routes.includes('CustomerPortalPage'), false);
+  assert.equal(routes.includes('path="/c/:token"'), false);
+  assert.ok(routes.includes('path="/settings/customer-website"'));
+  assert.ok(links.includes('/customer-portal/links/'));
+  assert.match(links, /Send via WhatsApp/);
 });
 
 test('existing customer profile exposes revocable customer tracking and consent actions', () => {
