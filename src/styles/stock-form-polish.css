@@ -513,3 +513,115 @@ input:not([type="radio"]):not([type="checkbox"]):focus-visible {
   font-size: 13px;
   line-height: 1.5;
 }
+
+
+/* Outlined floating labels used by the Add New Part workflow. The selector
+ * intentionally overrides older borderless stock input rules above.
+ */
+.cg-easy-stock .responsive-modal-sheet .cg-easy-form label.cg-easy-floating {
+  display: block;
+  position: relative;
+  min-width: 0;
+  gap: 0;
+  font-size: 16px;
+  font-weight: 400;
+}
+.cg-easy-stock .responsive-modal-sheet .cg-easy-form
+label.cg-easy-floating > :is(input:not([type="radio"]):not([type="checkbox"]),select) {
+  width: 100%;
+  height: 48px;
+  min-height: 48px;
+  border: 1px solid var(--border,#dce3ea) !important;
+  border-radius: 10px !important;
+  padding: 13px 14px 7px !important;
+  background: var(--surface,#fff) !important;
+  color: var(--text-primary,#142037);
+  box-shadow: none !important;
+  outline: none;
+  font-size: 16px;
+}
+.cg-easy-stock .responsive-modal-sheet .cg-easy-form
+label.cg-easy-floating > :is(input,select):focus-visible {
+  border-color: var(--primary,#2563eb) !important;
+  outline: 2px solid var(--primary,#2563eb);
+  outline-offset: 1px;
+}
+.cg-easy-stock .responsive-modal-sheet .cg-easy-form
+label.cg-easy-floating > span {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  max-width: calc(100% - 45px);
+  padding: 0 4px;
+  border-radius: 2px;
+  background: var(--surface,#fff);
+  color: var(--text-secondary,#64748b);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.15;
+  pointer-events: none;
+  transition: top .12s ease, font-size .12s ease;
+}
+.cg-easy-stock .cg-easy-form
+label.cg-easy-floating:is(:focus-within,:has(input:not(:placeholder-shown)),.is-select) > span {
+  top: 0;
+  font-size: 12px;
+  color: var(--text-primary,#142037);
+}
+.cg-easy-stock .cg-easy-form label.cg-easy-floating.is-select select {
+  padding-top: 12px !important;
+  padding-right: 28px !important;
+}
+.cg-easy-stock .cg-easy-form .cg-easy-supplier-field {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0,1fr) auto;
+  align-items: center;
+}
+.cg-easy-stock .cg-easy-form .cg-easy-supplier-add {
+  min-height: 48px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid var(--border,#dce3ea);
+  border-radius: 10px;
+  background: var(--surface-2,#f8fafc);
+  color: var(--text-primary,#142037);
+  font-size: 14px;
+}
+.cg-easy-stock .cg-easy-form .cg-easy-quick-supplier {
+  display: grid;
+  gap: 14px;
+  padding: 15px;
+  border: 1px solid var(--border,#dce3ea);
+  border-radius: 12px;
+  background: var(--surface,#fff);
+}
+.cg-easy-stock .cg-easy-form .cg-easy-quick-supplier > strong { font-size: 15px; }
+.cg-easy-stock .cg-easy-form .cg-easy-quick-actions {
+  display: flex;
+  gap: 9px;
+  justify-content: flex-end;
+}
+.cg-easy-stock .cg-easy-form .cg-easy-quick-actions > button {
+  min-height: 44px;
+  border: 1px solid var(--border,#dce3ea);
+  border-radius: 10px;
+  padding: 0 13px;
+  color: var(--text-primary,#142037);
+  background: var(--surface-2,#f8fafc);
+}
+.cg-easy-stock .cg-easy-form .cg-easy-quick-actions > button:last-child {
+  background: var(--primary,#2563eb);
+  border-color: var(--primary,#2563eb);
+  color: #fff;
+}
+@media (max-width: 480px) {
+  .cg-easy-stock .cg-easy-form .cg-easy-supplier-field { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cg-easy-stock .cg-easy-form label.cg-easy-floating > span { transition: none; }
+}
