@@ -96,11 +96,16 @@ export default function SupplierFinancePage() {
     inFlight.current = true;
     setBusy(label); setError(''); setNotice('');
     try {
-      await task();
-      await refresh(selectedSupplier);
+      const nextSupplierId = await task();
       setNotice(success);
+      try {
+        await refresh(typeof nextSupplierId === 'string' ? nextSupplierId : selectedSupplier);
+      } catch (refreshError) {
+        setError('Saved successfully, but the latest records could not be refreshed: ' +
+          (refreshError?.message || 'Please refresh this page.'));
+      }
     } catch (exception) {
-      setError(exception?.message || 'Unable to save. Nothing else was submitted.');
+      setError(exception?.message || 'Unable to save. Please review the current record before retrying.');
     } finally {
       setBusy(''); inFlight.current = false;
     }
@@ -117,9 +122,8 @@ export default function SupplierFinancePage() {
     event.preventDefault();
     run('supplier', async () => {
       const created = await finance.addSupplier(supplierDraft);
-      setSelectedSupplier(created.id);
       setSupplierDraft({ name: '', phone: '', gstNo: '' });
-      await refresh(created.id);
+      return created.id;
     }, 'Supplier saved.');
   };
 
