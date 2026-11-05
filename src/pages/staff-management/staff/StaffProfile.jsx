@@ -295,6 +295,21 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
     }
   }, [activeTab, canViewJobs]);
 
+  // Refresh provider delivery state while the official WhatsApp worker is pending.
+  // Poll only this authorized staff profile, never another tenant or public URL.
+  useEffect(() => {
+    if (!canManageLogin || !staff?.id || !['queued', 'sending'].includes(staff.whatsappInviteStatus)) {
+      return undefined;
+    }
+    let mounted = true;
+    const timer = window.setInterval(() => {
+      staffService.getStaffById(staff.id)
+        .then(next => { if (mounted) setStaff(next); })
+        .catch(() => {});
+    }, 10000);
+    return () => { mounted = false; window.clearInterval(timer); };
+  }, [staff?.id, staff?.whatsappInviteStatus, canManageLogin]);
+
   // Roles are administrator-only; ordinary staff must not make forbidden
   // /roles/ requests on profile load.
   useEffect(() => {
