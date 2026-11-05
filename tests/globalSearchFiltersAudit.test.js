@@ -77,6 +77,7 @@ test('shared modal components lock scroll and implement accessible focus restora
   const dialog = file('src/components/feedback/Modal.jsx');
   assert.match(hook, /activeDialogCount/);
   assert.match(hook, /event\.key !== 'Tab'/);
+  assert.match(hook, /top\?\.contains\(dialogRef\.current\)/);
   assert.match(hook, /previousFocus\.focus\(\)/);
   assert.match(sheet, /useDialogAccessibility\(isOpen, onClose, modalRef\)/);
   assert.match(dialog, /useDialogAccessibility\(visible, onClose, dialogRef\)/);
