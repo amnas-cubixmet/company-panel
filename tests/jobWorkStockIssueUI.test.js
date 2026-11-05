@@ -19,7 +19,7 @@ test('Job Card Work includes Search Stock, Issue and issued-parts list', () => {
   assert.match(panel, /Issue Quantity/);
   assert.match(panel, /Issue Stock to Job/);
   assert.match(panel, /Issued Parts/);
-  assert.match(panel, /No stock issued for this Job Card yet/);
+  assert.match(panel, /No parts issued\./);
 });
 
 test('Stock issue uses atomic Job issue-part API and is never triggered on selection', () => {
