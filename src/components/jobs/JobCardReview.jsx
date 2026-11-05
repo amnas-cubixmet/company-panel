@@ -1,6 +1,6 @@
 import { Printer } from 'lucide-react';
 
-export function JobCardReview({ form, complaints, photos, jobNumber = '', onPrint, created = false }) {
+export function JobCardReview({ form, complaints, photos, uploadedPhotosCount = 0, jobNumber = '', onPrint, created = false }) {
   const sections = [
     ['Job Card Date', form.jobDateTime ? new Date(form.jobDateTime).toLocaleString() : '—'],
     ['Customer', form.customerName],
@@ -36,7 +36,7 @@ export function JobCardReview({ form, complaints, photos, jobNumber = '', onPrin
           {complaint.inspectionNotes && <small>{complaint.inspectionNotes}</small>}
         </li>)}</ol> : <p>None recorded</p>}
       </div>
-      <p className="job-create-review-photo-count">{photos.length} vehicle photo{photos.length === 1 ? '' : 's'} {created ? 'attached or pending upload' : 'ready for upload after Job Card creation'}.</p>
+      <p className="job-create-review-photo-count">{created ? uploadedPhotosCount + photos.length : photos.length} vehicle photo{(created ? uploadedPhotosCount + photos.length : photos.length) === 1 ? '' : 's'} {created ? `— ${uploadedPhotosCount} saved and ${photos.length} pending upload` : 'ready for upload after Job Card creation'}.</p>
       {created && <button type="button" className="job-create-print-button" onClick={onPrint}>
         <Printer size={17}/> Print Job Card Slip
       </button>}
