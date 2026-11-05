@@ -5,25 +5,25 @@ const modes = [
   {
     value: 'single',
     title: 'Single Punch',
-    description: 'One check-in and one check-out per day. No second session after checkout.',
+    description: 'One session per day; no second check-in.',
     icon: LogIn,
   },
   {
     value: 'multi',
     title: 'Multi Punch',
-    description: 'Employees can check in and out multiple times during the same day.',
+    description: 'Multiple check-in/out sessions.',
     icon: Repeat2,
   },
   {
     value: 'auto_checkout',
     title: 'Auto Checkout',
-    description: 'Employee checks in once. Manual checkout is hidden and system closes at shift end.',
+    description: 'Automatic checkout at shift end; no manual checkout.',
     icon: Clock3,
   },
   {
     value: 'hybrid',
     title: 'Hybrid',
-    description: 'One manual session per day; if checkout is missed, system auto-closes it at shift end.',
+    description: 'Manual checkout, or automatic checkout if missed.',
     icon: TimerReset,
   },
 ];
