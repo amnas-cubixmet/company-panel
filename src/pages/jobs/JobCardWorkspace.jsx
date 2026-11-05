@@ -1448,12 +1448,11 @@ export function JobCardWorkspace() {
             ))}
           </nav>
 
-          <div id="work-quick-mechanic" hidden={workQuickSection !== 'mechanic'}>
-            <JobWorkTimerPanel
+          <div id="work-quick-outside" hidden={workQuickSection !== 'outside'}>
+            <JobOutsideStaffSection
               jobId={job.id}
-              jobStatus={normalizeJobStatus(job.status)}
-              labourRecords={labourRecords}
               onChanged={() => setTimerRefreshVersion((value) => value + 1)}
+              quickAddToken={outsideQuickToken}
             />
           </div>
 
@@ -1467,10 +1466,11 @@ export function JobCardWorkspace() {
             />
           </div>
 
-          <div id="work-quick-outside" hidden={workQuickSection !== 'outside'}>
-            <JobOutsideStaffSection
+          <div id="work-quick-mechanic" hidden={workQuickSection !== 'mechanic'}>
+            <JobWorkTimerPanel
               jobId={job.id}
-              quickAddToken={outsideQuickToken}
+              jobStatus={normalizeJobStatus(job.status)}
+              labourRecords={labourRecords}
               onChanged={() => setTimerRefreshVersion((value) => value + 1)}
             />
           </div>
