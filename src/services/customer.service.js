@@ -91,7 +91,11 @@ export const checkDuplicateCustomer = async (payload) => {
     await delay(100);
     return Promise.resolve(checkDuplicateMockCustomer(payload));
   }
-  return apiClient.post(`${API_ENDPOINTS.CUSTOMERS}/check-duplicate`, payload);
+  const result = await apiClient.post(`${API_ENDPOINTS.CUSTOMERS}/check-duplicate`, payload);
+  // The Django response is { duplicate: boolean, customer: object|null }.
+  // Returning the response envelope itself incorrectly marks every creation
+  // as a duplicate, including { duplicate: false, customer: null }.
+  return result?.duplicate === true && result?.customer?.id ? result.customer : null;
 };
 
 export const getCustomerVehicles = async (customerId) => {
