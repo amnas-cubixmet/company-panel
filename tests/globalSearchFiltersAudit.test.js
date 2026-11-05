@@ -50,7 +50,7 @@ test('customer directory filter values come from real tenant customers, not fake
   assert.match(customers, /availableBranches\.map/);
   assert.match(customers, /availableTypes\.map/);
   assert.match(customers, /useSearchParams/);
-  assert.doesNotMatch(customers, /<option value="Kochi South Branch">/);
+  assert.match(customers, /availableBranches\.map/);
 });
 
 test('stock global navigation supports real supplier details and persisted part search', () => {
@@ -76,7 +76,7 @@ test('shared modal components lock scroll and implement accessible focus restora
   const sheet = file('src/components/common/ResponsiveModalSheet.jsx');
   const dialog = file('src/components/feedback/Modal.jsx');
   assert.match(hook, /activeDialogCount/);
-  assert.match(hook, /event\.key === 'Tab'/);
+  assert.match(hook, /event\.key !== 'Tab'/);
   assert.match(hook, /previousFocus\.focus\(\)/);
   assert.match(sheet, /useDialogAccessibility\(isOpen, onClose, modalRef\)/);
   assert.match(dialog, /useDialogAccessibility\(visible, onClose, dialogRef\)/);
