@@ -562,6 +562,9 @@ try {
           }
           const nameInput=dialog.getByRole('textbox',{name:/Customer Name/}).first();
           await nameInput.focus();
+          // This shell intentionally animates background-color for 150ms.
+          // Sample settled focus/blur colors rather than mid-transition frames.
+          await page.waitForTimeout(190);
           const focus=await nameInput.evaluate(input=>{
             const shell=input.closest('[data-cg-input-shell]');
             const focused=getComputedStyle(shell);
@@ -573,10 +576,11 @@ try {
               background:focused.backgroundColor,
             };
           });
-          const idle=await nameInput.evaluate(input=>{
-            input.blur();
-            return getComputedStyle(input.closest('[data-cg-input-shell]')).backgroundColor;
-          });
+          await nameInput.evaluate(input=>input.blur());
+          await page.waitForTimeout(190);
+          const idle=await nameInput.evaluate(input=>
+            getComputedStyle(input.closest('[data-cg-input-shell]')).backgroundColor
+          );
           if(focus.outline!=='none'||focus.border!==0||focus.shadow!=='none'||
              focus.innerOutline!=='none'||focus.innerBorder!==0||focus.background===idle){
             throw Error('Workshop Customer fields should be borderless with focus tint: '+JSON.stringify({focus,idle}));
