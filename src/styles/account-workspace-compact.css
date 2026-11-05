@@ -1,0 +1,204 @@
+/* Account simplification: compact, accessible settings and billing navigation. */
+:is(.saas-page.cg-credit-page,.saas-page.account-billing-page,.document-templates-page,.account-security-page) .account-dashboard-header h1 {
+  font-size:clamp(20px,2vw,22px);
+  font-weight:650;
+}
+:is(.saas-page.cg-credit-page,.saas-page.account-billing-page,.document-templates-page,.account-security-page) .account-dashboard-tabs {
+  box-shadow:none;
+  padding:4px;
+  gap:4px;
+}
+:is(.saas-page.cg-credit-page,.saas-page.account-billing-page,.document-templates-page,.account-security-page) .account-dashboard-tabs button {
+  font-size:13px;
+  font-weight:550;
+  min-height:44px;
+  border-radius:8px;
+}
+.saas-page.cg-credit-page .cg-credit-log-tabs,
+.document-templates-page .template-document-toggle,
+.document-templates-page .template-mobile-mode {
+  display:flex;
+  gap:6px;
+  align-items:center;
+  overflow-x:auto;
+  min-width:0;
+  padding:4px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--surface);
+  scrollbar-width:none;
+}
+.saas-page.cg-credit-page .cg-credit-log-tabs button,
+.document-templates-page .template-document-toggle button,
+.document-templates-page .template-mobile-mode button {
+  flex:0 0 auto;
+  min-height:44px;
+  padding:9px 12px;
+  border:0;
+  border-radius:8px;
+  color:var(--text-secondary);
+  background:transparent;
+  font-size:13px;
+  cursor:pointer;
+}
+.saas-page.cg-credit-page .cg-credit-log-tabs button[aria-selected=true],
+.document-templates-page :is(.template-document-toggle,.template-mobile-mode) button[aria-selected=true] {
+  color:var(--primary);
+  background:var(--primary-soft);
+  font-weight:650;
+}
+.saas-page.cg-credit-page .cg-credit-log-filters {
+  display:grid;
+  grid-template-columns:minmax(160px,2fr) repeat(3,minmax(130px,1fr));
+  gap:10px;
+  align-items:end;
+}
+.saas-page.cg-credit-page .cg-credit-log-filters label {
+  display:grid;
+  gap:6px;
+  min-width:0;
+  font-size:13px;
+  color:var(--text-secondary);
+}
+.saas-page.cg-credit-page .cg-credit-log-filters :is(input,select) {
+  width:100%;
+  min-width:0;
+  min-height:44px;
+  padding:8px 11px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--surface);
+  color:var(--text-primary);
+  font-size:16px;
+}
+.saas-page.cg-credit-page .cg-credit-log-pagination {
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  flex-wrap:wrap;
+  gap:8px;
+  padding-top:12px;
+  color:var(--text-secondary);
+  font-size:13px;
+}
+.saas-page.cg-credit-page .cg-credit-log-pagination button {
+  min-height:44px;
+  padding:8px 14px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--surface);
+  color:var(--text-primary);
+  cursor:pointer;
+}
+.saas-page.cg-credit-page .cg-credit-log-pagination button:disabled {opacity:.45;cursor:not-allowed}
+.saas-page.cg-credit-page .cg-credit-help,
+.saas-page.account-billing-page .saas-storage-help,
+.document-templates-page .template-server-note {
+  font-size:13px;
+  color:var(--text-secondary);
+}
+.saas-page.cg-credit-page .cg-credit-help summary,
+.saas-page.account-billing-page .saas-storage-help summary,
+.document-templates-page .template-server-note summary {
+  cursor:pointer;
+  font-weight:600;
+  padding:6px 0;
+}
+.saas-page.account-billing-page .saas-storage-advanced {grid-column:1/-1;min-width:0}
+.saas-page.account-billing-page .saas-storage-advanced>summary {
+  display:flex;
+  gap:10px;
+  align-items:center;
+  min-height:44px;
+  font-size:16px;
+  font-weight:650;
+  cursor:pointer;
+}
+.document-templates-page .template-mobile-mode {display:none}
+.document-templates-page .template-editor-preview-layout {
+  display:grid;
+  grid-template-columns:minmax(0,1.08fr) minmax(300px,.92fr);
+  gap:16px;
+  align-items:start;
+  min-width:0;
+}
+.document-templates-page .template-editor-column {display:grid;gap:12px;min-width:0}
+.document-templates-page .template-settings-card {margin:0;min-width:0}
+.document-templates-page details.template-settings-card>summary {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  min-height:44px;
+  padding:3px 0;
+  cursor:pointer;
+  list-style:none;
+}
+.document-templates-page details.template-settings-card>summary::-webkit-details-marker {display:none}
+.document-templates-page details.template-settings-card>summary::after {
+  content:'⌄';
+  margin-left:auto;
+  font-size:19px;
+  color:var(--text-secondary);
+}
+.document-templates-page details.template-settings-card:not([open])>summary::after {transform:rotate(-90deg)}
+.document-templates-page .business-subsection {margin-top:12px}
+.document-templates-page .business-subsection>summary {
+  display:flex;
+  align-items:center;
+  min-height:44px;
+  cursor:pointer;
+  font-size:14px;
+}
+.document-templates-page .template-preview-grid {
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  min-width:0;
+  gap:10px;
+  position:sticky;
+  top:72px;
+  align-self:start;
+}
+.document-templates-page .template-preview-card {min-width:0}
+.document-templates-page .template-document-toggle {width:100%}
+.document-templates-page :is(input,select,textarea):focus-visible,
+.saas-page.cg-credit-page .cg-credit-log-filters :is(input,select):focus-visible {
+  outline:2px solid var(--primary);
+  outline-offset:1px;
+}
+@media(max-width:1000px) {
+  .document-templates-page .template-editor-preview-layout {grid-template-columns:minmax(0,1fr)}
+  .document-templates-page .template-preview-grid {position:static;top:auto}
+  .saas-page.cg-credit-page .cg-credit-log-filters {grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:767px) {
+  .document-templates-page .template-mobile-mode {display:flex}
+  .document-templates-page .template-editor-preview-layout>.is-mobile-hidden {display:none!important}
+  .document-templates-page .template-preview-grid {grid-template-columns:minmax(0,1fr)}
+  .saas-page.cg-credit-page .cg-credit-log-tabs button {white-space:nowrap}
+  .saas-page.cg-credit-page .cg-credit-log-filters {grid-template-columns:repeat(2,minmax(0,1fr))}
+  .saas-page.cg-credit-page .cg-credit-log-pagination {justify-content:space-between}
+}
+@media(max-width:380px) {
+  .saas-page.cg-credit-page .cg-credit-log-filters {grid-template-columns:minmax(0,1fr)}
+}
+
+
+.saas-page.cg-credit-page .cg-credit-expandable {
+  padding:10px 14px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--surface);
+  min-width:0;
+}
+.saas-page.cg-credit-page .cg-credit-expandable>summary {
+  display:flex;
+  align-items:center;
+  min-height:44px;
+  cursor:pointer;
+  color:var(--text-primary);
+  font-size:15px;
+  font-weight:650;
+}
+.saas-page.cg-credit-page .cg-credit-expandable[open] {display:grid;gap:12px}
+.saas-page.cg-credit-page .cg-credit-expandable[open]>summary {padding-bottom:6px}
+.saas-page.cg-credit-page .cg-credit-expandable .cg-credit-panel {min-width:0}
