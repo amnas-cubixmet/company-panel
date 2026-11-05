@@ -76,7 +76,6 @@ export const MonthlyAttendanceCalendar = () => {
       <section className="am-calendar-header am-calendar-header-v2">
         <div>
           <h2>Monthly Attendance Calendar</h2>
-          <p>Backend attendance records for {monthNames[month - 1]} {year}.</p>
         </div>
 
         <div className="am-calendar-month-controls">
