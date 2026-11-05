@@ -92,6 +92,7 @@ export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
     } catch (cause) {
       if (generation !== cameraGeneration.current) return;
       stopStream();
+      setLoading(false);
       const reason = cause?.name === 'NotAllowedError'
         ? 'Camera access denied. Enable camera permission in browser settings.'
         : 'Camera unavailable. Close other apps using the camera and try again.';
