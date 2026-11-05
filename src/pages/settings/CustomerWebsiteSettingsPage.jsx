@@ -1,5 +1,6 @@
 import {useCallback,useEffect,useState} from 'react';
 import { appConfirm } from '../../components/common/appDialogs';
+import { Link } from 'react-router-dom';
 import {AlertCircle,ArrowUpRight,Check,Copy,Globe2,Palette,RefreshCw,ShieldCheck,Trash2} from 'lucide-react';
 import apiClient from '../../api/apiClient';
 import '../../styles/customer-website-settings.css';
@@ -73,7 +74,7 @@ export default function CustomerWebsiteSettingsPage(){
       const result=await apiClient.post('/company/customer-website/domains',{hostname:hostname.trim()});
       setDomains(old=>[result,...old]);
       setHostname('');
-      setNotice('Domain request recorded. DNS ownership and HTTPS verification must finish before activation.');
+      setNotice(result.lastError ? "Saved, but Vercel setup needs attention: "+result.lastError : "Domain created. Open Manage Domains, DNS & SSL to copy records and verify.");
     }catch(e){setError(e.message||'Could not submit domain request.');}
     finally{setRequesting(false);}
   }
@@ -132,6 +133,7 @@ export default function CustomerWebsiteSettingsPage(){
 
       <section className="cws-card">
         <div className="cws-heading"><div className="cws-square"><Globe2 size={23}/></div><div><h2>Custom Domain</h2><p>Use your own domain after DNS ownership and HTTPS verification.</p></div></div>
+        <Link to="/settings/customer-website/domains" className="cws-btn cws-primary" style={{marginBottom:16}}>Manage Domains, DNS & SSL <ArrowUpRight size={16}/></Link>
         <form className="cws-domain-form" onSubmit={requestDomain}><label className="cws-field"><span>Domain Name</span>
           <input type="text" value={hostname} maxLength={253} onChange={e=>setHostname(e.target.value)} placeholder="portal.yourworkshop.com" required autoCapitalize="none" spellCheck={false}/></label>
           <button className="cws-btn cws-primary" disabled={requesting} type="submit">{requesting?'Submitting…':'Request Domain'}</button></form>
