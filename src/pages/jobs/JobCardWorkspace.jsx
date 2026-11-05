@@ -1329,11 +1329,12 @@ export function JobCardWorkspace() {
           <JobInspectionPanel
           job={job}
           canCorrect={currentStage === 'estimate' && !activeTabLocked}
+          canSkip={can('jobs.edit') && currentStage === 'inspection' && !activeTabLocked}
           startEditing={new URLSearchParams(location.search).get('edit') === '1'}
           onDoneEditing={() => navigate('/jobs/' + job.id + '/estimate')}
           onChanged={async (operation) => {
             try {
-              await refreshJobWorkflow(operation === 'complete' ? 'inspection' : null);
+              await refreshJobWorkflow(['complete', 'skip'].includes(operation) ? 'inspection' : null);
             } catch (e) {
               setError(e?.message || 'Could not refresh job details.');
             }
