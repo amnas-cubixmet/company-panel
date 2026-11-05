@@ -69,9 +69,9 @@ export const ProtectedRoute = () => {
     return <Navigate to="/access-denied" replace />;
   }
   const requiredPermission = getPermissionForPath(location.pathname);
-  // Finance screens need Inventory AND Expenses authorization.
-  const missingSupplierAccess = ['/suppliers/credits', '/suppliers/payments'].includes(location.pathname)
-    && (!featureAccess.can('stock.view') || !featureAccess.can('expenses.view'));
+  // Supplier accounting requires both Inventory and Payments permission.
+  const missingSupplierAccess = ['/suppliers/credits', '/suppliers/payments', '/stock/suppliers'].includes(location.pathname)
+    && (!featureAccess.can('stock.view') || !featureAccess.can('payments.view'));
   // Nested Job Card sections require BOTH the Jobs label and their own
   // Stock/Invoices label; knowing a URL must not bypass either subscription.
   const nestedJobModule = /^\/jobs\/[^/]+\/(?:invoice|parts)(?:\/|$)/.test(location.pathname);
