@@ -332,7 +332,7 @@ export function CreditWorkspace({ section = 'overview' }) {
       {section === 'overview' && <>
         <article className="cg-credit-metric">
           <div><span>Active Modules</span><Zap size={20}/></div>
-          <strong>{featureAccess.unavailable ? '—' : featureAccess.labelOnly ? activeBundles.length : (featureAccess.modules?.length ?? '—')}</strong>
+          <strong>{featureAccess.unavailable ? '—' : featureAccess.labelOnly ? featureAccess.activeLabelModules.length : (featureAccess.modules?.length ?? '—')}</strong>
         </article>
         <article className="cg-credit-metric">
           <div><span>Storage Used</span><Database size={20}/></div>
@@ -344,6 +344,7 @@ export function CreditWorkspace({ section = 'overview' }) {
       <summary>More account details</summary>
       <div className="cg-credit-inline"><span>Active Staff</span><strong>{wallet?.staffCount ?? '—'}</strong></div>
       <div className="cg-credit-inline"><span>Estimated Monthly Features</span><strong>{credits(wallet?.monthlyCredits)} credits</strong></div>
+      <div className="cg-credit-inline"><span>Pending Postpaid Usage</span><strong>{credits(wallet?.postpaidAccruedCredits)} credits</strong></div>
     </details>}
 
     {low && <div className="cg-credit-low" role="alert"><Coins size={20}/><div><strong>Your credit balance is running low.</strong><span>Buy more credits so paid modules can renew when due.</span></div><button onClick={() => navigate('/account/credits/buy')}>Buy Credits </button></div>}
