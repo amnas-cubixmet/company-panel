@@ -13,6 +13,7 @@ import { getDashboardData } from '../../services/dashboard.service';
 import '../../styles/dashboard.css';
 import '../../styles/dashboard-readable.css';
 import '../../styles/dashboard-simple.css';
+import '../../styles/dashboard-booking-cards.css';
 
 export const Dashboard = () => {
   const navigate = useNavigate();

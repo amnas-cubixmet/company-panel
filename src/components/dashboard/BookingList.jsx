@@ -36,7 +36,12 @@ export const BookingList = ({
       )}
     </div>
 
-    <div className="booking-list">
+    <div className="booking-list" aria-label="Service bookings">
+      {bookings.length === 0 && (
+        <p className="booking-list-empty" role="status">
+          {search ? 'No matching jobs found.' : 'No jobs available.'}
+        </p>
+      )}
       {bookings.map((booking) => {
         const active = booking.id === selectedBooking?.id;
         return (
@@ -45,14 +50,15 @@ export const BookingList = ({
             type="button"
             className={`booking-row ${active ? 'is-active' : ''}`}
             onClick={() => onSelectBooking(booking.id)}
+            aria-pressed={active}
           >
             <div className="booking-row-top">
-              <strong>{dashboardText(booking.id)} · {dashboardText(booking.customer)}</strong>
-              <span className={`status-pill ${statusClass(dashboardText(booking.status, 'Pending'))}`}>{dashboardText(booking.status, 'Pending')}</span>
+              <strong title={`${dashboardText(booking.id)} · ${dashboardText(booking.customer)}`}>{dashboardText(booking.id)} · {dashboardText(booking.customer)}</strong>
+              <span className={`status-pill ${statusClass(dashboardText(booking.status, 'Pending'))}`} title={dashboardText(booking.status, 'Pending')}>{dashboardText(booking.status, 'Pending')}</span>
             </div>
-            <span className="booking-vehicle">{dashboardText(booking.vehicle)}</span>
+            <span className="booking-vehicle" title={dashboardText(booking.vehicle)}>{dashboardText(booking.vehicle)}</span>
             <div className="booking-row-bottom">
-              <span>{dashboardText(booking.service, 'Service not specified')}</span>
+              <span title={dashboardText(booking.service, 'Service not specified')}>{dashboardText(booking.service, 'Service not specified')}</span>
               {booking.time && dashboardText(booking.time) !== 'Walk-in' && <time>{dashboardText(booking.time)}</time>}
             </div>
           </button>

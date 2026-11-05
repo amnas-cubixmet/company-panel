@@ -1,0 +1,137 @@
+/* Dashboard booking cards: compact, legible and consistent on narrow screens.
+   Route-loaded after existing dashboard styles; no global form or payment changes. */
+.dashboard-page .booking-list {
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  max-height:490px;
+  padding:2px 2px 4px;
+  overflow-x:hidden;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+}
+.dashboard-page .booking-row {
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  grid-template-rows:auto auto auto;
+  align-content:start;
+  gap:7px;
+  box-sizing:border-box;
+  flex:0 0 auto;
+  width:100%;
+  height:auto;
+  min-width:0;
+  min-height:100px;
+  max-height:none;
+  padding:12px 13px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--surface);
+  color:var(--text-primary);
+  box-shadow:none;
+  text-align:left;
+  overflow:hidden;
+}
+.dashboard-page .booking-row:hover {
+  transform:none;
+  box-shadow:0 2px 8px rgba(15,23,42,.05);
+}
+.dashboard-page .booking-row.is-active {
+  border-color:var(--primary);
+  background:color-mix(in srgb,var(--primary-soft) 30%,var(--surface));
+  box-shadow:inset 3px 0 0 var(--primary);
+}
+.dashboard-page .booking-row:focus-visible {
+  outline:2px solid var(--primary);
+  outline-offset:2px;
+}
+.dashboard-page .booking-row-top {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  min-height:26px;
+}
+.dashboard-page .booking-row-top strong {
+  display:block;
+  min-width:0;
+  font-size:14px;
+  font-weight:600;
+  line-height:1.35;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  overflow:hidden;
+}
+.dashboard-page .booking-row-top .status-pill {
+  min-width:0;
+  max-width:138px;
+  min-height:26px;
+  padding:4px 9px;
+  font-size:11px;
+  font-weight:600;
+  line-height:1.25;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.dashboard-page .booking-vehicle {
+  display:block;
+  min-width:0;
+  margin:0;
+  font-size:13px;
+  line-height:1.4;
+  color:var(--text-secondary);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.dashboard-page .booking-row-bottom {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:nowrap;
+  min-width:0;
+  margin:0;
+  padding:6px 0 0;
+  border-top:1px solid var(--border);
+  gap:8px;
+  font-size:12px;
+  line-height:1.4;
+  color:var(--text-secondary);
+}
+.dashboard-page .booking-row-bottom span {
+  flex:1 1 auto;
+  min-width:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.dashboard-page .booking-row-bottom time {
+  flex:0 0 auto;
+  max-width:40%;
+  color:var(--text-muted);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.dashboard-page .booking-list-empty {
+  margin:0;
+  padding:18px 12px;
+  text-align:center;
+  border:1px dashed var(--border);
+  border-radius:12px;
+  color:var(--text-secondary);
+  background:var(--surface);
+  font-size:14px;
+  line-height:1.5;
+}
+@media (max-width:480px) {
+  .dashboard-page .booking-list { gap:9px; }
+  .dashboard-page .booking-row { min-height:98px; padding:11px 12px; }
+  .dashboard-page .booking-row-top strong { font-size:13px; }
+  .dashboard-page .booking-row-top .status-pill { max-width:116px; font-size:11px; padding:4px 7px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .dashboard-page .booking-row { transition:none; }
+}
