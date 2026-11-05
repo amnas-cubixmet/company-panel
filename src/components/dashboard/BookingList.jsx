@@ -53,7 +53,7 @@ export const BookingList = ({
             <span className="booking-vehicle">{dashboardText(booking.vehicle)}</span>
             <div className="booking-row-bottom">
               <span>{dashboardText(booking.service, 'Service not specified')}</span>
-              <time>{dashboardText(booking.time)}</time>
+              {booking.time && dashboardText(booking.time) !== 'Walk-in' && <time>{dashboardText(booking.time)}</time>}
             </div>
           </button>
         );
