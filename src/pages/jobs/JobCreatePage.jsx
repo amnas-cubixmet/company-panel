@@ -245,37 +245,66 @@ export const JobCreatePage = () => {
     }));
   };
 
+  const validateBeforeReview = () => {
+    const required = [
+      ['jobDateTime', form.jobDateTime?.trim(), 'Select the Job Card date and time.'],
+      ['customerName', form.customerName.trim(), 'Enter the customer name.'],
+      ['customerPhone', validInternationalPhone(form.customerPhone), 'Enter a valid international phone number with country code.'],
+      ['vehicleReg', form.vehicleReg.trim(), 'Enter the registration number.'],
+    ];
+    const missing = required.find(([, value]) => !value);
+    if (missing) {
+      const shownInline = showFormFieldError(formRef.current, missing[0], missing[2]);
+      setError(shownInline ? '' : missing[2]);
+      return false;
+    }
+    if (form.kilometre && (!/^\d+$/.test(form.kilometre) || Number(form.kilometre) > 999999999)) {
+      showFormFieldError(formRef.current, 'kilometre', 'Enter a valid non-negative KM reading.');
+      return false;
+    }
+    const errors = Object.fromEntries(complaints.filter((item) => !item.description.trim())
+      .map((item) => [item.id, 'Enter this complaint or remove the empty row.']));
+    setComplaintErrors(errors);
+    if (Object.keys(errors).length) {
+      const first = complaints.findIndex((item) => errors[item.id]);
+      showFormFieldError(formRef.current, 'complaint-' + first, errors[complaints[first].id]);
+      return false;
+    }
+    return true;
+  };
+
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.customerName.trim() || !form.customerPhone.trim() || !form.vehicleReg.trim()) {
-      const first = !form.customerName.trim() ? 'customerName'
-        : !form.customerPhone.trim() ? 'customerPhone' : 'vehicleReg';
-      const message = first === 'customerName' ? 'Enter the customer name.'
-        : first === 'customerPhone' ? 'Enter the customer phone.' : 'Enter the vehicle registration.';
-      // Field errors belong next to the input, not in a duplicate page alert.
-      const shownInline = showFormFieldError(formRef.current, first, message);
-      setError(shownInline ? '' : message);
+    if (saving) return;
+    if (!savedJobId && !validateBeforeReview()) return;
+    if (!review && !savedJobId) {
+      setReview(true);
+      setError('');
+      window.requestAnimationFrame(() => formRef.current?.querySelector('#job-card-review')?.scrollIntoView({
+        behavior: 'smooth', block: 'start'
+      }));
       return;
     }
 
     setSaving(true);
     setError('');
-
+    let createdId = savedJobId;
     try {
-      const created = savedJobId ? { id: savedJobId } : await jobService.createJob({
+      const normalizedComplaints = buildJobComplaints(complaints);
+      const created = createdId ? { id: createdId, ...(createdJob || {}) } : await jobService.createJob({
         ...form,
         ...(selectedCustomer?.id ? { customer: selectedCustomer.id } : {}),
         checkInTime: form.jobDateTime,
-        customerComplaints: form.complaint
-          ? [{ id: `CMP-${Date.now()}`, description: form.complaint, wording: form.complaint, status: 'Open' }]
-          : [],
-        complaints: form.complaint
-          ? [{ id: `CMP-${Date.now()}`, description: form.complaint, wording: form.complaint, status: 'Open' }]
-          : [],
+        vehicleInfo: [form.vehicleMake, form.vehicleModel].filter(Boolean).join(' '),
+        customerComplaints: normalizedComplaints,
+        complaints: normalizedComplaints,
         vehicle: selectedVehicleId || {
           registration: form.vehicleReg,
-          makeModel: form.vehicleInfo,
-          vin: form.vin
+          make: form.vehicleMake,
+          model: form.vehicleModel,
+          fuelType: form.fuelType,
+          makeModel: [form.vehicleMake, form.vehicleModel].filter(Boolean).join(' '),
+          vin: form.vin,
         },
         services: [],
         partsUsed: [],
@@ -289,8 +318,10 @@ export const JobCreatePage = () => {
       });
 
       if (!created?.id) throw new Error('Job Card could not be saved.');
+      createdId = created.id;
       setSavedJobId(created.id);
-      if (!savedJobId && created?.id && form.assignedEmployeeId) {
+      setCreatedJob(created);
+      if (!savedJobId && form.assignedEmployeeId) {
         try {
           await payrollService.createJobTimerAssignment(created.id, form.assignedEmployeeId);
         } catch (assignmentError) {
@@ -306,14 +337,19 @@ export const JobCreatePage = () => {
         setPendingPhotos((items) => items.filter((entry) => entry.id !== photo.id));
       }
       setUploadProgress(0);
-      navigate(`/jobs/${created.id}`, { replace: true });
+      setReview(true);
     } catch (err) {
-      const shownInline = showServerFormErrors(formRef.current, err, {
+      const shownInline = createdId ? false : showServerFormErrors(formRef.current, err, {
         customer_name: 'customerName', customer_phone: 'customerPhone',
         registration: 'vehicleReg', vehicle_registration: 'vehicleReg',
+        fuelType: 'fuelType', vehicleInfo: 'vehicleMake', branchId: 'branchId',
+        kilometre: 'kilometre', serviceAdvisorEmployeeId: 'serviceAdvisorEmployeeId',
+        assignedEmployeeId: 'assignedEmployeeId',
       });
-      // Non-field/network errors still need a visible page-level message.
-      setError(shownInline ? '' : (err?.message || 'Unable to create job card.') + (savedJobId ? ' Job Card saved; retry to attach remaining photos.' : ''));
+      const message = createdId
+        ? 'Job Card was saved, but some photos could not be uploaded. Retry remaining photos; no duplicate Job Card will be created.'
+        : err?.message || 'Unable to create Job Card.';
+      setError(shownInline ? '' : message);
     } finally {
       setSaving(false);
       setUploadProgress(0);
