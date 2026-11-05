@@ -330,6 +330,32 @@ export const addInspectionPhoto = async (jobId, payload) => {
   return apiClient.post(`${API_ENDPOINTS.JOBS}/${jobId}/inspection/photos`, payload);
 };
 
+export const skipInspection = async (jobId, reason) => {
+  const cleanReason = String(reason || '').trim();
+  if (cleanReason.length < 3 || cleanReason.length > 300) {
+    throw new Error('Enter a skip reason between 3 and 300 characters.');
+  }
+  if (USE_MOCK_API) {
+    await delay();
+    const job = getMockJobById(jobId);
+    if (!job) throw new Error('Job Card not found.');
+    if (job.status !== 'Inspection') throw new Error('Only the current Inspection stage can be skipped.');
+    const inspection = job.vehicleInspection || getInitialInspectionData();
+    if (['Completed', 'Skipped'].includes(inspection.status)) {
+      throw new Error('Inspection has already been completed or skipped.');
+    }
+    const skipped = {
+      ...inspection,
+      status: 'Skipped',
+      skipReason: cleanReason,
+      skippedAt: new Date().toISOString(),
+    };
+    updateMockJob(job.id, { vehicleInspection: skipped, inspection: skipped, status: 'Estimate Pending' });
+    return { inspection: skipped, newJobStatus: 'Estimate Pending' };
+  }
+  return apiClient.post(`${API_ENDPOINTS.JOBS}/${jobId}/inspection/skip`, { reason: cleanReason });
+};
+
 export const completeInspection = async (jobId, needsApproval = true) => {
   if (USE_MOCK_API) {
     await delay();
@@ -402,5 +428,6 @@ export const jobInspectionService = {
   addDiagnosticCode,
   addInspectionPhoto,
   completeInspection,
+  skipInspection,
   addFindingToEstimate
 };
