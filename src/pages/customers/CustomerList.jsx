@@ -251,7 +251,7 @@ export const CustomerList = () => {
       customerType: backendCustomerType(customerType),
       companyName,
       gstNo,
-      branch,
+      ...(branch ? { branch } : {}),
       notes
     };
 
@@ -567,7 +567,7 @@ export const CustomerList = () => {
               value={branch}
               onChange={(e) => setBranch(e.target.value)}
             >
-              <option value="">Use account default branch</option>
+              <option value="">Automatic branch assignment</option>
               {branchChoices.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </Select>
           </div>
@@ -666,7 +666,7 @@ export const CustomerList = () => {
             <button
               type="button"
               onClick={() => {
-                const payload = { name, phone, whatsapp: whatsapp || phone, email, address, city, state, pincode, customerType: backendCustomerType(customerType), companyName, gstNo, branch, notes };
+                const payload = { name, phone, whatsapp: whatsapp || phone, email, address, city, state, pincode, customerType: backendCustomerType(customerType), companyName, gstNo, ...(branch ? { branch } : {}), notes };
                 saveCustomer(payload);
               }}
               style={{ flex: 1, height: '44px', borderRadius: '11px', border: 'none', backgroundColor: 'var(--primary)', color: '#ffffff', fontWeight: '700' }}
