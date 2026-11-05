@@ -47,9 +47,10 @@ export const permissionMatrixToCodes = (matrix = {}) =>
       .map((action) => `${module.key}.${action}`)
   );
 
-export const permissionActionLabel = (action) => {
+export const permissionActionLabel = (action, moduleKey = '') => {
   if (action === 'self') return 'Self Access';
   if (action === 'manage') return 'Manage';
+  if (action === 'payments.reverse') return moduleKey === 'payroll' ? 'Reverse Wage Payment' : moduleKey === 'payments' ? 'Reverse Customer Payment' : 'Reverse Payment';
   const names = {
     'team.view': 'View Team Attendance',
     'records.manage': 'Create / Correct Attendance',
