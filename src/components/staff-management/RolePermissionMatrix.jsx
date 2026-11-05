@@ -49,7 +49,7 @@ export const RolePermissionMatrix = ({
                       disabled={protectedRole}
                       onChange={() => onToggle(module.key, action)}
                     />
-                    <span>{permissionActionLabel(action)}</span>
+                    <span>{permissionActionLabel(action, module.key)}</span>
                   </label>
                 );
               })}
