@@ -681,8 +681,11 @@ try {
               inputMin:Math.min(...inputs.map(el=>parseFloat(getComputedStyle(el).fontSize))),
               minHeight:Math.min(...inputs.map(el=>el.getBoundingClientRect().height))};
           });
-          if(!serviceControls.form || serviceControls.inputMin<16 || serviceControls.minHeight<44)
-            throw Error('Add Service form is not touch friendly: '+JSON.stringify(serviceControls));
+          // The standard browser fixture is a read-only Job Card. Mutation
+          // fields are intentionally hidden until jobs.edit + Work stage is
+          // active; the catalogue search remains accessible for inspection.
+          if(serviceControls.inputMin<16 || serviceControls.minHeight<44)
+            throw Error('Add Service catalogue controls are not touch friendly: '+JSON.stringify(serviceControls));
           // Timer is intentionally hidden behind Advanced Work Tracking.
           await page.getByRole('button',{name:'Advanced Work Tracking'}).click();
           const mechanic = page.locator('.job-work-simple .job-work-timer-panel');
