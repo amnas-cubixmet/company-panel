@@ -4,8 +4,9 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { resourceConfigs } from '../operations/resourceConfigs';
 import { billingService, calculateDocumentTotals } from '../../services/billing.service';
 import { USE_MOCK_API } from '../../api/apiConfig';
-import { useAuth } from '../../hooks/useAuth';
-import { hasPermission } from '../../utils/permissions';
+import { useFeatureAccess } from '../../context/FeatureAccessContext';
+import { appConfirm, appPrompt } from '../../components/common/appDialogs';
+import apiClient from '../../api/apiClient';
 import {
   PaymentFilterToolbar, PaymentOverviewStats, PaymentRecordsPanel, PaymentsHeader
 } from '../../components/payments';
@@ -45,10 +46,12 @@ export function PaymentList() {
   const location = useLocation();
   const navigate = useNavigate();
   const { id } = useParams();
-  const { user } = useAuth();
+  const { can } = useFeatureAccess();
   const isNew = location.pathname.endsWith('/new');
   const isView = Boolean(id) && !isNew;
-  const canCreate = hasPermission(user, 'payments.create');
+  const canCreate = can('payments.create');
+  const canReverse = can('payments.reverse') && !USE_MOCK_API;
+  const canViewInvoices = can('invoices.view');
 
   const [payments, setPayments] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -65,8 +68,10 @@ export function PaymentList() {
     setLoading(true);
     setError('');
     try {
+      // Reading payment history does not imply permission to read invoices.
       const [paymentRows, invoiceRows] = await Promise.all([
-        paymentService.list(), billingService.list()
+        paymentService.list(),
+        isNew && canCreate && canViewInvoices ? billingService.list() : Promise.resolve([]),
       ]);
       setPayments((Array.isArray(paymentRows) ? paymentRows : []).map(normalizePaymentRow));
       setInvoices(Array.isArray(invoiceRows) ? invoiceRows : invoiceRows?.results || []);
@@ -75,7 +80,7 @@ export function PaymentList() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isNew, canCreate, canViewInvoices]);
 
   useEffect(() => { load(); }, [load, refreshKey]);
 
@@ -130,6 +135,27 @@ export function PaymentList() {
       navigate(`/payments/${saved.id}`, { replace: true });
     } catch (e) {
       setError(friendlyError(e, 'Unable to record payment.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const reversePayment = async () => {
+    if (!isView || !canReverse || saving) return;
+    const record = payments.find((row) => String(row.id) === String(id));
+    if (record?.status !== 'Completed') return;
+    const reason = await appPrompt('Reason for reversing this customer payment:');
+    if (!reason?.trim()) return;
+    if (!await appConfirm('Reverse this payment and reopen its invoice balance?', {
+      title: 'Reverse customer payment', confirmLabel: 'Reverse Payment', tone: 'danger',
+    })) return;
+    setSaving(true);
+    setError('');
+    try {
+      await apiClient.post(`/payments/${id}/reverse`, { reason: reason.trim() });
+      setRefreshKey((value) => value + 1);
+    } catch (e) {
+      setError(friendlyError(e, 'Unable to reverse payment.'));
     } finally {
       setSaving(false);
     }
@@ -234,6 +260,7 @@ export function PaymentList() {
         </header>
         {error && <div className="payments-error" role="alert">{error}</div>}
         {loading ? <div className="payments-empty">Loading payment…</div> : record ? (
+          <>
           <section className="payment-detail-card">
             {[
               ['Payment Reference', record.receiptNo], ['Payment Date', formatPaymentDate(record.date)],
@@ -247,6 +274,17 @@ export function PaymentList() {
               </div>
             ))}
           </section>
+          {record.status === 'Reversed' && record.reversal_reason && (
+            <p className="payments-empty" role="status">Reversal reason: {record.reversal_reason}</p>
+          )}
+          {record.status === 'Completed' && canReverse && (
+            <div className="payment-form-actions">
+              <button className="payments-secondary-btn" type="button" onClick={reversePayment} disabled={saving}>
+                {saving ? 'Reversing…' : 'Reverse Payment'}
+              </button>
+            </div>
+          )}
+          </>
         ) : <div className="payments-empty">Payment not found. Check the reference or return to Payments.</div>}
       </div>
     );
