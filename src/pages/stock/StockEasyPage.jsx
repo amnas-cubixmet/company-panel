@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
 import { USE_MOCK_API } from '../../api/apiConfig';
-import { AlertTriangle, Boxes, History, PackageMinus, PackagePlus, Plus, RefreshCw, Search, Info, ShoppingCart, Wrench } from 'lucide-react';
+import { AlertTriangle, Boxes, History, PackageMinus, PackagePlus, Plus, RefreshCw, Search, ShoppingCart, Wrench } from 'lucide-react';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { stockCatalogService } from '../../services/stockCatalog.service';
+import { supplierService } from '../../services/supplier.service';
 import '../../styles/stock-easy.css';
 import '../../styles/stock-form-polish.css';
 
@@ -20,8 +21,24 @@ const validGstRate = (value) =>
   /^\d{1,3}(?:\.\d{1,2})?$/.test(String(value)) &&
   Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 100;
 const list = (result) => Array.isArray(result) ? result : (result?.results || []);
-const initialPart = { partName: '', sku: '', brand: '', category: '', unit: 'Piece',
-  costPrice: '', sellingPrice: '', tax: '0', hsnCode: '', minimumStock: '5', location: '' };
+const initialPart = { partName: '', sku: '', supplier: '', brand: '', category: '', unit: 'Piece',
+  costPrice: '', sellingPrice: '', tax: '0', hsnCode: '', stockQuantity: '',
+  minimumStock: '5', location: '' };
+const initialSupplier = { name: '', phone: '', gstNo: '', address: '' };
+
+function OutlinedInput({ label, ...props }) {
+  return <label className="cg-easy-floating">
+    <input {...props} placeholder=" " />
+    <span>{label}</span>
+  </label>;
+}
+
+function OutlinedSelect({ label, children, ...props }) {
+  return <label className="cg-easy-floating is-select">
+    <select {...props}>{children}</select>
+    <span>{label}</span>
+  </label>;
+}
 const initialMove = { mode: 'in', itemId: '', quantity: '1', invoiceNo: '', notes: '', costPrice: '', sellingPrice: '', priceMode: '' };
 
 function stockState(item) {
@@ -64,6 +81,11 @@ export default function StockEasyPage() {
   const [items, setItems] = useState([]);
   const [ledger, setLedger] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [quickSupplierOpen, setQuickSupplierOpen] = useState(false);
+  const [quickSupplier, setQuickSupplier] = useState(initialSupplier);
+  const [quickSupplierError, setQuickSupplierError] = useState('');
+  const [quickSupplierSaving, setQuickSupplierSaving] = useState(false);
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -81,15 +103,19 @@ export default function StockEasyPage() {
     setLoading(true);
     try {
       const loaded = await stockCatalogService.getItems();
-      setItems(list(loaded));
-      const [stats, movements, groups] = await Promise.allSettled([
+      setItems(list(loaded).sort((a, b) =>
+        String(b.created_at || b.createdAt || '').localeCompare(String(a.created_at || a.createdAt || ''))
+      ));
+      const [stats, movements, groups, vendors] = await Promise.allSettled([
         stockCatalogService.getStockDashboard(),
         stockCatalogService.getLedger(),
         stockCatalogService.getCategories(),
+        stockCatalogService.getSuppliers(),
       ]);
       setDashboard(stats.status === 'fulfilled' ? stats.value : null);
       setLedger(movements.status === 'fulfilled' ? list(movements.value) : []);
       setCategories(groups.status === 'fulfilled' ? list(groups.value) : []);
+      setSuppliers(vendors.status === 'fulfilled' ? list(vendors.value) : []);
       setError('');
     } catch (exception) {
       setError(exception?.message || 'Could not load stock. Check the backend connection.');
@@ -103,8 +129,9 @@ export default function StockEasyPage() {
   const filtered = useMemo(() => items.filter((item) => {
     const search = [item.partName, item.name, item.sku, item.barcode, item.brand]
       .join(' ').toLowerCase().includes(query.trim().toLowerCase());
-    return search && (filter === 'all' || stockState(item).tone === filter);
-  }), [items, query, filter]);
+    const matchingSupplier = !supplierId || String(item.supplier?.id || item.supplier || '') === String(supplierId);
+    return search && matchingSupplier && (filter === 'all' || stockState(item).tone === filter);
+  }), [items, query, filter, supplierId]);
 
   const lowCount = items.filter((item) => stockState(item).tone === 'low').length;
   const outCount = items.filter((item) => stockState(item).tone === 'out').length;
@@ -128,7 +155,35 @@ export default function StockEasyPage() {
     setError('');
   };
   const openPartDialog = (lookup = '') => {
-    setError(''); setPart(initialPart); setPartMode('find'); setPartLookup(lookup); setPartOpen(true);
+    setError('');
+    setPart({ ...initialPart, supplier: supplierId });
+    setQuickSupplierOpen(false);
+    setQuickSupplierError('');
+    setPartMode('find'); setPartLookup(lookup); setPartOpen(true);
+  };
+
+  const createQuickSupplier = async () => {
+    if (quickSupplierSaving || !quickSupplier.name.trim()) {
+      setQuickSupplierError('Supplier Name is required.');
+      return;
+    }
+    setQuickSupplierSaving(true);
+    setQuickSupplierError('');
+    try {
+      const vendor = await supplierService.create({
+        ...quickSupplier, name: quickSupplier.name.trim(),
+      });
+      setSuppliers(previous => [vendor, ...previous.filter(row => String(row.id) !== String(vendor.id))]);
+      setPart(previous => ({ ...previous, supplier: String(vendor.id) }));
+      setQuickSupplier(initialSupplier);
+      setQuickSupplierOpen(false);
+    } catch (cause) {
+      const detail = cause?.response?.data || {};
+      setQuickSupplierError(detail?.gstNo?.[0] || detail?.name?.[0] || detail?.message ||
+        cause?.message || 'Unable to create supplier.');
+    } finally {
+      setQuickSupplierSaving(false);
+    }
   };
 
   const beginMove = (mode, itemId = '', partItem = null) => {
@@ -153,6 +208,14 @@ export default function StockEasyPage() {
     if (!validGstRate(part.tax)) {
       setError('Choose a valid GST rate between 0% and 100% (up to two decimals).'); return;
     }
+    const openingQuantity = part.stockQuantity === '' ? 0 : Number(part.stockQuantity);
+    if (!Number.isFinite(openingQuantity) || openingQuantity < 0 ||
+        !/^\\d+(?:\\.\\d{1,2})?$/.test(String(part.stockQuantity || '0'))) {
+      setError('Opening stock quantity must be nonnegative with up to two decimal places.'); return;
+    }
+    if (items.some(item => String(item.sku || '').trim().toLowerCase() === part.sku.trim().toLowerCase())) {
+      setError('This SKU / Part Number is already in Inventory. Select the existing product.'); return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -161,14 +224,17 @@ export default function StockEasyPage() {
         costPrice: number(part.costPrice), sellingPrice: number(part.sellingPrice),
         tax: Number(part.tax), hsnCode: part.hsnCode.trim(),
         minimumStock: number(part.minimumStock),
+        stockQuantity: openingQuantity,
       });
       setPartOpen(false);
       setPart(initialPart);
       setPartLookup('');
       setPartMode('find');
-      setSuccess('Part created. Enter quantity and confirm receipt to add stock.');
+      setSuccess(openingQuantity > 0
+        ? 'Part created with opening stock. No supplier bill or payment was posted.'
+        : 'Part created. Use Receive Stock when goods arrive.');
       await reload();
-      if (created?.id) beginMove('in', created.id, created);
+      if (!openingQuantity && created?.id) beginMove('in', created.id, created);
     } catch (exception) {
       setError(exception?.message || 'Unable to add part.');
     } finally { setSaving(false); }
@@ -330,7 +396,7 @@ export default function StockEasyPage() {
               const exists = matchingParts.some((item) =>
                 (item.partName || item.name || '').toLowerCase() === partLookup.trim().toLowerCase());
               if (exists) { setError('This part already exists. Select it from the list above.'); return; }
-              setError(''); setPart({ ...initialPart, partName: partLookup.trim() }); setPartMode('new');
+              setError(''); setPart({ ...initialPart, supplier: supplierId, partName: partLookup.trim() }); setPartMode('new');
             }}><Plus size={17}/> Add as New Product</button>
             {error && <p className="cg-easy-alert" role="alert">{error}</p>}
           </div>
@@ -338,55 +404,69 @@ export default function StockEasyPage() {
           <form className="cg-easy-form" onSubmit={savePart}>
             <button type="button" className="cg-easy-back-picker" onClick={() => { setPartMode('find'); setError(''); }}>← Search Existing Products</button>
             {error && <p className="cg-easy-alert" role="alert">{error}</p>}
-            <label>Part name *<input required value={part.partName} onChange={(e) => setPart({ ...part, partName: e.target.value })}/></label>
-            <label>SKU / Part number *<input required value={part.sku} onChange={(e) => setPart({ ...part, sku: e.target.value })}/></label>
-            <div className="cg-easy-fields"><label>Brand<input value={part.brand} onChange={(e) => setPart({ ...part, brand: e.target.value })}/></label>
-              <label>Unit<select value={part.unit} onChange={(e) => setPart({ ...part, unit: e.target.value })}>{['Piece', 'Set', 'Pair', 'Litre', 'Can', 'Box'].map((x) => <option key={x}>{x}</option>)}</select></label></div>
-            <label>Category<select value={part.category} onChange={(e) => setPart({ ...part, category: e.target.value })}><option value="">Uncategorized</option>{categories.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
             <div className="cg-easy-fields">
-              <label>Purchase Cost / Unit (₹) *<input required type="number" min="0" step="0.01" value={part.costPrice} onChange={(e) => setPart({ ...part, costPrice: e.target.value })}/></label>
-              <label>Selling Price / Unit (₹) *<input required type="number" min="0" step="0.01" value={part.sellingPrice} onChange={(e) => setPart({ ...part, sellingPrice: e.target.value })}/></label>
+              <OutlinedInput label="Part Name *" required maxLength={180} value={part.partName} onChange={(e) => setPart({ ...part, partName: e.target.value })}/>
+              <OutlinedInput label="SKU / Part Number *" required maxLength={80} value={part.sku} onChange={(e) => setPart({ ...part, sku: e.target.value })}/>
+            </div>
+            <div className="cg-easy-supplier-field">
+              <OutlinedSelect label="Supplier" value={part.supplier} onChange={(e) => setPart({ ...part, supplier: e.target.value })}>
+                <option value="">No supplier selected</option>
+                {suppliers.filter(x => x.is_active !== false).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+              </OutlinedSelect>
+              <button type="button" className="cg-easy-supplier-add" onClick={() => { setQuickSupplierOpen(v => !v); setQuickSupplierError(''); }}>
+                <Plus size={15}/> Add Supplier
+              </button>
+            </div>
+            {quickSupplierOpen && <div className="cg-easy-quick-supplier" aria-label="Create supplier without leaving this form">
+              <strong>New Supplier</strong>
+              <OutlinedInput label="Supplier Name *" required maxLength={180} value={quickSupplier.name} onChange={e => setQuickSupplier({ ...quickSupplier, name: e.target.value })}/>
+              <div className="cg-easy-fields">
+                <OutlinedInput label="Phone" type="tel" maxLength={30} value={quickSupplier.phone} onChange={e => setQuickSupplier({ ...quickSupplier, phone: e.target.value })}/>
+                <OutlinedInput label="GSTIN" maxLength={20} value={quickSupplier.gstNo} onChange={e => setQuickSupplier({ ...quickSupplier, gstNo: e.target.value })}/>
+              </div>
+              <OutlinedInput label="Address" value={quickSupplier.address} onChange={e => setQuickSupplier({ ...quickSupplier, address: e.target.value })}/>
+              {quickSupplierError && <p className="cg-easy-alert" role="alert">{quickSupplierError}</p>}
+              <div className="cg-easy-quick-actions">
+                <button type="button" disabled={quickSupplierSaving} onClick={() => setQuickSupplierOpen(false)}>Cancel</button>
+                <button type="button" disabled={quickSupplierSaving || !quickSupplier.name.trim()} onClick={createQuickSupplier}>
+                  {quickSupplierSaving ? 'Saving…' : 'Save Supplier'}
+                </button>
+              </div>
+            </div>}
+            <div className="cg-easy-fields">
+              <OutlinedInput label="Brand" maxLength={100} value={part.brand} onChange={(e) => setPart({ ...part, brand: e.target.value })}/>
+              <OutlinedSelect label="Unit" value={part.unit} onChange={(e) => setPart({ ...part, unit: e.target.value })}>
+                {['Piece', 'Bottle', 'Litre', 'Millilitre', 'Kilogram', 'Gram', 'Set', 'Pair', 'Box', 'Pack', 'Metre', 'Can'].map(x => <option key={x} value={x}>{x}</option>)}
+              </OutlinedSelect>
             </div>
             <div className="cg-easy-fields">
-              <label>GST Rate (total %) *
-                <select
-                  aria-label="GST Rate"
-                  value={GST_RATE_PRESETS.includes(String(part.tax)) ? String(part.tax) : 'custom'}
-                  onChange={(e) => setPart({ ...part, tax: e.target.value === 'custom' ? '' : e.target.value })}
-                >
-                  {GST_RATE_PRESETS.map((rate) => <option key={rate} value={rate}>{rate}% GST</option>)}
-                  <option value="custom">Other rate (custom %)</option>
-                </select>
-              </label>
-              <label>HSN / SAC Code (optional)
-                <input
-                  aria-label="HSN or SAC Code"
-                  maxLength={20}
-                  value={part.hsnCode}
-                  onChange={(e) => setPart({ ...part, hsnCode: e.target.value })}
-                  placeholder="Enter HSN / SAC code"
-                />
-              </label>
+              <OutlinedSelect label="Category" value={part.category} onChange={e => setPart({ ...part, category: e.target.value })}>
+                <option value="">Uncategorized</option>
+                {categories.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+              </OutlinedSelect>
+              <OutlinedInput label="HSN / SAC Code" maxLength={20} value={part.hsnCode} onChange={(e) => setPart({ ...part, hsnCode: e.target.value })}/>
             </div>
-            {!GST_RATE_PRESETS.includes(String(part.tax)) && (
-              <label>Custom GST Rate (%)
-                <input
-                  type="number" min="0" max="100" step="0.01" required
-                  aria-label="Custom GST Rate"
-                  value={part.tax}
-                  onChange={(e) => setPart({ ...part, tax: e.target.value })}
-                  placeholder="e.g. 7.5"
-                />
-              </label>
-            )}
-            <details className="cg-easy-tax-guidance">
-              <summary><Info size={16} aria-hidden="true" /> GST guidance</summary>
-              <p>Use the applicable total GST rate for this part. HSN/SAC is optional where permitted; invoice tax follows the billing form and place-of-supply rules.</p>
-            </details>
-            <div className="cg-easy-fields"><label>Minimum stock<input type="number" min="0" step="0.01" value={part.minimumStock} onChange={(e) => setPart({ ...part, minimumStock: e.target.value })}/></label>
-              <label>Rack / location<input value={part.location} onChange={(e) => setPart({ ...part, location: e.target.value })}/></label></div>
-            
-            <div className="cg-easy-form-actions"><button type="button" onClick={() => setPartOpen(false)}>Cancel</button><button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Product & Receive Stock'}</button></div>
+            <div className="cg-easy-fields">
+              <OutlinedSelect label="GST Rate" value={GST_RATE_PRESETS.includes(String(part.tax)) ? String(part.tax) : 'custom'}
+                onChange={e => setPart({ ...part, tax: e.target.value === 'custom' ? '' : e.target.value })}>
+                {GST_RATE_PRESETS.map(rate => <option key={rate} value={rate}>{rate}% GST</option>)}
+                <option value="custom">Other rate (custom %)</option>
+              </OutlinedSelect>
+              <OutlinedInput label="Opening Stock Quantity" type="number" min="0" step="0.01" value={part.stockQuantity} onChange={e => setPart({ ...part, stockQuantity: e.target.value })}/>
+            </div>
+            {!GST_RATE_PRESETS.includes(String(part.tax)) &&
+              <OutlinedInput label="Custom GST Rate (%)" type="number" min="0" max="100" step="0.01" required
+                value={part.tax} onChange={e => setPart({ ...part, tax: e.target.value })}/>}
+            <div className="cg-easy-fields">
+              <OutlinedInput label="Purchase Price (₹) *" required type="number" min="0" step="0.01" value={part.costPrice} onChange={e => setPart({ ...part, costPrice: e.target.value })}/>
+              <OutlinedInput label="Selling Price (₹) *" required type="number" min="0" step="0.01" value={part.sellingPrice} onChange={e => setPart({ ...part, sellingPrice: e.target.value })}/>
+            </div>
+            <div className="cg-easy-fields">
+              <OutlinedInput label="Minimum Stock" type="number" min="0" step="0.01" value={part.minimumStock} onChange={e => setPart({ ...part, minimumStock: e.target.value })}/>
+              <OutlinedInput label="Rack / Location" value={part.location} onChange={e => setPart({ ...part, location: e.target.value })}/>
+            </div>
+            <p className="cg-easy-hint">Opening stock records quantity only. Supplier credit and payment require a confirmed purchase bill.</p>
+            <div className="cg-easy-form-actions"><button type="button" onClick={() => setPartOpen(false)}>Cancel</button><button type="submit" disabled={saving}>{saving ? 'Saving...' : (number(part.stockQuantity) > 0 ? 'Save Part & Add Opening Stock' : 'Save Part')}</button></div>
           </form>
         )}
       </ResponsiveModalSheet>
