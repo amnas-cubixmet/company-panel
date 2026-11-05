@@ -26,6 +26,15 @@ export const JobList = () => {
   const priority = searchParams.get('priority') || 'all';
   const from = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get('from') || '') ? searchParams.get('from') : '';
   const to = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get('to') || '') ? searchParams.get('to') : '';
+  // Directly edited URLs can contain a reversed date range. Correct the
+  // invalid end date without losing any other existing filters.
+  useEffect(() => {
+    if (!from || !to || from <= to) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('to');
+    next.delete('page');
+    setSearchParams(next, { replace: true });
+  }, [from, to, searchParams, setSearchParams]);
   const changeFilter = (key, value) => {
     const next = new URLSearchParams(searchParams);
     if (!value || value === 'all' || value === 'All') next.delete(key);
@@ -204,6 +213,7 @@ export const JobList = () => {
         onFromChange={(value) => changeFilter('from', value)}
         onToChange={(value) => changeFilter('to', value)}
         resultCount={filteredJobs.length}
+        loading={loading} hasError={Boolean(loadError)}
         onReset={resetFilters}
       />
 
@@ -228,6 +238,7 @@ export const JobList = () => {
         loading={loading}
         status={status}
         searchTerm={query}
+        hasActiveFilters={Boolean(query || status !== 'All' || branch !== 'all' || technician !== 'all' || priority !== 'all' || from || to)}
         onOpenJob={openJob}
       />
       {!loading && filteredJobs.length > pageSize && (
