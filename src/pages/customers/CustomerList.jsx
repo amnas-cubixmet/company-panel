@@ -57,7 +57,7 @@ export const CustomerList = () => {
   const [customerType, setCustomerType] = useState('Individual');
   const [companyName, setCompanyName] = useState('');
   const [gstNo, setGstNo] = useState('');
-  const [branch, setBranch] = useState('Main Garage Branch');
+  const [branch, setBranch] = useState('');
   const [notes, setNotes] = useState('');
 
   // Duplicate Check Modal State
@@ -200,7 +200,7 @@ export const CustomerList = () => {
     setCustomerType(c.customerType || 'Individual');
     setCompanyName(c.companyName || '');
     setGstNo(c.gstNo || '');
-    setBranch(c.branch || 'Main Garage Branch');
+    setBranch(c.branch || c.branchName || '');
     setNotes(c.notes || '');
     setIsAddCustomerOpen(true);
   };
@@ -217,7 +217,7 @@ export const CustomerList = () => {
     setCustomerType('Individual');
     setCompanyName('');
     setGstNo('');
-    setBranch('Main Garage Branch');
+    setBranch('');
     setNotes('');
   };
 
@@ -551,8 +551,8 @@ export const CustomerList = () => {
               value={branch}
               onChange={(e) => setBranch(e.target.value)}
             >
-              <option value="Main Garage Branch">Main Garage Branch</option>
-              <option value="Kochi South Branch">Kochi South Branch</option>
+              <option value="">Select workshop branch</option>
+              {availableBranches.map((value) => <option key={value} value={value}>{value}</option>)}
             </Select>
           </div>
 
