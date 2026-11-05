@@ -33,7 +33,7 @@ import { JobWorkPhotoPanel } from '../../components/jobs/JobWorkPhotoPanel';
 import { jobDisplayLabel } from '../../components/jobs/jobs.utils';
 import { JobBreadcrumbs } from '../../components/jobs/JobBreadcrumbs';
 import { WhatsAppManualShareButton } from '../../components/common/WhatsAppManualShareButton';
-import { complaintStatusForJob, complaintStatusClass } from '../../components/jobs/complaintStatus';
+import { statusForComplaint, complaintStatusClass, unresolvedComplaintCount, COMPLAINT_STATUSES } from '../../components/jobs/complaintStatus';
 
 const money = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -314,7 +314,7 @@ export function JobCardWorkspace() {
 
   const complaintSource = job?.complaints || job?.customerComplaints || [];
   const complaints = Array.isArray(complaintSource) ? complaintSource : [];
-  const automaticComplaintStatus = complaintStatusForJob(job, workflow);
+  const pendingComplaintCount = unresolvedComplaintCount(complaints);
   const findings = job?.inspection?.findings || job?.vehicleInspection?.findings || job?.inspectionFindings || [];
   const inspectionChecks = job?.inspection?.checklist || {};
   const labourRecords = USE_MOCK_API ? (job?.labourRecords || []) : (job?.work || []);
@@ -454,6 +454,10 @@ export function JobCardWorkspace() {
     if (stage === 'work') {
       if (!await appConfirm('Confirm all work is finished and mechanic timers are stopped?')) return;
       options.confirmWorkDone = true;
+      if (pendingComplaintCount) {
+        if (!await appConfirm(pendingComplaintCount + ' customer complaint(s) are unresolved. Review them before QC. Continue with an explicit unresolved-complaint acknowledgment?')) return;
+        options.confirmUnresolvedComplaints = true;
+      }
     }
     setSaving(true);
     setError('');
@@ -482,7 +486,7 @@ export function JobCardWorkspace() {
       }
     } catch (e) {
       const details = e?.response?.data;
-      setError(details?.stage || details?.message || e?.message || 'Unable to complete this stage.');
+      setError(details?.complaints || details?.stage || details?.message || e?.message || 'Unable to complete this stage.');
     } finally {
       setSaving(false);
     }
@@ -496,17 +500,21 @@ export function JobCardWorkspace() {
       setError('Enter a skip reason between 3 and 160 characters.');
       return;
     }
+    const confirmUnresolvedComplaints = pendingComplaintCount > 0
+      ? await appConfirm(pendingComplaintCount + ' customer complaint(s) are unresolved. Acknowledge and skip Work anyway?')
+      : false;
+    if (pendingComplaintCount && !confirmUnresolvedComplaints) return;
     setSaving(true);
     setError('');
     try {
-      const result = await jobService.skipJobWork(job.id, reason);
+      const result = await jobService.skipJobWork(job.id, reason, { confirmUnresolvedComplaints });
       if (result.job) setJob(result.job);
       setWorkflow(result);
       setWorkSkipConfirm(false);
       navigate('/jobs/' + job.id + '/' + (result.current || 'qc'), { replace: true });
     } catch (e) {
       const details = e?.response?.data;
-      setError(details?.work || details?.stage || details?.reason || details?.detail || details?.message || e?.message || 'Unable to skip Work stage.');
+      setError(details?.complaints || details?.work || details?.stage || details?.reason || details?.detail || details?.message || e?.message || 'Unable to skip Work stage.');
     } finally {
       setSaving(false);
     }
@@ -611,7 +619,7 @@ export function JobCardWorkspace() {
       id: `CMP-${Date.now()}`,
       description,
       wording: description,
-      status: automaticComplaintStatus,
+      status: 'Pending',
       createdAt: new Date().toISOString()
     };
 
@@ -1353,7 +1361,7 @@ export function JobCardWorkspace() {
               </button>
             </div>
             <div className="job-complaint-entry-footer">
-              <span>Status updates automatically with Work and QC progress.</span>
+              <span>Track each complaint separately. Update status from its details page.</span>
               <span>{complaintText.length}/1000</span>
             </div>
           </div>
@@ -1361,13 +1369,13 @@ export function JobCardWorkspace() {
           <div className="job-complaints-list-header">
             <div>
               <h4>Complaint Records</h4>
-              <p>Complaint status updates automatically as this Job Card progresses.</p>
+              <p>Staff manually update each complaint; QC does not auto-resolve issues.</p>
             </div>
             <div className="job-complaints-filters" role="group" aria-label="Filter complaints by status">
-              {['All', 'Open', 'In Progress', 'Completed'].map((filter) => {
+              {['All', ...COMPLAINT_STATUSES].map((filter) => {
                 const count = filter === 'All'
                   ? complaints.length
-                  : complaints.filter(() => automaticComplaintStatus === filter).length;
+                  : complaints.filter(item => statusForComplaint(item) === filter).length;
                 return (
                   <button
                     type="button"
@@ -1384,7 +1392,7 @@ export function JobCardWorkspace() {
           </div>
 
           <div className="job-complaint-list" aria-live="polite">
-            {complaints.map((item, index) => ({ item, index })).filter(() => complaintFilter === 'All' || automaticComplaintStatus === complaintFilter).map(({ item, index }) => (
+            {complaints.map((item, index) => ({ item, index })).filter(({ item }) => complaintFilter === 'All' || statusForComplaint(item) === complaintFilter).map(({ item, index }) => (
               <Link
                 key={item.id || index}
                 className="job-complaint-card job-complaint-card-link"
@@ -1397,9 +1405,9 @@ export function JobCardWorkspace() {
                 </div>
                 <div className="job-complaint-actions">
                   <div className="job-complaint-status">
-                    <span className="job-complaint-status-label">Status · Auto</span>
-                    <span className={`job-complaint-auto-status ${complaintStatusClass(automaticComplaintStatus)}`}>
-                      {automaticComplaintStatus}
+                    <span className="job-complaint-status-label">Status · Staff</span>
+                    <span className={`job-complaint-auto-status ${complaintStatusClass(statusForComplaint(item))}`}>
+                      {statusForComplaint(item)}
                     </span>
                   </div>
                   <ChevronRight size={17} aria-hidden="true" className="job-complaint-card-arrow"/>
@@ -1412,7 +1420,7 @@ export function JobCardWorkspace() {
                 <strong>No complaints recorded</strong>
                 <p>Add a customer complaint above to start tracking it.</p>
               </div>
-            ) : !complaints.some(() => complaintFilter === 'All' || automaticComplaintStatus === complaintFilter) ? (
+            ) : !complaints.some(item => complaintFilter === 'All' || statusForComplaint(item) === complaintFilter) ? (
               <div className="job-complaint-empty">
                 <FileText size={24} aria-hidden="true"/>
                 <strong>No {complaintFilter.toLowerCase()} complaints</strong>

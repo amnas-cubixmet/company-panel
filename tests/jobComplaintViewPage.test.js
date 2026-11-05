@@ -43,11 +43,14 @@ test('View page loads job-scoped data and safely handles removed or legacy recor
   assert.match(details, /\$\{location\.search\}/);
 });
 
-test('Complaint detail status is automatic and the manual status selector is removed', () => {
-  assert.match(details, /complaintStatusForJob\(job\)/);
-  assert.match(details, /Status \(Automatic\)/);
+test('Complaint detail has staff-only status edit, notes, work references and audit history', () => {
+  assert.match(details, /statusForComplaint\(complaint\)/);
+  assert.match(details, /Status \(Staff-reviewed\)/);
   assert.match(details, /job-complaint-detail-auto-status/);
-  assert.doesNotMatch(details, /changeStatus|Update Status|aria-label="Update complaint status"/);
+  assert.match(details, /jobService\.updateJobComplaintStatus\(/);
+  assert.match(details, /can\('jobs\.edit'\)/);
+  assert.match(details, /Save Complaint Status/);
+  assert.match(details, /statusHistory/);
 });
 
 test('Complaint details show customer and vehicle with responsive single-column mobile layout', () => {

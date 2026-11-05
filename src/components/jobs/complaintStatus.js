@@ -1,19 +1,22 @@
-// Complaint progress follows the validated Job Card workflow rather than
-// letting each operator set a disconnected manual status.
-export const complaintStatusForJob = (job, workflow = null) => {
-  const completed = workflow?.completed || [];
-  if (completed.includes('qc') || ['Ready for Delivery', 'Delivered'].includes(job?.status)) {
-    return 'Completed';
-  }
-  if (completed.includes('estimate') ||
-    ['Approved', 'In Progress', 'Waiting for Parts', 'QC'].includes(job?.status)) {
-    return 'In Progress';
-  }
-  return 'Open';
-};
+// Complaint status is a staff decision, never a derived Job/QC status.
+export const COMPLAINT_STATUSES = Object.freeze([
+  'Pending', 'In Progress', 'Resolved', 'Not Resolved', 'Not Applicable',
+]);
 
-export const complaintStatusClass = (status) => {
-  if (status === 'Completed') return 'is-completed';
+export const statusForComplaint = item =>
+  COMPLAINT_STATUSES.includes(item?.status) ? item.status : 'Pending';
+
+// Compatibility for legacy callers that display an overall badge only.
+export const complaintStatusForJob = () => 'Pending';
+
+export const complaintStatusClass = status => {
+  if (status === 'Resolved' || status === 'Not Applicable') return 'is-completed';
   if (status === 'In Progress') return 'is-progress';
+  if (status === 'Not Resolved') return 'is-open';
   return 'is-open';
 };
+
+export const unresolvedComplaintCount = complaints =>
+  (Array.isArray(complaints) ? complaints : []).filter(item =>
+    !['Resolved', 'Not Applicable'].includes(statusForComplaint(item))
+  ).length;

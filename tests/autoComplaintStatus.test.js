@@ -1,31 +1,32 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { complaintStatusForJob, complaintStatusClass } from '../src/components/jobs/complaintStatus.js';
+import {
+  complaintStatusForJob, statusForComplaint, complaintStatusClass,
+  unresolvedComplaintCount, COMPLAINT_STATUSES,
+} from '../src/components/jobs/complaintStatus.js';
 
-test('complaints stay Open during Overview, Inspection and Estimate', () => {
-  for (const status of ['New', 'Inspection', 'Estimate Pending']) {
-    assert.equal(complaintStatusForJob({ status }), 'Open');
+test('Job stage and successful QC cannot resolve customer complaints automatically', () => {
+  for (const status of ['New', 'Inspection', 'Estimate Pending', 'In Progress', 'QC', 'Delivered']) {
+    assert.equal(complaintStatusForJob({ status }, { completed: ['overview','inspection','estimate','work','qc'] }), 'Pending');
   }
-  assert.equal(complaintStatusForJob({ status: 'New' }, { completed: ['overview', 'inspection'] }), 'Open');
+  assert.equal(statusForComplaint({ status: 'Completed' }), 'Pending');
+  assert.equal(statusForComplaint({ status: 'Open' }), 'Pending');
+  assert.equal(statusForComplaint({ status: 'Resolved' }), 'Resolved');
 });
 
-test('complaints automatically become In Progress when Work starts', () => {
-  for (const status of ['Approved', 'In Progress', 'Waiting for Parts', 'QC']) {
-    assert.equal(complaintStatusForJob({ status }), 'In Progress');
-  }
-  assert.equal(complaintStatusForJob({ status: 'New' }, { completed: ['overview', 'inspection', 'estimate'] }), 'In Progress');
-});
-
-test('complaints complete only after Quality Check has passed and finished', () => {
-  for (const status of ['Ready for Delivery', 'Delivered']) {
-    assert.equal(complaintStatusForJob({ status }), 'Completed');
-  }
-  assert.equal(complaintStatusForJob({ status: 'QC' }, { completed: ['overview', 'inspection', 'estimate', 'work', 'qc'] }), 'Completed');
-  assert.equal(complaintStatusForJob({ status: 'QC' }, { completed: ['overview', 'inspection', 'estimate', 'work'] }), 'In Progress');
-});
-
-test('each auto-status has a stable badge style', () => {
-  assert.equal(complaintStatusClass('Open'), 'is-open');
+test('five independent complaint statuses and badge styling', () => {
+  assert.deepEqual(COMPLAINT_STATUSES,
+    ['Pending', 'In Progress', 'Resolved', 'Not Resolved', 'Not Applicable']);
+  assert.equal(complaintStatusClass('Pending'), 'is-open');
   assert.equal(complaintStatusClass('In Progress'), 'is-progress');
-  assert.equal(complaintStatusClass('Completed'), 'is-completed');
+  assert.equal(complaintStatusClass('Resolved'), 'is-completed');
+  assert.equal(complaintStatusClass('Not Applicable'), 'is-completed');
+  assert.equal(complaintStatusClass('Not Resolved'), 'is-open');
+});
+
+test('Unresolved complaints stay visible and require explicit review before QC', () => {
+  assert.equal(unresolvedComplaintCount([
+    { status: 'Pending' }, { status: 'In Progress' }, { status: 'Not Resolved' },
+    { status: 'Resolved' }, { status: 'Not Applicable' },
+  ]), 3);
 });

@@ -12,8 +12,10 @@ import {
   ServicesHeader,
 } from '../../components/services';
 import { serviceService } from '../../services/service.service';
+import { buildCategoryTreeRows, categoryIsDescendantOf } from '../../utils/serviceHierarchy';
 import '../../styles/service-management.css';
 import '../../styles/service-borderless-forms.css';
+import '../../styles/service-hierarchy.css';
 
 const money = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -33,13 +35,14 @@ const emptyService = {
   durationMinutes: '60',
   status: 'active',
   description: '',
-  checklistText: ''
+  checklistText: '',
+  hsnSac: '', taxRate: '18', taxTreatment: 'taxable', unit: 'Job'
 };
 
 const emptyCategory = {
   name: '',
   description: '',
-  status: 'active'
+  status: 'active', parentId: ''
 };
 
 const statusClass = (status = '') =>
@@ -130,7 +133,7 @@ const ServiceForm = ({
               }}
             >
               <option value="">Select category</option>
-              {categories.map((category)=><option key={category.id} value={category.id}>{category.name}</option>)}
+              {categories.map((category)=><option key={category.id} value={category.id}>{'— '.repeat(Math.min(category.depth || 0, 10)) + category.name}</option>)}
             </select>
           </Field>
 
@@ -158,8 +161,29 @@ const ServiceForm = ({
             </select>
           </Field>
 
-          <Field label="Default Labour Charge">
-            <input type="number" min="0" value={values.price} onChange={(e)=>setValues({...values,price:e.target.value})}/>
+          <Field label="Default Selling Rate (₹)">
+            <input type="number" min="0" max="10000000" step="0.01" value={values.price}
+              onChange={(e)=>setValues({...values,price:e.target.value})}/>
+          </Field>
+          <Field label="Unit">
+            <input maxLength={30} value={values.unit || 'Job'}
+              onChange={(e)=>setValues({...values,unit:e.target.value})}/>
+          </Field>
+          <Field label="SAC / HSN">
+            <input maxLength={20} inputMode="numeric" value={values.hsnSac || ''}
+              onChange={(e)=>setValues({...values,hsnSac:e.target.value})} placeholder="Verified code if known"/>
+          </Field>
+          <Field label="GST Rate (%)">
+            <input type="number" min="0" max="100" step="0.01" value={values.taxRate ?? ''}
+              onChange={(e)=>setValues({...values,taxRate:e.target.value})}/>
+          </Field>
+          <Field label="GST Treatment">
+            <select value={values.taxTreatment || 'taxable'}
+              onChange={(e)=>setValues({...values,taxTreatment:e.target.value})}>
+              <option value="taxable">Taxable</option><option value="exempt">Exempt</option>
+              <option value="nil_rated">Nil-rated</option><option value="non_gst">Non-GST</option>
+              <option value="out_of_scope">Out of scope</option>
+            </select>
           </Field>
 
           <Field label="Estimated Duration (minutes)">
@@ -264,7 +288,9 @@ export const ServiceList = () => {
       description: service.description || '',
       checklistText: Array.isArray(service.checklist)
         ? service.checklist.join('\n')
-        : service.checklistText || ''
+        : service.checklistText || '',
+      hsnSac: service.hsnSac || '', taxRate: service.taxRate ?? '18',
+      taxTreatment: service.taxTreatment || 'taxable', unit: service.unit || 'Job'
     });
   }, [isEdit, id, services, categories]);
 
@@ -277,6 +303,8 @@ export const ServiceList = () => {
       }));
     }
   }, [isNew, categories, form.categoryId]);
+
+  const categoryTree = useMemo(() => buildCategoryTreeRows(categories), [categories]);
 
   const selectedService = useMemo(
     () => services.find((service)=>service.id===id) || null,
@@ -372,7 +400,7 @@ export const ServiceList = () => {
       <ServiceForm
         values={form}
         setValues={setForm}
-        categories={categories}
+        categories={categoryTree}
         onSubmit={saveService}
         onCancel={()=>navigate('/services')}
         submitting={submitting}
@@ -387,7 +415,7 @@ export const ServiceList = () => {
       <ServiceForm
         values={form}
         setValues={setForm}
-        categories={categories}
+        categories={categoryTree}
         onSubmit={saveService}
         onCancel={()=>navigate(`/services/${id}`)}
         submitting={submitting}
@@ -488,7 +516,7 @@ export const ServiceList = () => {
             onCategoryChange={setCategoryFilter}
             statusFilter={statusFilter}
             onStatusChange={setStatusFilter}
-            categories={categories}
+            categories={categoryTree}
           />
 
           <ServiceCatalogGrid
@@ -504,16 +532,17 @@ export const ServiceList = () => {
         <ServiceCategoriesPanel
           categories={categories}
           services={services}
-          onAdd={()=>{
+          onAdd={(parentId = null)=>{
             setCategoryEditor({});
-            setCategoryForm(emptyCategory);
+            setCategoryForm({ ...emptyCategory, parentId: parentId || '' });
           }}
           onEdit={(category)=>{
             setCategoryEditor(category);
             setCategoryForm({
               name:category.name,
               description:category.description || '',
-              status:category.status || 'active'
+              status:category.status || 'active',
+              parentId:category.parentId || ''
             });
           }}
           onDelete={deleteCategory}
@@ -538,6 +567,18 @@ export const ServiceList = () => {
               value={categoryForm.name}
               onChange={(e)=>setCategoryForm({...categoryForm,name:e.target.value})}
             />
+          </Field>
+          <Field label="Parent Category">
+            <select value={categoryForm.parentId || ''}
+              onChange={event => setCategoryForm({...categoryForm, parentId: event.target.value})}>
+              <option value="">Main Category (root)</option>
+              {categoryTree.filter(cat => !categoryEditor?.id ||
+                (String(cat.id) !== String(categoryEditor.id) &&
+                  !categoryIsDescendantOf(categoryEditor.id, cat.id, categories))
+              ).map(cat => <option key={cat.id} value={cat.id}>
+                {'— '.repeat(Math.min(cat.depth, 10)) + cat.name}
+              </option>)}
+            </select>
           </Field>
           <Field label="Description">
             <textarea

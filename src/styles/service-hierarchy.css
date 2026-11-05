@@ -1,0 +1,16 @@
+/* Existing CubeGears theme tokens, with no nested decorative cards. */
+.cg-services .service-category-search{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:11px;background:var(--surface);padding:0 12px;min-height:46px;color:var(--text-secondary);margin-bottom:12px}
+.cg-services .service-category-search:focus-within{outline:2px solid var(--primary);outline-offset:1px}
+.cg-services .service-category-search input{flex:1;min-width:0;width:100%;border:0;box-shadow:none;outline:none;background:transparent;color:var(--text-primary);font-size:16px;height:44px}
+.cg-services .service-category-tree{display:flex;flex-direction:column;gap:6px;min-width:0}
+.cg-services .service-category-tree-row{display:flex;align-items:center;gap:10px;min-width:0;padding:10px 12px 10px calc(12px + var(--service-category-indent, 0px));background:var(--surface);border:1px solid var(--border);border-radius:10px}
+.cg-services .service-category-tree-icon{flex:none;color:var(--primary)}
+.cg-services .service-category-tree-content{display:flex;flex-direction:column;min-width:0;gap:3px;flex:1}
+.cg-services .service-category-tree-content strong{font-size:13px;font-weight:700;color:var(--text-primary);overflow-wrap:anywhere}
+.cg-services .service-category-tree-content small{font-size:11px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.cg-services .service-category-tree-actions{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.cg-services .service-category-tree-actions button{display:inline-flex;align-items:center;gap:5px;justify-content:center;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--text-primary);padding:7px 9px;min-height:36px;cursor:pointer;font-size:12px}
+.cg-services .service-category-tree-actions button:disabled{opacity:.5;cursor:not-allowed}
+.cg-services .service-category-tree-actions button.is-danger{color:var(--danger)}
+.cg-services .service-category-tree-actions button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+@media(max-width:700px){.cg-services .service-category-tree-row{flex-wrap:wrap;padding:10px 9px 10px calc(9px + var(--service-category-indent, 0px))}.cg-services .service-category-tree-content{flex-basis:calc(100% - 50px)}.cg-services .service-category-tree-actions{width:100%;justify-content:flex-start;padding-left:26px}.cg-services .service-category-tree-actions button{min-height:44px}.cg-services .service-form :is(input,select,textarea),.cg-services .service-category-form :is(input,select,textarea){font-size:16px;min-height:44px}}

@@ -32,7 +32,7 @@ test('Add and Edit Service/Category editors use borderless accessible 16px field
   assert.match(css, /safe-area-inset-bottom/);
   for (const label of [
     'Add Service', 'Edit Service', 'Service Code', 'Service Name', 'Category',
-    'Pricing Type', 'Default Labour Charge', 'Estimated Duration (minutes)',
+    'Pricing Type', 'Default Selling Rate (₹)', 'Estimated Duration (minutes)',
     'Description', 'Checklist — one item per line', 'Save Service',
     'Add Service Category', 'Edit Service Category', 'Save Category',
   ]) assert.ok(page.includes(label), label);

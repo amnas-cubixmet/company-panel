@@ -198,7 +198,7 @@ export const completeJobStage = async (id, stage, options = {}) => {
   return apiClient.post(`${API_ENDPOINTS.JOBS}/${id}/workflow`, { stage, ...options });
 };
 
-export const skipJobWork = async (id, reason) => {
+export const skipJobWork = async (id, reason, options = {}) => {
   const normalized = String(reason || '').trim();
   if (normalized.length < 3 || normalized.length > 160) {
     throw new Error('Enter a skip reason between 3 and 160 characters.');
@@ -219,7 +219,7 @@ export const skipJobWork = async (id, reason) => {
     });
     return { ...mockWorkflow(updated), skipped: ['work'], job: updated };
   }
-  return apiClient.post(`${API_ENDPOINTS.JOBS}/${id}/work/skip`, { reason: normalized });
+  return apiClient.post(`${API_ENDPOINTS.JOBS}/${id}/work/skip`, { reason: normalized, ...options });
 };
 
 export const createJobEstimate = async (id, payload) => {
@@ -264,6 +264,15 @@ export const saveQuickJobEstimate = async (id, payload, draftId = null) => {
     : apiClient.post(base, payload);
 };
 
+export const updateJobComplaintStatus = async (jobId, complaintId, { status, notes = '', workReference = '' }) => {
+  if (!jobId || !complaintId) throw new Error('Choose a valid Job Card complaint.');
+  if (USE_MOCK_API) throw new Error('Complaint status auditing requires the live backend.');
+  return apiClient.post(
+    `${API_ENDPOINTS.JOBS}/${encodeURIComponent(jobId)}/complaints/${encodeURIComponent(complaintId)}/status`,
+    { status, notes, workReference }
+  );
+};
+
 export const skipJobEstimate = async (id, { reason, details = '' }) => {
   if (USE_MOCK_API) throw new Error('Skip Estimate requires the live backend audit workflow.');
   return apiClient.post(`${API_ENDPOINTS.JOBS}/${id}/estimate/skip`, { reason, details });
@@ -304,6 +313,7 @@ export const jobService = {
   updateJob,
   getJobWorkflow,
   getJobActivity,
+  updateJobComplaintStatus,
   completeJobStage,
   skipJobWork,
   createJobEstimate,
