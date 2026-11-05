@@ -328,7 +328,7 @@
 @media (max-width: 420px) {
   .live-camera-controls { grid-template-columns: minmax(0, 1fr); }
 }
-@media (max-height: 620px) and (orientation: landscape) {
+@media (max-height: 620px) and (orientation:landscape) {
   .live-camera-toolbar { min-height: 48px; }
   .live-camera-stage { flex: 1 1 auto; min-height: 90px; }
   .live-camera-controls { max-height: 55dvh; }
