@@ -83,3 +83,42 @@
     min-height:48px;
   }
 }
+
+/* Safe, separately audited Skip Work action; unrelated QC controls are unchanged. */
+.cg-job-detail .job-work-skip-trigger {
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-height:42px;padding:9px 13px;background:var(--surface-2);
+  color:var(--text-primary);border:1px solid var(--border);
+  border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;
+}
+.cg-job-detail .job-work-skip-confirm {
+  border:1px solid var(--border);background:var(--surface);
+  border-radius:14px;padding:16px;display:grid;gap:12px;
+}
+.cg-job-detail .job-work-skip-confirm strong {font-size:14px}
+.cg-job-detail .job-work-skip-confirm p {font-size:12px;color:var(--text-secondary);margin:5px 0 0}
+.cg-job-detail .job-work-skip-confirm label {
+  display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--text-primary);
+}
+.cg-job-detail .job-work-skip-confirm :is(select,textarea) {
+  width:100%;min-height:44px;padding:10px 12px;font:inherit;
+  color:var(--text-primary);border:1px solid var(--border);
+  border-radius:9px;background:var(--surface-2);
+}
+.cg-job-detail .job-work-skip-confirm-actions {
+  display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap;
+}
+.cg-job-detail .job-work-skip-confirm-actions button {
+  min-height:44px;border-radius:9px;padding:9px 14px;
+  border:1px solid var(--border);background:var(--surface-2);
+  color:var(--text-primary);font-size:12px;font-weight:700;cursor:pointer;
+}
+.cg-job-detail .job-work-skip-confirm-actions button[type="submit"] {
+  color:#fff;background:var(--primary);border-color:var(--primary);
+}
+.cg-job-detail .job-work-skip-confirm button:disabled,
+.cg-job-detail .job-work-skip-trigger:disabled {opacity:.55;cursor:not-allowed}
+@media(max-width:650px) {
+  .cg-job-detail .job-work-skip-trigger {width:100%;min-height:44px}
+  .cg-job-detail .job-work-skip-confirm-actions button {flex:1 1 135px}
+}
