@@ -1,6 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Camera, CheckCircle2, ClipboardCheck, Plus, RefreshCcw, Search, Trash2, Wrench } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Camera, CheckCircle2, ClipboardCheck, Plus, RefreshCcw, Search, SkipForward, Trash2, Wrench } from 'lucide-react';
+import { ResponsiveModalSheet } from '../common/ResponsiveModalSheet';
 import { jobInspectionService, DEFAULT_INSPECTION_CATEGORIES } from '../../services/jobInspection.service';
+
+const SKIP_REASONS = [
+  'Quick Service',
+  'Customer Declined Inspection',
+  'Inspection Not Required',
+  'Other',
+];
+
+const inspected = (value) => ['Good', 'Needs Attention', 'Critical'].includes(value);
+const reviewed = (value) => inspected(value) || value === 'Not Applicable';
 
 const newFinding = () => ({
   description: '', severity: 'Medium', recommendedAction: '', estimatedCost: ''
@@ -15,7 +26,7 @@ const readImage = (file) => new Promise((resolve, reject) => {
   reader.readAsDataURL(file);
 });
 
-export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEditing = false, onDoneEditing }) {
+export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit = false, startEditing = false, onDoneEditing }) {
   const [inspection, setInspection] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
@@ -25,6 +36,10 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEd
   const [editing, setEditing] = useState(startEditing);
   const [finding, setFinding] = useState(newFinding());
   const [diagnostic, setDiagnostic] = useState({ code: '', description: '' });
+  const [skipConfirmOpen, setSkipConfirmOpen] = useState(false);
+  const [skipChoice, setSkipChoice] = useState(SKIP_REASONS[0]);
+  const [skipOther, setSkipOther] = useState('');
+  const skipInFlight = useRef(false);
 
   const reload = useCallback(async () => {
     const result = await jobInspectionService.getInspection(job.id);
@@ -65,16 +80,22 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEd
   const checklist = inspection?.checklist || {};
   const items = useMemo(() => [...new Set(DEFAULT_INSPECTION_CATEGORIES.flatMap((group) => group.items))], []);
   const total = items.length;
-  const completed = items.filter((item) => checklist[item] && checklist[item] !== 'Not Checked').length;
+  const completed = items.filter((item) => inspected(checklist[item])).length;
+  const applicableSkipped = items.filter((item) => checklist[item] === 'Not Applicable').length;
+  const reviewedCount = completed + applicableSkipped;
   const good = items.filter((item) => checklist[item] === 'Good').length;
   const attention = items.filter((item) => ['Needs Attention', 'Critical'].includes(checklist[item])).length;
   const findings = inspection?.findings || [];
   const photos = inspection?.photos || [];
   const codes = inspection?.diagnosticScan?.codes || [];
   const isCompleted = inspection?.status === 'Completed';
+  const isSkipped = inspection?.status === 'Skipped';
   const isStarted = inspection?.status === 'In Progress' || isCompleted;
-  const editable = isStarted && (!isCompleted || (canCorrect && editing));
-  const progress = total ? Math.round((completed / total) * 100) : 0;
+  const editable = canEdit && isStarted && !isSkipped && (!isCompleted || (canCorrect && editing));
+  const maySkip = canEdit && !isCompleted && !isSkipped && inspection?.skipAllowed !== false;
+  const skipBlockedReason = inspection?.skipBlockedReason || 'Inspection cannot be skipped in this stage.';
+  const skipReason = skipChoice === 'Other' ? skipOther.trim() : skipChoice;
+  const progress = total ? Math.round((reviewedCount / total) * 100) : 0;
   const activeGroups = DEFAULT_INSPECTION_CATEGORIES.map((group) => ({
     ...group,
     items: group.items.filter((item) => item.toLowerCase().includes(search.trim().toLowerCase()) || group.name.toLowerCase().includes(search.trim().toLowerCase()))
@@ -82,6 +103,25 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEd
 
   const visibleGroup = activeGroups.find((group) => group.id === selectedGroup) || activeGroups[0];
   const groupPosition = activeGroups.findIndex((group) => group.id === visibleGroup?.id);
+
+  const submitSkip = async (event) => {
+    event.preventDefault();
+    if (skipInFlight.current || busy || !maySkip) return;
+    if (skipReason.length < 3 || skipReason.length > 160) {
+      setError('Enter a skip reason between 3 and 160 characters.');
+      return;
+    }
+    skipInFlight.current = true;
+    try {
+      const success = await perform('skip', () => jobInspectionService.skipInspection(job.id, skipReason));
+      if (success) {
+        setSkipConfirmOpen(false);
+        setSkipOther('');
+      }
+    } finally {
+      skipInFlight.current = false;
+    }
+  };
 
   const saveFinding = async (event) => {
     event.preventDefault();
@@ -135,15 +175,17 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEd
           <div className="cg-inspection-overview-copy">
             <span className="cg-inspection-kicker">Vehicle inspection</span>
             <h3>{job.vehicleReg || job.vehicle?.registration || 'Vehicle'} <span>· {inspection?.status || 'Not Started'}</span></h3>
-            <p>Check the vehicle, record issues, then complete inspection to continue.</p>
+            <p>{isSkipped
+              ? 'Inspection skipped with an audit trail. Existing checks, findings and photos are preserved.'
+              : 'Check the vehicle, record issues, then complete inspection to continue.'}</p>
+            {isSkipped && <div className="cg-inspection-skipped-detail" role="status">
+              <strong>Skipped</strong>
+              <span>Reason: {inspection.skipReason}</span>
+              <span>{inspection.skippedBy || 'Authorized staff'} · {inspection.skippedAt ? new Date(inspection.skippedAt).toLocaleString() : 'Time unavailable'}</span>
+            </div>}
           </div>
           <div className="cg-inspection-header-actions">
             <button type="button" className="cg-inspection-icon-button" aria-label="Refresh inspection" disabled={!!busy} onClick={() => perform('refresh', async () => {})}><RefreshCcw size={16} /></button>
-            {!isStarted && (
-              <button type="button" className="cg-inspection-primary" disabled={!!busy} onClick={() => perform('start', () => jobInspectionService.startInspection(job.id))}>
-                {busy === 'start' ? 'Starting…' : 'Start inspection'}
-              </button>
-            )}
             {isCompleted && canCorrect && (
               <button type="button" className="cg-inspection-primary" disabled={!!busy}
                 onClick={() => {
@@ -159,13 +201,13 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEd
           <div><span>Checked</span><strong>{completed} / {total}</strong></div>
           <div><span>Good</span><strong>{good}</strong></div>
           <div><span>Needs attention</span><strong>{attention}</strong></div>
-          <div><span>Findings</span><strong>{findings.length}</strong></div>
+          <div><span>Findings / N/A</span><strong>{findings.length} / {applicableSkipped}</strong></div>
         </div>
         <div className="cg-inspection-progress-head">
           <span>Checklist progress</span>
           <strong>{progress}%</strong>
         </div>
-        <div className="cg-inspection-progress-track" role="progressbar" aria-label="Inspection checklist progress" aria-valuemin={0} aria-valuemax={total} aria-valuenow={completed}>
+        <div className="cg-inspection-progress-track" role="progressbar" aria-label="Inspection checklist progress" aria-valuemin={0} aria-valuemax={total} aria-valuenow={reviewedCount}>
           <div style={{ width: progress + '%' }} />
         </div>
       </section>
@@ -183,7 +225,8 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEd
             <input aria-label="Search inspection items" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search checks"/>
           </label>
         </div>
-        {!isStarted && <p className="cg-inspection-hint">Start inspection to enable checklist options.</p>}
+        {!isStarted && !isSkipped && <p className="cg-inspection-hint">Start inspection to enable checklist options.</p>}
+        {isSkipped && <p className="cg-inspection-hint">Skipped — checklist results are retained but locked. No unchecked items were marked Good.</p>}
         <div className="cg-inspection-category-row">
           <label htmlFor="cg-inspection-category">Category</label>
           <select
@@ -194,7 +237,7 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEd
           >
             {activeGroups.map((group) => (
               <option key={group.id} value={group.id}>
-                {group.name} ({group.items.filter((item) => checklist[item] && checklist[item] !== 'Not Checked').length}/{group.items.length})
+                {group.name} ({group.items.filter((item) => reviewed(checklist[item])).length}/{group.items.length})
               </option>
             ))}
           </select>
@@ -211,16 +254,16 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEd
                     <small>{selected === 'Not Checked' ? 'Not checked' : selected}</small>
                   </div>
                   <div className="cg-inspection-condition-actions" role="group" aria-label={item + ' condition'}>
-                    {['Good', 'Needs Attention', 'Critical'].map((status) => (
+                    {['Good', 'Needs Attention', 'Critical', 'Not Applicable'].map((status) => (
                       <button
                         type="button"
                         key={status}
                         disabled={!editable || !!busy}
                         aria-pressed={selected === status}
-                        className={['cg-inspection-condition', status === 'Good' ? 'is-good' : status === 'Critical' ? 'is-critical' : 'is-attention', selected === status ? 'is-selected' : ''].join(' ')}
+                        className={['cg-inspection-condition', status === 'Good' ? 'is-good' : status === 'Critical' ? 'is-critical' : status === 'Not Applicable' ? 'is-na' : 'is-attention', selected === status ? 'is-selected' : ''].join(' ')}
                         onClick={() => perform('check', () => jobInspectionService.updateChecklistItem(job.id, item, status))}
                       >
-                        {status === 'Needs Attention' ? 'Attention' : status}
+                        {status === 'Needs Attention' ? 'Attention' : status === 'Not Applicable' ? 'N/A' : status}
                       </button>
                     ))}
                     {selected !== 'Not Checked' && editable && (
@@ -235,7 +278,7 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEd
           <p className="cg-inspection-empty">No checklist items match this search.</p>
         )}
         <div className="cg-inspection-category-footer">
-          <span>{visibleGroup ? visibleGroup.items.filter((item) => checklist[item] && checklist[item] !== 'Not Checked').length + ' of ' + visibleGroup.items.length + ' checked in this category' : 'Try another search'}</span>
+          <span>{visibleGroup ? visibleGroup.items.filter((item) => reviewed(checklist[item])).length + ' of ' + visibleGroup.items.length + ' reviewed in this category' : 'Try another search'}</span>
           <button type="button" disabled={!visibleGroup || groupPosition >= activeGroups.length - 1} onClick={() => setSelectedGroup(activeGroups[groupPosition + 1].id)}>
             Next category <span aria-hidden="true">→</span>
           </button>
@@ -321,19 +364,67 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, startEd
 
       <footer className="cg-inspection-footer">
         <div>
-          <strong>{isCompleted ? 'Inspection completed' : !isStarted ? 'Start the inspection' : completed ? 'Ready to finish inspection' : 'Check the vehicle to continue'}</strong>
-          <p>{isCompleted
-            ? canCorrect ? 'Use Edit Inspection to correct checks before estimate approval.' : 'Inspection is approved and read-only.'
-            : 'Save at least one checklist result before completing.'}</p>
+          <strong>{isSkipped ? 'Inspection skipped' : isCompleted ? 'Inspection completed' : !isStarted ? 'Start the inspection' : completed ? 'Ready to finish inspection' : 'Check the vehicle to continue'}</strong>
+          <p>{isSkipped ? 'Reason: ' + (inspection.skipReason || 'Not supplied')
+            : isCompleted
+              ? canCorrect ? 'Use Edit Inspection to correct checks before estimate approval.' : 'Inspection is approved and read-only.'
+              : 'Complete requires at least one checked result. Skip requires a reason.'}</p>
         </div>
-        {isCompleted ? (
+        {isSkipped ? (
+          <span className="cg-inspection-done is-skipped"><SkipForward size={16} /> Skipped</span>
+        ) : isCompleted ? (
           <span className="cg-inspection-done"><CheckCircle2 size={16}/> {editing ? 'Editing' : 'Completed'}</span>
         ) : (
-          <button type="button" className="cg-inspection-primary" disabled={!isStarted || completed === 0 || !!busy} onClick={() => perform('complete', () => jobInspectionService.completeInspection(job.id, true))}>
-            <CheckCircle2 size={16}/> {busy === 'complete' ? 'Finishing…' : 'Complete inspection'}
-          </button>
+          <div className="cg-inspection-footer-actions">
+            <button type="button" className="cg-inspection-secondary"
+              disabled={!maySkip || !!busy}
+              title={!maySkip ? skipBlockedReason : 'Skip without completing checklist'}
+              onClick={() => { setError(''); setSkipConfirmOpen(true); }}>
+              <SkipForward size={16} aria-hidden="true" /> Skip Inspection
+            </button>
+            <button type="button" className="cg-inspection-primary"
+              disabled={!canEdit || !!busy || (isStarted && completed === 0)}
+              onClick={() => perform(isStarted ? 'complete' : 'start',
+                () => isStarted
+                  ? jobInspectionService.completeInspection(job.id, true)
+                  : jobInspectionService.startInspection(job.id))}>
+              <CheckCircle2 size={16} aria-hidden="true"/>
+              {busy === 'complete' ? 'Finishing…' : busy === 'start' ? 'Starting…' : isStarted ? 'Complete Inspection' : 'Start Inspection'}
+            </button>
+          </div>
         )}
       </footer>
+      {!maySkip && !isSkipped && !isCompleted && <p className="cg-inspection-skip-policy" role="status">{skipBlockedReason}</p>}
+      <ResponsiveModalSheet
+        isOpen={skipConfirmOpen}
+        onClose={() => { if (!busy) setSkipConfirmOpen(false); }}
+        title="Confirm Skip Inspection"
+        maxWidth="460px"
+      >
+        <form className="cg-inspection-skip-form" onSubmit={submitSkip}>
+          <p>This skips the inspection stage without marking unchecked items Good. Your existing photos, results and findings remain saved.</p>
+          <label htmlFor="cg-inspection-skip-reason">Skip Reason</label>
+          <select id="cg-inspection-skip-reason" value={skipChoice}
+            disabled={!!busy} onChange={(event) => setSkipChoice(event.target.value)}>
+            {SKIP_REASONS.map((reason) => <option key={reason} value={reason}>{reason}</option>)}
+          </select>
+          {skipChoice === 'Other' && (
+            <label htmlFor="cg-inspection-skip-other">Describe the reason
+              <textarea id="cg-inspection-skip-other" value={skipOther}
+                minLength={3} maxLength={160} required disabled={!!busy}
+                placeholder="Why is inspection not needed?"
+                onChange={(event) => setSkipOther(event.target.value)} />
+            </label>
+          )}
+          {error && <p className="cg-inspection-error" role="alert">{error}</p>}
+          <div className="cg-inspection-skip-modal-actions">
+            <button type="button" disabled={!!busy} className="cg-inspection-secondary" onClick={() => setSkipConfirmOpen(false)}>Cancel</button>
+            <button type="submit" disabled={!!busy || skipReason.length < 3 || skipReason.length > 160} className="cg-inspection-primary">
+              {busy === 'skip' ? 'Skipping…' : 'Confirm Skip Inspection'}
+            </button>
+          </div>
+        </form>
+      </ResponsiveModalSheet>
     </div>
   );
 }
