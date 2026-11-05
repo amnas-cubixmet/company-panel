@@ -66,3 +66,64 @@
   .cg-supplier-profile{padding:13px}
   .cg-supplier-contacts a{flex:1}
 }
+
+
+/* Supplier editor: accessible outlined floating labels (the wrapping label
+ * remains the actual screen-reader label, even when the text floats).
+ */
+.cg-supplier-form > label.cg-supplier-floating {
+  display: block;
+  position: relative;
+  min-width: 0;
+}
+.cg-supplier-form > label.cg-supplier-floating :is(input:not([type=checkbox]),textarea) {
+  height: 48px;
+  min-height: 48px;
+  border: 1px solid var(--border,#dce3ea);
+  border-radius: 10px;
+  padding: 13px 14px 8px;
+  background: var(--surface,#fff);
+  color: var(--text-primary,#142037);
+  font-size: 16px;
+}
+.cg-supplier-form > label.cg-supplier-floating textarea {
+  height: 82px;
+  resize: vertical;
+  padding-top: 20px;
+}
+.cg-supplier-form > label.cg-supplier-floating > span {
+  position: absolute;
+  top: 24px;
+  left: 12px;
+  transform: translateY(-50%);
+  padding: 0 4px;
+  border-radius: 2px;
+  background: var(--surface,#fff);
+  color: var(--text-secondary,#64748b);
+  pointer-events: none;
+  font-size: 14px;
+  line-height: 1;
+}
+.cg-supplier-form > label.cg-supplier-floating:is(:focus-within,:has(input:not(:placeholder-shown)),:has(textarea:not(:placeholder-shown))) > span {
+  top: 0;
+  font-size: 12px;
+}
+.cg-supplier-filter select {
+  height: 44px;
+  min-width: 125px;
+  padding: 0 12px;
+  border: 1px solid var(--border,#dce3ea);
+  border-radius: 10px;
+  background: var(--surface,#fff);
+  color: var(--text-primary,#142037);
+  font-size: 16px;
+}
+.cg-supplier-contacts button.cg-supplier-button { min-height: 40px; }
+.cg-supplier-filter select:focus-visible,
+.cg-supplier-contacts button:focus-visible {
+  outline: 2px solid var(--primary,#2563eb);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cg-supplier-form > label.cg-supplier-floating > span { transition: none; }
+}
