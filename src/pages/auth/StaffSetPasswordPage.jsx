@@ -1,0 +1,141 @@
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { CheckCircle2, Eye, EyeOff, Lock, ShieldCheck } from 'lucide-react';
+import { API_BASE_URL } from '../../api/apiConfig';
+import '../../styles/login-system.css';
+import '../../styles/auth-recovery.css';
+
+async function publicPasswordRequest(path, payload) {
+  const response = await fetch(`${API_BASE_URL}/auth/staff-invitation/${path}`, {
+    method: 'POST',
+    credentials: 'omit',
+    referrerPolicy: 'no-referrer',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const problem = data?.password;
+    throw new Error(Array.isArray(problem) ? problem.join(' ') : problem || data.message || 'Invalid or expired setup link.');
+  }
+  return data;
+}
+
+export default function StaffSetPasswordPage() {
+  const { token } = useParams();
+  const [state, setState] = useState('checking');
+  const [purpose, setPurpose] = useState('setup');
+  const [expiry, setExpiry] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!token) { setState('invalid'); return; }
+    let active = true;
+    setState('checking');
+    publicPasswordRequest('validate', { token })
+      .then((result) => {
+        if (!active) return;
+        setPurpose(result.purpose || 'setup');
+        setExpiry(result.expiresAt || '');
+        setState('ready');
+      })
+      .catch(() => { if (active) setState('invalid'); });
+    return () => { active = false; };
+  }, [token]);
+
+  const submit = async (event) => {
+    event.preventDefault();
+    setError('');
+    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+      setError('Use at least 8 characters including letters and a number.');
+      return;
+    }
+    if (password !== confirm) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await publicPasswordRequest('consume', { token, password, confirmPassword: confirm });
+      setPassword('');
+      setConfirm('');
+      setState('success');
+    } catch (cause) {
+      setError(cause?.message || 'Could not set password.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <main className="login-page auth-recovery-page" data-staff-password-setup>
+      <div className="login-shell">
+        <section className="login-card auth-recovery-card">
+          <div className="login-brand-row"><div className="login-brand-mark">CG</div>
+            <div><strong className="login-brand-name">CubeGears</strong>
+              <span className="login-brand-subtitle">Secure Workshop Staff Access</span></div>
+          </div>
+          {state === 'checking' && <p role="status">Checking your one-time password setup link…</p>}
+          {state === 'invalid' && <>
+            <h1 className="login-title">Link unavailable</h1>
+            <p role="alert" className="login-description">This secure link has expired, was already used, or was replaced. Ask your workshop administrator to resend it.</p>
+            <Link className="login-submit" to="/login">Go to Login</Link>
+          </>}
+          {state === 'success' && <div className="auth-success-state">
+            <CheckCircle2 size={32} aria-hidden="true"/>
+            <h1 className="login-title">Password created</h1>
+            <p className="login-description">You can now sign in using your registered mobile number with country code and your password.</p>
+            <Link className="login-submit" to="/login">Continue to Login</Link>
+          </div>}
+          {state === 'ready' && <>
+            <h1 className="login-title">{purpose === 'reset' ? 'Reset your password' : 'Set your account password'}</h1>
+            <p className="login-description">Enter your own password. Your workshop never receives it. This link works only once.</p>
+            {expiry && <p className="login-description">Link valid until {new Date(expiry).toLocaleString()}.</p>}
+            {error && <div className="login-error" role="alert">{error}</div>}
+            <form className="login-form" onSubmit={submit} noValidate>
+              <label className="block"><span className="login-field-label">New Password</span>
+                <div className="login-input-shell">
+                  <span className="login-input-icon"><Lock size={16}/></span>
+                  <input className="login-input" type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password" value={password} minLength={8}
+                    onChange={(event) => setPassword(event.target.value)} required/>
+                  <button type="button" className="login-password-toggle"
+                    onClick={() => setShowPassword((value) => !value)}
+                    aria-label={showPassword ? 'Hide new password' : 'Show new password'}>
+                    {showPassword ? <EyeOff size={17}/> : <Eye size={17}/>}
+                  </button>
+                </div>
+              </label>
+              <label className="block"><span className="login-field-label">Confirm Password</span>
+                <div className="login-input-shell">
+                  <span className="login-input-icon"><ShieldCheck size={16}/></span>
+                  <input className="login-input" type={showConfirm ? 'text' : 'password'}
+                    autoComplete="new-password" value={confirm} minLength={8}
+                    onChange={(event) => setConfirm(event.target.value)} required/>
+                  <button type="button" className="login-password-toggle"
+                    onClick={() => setShowConfirm((value) => !value)}
+                    aria-label={showConfirm ? 'Hide confirmation' : 'Show confirmation'}>
+                    {showConfirm ? <EyeOff size={17}/> : <Eye size={17}/>}
+                  </button>
+                </div>
+              </label>
+              <div className="password-rules">
+                <span className={password.length >= 8 ? 'ok' : ''}>8+ characters</span>
+                <span className={/[A-Za-z]/.test(password) ? 'ok' : ''}>Letters</span>
+                <span className={/\d/.test(password) ? 'ok' : ''}>Number</span>
+              </div>
+              <button className="login-submit" type="submit" disabled={saving}>
+                {saving ? 'Saving password…' : 'Set Password'}
+              </button>
+            </form>
+          </>}
+        </section>
+      </div>
+    </main>
+  );
+}

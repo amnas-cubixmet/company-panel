@@ -43,6 +43,9 @@ export const StaffAddPage = () => {
     name: '',
     phone: '',
     email: '',
+    loginAccessEnabled: canManageBranches,
+    whatsappConsent: false,
+    whatsappConsentSource: '',
     designation: '',
     role: '',
     roleId: '',
@@ -138,19 +141,28 @@ export const StaffAddPage = () => {
       return;
     }
 
+    if (!/^\\+[\\d\\s().-]{8,22}$/.test(form.phone.trim())) {
+      showFormFieldError(formRef.current, 'phone', 'Use a mobile with country code, e.g. +919876543210.');
+      setError('Enter a valid international mobile number.');
+      return;
+    }
+    if (form.loginAccessEnabled && form.whatsappConsent && form.whatsappConsentSource.trim().length < 3) {
+      setError('Record how the staff member agreed to WhatsApp onboarding messages.');
+      return;
+    }
     const email = normalizeEmail(form.email);
     if (email && !isValidEmail(email)) {
       showFormFieldError(formRef.current, 'email', 'Enter a valid staff email address.');
-      setError('Enter a valid email to send the password setup link.');
+      setError('Enter a valid email or leave it blank.');
       return;
     }
-    if (email && !canManageBranches) {
+    if (form.loginAccessEnabled && !canManageBranches) {
       showFormFieldError(formRef.current, 'email', 'Only a company admin can create staff login accounts.');
       setError('Ask a company admin to create the staff login.');
       return;
     }
-    if (email && !form.role.trim()) {
-      showFormFieldError(formRef.current, 'role', 'Choose a staff role for email login.');
+    if (form.loginAccessEnabled && !form.role.trim()) {
+      showFormFieldError(formRef.current, 'role', 'Choose a staff role for mobile/password login.');
       setError('Select the permissions this staff account should have.');
       return;
     }
@@ -248,7 +260,7 @@ export const StaffAddPage = () => {
               </label>
 
               <label>
-                Email (send password setup link)
+                Email (optional)
                 <input
                   type="email"
                   name="email"
@@ -258,10 +270,28 @@ export const StaffAddPage = () => {
                 />
               </label>
 
+              <label className="staff-login-invite-hint" style={{display:'flex',gap:'10px',alignItems:'center',minHeight:'44px'}}>
+                <input type="checkbox" checked={form.loginAccessEnabled} disabled={!canManageBranches}
+                  onChange={(event) => set('loginAccessEnabled', event.target.checked)}/>
+                Enable mobile number + password login
+              </label>
               <p className="staff-login-invite-hint">
-                Staff with an active email and a staff role receive a secure password setup invitation.
-                No email means a staff profile only, without login access.
+                Email is optional. We create a secure 24-hour password link for the registered mobile.
+                Without connected official workshop WhatsApp, an admin can copy/share the link securely.
               </p>
+              {form.loginAccessEnabled && <>
+                <label className="staff-login-invite-hint" style={{display:'flex',gap:'10px',alignItems:'center',minHeight:'44px'}}>
+                  <input type="checkbox" checked={form.whatsappConsent}
+                    onChange={(event) => set('whatsappConsent',event.target.checked)}/>
+                  Staff explicitly agreed to WhatsApp onboarding messages
+                </label>
+                {form.whatsappConsent && <label>
+                  Consent Source / Reference
+                  <input type="text" value={form.whatsappConsentSource} maxLength={120}
+                    onChange={(event) => set('whatsappConsentSource',event.target.value)}
+                    placeholder="e.g. Signed employment intake form"/>
+                </label>}
+              </>}
               <label>
                 Designation
                 <input
@@ -291,7 +321,7 @@ export const StaffAddPage = () => {
               {!loadingOptions && roles.length === 0 && (
                 <p className="staff-login-invite-hint">
                   No staff roles have been created for this company yet.
-                  {user?.isCompanyOwner ? ' Create one in Roles & Permissions before inviting staff with email login.' : ' Ask your company owner to create a role.'}
+                  {user?.isCompanyOwner ? ' Create one in Roles & Permissions before enabling mobile login.' : ' Ask your company owner to create a role.'}
                 </p>
               )}
 

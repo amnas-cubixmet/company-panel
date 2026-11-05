@@ -204,10 +204,17 @@ try {
         }
         await page.locator('.route-loading').waitFor({state:'hidden',timeout:15000});
         await page.waitForFunction(()=>document.body.innerText.length>=20);
-        if(path==='/plans' || path==='/signup') {
-          const expected=path==='/plans'?'/account/credits/buy':'/login';
-          if(new URL(page.url()).pathname!==expected) throw Error('Redirect did not reach '+expected);
+        if(path==='/plans') {
+          if(new URL(page.url()).pathname!=='/account/credits/buy') throw Error('Redirect did not reach module marketplace');
           if(new URL(page.url()).searchParams.has('month')) throw Error('Payroll filters leaked into unrelated route');
+        }
+        if(path==='/signup') {
+          if(new URL(page.url()).pathname!=='/signup') throw Error('Workshop mobile signup must remain public');
+          await page.getByRole('heading',{name:'Create a workshop'}).waitFor({state:'visible'});
+          const mobile=page.locator('input[type="tel"]');
+          if(!(await mobile.count())) throw Error('Mobile number field missing on workshop registration');
+          if(await page.locator('input[type="email"]').getAttribute('required')!==null)
+            throw Error('Email must remain optional for workshop registration');
         }
         const text=await page.locator('body').innerText();
         if(text.length<20)throw Error('Blank page');

@@ -115,6 +115,9 @@ export const staffService = {
         name: staffData.name || '',
         phone: staffData.phone || '',
         email: staffData.email || '',
+        loginAccessEnabled: Boolean(staffData.loginAccessEnabled),
+        whatsappConsent: Boolean(staffData.whatsappConsent),
+        whatsappConsentSource: staffData.whatsappConsentSource || '',
         designation: staffData.designation || '',
         role: staffData.role || '',
         ...(staffData.roleId ? {roleId:staffData.roleId} : {}),
@@ -262,26 +265,14 @@ export const staffService = {
     });
   },
 
-  sendLoginInvite: async (id) => {
-    if (!USE_MOCK_API) return apiClient.post(`/employees/${id}/invite`);
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const idx = mockStaffList.findIndex((staff) => staff.id === id);
-        if (idx !== -1) {
-          mockStaffList[idx].loginStatus = 'Invite Sent';
-          mockStaffList[idx].activityHistory =
-            mockStaffList[idx].activityHistory || [];
-          mockStaffList[idx].activityHistory.unshift({
-            id: `ACT-${Date.now()}`,
-            action: 'Login Invite Sent',
-            oldValue: 'Not Invited',
-            newValue: mockStaffList[idx].email || 'Email',
-            actor: 'Current Admin',
-            timestamp: new Date().toLocaleString(),
-          });
-          resolve(mockStaffList[idx]);
-        } else resolve(null);
-      }, 150);
-    });
+  setLoginAccess: async (id, enabled) => {
+    if (USE_MOCK_API) throw new Error('Staff login access can only be changed using the real Django backend.');
+    return normalizeStaff(await apiClient.patch(`/employees/${id}/login-access`, { enabled }));
   },
+
+  sendLoginInvite: async (id) => {
+    if (USE_MOCK_API) throw new Error('One-time setup links require the real Django backend.');
+    return apiClient.post(`/employees/${id}/invite`);
+  },
+
 };

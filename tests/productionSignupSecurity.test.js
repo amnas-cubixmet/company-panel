@@ -4,16 +4,18 @@ import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 
-test('company panel signup page and registration links are removed', () => {
+test('mobile-only workshop signup uses live Django and never exposes setup bearer tokens', () => {
   const routes = read('src/routes/AppRoutes.jsx');
   const login = read('src/pages/auth/Login.jsx');
-  assert.match(routes, /path="\/signup" element={<Navigate to="\/login" replace \/>}/);
-  assert.doesNotMatch(routes, /import \{ Signup \}/);
-  assert.doesNotMatch(routes, /element={<Signup/);
-  assert.doesNotMatch(login, /to="\/signup"/);
-  assert.doesNotMatch(login, /Create your company account/);
-  assert.match(routes, /path="\/forgot-password" element={<ForgotPassword \/>}/);
-  assert.match(routes, /path="\/setup-password" element={<SetupPassword \/>}/);
+  const signup = read('src/pages/auth/WorkshopMobileSignup.jsx');
+  assert.match(routes, /path="\/signup" element=\{<WorkshopMobileSignup \/>\}/);
+  assert.match(routes, /path="\/set-password\/:token" element=\{<StaffSetPasswordPage \/>\}/);
+  assert.match(login, /to="\/signup"/);
+  assert.match(signup, /\/auth\/signup/);
+  assert.match(signup, /form\.email\.trim\(\) \? \{email:/);
+  assert.doesNotMatch(signup, /MOCK_USER|mock_jwt_token_2026|setupLink: data/);
+  assert.match(routes, /path="\/forgot-password" element=\{<ForgotPassword \/>\}/);
+  assert.match(routes, /path="\/setup-password" element=\{<SetupPassword \/>\}/);
 });
 
 test('production disables mock auth and requires configured real backend', () => {

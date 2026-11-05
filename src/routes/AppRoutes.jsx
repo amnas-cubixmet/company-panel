@@ -8,6 +8,8 @@ import { ProtectedRoute } from './ProtectedRoute';
 const CreditWorkspace = lazyPage(() => import('../pages/saas/CreditWorkspace'), 'CreditWorkspace');
 
 const Login = lazyPage(() => import('../pages/auth/Login'), 'Login');
+const StaffSetPasswordPage = lazyPage(() => import('../pages/auth/StaffSetPasswordPage'), 'default');
+const WorkshopMobileSignup = lazyPage(() => import('../pages/auth/WorkshopMobileSignup'), 'default');
 const CustomerPortalPage = lazyPage(() => import('../pages/customer-portal/CustomerPortalPage'), 'default');
 const ForgotPassword = lazyPage(() => import('../pages/auth/ForgotPassword'), 'ForgotPassword');
 const ResetPassword = lazyPage(() => import('../pages/auth/ResetPassword'), 'ResetPassword');
@@ -74,7 +76,8 @@ export const AppRoutes = () => (
     <Route path="/login" element={<Login />} />
     <Route path="/c/:token" element={<CustomerPortalPage />} />
     <Route path="/plans" element={<Navigate to="/account/credits/buy" replace />} />
-    <Route path="/signup" element={<Navigate to="/login" replace />} />
+    <Route path="/signup" element={<WorkshopMobileSignup />} />
+    <Route path="/set-password/:token" element={<StaffSetPasswordPage />} />
     <Route path="/forgot-password" element={<ForgotPassword />} />
     <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/setup-password" element={<SetupPassword />} />

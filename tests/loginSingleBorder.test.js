@@ -4,13 +4,13 @@ import { readFileSync } from 'node:fs';
 
 const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 
-test('email and password share one shell border, with inline accessible errors intact', () => {
+test('mobile/email and password each have one shell border, plus optional workshop code', () => {
   const login = read('src/pages/auth/Login.jsx');
-  assert.equal((login.match(/className=\{'login-input-shell '/g) || []).length, 2);
-  assert.equal((login.match(/className="login-input"/g) || []).length, 2);
-  assert.match(login, /aria-invalid=\{Boolean\(fieldErrors\.email\)\}/);
+  assert.equal((login.match(/className=\{'login-input-shell '/g) || []).length, 3);
+  assert.equal((login.match(/className="login-input"/g) || []).length, 3);
+  assert.match(login, /aria-invalid=\{Boolean\(fieldErrors\.identifier\)\}/);
   assert.match(login, /aria-invalid=\{Boolean\(fieldErrors\.password\)\}/);
-  assert.match(login, /id="login-email-error"/);
+  assert.match(login, /id="login-identifier-error"/);
   assert.match(login, /id="login-password-error"/);
 });
 
