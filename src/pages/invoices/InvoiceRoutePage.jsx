@@ -376,6 +376,10 @@ export function InvoiceRoutePage() {
 
     const customer = customers.find((row) => String(row.id) === String(customerId));
     if (!customer) return;
+    // Autofilling an existing customer satisfies the customer identity fields.
+    setFieldErrors((old) => Object.fromEntries(
+      Object.entries(old).filter(([field]) => !field.startsWith('customer.'))
+    ));
 
     const displayName = customer.companyName || customer.name || '';
     const fullAddress = formatCustomerAddress(customer);
@@ -434,6 +438,14 @@ export function InvoiceRoutePage() {
 
   const chooseInventory = (rowId, inventoryId) => {
     const stock = inventory.find((item) => String(item.id) === String(inventoryId));
+    const index = form.items.findIndex((item) => item.id === rowId);
+    if (stock && index >= 0) {
+      setFieldErrors((old) => Object.fromEntries(
+        Object.entries(old).filter(([field]) => ![
+          'inventoryId', 'description', 'hsnCode', 'unit', 'rate', 'type',
+        ].some((key) => field === `items.${index}.${key}`))
+      ));
+    }
     setForm((old) => ({
       ...old,
       items: old.items.map((row) => row.id === rowId ? {
@@ -449,6 +461,24 @@ export function InvoiceRoutePage() {
         taxRate: form.invoiceType === 'gst' ? stock?.taxRate ?? 18 : 0
       } : row)
     }));
+  };
+
+  const removeInvoiceItem = (rowId) => {
+    const index = form.items.findIndex((row) => row.id === rowId);
+    if (index < 0) return;
+    // Keep error messages attached to the correct row after index shifts.
+    setFieldErrors((old) => {
+      const next = {};
+      Object.entries(old).forEach(([field, message]) => {
+        const match = /^items\.(\d+)\.(.+)$/.exec(field);
+        if (!match) { next[field] = message; return; }
+        const row = Number(match[1]);
+        if (row === index) return;
+        next[`items.${row > index ? row - 1 : row}.${match[2]}`] = message;
+      });
+      return next;
+    });
+    setForm((old) => ({ ...old, items: old.items.filter((item) => item.id !== rowId) }));
   };
 
   const jumpToInvoiceField = (field) => {
@@ -1000,7 +1030,7 @@ export function InvoiceRoutePage() {
                 </div>
                 <div className="invoice-item-row-actions">
                   <span className="invoice-mobile-item-number">Item {String(index + 1).padStart(2, '0')}</span>
-                  <button type="button" aria-label={`Remove item ${index + 1}`} className="bill-icon-btn" onClick={() => update('items', form.items.filter((item) => item.id !== row.id))}>
+                  <button type="button" aria-label={`Remove item ${index + 1}`} className="bill-icon-btn" onClick={() => removeInvoiceItem(row.id)}>
                     <Trash2 size={16}/><span className="invoice-mobile-remove-label">Remove</span>
                   </button>
                 </div>
