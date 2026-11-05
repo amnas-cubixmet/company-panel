@@ -18,34 +18,26 @@ export const JobDetailPanel = ({ selectedBooking, jobProgress, advisorName, onVi
 
         <div className="job-meta-grid">
           <div><small>Customer</small><strong>{dashboardText(selectedBooking.customer)}</strong></div>
-          <div><small>Booking Time</small><strong>{dashboardText(selectedBooking.time)}</strong></div>
-          <div><small>Advisor</small><strong>{advisorName || 'Workshop Advisor'}</strong></div>
-          <div className="job-meta-wide"><small>Service Request</small><strong>{dashboardText(selectedBooking.service, 'Service not specified')}</strong></div>
+          <div><small>Service</small><strong>{dashboardText(selectedBooking.service, 'Not specified')}</strong></div>
+          {selectedBooking.time && dashboardText(selectedBooking.time) !== 'Walk-in' &&
+            <div><small>Booking</small><strong>{dashboardText(selectedBooking.time)}</strong></div>}
         </div>
 
-        <div className="repair-details">
-          <h3>Repair Details</h3>
-          <div className="repair-detail-grid">
-            <div><span>Job Status</span><strong>{dashboardText(selectedBooking.status, 'Pending')}</strong></div>
-            <div><span>Assigned Team</span><strong>Workshop A</strong></div>
+        <details className="dashboard-stages-disclosure">
+          <summary>Workshop Job Stages <span>View counts</span></summary>
+          <div className="progress-card">
+            <div className="progress-title-row"><strong>Stage Overview</strong><span>Job counts by stage</span></div>
+            <div className="progress-grid">
+              {repairStages.map((stage, index) => (
+                <div key={stage.key} className="progress-stage">
+                  <span className="progress-circle" aria-hidden="true">{index + 1}</span>
+                  <small>{stage.label}</small>
+                  <strong>{jobProgress?.[stage.key] ?? 0} jobs</strong>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-
-        <div className="progress-card">
-          <div className="progress-title-row">
-            <strong>Workshop Job Stages</strong>
-            <span>Job counts by stage</span>
-          </div>
-          <div className="progress-grid">
-            {repairStages.map((stage, index) => (
-              <div key={stage.key} className="progress-stage">
-                <span className="progress-circle" aria-hidden="true">{index + 1}</span>
-                <small>{stage.label}</small>
-                <strong>{jobProgress?.[stage.key] ?? 0} jobs</strong>
-              </div>
-            ))}
-          </div>
-        </div>
+        </details>
       </div>
     ) : (
       <div className="empty-job">No booking selected</div>
