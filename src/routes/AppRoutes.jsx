@@ -44,8 +44,6 @@ const StockEasyPage = lazyPage(() => import('../pages/stock/StockEasyPage'), 'de
 const SupplierWorkspace = lazyPage(() => import('../pages/suppliers/SupplierWorkspace'), 'default');
 const SuppliersPage = lazyPage(() => import('../pages/suppliers/SuppliersPage'), 'default');
 const SupplierFinancePage = lazyPage(() => import('../pages/stock/SupplierFinancePage'), 'default');
-const SuppliersPage = lazyPage(() => import('../pages/suppliers/SuppliersPage'), 'SuppliersPage');
-const SupplierWorkspace = lazyPage(() => import('../pages/suppliers/SupplierWorkspace'), 'SupplierWorkspace');
 const InvoiceList = lazyPage(() => import('../pages/invoices/InvoiceList'), 'InvoiceList');
 const EWayBillPage = lazyPage(() => import('../pages/invoices/EWayBillPage'), 'EWayBillPage');
 const PaymentList = lazyPage(() => import('../pages/payments/PaymentList'), 'PaymentList');
