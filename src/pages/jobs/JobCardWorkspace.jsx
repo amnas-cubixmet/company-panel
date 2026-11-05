@@ -778,7 +778,7 @@ export function JobCardWorkspace() {
 
   const createInvoice = () => {
     // The invoice editor reads billable actuals from the authorized server.
-    // No editable localStorage snapshot, unapproved quote, purchase cost, or
+    // No browser-stored snapshot, unapproved quote, purchase cost, or
     // mechanic wage can silently become customer revenue.
     navigate(`/invoices/new?kind=invoice&jobId=${encodeURIComponent(job.id)}`);
   };
