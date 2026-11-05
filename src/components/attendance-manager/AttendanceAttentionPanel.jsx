@@ -1,9 +1,8 @@
 
-import { AlertTriangle, CalendarDays, ClockAlert, UserRoundMinus } from 'lucide-react';
+import { AlertTriangle, ClockAlert, UserRoundMinus } from 'lucide-react';
 
 export const AttendanceAttentionPanel = ({
   halfDay,
-  leave,
   pending,
   missingPunch,
   onOpenDaily,
@@ -13,7 +12,6 @@ export const AttendanceAttentionPanel = ({
     { label: 'Pending Requests', value: pending, icon: AlertTriangle },
     { label: 'Missing Punch', value: missingPunch, icon: ClockAlert },
     { label: 'Half Day', value: halfDay, icon: UserRoundMinus },
-    { label: 'On Leave', value: leave, icon: CalendarDays },
   ];
 
   return (
