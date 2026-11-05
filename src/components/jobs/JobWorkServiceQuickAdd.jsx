@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Search, Wrench } from 'lucide-react';
 import { serviceService } from '../../services/service.service';
 import { jobService } from '../../services/job.service';
-import { buildCategoryTreeRows } from '../../utils/serviceHierarchy';
+import { buildCategoryTreeRows, categoryIsDescendantOf } from '../../utils/serviceHierarchy';
 import '../../styles/job-work-service-quick.css';
 
 const initial = () => ({
@@ -48,8 +48,8 @@ export function JobWorkServiceQuickAdd({ jobId, staff = [], canEdit, onSaved }) 
   const categoryDescendants = useMemo(() => {
     if (!categoryId) return null;
     return new Set(tree.filter(category => category.id === categoryId ||
-      category.pathIds?.includes(categoryId)).map(category => category.id));
-  }, [tree, categoryId]);
+      categoryIsDescendantOf(categoryId, category.id, categories)).map(category => category.id));
+  }, [tree, categories, categoryId]);
   const matches = useMemo(() => services.filter(service =>
     String(service.status || 'active').toLowerCase() === 'active' &&
     (!categoryDescendants || categoryDescendants.has(service.categoryId)) &&
