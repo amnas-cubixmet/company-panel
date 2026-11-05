@@ -21,6 +21,7 @@ import {
   Wrench
 } from 'lucide-react';
 import { vehicleService } from '../../services/vehicle.service';
+import { VehiclePhotoGallery } from '../../components/vehicles/VehiclePhotoGallery';
 import { customerService } from '../../services/customer.service';
 import { jobService } from '../../services/job.service';
 import '../../styles/vehicle-management.css';
@@ -314,6 +315,10 @@ export const VehicleDetails = () => {
           ) : null}
         </div>
       ) : null}
+
+      {activeTab === 'overview' && (
+        <VehiclePhotoGallery vehicleId={vehicle.id} canEdit={canEdit}/>
+      )}
 
       {activeTab === 'service-history' ? (
         <section className="vehicle-panel">

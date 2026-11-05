@@ -10,6 +10,7 @@ import { USE_MOCK_API } from '../../api/apiConfig';
 import { staffService } from '../../services/staff.service';
 import { JobPartsWorkflow } from './JobPartsWorkflow';
 import { JobInspectionPanel } from '../../components/jobs/JobInspectionPanel';
+import { VehiclePhotoGallery } from '../../components/vehicles/VehiclePhotoGallery';
 import { QuickEstimatePanel } from '../../components/jobs/QuickEstimatePanel';
 import { JobQualityCheckPanel } from '../../components/jobs/JobQualityCheckPanel';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
@@ -1322,7 +1323,8 @@ export function JobCardWorkspace() {
       )}
 
       {activeTab === 'inspection' && (
-        <JobInspectionPanel
+        <div className="job-inspection-camera-stack">
+          <JobInspectionPanel
           job={job}
           canCorrect={currentStage === 'estimate' && !activeTabLocked}
           startEditing={new URLSearchParams(location.search).get('edit') === '1'}
@@ -1334,7 +1336,9 @@ export function JobCardWorkspace() {
               setError(e?.message || 'Could not refresh job details.');
             }
           }}
-        />
+          />
+          <VehiclePhotoGallery jobId={job.id} canEdit={can('jobs.edit')}/>
+        </div>
       )}
 
       {activeTab === 'work' && (

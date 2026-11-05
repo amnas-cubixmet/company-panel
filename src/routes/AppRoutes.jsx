@@ -8,6 +8,7 @@ import { ProtectedRoute } from './ProtectedRoute';
 const CreditWorkspace = lazyPage(() => import('../pages/saas/CreditWorkspace'), 'CreditWorkspace');
 
 const Login = lazyPage(() => import('../pages/auth/Login'), 'Login');
+const CustomerPortalPage = lazyPage(() => import('../pages/customer-portal/CustomerPortalPage'), 'default');
 const ForgotPassword = lazyPage(() => import('../pages/auth/ForgotPassword'), 'ForgotPassword');
 const ResetPassword = lazyPage(() => import('../pages/auth/ResetPassword'), 'ResetPassword');
 const SetupPassword = lazyPage(() => import('../pages/auth/SetupPassword'), 'SetupPassword');
@@ -46,6 +47,7 @@ const ExpenseList = lazyPage(() => import('../pages/expenses/ExpenseList'), 'Exp
 const Reports = lazyPage(() => import('../pages/reports/Reports'), 'Reports');
 const Notifications = lazyPage(() => import('../pages/notifications/Notifications'), 'Notifications');
 const Settings = lazyPage(() => import('../pages/settings/Settings'), 'Settings');
+const WhatsAppSettingsPage = lazyPage(() => import('../pages/settings/WhatsAppSettingsPage'), 'default');
 const Profile = lazyPage(() => import('../pages/profile/Profile'), 'Profile');
 const SaaSAccount = lazyPage(() => import('../pages/saas/SaaSAccount'), 'SaaSAccount');
 
@@ -70,6 +72,7 @@ export const AppRoutes = () => (
   <Routes>
     <Route path="/" element={<RootRedirect />} />
     <Route path="/login" element={<Login />} />
+    <Route path="/c/:token" element={<CustomerPortalPage />} />
     <Route path="/plans" element={<Navigate to="/account/credits/buy" replace />} />
     <Route path="/signup" element={<Navigate to="/login" replace />} />
     <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -230,6 +233,7 @@ export const AppRoutes = () => (
 
       <Route path="/profile" element={<Profile />} />
       <Route path="/settings" element={<Settings />} />
+      <Route path="/settings/whatsapp" element={<WhatsAppSettingsPage />} />
       <Route path="/account" element={<CreditWorkspace section="overview" />} />
       <Route path="/account/credits/buy" element={<CreditWorkspace section="buy" />} />
       <Route path="/account/credits" element={<CreditWorkspace section="overview" />} />

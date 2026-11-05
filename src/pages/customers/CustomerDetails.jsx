@@ -2,6 +2,10 @@ import { appConfirm } from '../../components/common/appDialogs';
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from 'react-router-dom';
 import { customerService } from '../../services/customer.service';
+import { CustomerTrackingLinkPanel } from '../../components/customers/CustomerTrackingLinkPanel';
+import { CustomerWhatsAppConsent } from '../../components/customers/CustomerWhatsAppConsent';
+import { useFeatureAccess } from '../../context/FeatureAccessContext';
+import '../../styles/customer-tracking-link.css';
 import { paymentService } from '../../services/payment.service';
 import '../../styles/customer-profile-polished.css';
 import {
@@ -21,6 +25,7 @@ import { User, Phone, Mail, MapPin, Car, ClipboardCheck, FileText, CreditCard, C
 export const CustomerDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const featureAccess = useFeatureAccess();
   const tabRailRef = useRef(null);
 
   const [customer, setCustomer] = useState(null);
@@ -379,6 +384,18 @@ export const CustomerDetails = () => {
       )}
 
       {loadError && <div className="customer-profile-partial-error" role="status">{loadError} <button type="button" onClick={loadCustomerData}>Retry</button></div>}
+
+      <CustomerTrackingLinkPanel
+        key={customer.id}
+        customerId={customer.id}
+        whatsapp={customer.whatsapp || customer.phone}
+        canManage={featureAccess.can('customers.edit')}
+      />
+
+      <CustomerWhatsAppConsent
+        customerId={customer.id}
+        canManage={featureAccess.can('customers.edit')}
+      />
 
       {/* Clean customer identity header — never show a raw internal UUID. */}
       <header className="customer-profile-header customer-profile-hero">

@@ -170,6 +170,13 @@ export const Settings = () => {
 
   return (
     <div className="settings-page">
+      {(can('settings.manage') || can('company.manage')) && (
+        <button type="button" className="settings-primary-button"
+          style={{ alignSelf: 'flex-start', minHeight: '44px', marginBottom: '12px' }}
+          onClick={() => navigate('/settings/whatsapp')}>
+          <Plug size={16} aria-hidden="true"/> Connect WhatsApp Business
+        </button>
+      )}
       <SettingsHeader
         saving={saving}
         disabled={!dirty}
