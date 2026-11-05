@@ -466,25 +466,68 @@ export const JobCreatePage = () => {
               <p>{customerVehicles.length ? customerVehicles.length + ' vehicle(s) linked to this customer.' : 'No saved vehicles. Enter a new registration below.'}</p>
             </div>
           )}
-          <div className="job-create-fields-grid mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="job-create-fields-grid job-create-vehicle-grid mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             <label className={labelClass}>Registration Number *
-              <input name="vehicleReg" required autoCapitalize="characters" autoComplete="off" value={form.vehicleReg} onChange={(e) => set('vehicleReg', e.target.value.toUpperCase())} placeholder="KL 07 AB 1234" className={inputClass}/>
+              <input name="vehicleReg" required autoCapitalize="characters" autoComplete="off"
+                value={form.vehicleReg} onChange={(e) => set('vehicleReg', e.target.value.toUpperCase())}
+                placeholder="KL 07 AB 1234" className={inputClass}/>
             </label>
-            <label className={labelClass}>Make / Model
-              <input value={form.vehicleInfo} onChange={(e) => set('vehicleInfo', e.target.value)} placeholder="Toyota Innova 2.5V" className={inputClass}/>
+            <label className={labelClass}>Make
+              <input name="vehicleMake" list="job-vehicle-makes" value={form.vehicleMake}
+                maxLength={80} onChange={(e) => set('vehicleMake', e.target.value)}
+                placeholder="e.g. Toyota" className={inputClass}/>
+              <datalist id="job-vehicle-makes">
+                {[...new Set(['Toyota', 'Maruti Suzuki', 'Hyundai', 'Tata', 'Honda',
+                  ...customerVehicles.map((vehicle) => splitVehicleMakeModel(vehicle).make).filter(Boolean)])]
+                  .map((make) => <option key={make} value={make}/>)}
+              </datalist>
             </label>
-            <label className={labelClass}>VIN / Chassis
-              <input value={form.vin} onChange={(e) => set('vin', e.target.value.toUpperCase())} placeholder="VIN / chassis number" className={inputClass}/>
+            <label className={labelClass}>Model
+              <input name="vehicleModel" list="job-vehicle-models" value={form.vehicleModel}
+                maxLength={80} onChange={(e) => set('vehicleModel', e.target.value)}
+                placeholder="e.g. Innova" className={inputClass}/>
+              <datalist id="job-vehicle-models">
+                {[...new Set(customerVehicles
+                  .filter((vehicle) => !form.vehicleMake ||
+                    splitVehicleMakeModel(vehicle).make.toLowerCase() === form.vehicleMake.toLowerCase())
+                  .map((vehicle) => splitVehicleMakeModel(vehicle).model).filter(Boolean))]
+                  .map((model) => <option key={model} value={model}/>)}
+              </datalist>
+            </label>
+            <label className={labelClass}>Fuel Type
+              <select name="fuelType" value={form.fuelType} onChange={(e) => set('fuelType',e.target.value)} className={inputClass}>
+                <option value="">Select fuel type</option>
+                {['Petrol','Diesel','CNG','LPG','Electric','Hybrid','Other'].map((fuel) => <option key={fuel}>{fuel}</option>)}
+                {form.fuelType && !['Petrol','Diesel','CNG','LPG','Electric','Hybrid','Other'].includes(form.fuelType)
+                  && <option value={form.fuelType}>{form.fuelType} (existing)</option>}
+              </select>
             </label>
             <label className={labelClass}>KM Reading
-              <input inputMode="numeric" value={form.kilometre} onChange={(e) => set('kilometre', e.target.value.replace(/[^0-9]/g,''))} placeholder="52400" className={inputClass}/>
+              <input name="kilometre" type="number" min="0" max="999999999" step="1"
+                value={form.kilometre} onChange={(e) => set('kilometre', e.target.value)}
+                placeholder="52400" className={inputClass}/>
             </label>
             <label className={labelClass}>Fuel Level
-              <select value={form.fuelLevel} onChange={(e) => set('fuelLevel', e.target.value)} className={inputClass}>
+              <select name="fuelLevel" value={form.fuelLevel} onChange={(e) => set('fuelLevel', e.target.value)} className={inputClass}>
                 {['Empty','10%','25%','50%','75%','Full'].map((item)=><option key={item}>{item}</option>)}
+                {form.fuelLevel && !['Empty','10%','25%','50%','75%','Full'].includes(form.fuelLevel)
+                  && <option value={form.fuelLevel}>{form.fuelLevel} (existing)</option>}
               </select>
             </label>
           </div>
+          <details className="job-create-vehicle-advanced">
+            <summary>Advanced Vehicle Details · VIN / Chassis (optional)</summary>
+            <label className={labelClass}>VIN / Chassis
+              <input name="vin" value={form.vin} maxLength={64}
+                onChange={(e) => set('vin', e.target.value.toUpperCase())}
+                placeholder="VIN / chassis number" className={inputClass}/>
+            </label>
+          </details>
+          {selectedVehicleId && can('vehicles.edit') && <label className="job-create-vehicle-update">
+            <input type="checkbox" checked={form.vehicleDetailsUpdate}
+              onChange={(e) => set('vehicleDetailsUpdate',e.target.checked)}/>
+            Update saved vehicle make, model, fuel type and KM reading with these values
+          </label>}
 
           {historyLoading ? <div className="mt-3 text-xs text-muted">Checking vehicle history…</div> : history.length ? (
             <div className="job-create-history mt-4 rounded-xl border border-primary/20 bg-primary-soft p-3">
