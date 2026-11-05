@@ -26,6 +26,10 @@ export const supplierService = {
     if (USE_MOCK_API) throw new Error('Editing a supplier requires the live backend.');
     return apiClient.patch(base + '/' + encodeURIComponent(id), payload);
   },
+  async remove(id) {
+    if (USE_MOCK_API) throw new Error('Deleting a supplier requires the live backend.');
+    return apiClient.delete(base + '/' + encodeURIComponent(id));
+  },
   async purchaseOrders() {
     if (USE_MOCK_API) return [...stockPurchasesMock];
     return asList(await apiClient.get('/stock/purchase-orders'));
