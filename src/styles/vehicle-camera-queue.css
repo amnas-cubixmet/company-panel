@@ -2,7 +2,8 @@
 .vehicle-camera-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .vehicle-camera-heading h3{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:750;color:var(--text-primary);margin:0}
 .vehicle-camera-heading p,.vehicle-camera-empty{color:var(--text-secondary);font-size:14px;margin:6px 0 0;line-height:1.5}
-.vehicle-camera-queue-grid,.vehicle-photo-gallery-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px}
+/* Four fixed thumbnail columns avoid auto-fit stretching one or two photos to full width. */
+.vehicle-camera-queue-grid,.vehicle-photo-gallery-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;min-width:0;align-items:start}
 .vehicle-camera-queued,.vehicle-photo-card{position:relative;margin:0;overflow:hidden;border:1px solid var(--border);border-radius:11px;background:var(--surface-2);min-width:0}
 .vehicle-camera-queued img,.vehicle-photo-card img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block}
 .vehicle-camera-queued figcaption,.vehicle-photo-card figcaption{padding:9px;display:grid;gap:3px;color:var(--text-primary);font-size:13px;overflow-wrap:anywhere}
@@ -13,4 +14,20 @@
 .vehicle-photo-gallery-error{color:var(--danger);font-size:14px;line-height:1.5}
 .vehicle-photo-gallery-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .vehicle-photo-gallery-toolbar button{min-height:44px;border:1px solid var(--border);border-radius:9px;padding:8px 12px;color:var(--text-primary)}
-@media(max-width:600px){.vehicle-camera-queue,.vehicle-photo-gallery{padding:12px}.vehicle-camera-queue-grid,.vehicle-photo-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Full-size image is never in the grid; only an on-demand lightbox can show it. */
+.vehicle-camera-thumbnail{position:relative;aspect-ratio:4/3;overflow:hidden;min-width:0;background:var(--surface-2)}
+.vehicle-camera-preview-button{position:relative;display:block;width:100%;height:100%;padding:0;margin:0;border:0;border-radius:0;background:transparent;color:inherit;cursor:zoom-in;overflow:hidden}
+.vehicle-camera-queued .vehicle-camera-preview-button img{display:block;width:100%;height:100%;aspect-ratio:4/3;object-fit:cover}
+.vehicle-camera-zoom{position:absolute;bottom:6px;left:6px;display:inline-flex;align-items:center;gap:4px;padding:4px 6px;border-radius:6px;background:rgba(15,23,42,.79);color:#fff;font-size:11px}
+.vehicle-camera-preview-button:focus-visible,.vehicle-camera-remove-photo:focus-visible,.vehicle-camera-lightbox-close:focus-visible{outline:3px solid var(--primary);outline-offset:-3px}
+.vehicle-camera-queued figcaption strong,.vehicle-photo-card figcaption strong{display:block;overflow-wrap:anywhere;line-height:1.4}
+.vehicle-camera-queued figcaption small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.35}
+.vehicle-camera-upload-status{font-size:11px;font-weight:700;color:var(--text-secondary);padding-top:3px}
+.vehicle-camera-upload-status.is-uploading{color:var(--primary)}
+.vehicle-camera-lightbox{position:fixed;inset:0;z-index:99999;background:rgba(2,6,23,.93);display:grid;place-items:center;padding:max(16px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+.vehicle-camera-lightbox-content{position:relative;display:grid;grid-template-rows:minmax(0,1fr) auto;gap:10px;width:min(100%,1100px);max-height:calc(100dvh - 32px);min-height:0;color:#fff}
+.vehicle-camera-lightbox-close{position:absolute;top:8px;right:8px;z-index:1;display:grid;place-items:center;width:44px;height:44px;border:1px solid rgba(255,255,255,.35);border-radius:10px;background:rgba(15,23,42,.9);color:#fff;cursor:pointer}
+.vehicle-camera-preview-image{display:block;max-width:100%;max-height:calc(100dvh - 125px);width:auto;height:auto;object-fit:contain;margin:auto;border-radius:9px}
+.vehicle-camera-lightbox-caption{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px 12px;text-align:center;color:#f8fafc;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+@media(min-width:768px) and (max-width:1100px){.vehicle-camera-queue-grid,.vehicle-photo-gallery-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:767px){.vehicle-camera-queue,.vehicle-photo-gallery{padding:12px}.vehicle-camera-queue-grid,.vehicle-photo-gallery-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}}

@@ -204,6 +204,79 @@ try {
         }
         await page.locator('.route-loading').waitFor({state:'hidden',timeout:15000});
         await page.waitForFunction(()=>document.body.innerText.length>=20);
+        // Job Card creation: exercise the actual React form, image blob URLs,
+        // computed responsive grid, light/dark tokens, and accordion state.
+        if(path==='/jobs/new') {
+          const sectionOrder=await page.evaluate(()=>[...document.querySelectorAll('.job-create-form > .job-create-section')]
+            .map(node=>node.querySelector('h2')?.textContent.trim() || ''));
+          if(sectionOrder.slice(0,5).map(label=>label.replace(/^\d+\s*/, '')).join(' | ') !==
+            'Customer & Job Details | Customer Complaints | Vehicle Details | Technician & Service Assignment | Vehicle Photos / Inspection')
+            throw Error('Job Card section order is incorrect: '+sectionOrder.join(' | '));
+          if(await page.getByRole('heading',{name:/Customer Complaints/}).count()!==1)
+            throw Error('Job Card has duplicate Customer Complaints headings');
+          const firstComplaint=page.locator('.job-complaint-row textarea').first();
+          await firstComplaint.fill('Noise when braking');
+          await page.getByRole('button',{name:'Add Complaint'}).click();
+          if(await page.locator('.job-complaint-row').count()!==2)
+            throw Error('Add Complaint did not create another editable complaint');
+          await page.locator('.job-complaint-row textarea').nth(1).fill('AC not cooling');
+          await page.getByRole('button',{name:'Remove complaint 2'}).click();
+          await page.getByRole('button',{name:'Advanced',exact:true}).click();
+          await page.getByRole('button',{name:'Simple',exact:true}).click();
+          if(await firstComplaint.inputValue()!=='Noise when braking' ||
+            await page.locator('.job-complaint-row').count()!==1)
+            throw Error('Complaints were lost after editing, removal, or switching modes');
+
+          const accordion=page.getByRole('button',{name:/Advanced Vehicle Details/});
+          if(await accordion.getAttribute('aria-expanded')!=='false' ||
+            await page.locator('#job-create-vehicle-advanced-content').count())
+            throw Error('Collapsed Vehicle Details contains an unwanted empty box');
+          const collapsedHeight=await page.locator('.job-create-vehicle-advanced').evaluate(el=>el.getBoundingClientRect().height);
+          if(collapsedHeight>80) throw Error('Collapsed Vehicle Details is too tall: '+collapsedHeight);
+          await accordion.click();
+          await page.locator('input[name="vin"]').fill('VIN-TEST-123');
+          await accordion.click();
+          await accordion.click();
+          if(await page.locator('input[name="vin"]').inputValue()!=='VIN-TEST-123')
+            throw Error('VIN was cleared when opening and closing the accordion');
+
+          const image=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==','base64');
+          await page.locator('input[aria-label="Upload vehicle photos from gallery"]').setInputFiles(
+            Array.from({length:5},(_,i)=>({name:'vehicle-'+i+'.png',mimeType:'image/png',buffer:image}))
+          );
+          if(await page.locator('.vehicle-camera-queued').count()!==5)
+            throw Error('Five uploaded pictures should generate five independent thumbnails');
+          const grid=await page.locator('.vehicle-camera-queue-grid').evaluate(el=>{
+            const rect=el.getBoundingClientRect();
+            const columns=getComputedStyle(el).gridTemplateColumns.split(/\s+/).filter(Boolean);
+            const image=el.querySelector('.vehicle-camera-preview-button img');
+            const thumb=image?.getBoundingClientRect();
+            return {columns:columns.length, right:rect.right,
+              thumbWidth:thumb?.width, thumbHeight:thumb?.height,
+              fit:image && getComputedStyle(image).objectFit};
+          });
+          const expectedColumns=profile.width<=767?2:profile.width<=1100?3:4;
+          if(grid.columns!==expectedColumns)
+            throw Error('Incorrect responsive photo columns at '+profile.width+'px: '+JSON.stringify(grid));
+          if(grid.right>profile.width+2)
+            throw Error('Vehicle photo grid overflows viewport: '+JSON.stringify(grid));
+          if(grid.fit!=='cover'||!grid.thumbWidth||!grid.thumbHeight||
+            Math.abs(grid.thumbWidth/grid.thumbHeight-4/3)>0.15)
+            throw Error('Vehicle photo thumbnails have incorrect aspect ratio: '+JSON.stringify(grid));
+          if(await page.getByText('Ready to upload',{exact:true}).count()!==5)
+            throw Error('Each pending photo must have an upload status');
+          await page.locator('.vehicle-camera-preview-button').first().click();
+          const lightbox=page.getByRole('dialog',{name:'Vehicle photo preview'});
+          await lightbox.waitFor({state:'visible'});
+          const fit=await lightbox.locator('img').evaluate(el=>getComputedStyle(el).objectFit);
+          if(fit!=='contain') throw Error('Full-size photo preview must preserve aspect ratio');
+          await lightbox.getByRole('button',{name:'Close photo preview'}).click();
+          await lightbox.waitFor({state:'hidden'});
+          await page.locator('.vehicle-camera-remove-photo').first().click();
+          if(await page.locator('.vehicle-camera-queued').count()!==4)
+            throw Error('Removing one photo should leave all other queued photos');
+        }
+
         if(path==='/plans') {
           if(new URL(page.url()).pathname!=='/account/credits/buy') throw Error('Redirect did not reach module marketplace');
           if(new URL(page.url()).searchParams.has('month')) throw Error('Payroll filters leaked into unrelated route');
