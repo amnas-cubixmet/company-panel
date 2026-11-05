@@ -1,6 +1,6 @@
 import { appAlert } from '../../components/common/appDialogs';
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, History } from 'lucide-react';
+import { CheckCircle2, History, Eye, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { jobService } from '../../services/job.service';
 import { vehiclePhotoService } from '../../services/vehiclePhoto.service';
@@ -10,6 +10,12 @@ import { payrollService } from '../../services/payroll.service';
 import { JobBreadcrumbs } from '../../components/jobs/JobBreadcrumbs';
 import { JobCustomerPicker } from '../../components/jobs/JobCustomerPicker';
 import { customerService } from '../../services/customer.service';
+import { branchService } from '../../services/branch.service';
+import { JobComplaintEntries } from '../../components/jobs/JobComplaintEntries';
+import { JobCardReview } from '../../components/jobs/JobCardReview';
+import { JOB_COUNTRY_CODES, splitInternationalPhone, joinInternationalPhone, validInternationalPhone, splitVehicleMakeModel, newComplaint, buildJobComplaints } from '../../utils/jobCreateAdapters';
+import { useFeatureAccess } from '../../context/FeatureAccessContext';
+import '../../styles/job-create-professional.css';
 import { showFormFieldError, showServerFormErrors } from '../../utils/formValidation';
 
 const nowLocal = () => {
@@ -20,8 +26,16 @@ const nowLocal = () => {
 
 export const JobCreatePage = () => {
   const navigate = useNavigate();
+  const { can } = useFeatureAccess();
+  const maySelectBranch = can('company.manage') || can('branches.manage');
   const formRef = useRef(null);
   const [saving, setSaving] = useState(false);
+  const [createdJob, setCreatedJob] = useState(null);
+  const [review, setReview] = useState(false);
+  const [jobMode, setJobMode] = useState('simple');
+  const [complaints, setComplaints] = useState(() => [newComplaint()]);
+  const [complaintErrors, setComplaintErrors] = useState({});
+  const [branches, setBranches] = useState([]);
   const [error, setError] = useState('');
   const [pendingPhotos, setPendingPhotos] = useState([]);
   const [savedJobId, setSavedJobId] = useState('');
@@ -42,6 +56,10 @@ export const JobCreatePage = () => {
     customerAddress: '',
     vehicleReg: '',
     vehicleInfo: '',
+    vehicleMake: '',
+    vehicleModel: '',
+    fuelType: '',
+    vehicleDetailsUpdate: false,
     vin: '',
     kilometre: '',
     fuelLevel: '50%',
@@ -52,7 +70,9 @@ export const JobCreatePage = () => {
     serviceAdvisor: '',
     priority: 'Medium',
     status: 'New',
-    branch: 'Main Garage Branch',
+    branch: '',
+    branchId: '',
+    serviceAdvisorEmployeeId: '',
     notes: ''
   });
 
@@ -68,7 +88,8 @@ export const JobCreatePage = () => {
       customerPhone: customer?.phone || '',
       customerEmail: customer?.email || '',
       customerAddress: customer?.address || '',
-      vehicleReg: '', vehicleInfo: '', vin: '', kilometre: ''
+      vehicleReg: '', vehicleInfo: '', vehicleMake: '', vehicleModel: '',
+      fuelType: '', vin: '', kilometre: '', vehicleDetailsUpdate: false
     }));
   };
 
@@ -100,17 +121,34 @@ export const JobCreatePage = () => {
     setSelectedVehicleId(vehicleId);
     const found = customerVehicles.find((item) => String(item.id) === String(vehicleId));
     if (!found) {
-      setForm((old) => ({ ...old, vehicleReg: '', vehicleInfo: '', vin: '', kilometre: '' }));
+      setForm((old) => ({ ...old, vehicleReg: '', vehicleInfo: '', vehicleMake: '',
+        vehicleModel: '', fuelType: '', vin: '', kilometre: '', vehicleDetailsUpdate: false }));
       return;
     }
+    const names = splitVehicleMakeModel(found);
     setForm((old) => ({
       ...old,
       vehicleReg: (found.regNo || found.registration || found.licensePlate || '').toUpperCase(),
-      vehicleInfo: found.makeModel || [found.make, found.model, found.variant].filter(Boolean).join(' '),
+      vehicleMake: names.make,
+      vehicleModel: names.model,
+      vehicleInfo: [names.make, names.model].filter(Boolean).join(' '),
+      fuelType: found.fuelType || found.fuel_type || '',
+      fuelLevel: found.fuelLevel || old.fuelLevel,
       vin: found.vin || '',
-      kilometre: ''
+      kilometre: String(found.kilometres ?? found.odometer ?? ''),
+      vehicleDetailsUpdate: false
     }));
   };
+
+  useEffect(() => {
+    if (!maySelectBranch) return undefined;
+    let mounted = true;
+    branchService.getBranches()
+      .then((rows) => { if (mounted) setBranches((Array.isArray(rows) ? rows : rows?.results || [])
+        .filter((item) => item.is_active !== false)); })
+      .catch(() => { if (mounted) setBranches([]); });
+    return () => { mounted = false; };
+  }, [maySelectBranch]);
 
   useEffect(() => {
     let mounted = true;
@@ -145,6 +183,10 @@ export const JobCreatePage = () => {
             customerPhone: selectedCustomer ? old.customerPhone : old.customerPhone || latest.customerPhone || '',
             customerEmail: selectedCustomer ? old.customerEmail : old.customerEmail || latest.customerEmail || '',
             vehicleInfo: old.vehicleInfo || latest.vehicleInfo || '',
+            vehicleMake: old.vehicleMake || splitVehicleMakeModel(latest).make,
+            vehicleModel: old.vehicleModel || splitVehicleMakeModel(latest).model,
+            fuelType: old.fuelType || latest.fuelType || latest.vehicle?.fuelType || '',
+            kilometre: old.kilometre || String(latest.kilometre || latest.odometer || ''),
             vin: old.vin || latest.vin || latest.vehicle?.vin || ''
           }));
         }
@@ -161,17 +203,34 @@ export const JobCreatePage = () => {
 
   const set = (key, value) => {
     setError('');
+    setReview(false);
+    if (key === 'vehicleMake' || key === 'vehicleModel') {
+      setForm((old) => {
+        const next = { ...old, [key]: value };
+        next.vehicleInfo = [next.vehicleMake, next.vehicleModel].filter(Boolean).join(' ');
+        return next;
+      });
+      return;
+    }
     if (key === 'vehicleReg') {
       const normalized = (number) => String(number || '').replace(/\s+/g, '').toUpperCase();
       const matched = customerVehicles.find((vehicle) =>
         normalized(vehicle.regNo || vehicle.registration || vehicle.licensePlate) === normalized(value)
       );
       setSelectedVehicleId(matched?.id || '');
-      setForm((old) => ({
-        ...old, vehicleReg: value,
-        vehicleInfo: matched ? matched.makeModel || [matched.make, matched.model].filter(Boolean).join(' ') : old.vehicleInfo,
-        vin: matched ? matched.vin || '' : old.vin
-      }));
+      setForm((old) => {
+        const names = matched ? splitVehicleMakeModel(matched) : null;
+        return {
+          ...old, vehicleReg: value,
+          vehicleInfo: matched ? [names.make, names.model].filter(Boolean).join(' ') : old.vehicleInfo,
+          vehicleMake: matched ? names.make : old.vehicleMake,
+          vehicleModel: matched ? names.model : old.vehicleModel,
+          fuelType: matched ? matched.fuelType || matched.fuel_type || '' : old.fuelType,
+          kilometre: matched ? String(matched.kilometres ?? matched.odometer ?? '') : old.kilometre,
+          vin: matched ? matched.vin || '' : old.vin,
+          vehicleDetailsUpdate: false,
+        };
+      });
       return;
     }
     setForm((old) => ({ ...old, [key]: value }));
