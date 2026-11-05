@@ -673,6 +673,18 @@ try {
         // Work > Mechanic must be a real responsive grid, not naked
         // full-width controls. All API fixtures remain read-only.
         if(path==='/jobs/JOB-00251/work'){
+          const addService = page.locator('.job-work-simple .job-service-quick');
+          await addService.waitFor({state:'visible'});
+          const serviceControls=await addService.evaluate(node=>{
+            const inputs=[...node.querySelectorAll('input, select')].filter(el=>el.getClientRects().length);
+            return {form:!!node.querySelector('.job-service-quick-entry'),
+              inputMin:Math.min(...inputs.map(el=>parseFloat(getComputedStyle(el).fontSize))),
+              minHeight:Math.min(...inputs.map(el=>el.getBoundingClientRect().height))};
+          });
+          if(!serviceControls.form || serviceControls.inputMin<16 || serviceControls.minHeight<44)
+            throw Error('Add Service form is not touch friendly: '+JSON.stringify(serviceControls));
+          // Timer is intentionally hidden behind Advanced Work Tracking.
+          await page.getByRole('button',{name:'Advanced Work Tracking'}).click();
           const mechanic = page.locator('.job-work-simple .job-work-timer-panel');
           await mechanic.waitFor({state:'visible'});
           const layout=await mechanic.evaluate(node=>{
