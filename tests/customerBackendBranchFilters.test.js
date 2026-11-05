@@ -32,3 +32,13 @@ test('duplicate-check maps Django envelope to actual customer or null before sho
   assert.match(page, /if \(match\) \{/);
   assert.match(page, /setDuplicateFound\(match\)/);
 });
+
+test('customer creation/edit and duplicate modal expose errors and loading rather than silently failing', () => {
+  const page = read('src/pages/customers/CustomerList.jsx');
+  assert.match(page, /setDuplicateChecking\(true\)/);
+  assert.match(page, /setFormBusy\(true\)/);
+  assert.match(page, /setFormError\(error\?\.message/);
+  assert.match(page, /role="alert"/);
+  assert.match(page, /disabled=\{formBusy \|\| duplicateChecking\}/);
+  assert.match(page, /disabled=\{formBusy\}/);
+});
