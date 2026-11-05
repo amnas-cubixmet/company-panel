@@ -4,6 +4,7 @@ import { ArrowLeft, Building2, Mail, Package, Phone, Plus, Search, ShoppingBag, 
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { supplierService } from '../../services/supplier.service';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
+import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { USE_MOCK_API } from '../../api/apiConfig';
 import '../../styles/suppliers-workspace.css';
@@ -43,7 +44,7 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
       onSaved(saved);
     } catch (cause) {
       const data = cause?.response?.data;
-      setError(asText(data?.name?.[0] || data?.detail || data?.message || cause?.message || 'Unable to save supplier.'));
+      setError(asText(data?.name?.[0] || data?.gstNo?.[0] || data?.phone?.[0] || data?.detail || data?.message || cause?.message || 'Unable to save supplier.'));
     } finally { setBusy(false); }
   };
   const labels = {
@@ -52,13 +53,13 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
   };
   return <ResponsiveModalSheet isOpen onClose={() => !busy && onClose()} title={supplier ? 'Edit Supplier' : 'Add Supplier'} maxWidth="590px">
     <form className="cg-supplier-form" onSubmit={submit}>
-      {formFields.map(key => <label key={key}>
-        <span>{labels[key]}</span>
+      {formFields.map(key => <label key={key} className="cg-supplier-floating">
         {key === 'address'
-          ? <textarea rows={2} value={form[key]} onChange={e => setField(key,e.target.value)} />
-          : <input required={key==='name'} type={key==='email'?'email':key==='phone'?'tel':'text'}
+          ? <textarea rows={2} placeholder=" " value={form[key]} onChange={e => setField(key,e.target.value)} />
+          : <input placeholder=" " required={key==='name'} type={key==='email'?'email':key==='phone'?'tel':'text'}
               maxLength={key==='name'?180:key==='contact_person'?120:key==='phone'?30:key==='gstNo'?20:254}
               value={form[key]} onChange={e => setField(key,e.target.value)} />}
+        <span>{labels[key]}</span>
       </label>)}
       {supplier && <label className="cg-supplier-toggle">
         <input type="checkbox" checked={form.is_active} onChange={e=>setField('is_active',e.target.checked)}/>
@@ -84,7 +85,9 @@ export default function SuppliersPage() {
   const canCreate = access.can('stock.create') && !USE_MOCK_API;
   const canEdit = access.can('stock.edit') && !USE_MOCK_API;
   const canViewFinance = access.can('expenses.view') && access.can('stock.view');
+  const canDelete = access.can('stock.delete') && !USE_MOCK_API;
   const [suppliers, setSuppliers] = useState([]);
+  const [creditBalances, setCreditBalances] = useState(null);
   const [creditBalances, setCreditBalances] = useState(null);
   const [supplier, setSupplier] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -93,6 +96,8 @@ export default function SuppliersPage() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [error, setError] = useState('');
   const [editor, setEditor] = useState(null);
+  const [actionBusy, setActionBusy] = useState(false);
+  const statusFilter = params.get('status') || 'all';
   const search = params.get('q') || '';
 
   useEffect(() => {
@@ -135,11 +140,55 @@ export default function SuppliersPage() {
     return () => { active = false; };
   }, [canViewFinance]);
 
+  useEffect(() => {
+    if (!canViewFinance || USE_MOCK_API) return undefined;
+    let active = true;
+    supplierFinanceService.credits().then(rows => {
+      if (!active) return;
+      const balances = new Map();
+      for (const row of rows) {
+        const key = String(row.supplierId);
+        balances.set(key, (balances.get(key) || 0) + Number(row.outstanding || 0));
+      }
+      setCreditBalances(balances);
+    }).catch(() => { if (active) setCreditBalances(null); });
+    return () => { active = false; };
+  }, [canViewFinance]);
+
   const matches = useMemo(() => {
     const needle=search.trim().toLowerCase();
-    return suppliers.filter(row => [row.name, row.phone, row.contact_person, row.contactPerson, row.gstNo, row.email]
-      .some(value=>asText(value).toLowerCase().includes(needle)));
-  },[search,suppliers]);
+    return suppliers.filter(row =>
+      (statusFilter === 'all' || status(row).toLowerCase() === statusFilter) &&
+      [row.name, row.phone, row.contact_person, row.contactPerson, row.gstNo, row.gstin, row.email]
+        .some(value=>asText(value).toLowerCase().includes(needle))
+    );
+  },[search,suppliers,statusFilter]);
+
+  async function deactivateSupplier() {
+    if (!supplier || !canEdit || actionBusy) return;
+    setActionBusy(true); setError('');
+    try {
+      const changed = await supplierService.update(supplier.id, { is_active: false });
+      setSupplier(changed);
+      setSuppliers(rows => rows.map(x => String(x.id) === String(changed.id) ? changed : x));
+    } catch (cause) {
+      setError(cause?.response?.data?.message || cause?.message || 'Could not deactivate supplier.');
+    } finally { setActionBusy(false); }
+  }
+
+  async function deleteSupplier() {
+    if (!supplier || !canDelete || actionBusy || !window.confirm(
+      'Delete this supplier? Suppliers with stock or purchase history cannot be deleted.'
+    )) return;
+    setActionBusy(true); setError('');
+    try {
+      await supplierService.remove(supplier.id);
+      setSuppliers(rows => rows.filter(x => String(x.id) !== String(supplier.id)));
+      navigate('/suppliers');
+    } catch (cause) {
+      setError(cause?.response?.data?.message || cause?.message || 'Cannot delete this supplier. Deactivate it instead.');
+    } finally { setActionBusy(false); }
+  }
 
   function onSaved(saved) {
     setEditor(null);
@@ -169,6 +218,16 @@ export default function SuppliersPage() {
           <input aria-label="Search suppliers" value={search} placeholder="Search name, phone or GSTIN"
             onChange={e=>{const p=new URLSearchParams(params);if(e.target.value)p.set('q',e.target.value);else p.delete('q');setParams(p,{replace:true});}}/>
         </label>
+        <label className="cg-supplier-filter">
+          <span className="sr-only">Filter suppliers</span>
+          <select aria-label="Filter suppliers" value={statusFilter} onChange={event => {
+            const p = new URLSearchParams(params);
+            if (event.target.value === 'all') p.delete('status'); else p.set('status', event.target.value);
+            setParams(p, { replace: true });
+          }}>
+            <option value="all">All</option><option value="active">Active</option><option value="inactive">Inactive</option>
+          </select>
+        </label>
         <span>{matches.length} suppliers</span>
       </div>
       {loading?<p role="status" className="cg-supplier-empty">Loading suppliers…</p>:
@@ -178,6 +237,7 @@ export default function SuppliersPage() {
             <span className="cg-supplier-summary">
               <strong>{row.name}</strong>
               <small>{[row.contact_person||row.contactPerson,row.phone].filter(Boolean).join(' · ')||'Contact details not added'}</small>
+              {canViewFinance && <small>Credit outstanding: {creditBalances ? money(creditBalances.get(String(row.id)) || 0) : 'Unavailable'}</small>}
               {canViewFinance && <small>Credit outstanding: {creditBalances ? money(creditBalances.get(String(row.id)) || 0) : 'Unavailable'}</small>}
             </span>
             <span className={row.is_active===false?'cg-supplier-status inactive':'cg-supplier-status'}>{status(row)}</span>
@@ -201,10 +261,18 @@ export default function SuppliersPage() {
           Credit outstanding: <strong>{creditBalances ? money(creditBalances.get(String(supplier.id)) || 0) : 'Unavailable'}</strong>
           <Link to="/suppliers/credits" style={{ marginLeft: 12, color: 'var(--primary)' }}>Credit Management</Link>
         </div>}
+        {canViewFinance && <div style={{ marginTop: 10, fontSize: 14 }}>
+          Credit outstanding: <strong>{creditBalances ? money(creditBalances.get(String(supplier.id)) || 0) : 'Unavailable'}</strong>
+          <Link to="/suppliers/credits" style={{ marginLeft: 12, color: 'var(--primary)' }}>Credit Management</Link>
+        </div>}
         <div className="cg-supplier-contacts">
           {supplier.phone&&<a href={'tel:'+String(supplier.phone).replace(/[^\d+]/g,'')}><Phone size={15}/> Call</a>}
           {supplier.email&&<a href={'mailto:'+supplier.email}><Mail size={15}/> Email</a>}
           <Link to={'/stock?supplier='+encodeURIComponent(supplier.id)}><Package size={15}/> Inventory</Link>
+          {supplier.is_active !== false && canEdit && <button type="button" disabled={actionBusy}
+            onClick={deactivateSupplier} className="cg-supplier-button">Deactivate</button>}
+          {canDelete && <button type="button" disabled={actionBusy}
+            onClick={deleteSupplier} className="cg-supplier-button">Delete Supplier</button>}
         </div>
       </section>
       <div className="cg-supplier-details-grid">
