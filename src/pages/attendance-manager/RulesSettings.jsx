@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { appConfirm } from '../../components/common/appDialogs';
 import {
   CalendarDays,
   Clock3,
@@ -222,6 +223,8 @@ export const RulesSettings = () => {
   };
 
   const removeHoliday = async (id) => {
+    const confirmed = await appConfirm('Delete this company holiday?', { title: 'Delete Holiday', confirmLabel: 'Delete', tone: 'danger' });
+    if (!confirmed) return;
     setHolidayError('');
     try {
       await attendanceManagerService.deleteHoliday(id);
@@ -329,8 +332,8 @@ export const RulesSettings = () => {
             </label>
             {autoMode && (
               <label className="attendance-rule-field attendance-rule-field-wide">
-                <span>Auto Checkout Worker Grace</span>
-                <small>Processing delay (worked time ends at shift end).</small>
+                <span>Auto Checkout Grace (minutes)</span>
+                
                 <input
                   type="number"
                   min="0"
@@ -376,8 +379,8 @@ export const RulesSettings = () => {
 
           {rules.missingPunchReminderEnabled && (
             <label className="attendance-rule-field">
-              <span>Reminder Delay After Shift End</span>
-              <small>Minutes after shift end.</small>
+              <span>Reminder Delay (minutes)</span>
+              
               <input
                 type="number"
                 min="0"
@@ -462,7 +465,7 @@ export const RulesSettings = () => {
                 }}
               />
               <details className="attendance-location-advanced">
-                <summary>Advanced: Edit coordinates manually</summary>
+                <summary>Advanced coordinates</summary>
                 <div className="attendance-rule-form-grid">
                   <label className="attendance-rule-field">
                     <span>Workshop Latitude</span>
@@ -486,8 +489,8 @@ export const RulesSettings = () => {
               </details>
               <div className="attendance-rule-form-grid">
                 <label className="attendance-rule-field attendance-rule-field-wide">
-                  <span>Allowed Punch Radius (metres)</span>
-                  <small>50–5000 metres</small>
+                  <span>Allowed Radius (metres)</span>
+                  <small>50–5000 m</small>
                   <input
                     type="number" min="50" max="5000" step="1"
                     value={rules.punchRadiusMeters}
@@ -532,7 +535,7 @@ export const RulesSettings = () => {
           <label className="attendance-rule-toggle">
             <span>
               <strong>Require Device Location</strong>
-              <small>Blocks punching without GPS.</small>
+              <small>Required to validate punch location.</small>
             </span>
             <input
               type="checkbox"
@@ -565,7 +568,7 @@ export const RulesSettings = () => {
           </div>
 
           <label className="attendance-rule-field">
-            <span>Weekly Off Attendance Policy</span>
+            <span>Attendance Policy</span>
             <select value={rules.weekendAttendancePolicy} onChange={(e) => change('weekendAttendancePolicy', e.target.value)}>
               <option value="weekly_off">Block Attendance / Weekly Off</option>
               <option value="allow">Allow Attendance</option>
@@ -608,13 +611,13 @@ export const RulesSettings = () => {
         </section>
       </div>
 
-      <section className="attendance-rule-section">
-        <div className="attendance-rule-title">
+      <details className="attendance-rule-section attendance-rule-disclosure">
+        <summary className="attendance-rule-title">
           <BellRing size={16} />
           <div>
             <h3>Attendance Notifications</h3>
           </div>
-        </div>
+        </summary>
 
         <label className="attendance-rule-toggle">
           <span>
@@ -639,7 +642,7 @@ export const RulesSettings = () => {
             onChange={(e) => change('overtimeRequestNotifications', e.target.checked)}
           />
         </label>
-      </section>
+      </details>
 
       <section className="attendance-rule-section attendance-holiday-manager">
         <div className="attendance-rule-title">
@@ -651,18 +654,21 @@ export const RulesSettings = () => {
 
         <form className="attendance-holiday-form" onSubmit={addHoliday}>
           <input
+            aria-label="Holiday date"
             type="date"
             value={holidayForm.date}
             onChange={(e) => setHolidayForm((old) => ({ ...old, date: e.target.value }))}
             required
           />
           <input
+            aria-label="Holiday name"
             value={holidayForm.name}
             onChange={(e) => setHolidayForm((old) => ({ ...old, name: e.target.value }))}
             placeholder="Onam / Christmas / Company Holiday"
             required
           />
           <select
+            aria-label="Holiday type"
             value={holidayForm.holiday_type}
             onChange={(e) => setHolidayForm((old) => ({ ...old, holiday_type: e.target.value }))}
           >
