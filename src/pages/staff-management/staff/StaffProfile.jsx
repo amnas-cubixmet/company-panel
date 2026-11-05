@@ -12,8 +12,6 @@ import {
   FileText,
   Gauge,
   Lock,
-  Mail,
-  MapPin,
   Pencil,
   Phone,
   Send,
@@ -184,7 +182,7 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
   const [activeTab, setActiveTab] = useState('Overview');
   const [loading, setLoading] = useState(true);
   const [toastMsg, setToastMsg] = useState('');
-  const [inviteNotice, setInviteNotice] = useState(() => staffInviteDeliveryMessage(location.state?.emailDeliveryStatus));
+  const [inviteNotice, setInviteNotice] = useState(() => staffInviteDeliveryMessage(location.state?.whatsappInviteStatus));
   const [error, setError] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [inviteBusy, setInviteBusy] = useState(false);
@@ -414,11 +412,10 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
     setSetupLink('');
     try {
       const result = await staffService.sendLoginInvite(staff.id);
-      setSetupLink(result?.setupLink || '');
-      setInviteStatus(result?.whatsappInviteStatus || '');
-      const info = result?.whatsappInviteStatus === 'queued'
-        ? 'Workshop WhatsApp onboarding message queued.'
-        : 'Secure link issued. Copy/share it using a verified staff contact.';
+      const status = result?.whatsappInviteStatus || '';
+      setInviteStatus(status);
+      setSetupLink(['manual', 'failed'].includes(status) ? result?.setupLink || '' : '');
+      const info = staffInviteDeliveryMessage(status) || 'Password setup request recorded.';
       setInviteNotice(info);
       showToast(info);
       await refreshAll();
@@ -487,7 +484,7 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
       {inviteNotice && (
         <div className="staff-directory-message" role="status">
           <span>{inviteNotice}</span>
-          <button type="button" aria-label="Dismiss email delivery notice" onClick={() => setInviteNotice('')}>Dismiss</button>
+          <button type="button" aria-label="Dismiss WhatsApp invitation notice" onClick={() => setInviteNotice('')}>Dismiss</button>
         </div>
       )}
 
@@ -516,7 +513,6 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
             </p>
             <div className="staff360-contact-line">
               <span><Phone size={12}/>{staff.phone || 'No phone'}</span>
-              <span><Mail size={12}/>{staff.email || 'No email'}</span>
             </div>
           </div>
         </div>
@@ -537,7 +533,7 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
                 </button>
                 <button type="button" onClick={handleSendInvite} disabled={inviteBusy} className="staff360-secondary-button">
                   <Send size={14}/>
-                  Send Login Invite
+                  Resend Setup Link
                 </button>
                 <button type="button" onClick={handleToggleAccount} className="staff360-secondary-button">
                   {staff.loginStatus === 'Disabled' ? <Unlock size={14}/> : <Lock size={14}/>}
@@ -552,20 +548,22 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
       {canManageLogin && (
         <section className="staff-setup-link-panel" aria-label="Staff mobile login invitation">
           <h3>Mobile + Password Login</h3>
-          <p><strong>Status:</strong> {staff.loginStatus || 'Not Invited'}
-            {staff.whatsappInviteStatus && ` · WhatsApp: ${staff.whatsappInviteStatus}`}</p>
-          {setupLink && <>
+          <p><strong>Login:</strong> {staff.loginStatus || 'Not Invited'}</p>
+          <p><strong>WhatsApp:</strong> {staff.whatsappInviteStatus || 'not_requested'}</p>
+          <p role="status">{staffInviteDeliveryMessage(staff.whatsappInviteStatus)}</p>
+          {staff.whatsappInviteFailure && <p role="status">{staff.whatsappInviteFailure}</p>}
+          {setupLink && ['manual', 'failed'].includes(inviteStatus) && <>
             <label htmlFor="staff-setup-url">Latest one-time setup URL (valid for 24 hours)</label>
             <input id="staff-setup-url" type="text" readOnly value={setupLink}
               onFocus={(event) => event.target.select()}/>
             <div className="staff-setup-link-actions">
               <button type="button" onClick={handleCopySetup}><Copy size={16}/> Copy Setup Link</button>
-              {staffManualWhatsAppUrl(staff.phone, setupLink) && <a href={staffManualWhatsAppUrl(staff.phone, setupLink)}
+              {staff.whatsappConsent && staffManualWhatsAppUrl(staff.phone, setupLink) && <a href={staffManualWhatsAppUrl(staff.phone, setupLink)}
                 target="_blank" rel="noreferrer"><ExternalLink size={16}/> Send via WhatsApp</a>}
             </div>
             <p>WhatsApp opens with a draft; review and press Send. Do not post this private password link in groups or public channels.</p>
           </>}
-          {inviteStatus === 'manual' && <p role="status">Automated WhatsApp delivery unavailable. Use the manual secure link above.</p>}
+          {['manual', 'failed'].includes(inviteStatus) && !setupLink && <p role="status">To obtain a new secure link, use Resend Setup Link above. Only an authorized admin can issue it.</p>}
         </section>
       )}
 
@@ -607,9 +605,6 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
                 <InfoItem label="Employee Number" value={getEmployeeLabel(staff)} icon={ShieldCheck} />
                 <InfoItem label="Full Name" value={staff.name} icon={User} />
                 <InfoItem label="Phone" value={staff.phone} icon={Phone} />
-                <InfoItem label="Email" value={staff.email} icon={Mail} />
-                <InfoItem label="Address" value={staff.address} icon={MapPin} />
-                <InfoItem label="Emergency Contact" value={staff.emergencyContact} icon={Phone} />
                 <InfoItem label="Joining Date" value={staff.joiningDate} icon={CalendarDays} />
                 <InfoItem label="Status" value={staff.employmentStatus} icon={ShieldCheck} />
               </div>
