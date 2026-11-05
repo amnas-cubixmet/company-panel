@@ -45,8 +45,8 @@ import { staffManagementService } from '../../../services/staffManagement.servic
 const staffManualWhatsAppUrl = (phone, setupLink) => {
   if (!setupLink) return '';
   const raw = String(phone || '').trim();
-  const digits = raw.replace(/\\D/g, '');
-  if ((!raw.startsWith('+') && digits.length < 11) || !/^[1-9]\\d{7,14}$/.test(digits)) return '';
+  const digits = raw.replace(/\D/g, '');
+  if ((!raw.startsWith('+') && digits.length < 11) || !/^[1-9]\d{7,14}$/.test(digits)) return '';
   const draft = `Welcome to CubeGears. Set your workshop password within 24 hours: ${setupLink}`;
   return `https://wa.me/${digits}?text=${encodeURIComponent(draft)}`;
 };
