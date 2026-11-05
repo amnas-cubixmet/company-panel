@@ -84,7 +84,6 @@ export function JobTotalCostPanel({ jobId, refreshVersion = 0, refreshOnTab = ''
           <h3><Calculator size={18} aria-hidden="true" /> Total Cost</h3>
           <p>Recorded direct costs for this Job Card, not customer charges or invoice totals.</p>
         </div>
-        {permitted && <span className="job-total-cost-auto-note">Updates automatically</span>}
       </header>
 
       {!permitted ? (
