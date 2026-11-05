@@ -56,7 +56,7 @@ test('UI flags invalid rows and focuses the first invalid field on Approve & Con
   assert.match(source, /aria-invalid=\{Boolean\(errors\.quantity\)\}/);
   assert.match(source, /aria-invalid=\{Boolean\(errors\.unitPrice\)\}/);
   assert.match(source, /onClick=\{approve\}/);
-  assert.match(source, /disabled=\{busy\} onClick=\{approve\}/);
+  assert.match(source, /disabled=\{busy \|\| skipBusy\} onClick=\{approve\}/);
   assert.match(picker, /aria-invalid=\{invalid\}/);
   assert.match(css, /job-quick-line\.is-invalid/);
 });

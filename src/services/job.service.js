@@ -264,6 +264,11 @@ export const saveQuickJobEstimate = async (id, payload, draftId = null) => {
     : apiClient.post(base, payload);
 };
 
+export const skipJobEstimate = async (id, { reason, details = '' }) => {
+  if (USE_MOCK_API) throw new Error('Skip Estimate requires the live backend audit workflow.');
+  return apiClient.post(`${API_ENDPOINTS.JOBS}/${id}/estimate/skip`, { reason, details });
+};
+
 export const rejectJobEstimate = async (id, estimateId) => {
   if (USE_MOCK_API) throw new Error('Use existing mock estimate workflow in demo mode.');
   return apiClient.post(`${API_ENDPOINTS.JOBS}/${id}/estimates/${estimateId}/decision`, { decision: 'Rejected' });
@@ -303,6 +308,7 @@ export const jobService = {
   skipJobWork,
   createJobEstimate,
   saveQuickJobEstimate,
+  skipJobEstimate,
   rejectJobEstimate,
   deleteJob,
   getVehicleHistory,

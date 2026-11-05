@@ -36,7 +36,8 @@ test('ten unique and separately named GST options, same across tax modes', () =>
     assert.deepEqual(invoiceLineTaxChoices(mode).map(row => row.value), codes);
     assert.deepEqual(eWayGstChoices(mode, '').map(row => row.value), codes);
     assert.deepEqual(estimateGstChoices('', mode), codes);
-    assert.deepEqual(estimateGstOptions('', mode).map(row => row.label), expected);
+    assert.equal(estimateGstOptions('', mode)[0].value, 'none');
+    assert.deepEqual(estimateGstOptions('', mode).slice(1).map(row => row.label), expected);
   }
 });
 
