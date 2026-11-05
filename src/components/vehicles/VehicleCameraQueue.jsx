@@ -29,9 +29,12 @@ export function VehicleCameraQueue({ photos = [], onChange, disabled = false, up
   const addUploads = (event) => {
     const picked = Array.from(event.target.files || []);
     setUploadError('');
-    const accepted = picked.filter((file) => file.type.startsWith('image/') && file.size <= 15 * 1024 * 1024);
+    const accepted = picked.filter((file) =>
+      ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+      && file.size > 0 && file.size <= 10 * 1024 * 1024
+    );
     if (accepted.length !== picked.length) {
-      setUploadError('Select image files up to 15 MB each. Unsupported files were skipped.');
+      setUploadError('Select JPEG, PNG or WebP images smaller than 10 MB each. Unsupported photos were skipped.');
     }
     if (accepted.length) {
       onChange((current) => [...current, ...accepted.map((file) => ({
