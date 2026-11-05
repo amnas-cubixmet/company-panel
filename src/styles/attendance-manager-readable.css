@@ -621,3 +621,10 @@
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
+
+
+/* Reports: override earlier theme typography; UI smoke requires readable
+   filter captions on both desktop and narrow mobile viewports. */
+.attendance-manager-pages.cg-attendance-manager .am-report-filter label > span {
+  font-size: 16px !important;
+}

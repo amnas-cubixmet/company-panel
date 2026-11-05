@@ -1,22 +1,42 @@
+export const staffInviteStatusLabel = (status) => ({
+  queued: 'Invitation Queued',
+  sending: 'Invitation Sending',
+  sent: 'Invitation Sent (Meta Accepted)',
+  delivered: 'Invitation Delivered',
+  read: 'Invitation Read',
+  failed: 'Invitation Failed',
+  manual: 'Pending Invitation / Manual Share',
+  pending: 'Invitation Pending',
+  consumed: 'Password Setup Completed',
+  superseded: 'Invitation Replaced',
+  not_requested: 'Not Invited',
+}[status] || 'Not Invited');
+
 /** Status describes the Django/provider handoff, never inbox receipt. */
 export const staffInviteDeliveryMessage = (status) => {
   switch (status) {
-    case 'submitted':
-      return 'Staff setup email was accepted by the email provider. Ask the staff member to check their inbox and spam.';
-    case 'console_only':
-      return 'Staff saved, but email is going to the Django terminal (Console Email Backend). Configure SMTP in the backend .env, then use Send Login Invite.';
-    case 'local_only':
-      return 'Staff saved. Email was captured by the local test backend, not delivered to an inbox. Configure SMTP and resend.';
-    case 'pending':
-      return 'Staff saved. Invitation is waiting for the database transaction to commit, then Celery will queue it.';
-    case 'disabled':
-      return 'Staff saved. Email sending is disabled. Enable email delivery, Redis and Celery Worker with SMTP, then resend the invitation.';
-    case 'failed':
-      return 'Staff saved, but sending the invitation failed. Check Redis, Celery Worker and SMTP logs, then resend. Do not create the staff again.';
     case 'queued':
-      return 'Staff saved. Setup email is queued for delivery. If it does not arrive, check Celery Worker logs and SMTP settings.';
+      return 'Official WhatsApp invitation queued. Sending is not yet confirmed.';
+    case 'sending':
+      return 'Official WhatsApp Business API is processing this invitation.';
+    case 'sent':
+      return 'Meta accepted the WhatsApp message. Delivery to the phone is not yet confirmed.';
+    case 'delivered':
+      return 'WhatsApp confirmed the invitation was delivered.';
+    case 'read':
+      return 'WhatsApp confirmed the invitation was read.';
+    case 'manual':
+      return 'Automatic delivery is unavailable or consent is missing. Share a new secure link directly with the staff member when authorized.';
+    case 'failed':
+      return 'Invitation delivery failed or could not be confirmed. Do not create the staff again; use Resend Setup Link.';
+    case 'pending':
+      return 'Staff account created. Invitation delivery is pending.';
+    case 'consumed':
+      return 'Password was set successfully. Mobile login is active.';
     case 'not_requested':
-      return 'Staff saved without an email invite. Add a valid email and role to enable login.';
+      return 'No WhatsApp setup invitation has been requested.';
+    case 'superseded':
+      return 'This invitation was replaced by a newer link.';
     default:
       return '';
   }

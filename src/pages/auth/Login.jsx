@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, Lock, Phone } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { getCredentialError, getAuthFieldErrors } from '../../utils/authErrors';
@@ -91,7 +91,7 @@ export const Login = () => {
 
             <h1 className="login-title">Welcome back</h1>
             <p className="login-description">
-              Sign in with your international mobile number or email and password. OTP is not required.
+              Staff: sign in using your international mobile number and password. Existing email accounts also remain supported. No OTP.
             </p>
           </div>
 
@@ -109,10 +109,10 @@ export const Login = () => {
 
           <form onSubmit={handleSubmit} className="login-form" noValidate>
             <label className="block">
-              <span className="login-field-label">Mobile number or email</span>
+              <span className="login-field-label">Mobile Number with Country Code</span>
               <div className={'login-input-shell ' + (fieldErrors.identifier ? 'is-error' : '')}>
                 <span className="login-input-icon" aria-hidden="true">
-                  <Mail size={16} strokeWidth={1.8} />
+                  <Phone size={16} strokeWidth={1.8} />
                 </span>
                 <input
                   className="login-input"
@@ -124,7 +124,7 @@ export const Login = () => {
                     setIdentifier(event.target.value);
                     clearField('identifier');
                   }}
-                  placeholder="+919876543210 or email@example.com"
+                  placeholder="+919876543210"
                   aria-invalid={Boolean(fieldErrors.identifier)}
                   aria-describedby={fieldErrors.identifier ? 'login-identifier-error' : undefined}
                 />

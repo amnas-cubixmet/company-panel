@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { CheckCircle2, Eye, EyeOff, Lock, ShieldCheck } from 'lucide-react';
 import { API_BASE_URL } from '../../api/apiConfig';
 import '../../styles/login-system.css';
@@ -23,6 +23,7 @@ async function publicPasswordRequest(path, payload) {
 
 export default function StaffSetPasswordPage() {
   const { token } = useParams();
+  const navigate = useNavigate();
   const [state, setState] = useState('checking');
   const [purpose, setPurpose] = useState('setup');
   const [expiry, setExpiry] = useState('');
@@ -47,6 +48,12 @@ export default function StaffSetPasswordPage() {
       .catch(() => { if (active) setState('invalid'); });
     return () => { active = false; };
   }, [token]);
+
+  useEffect(() => {
+    if (state !== 'success') return undefined;
+    const timer = window.setTimeout(() => navigate('/login?reset=success', { replace: true }), 1000);
+    return () => window.clearTimeout(timer);
+  }, [state, navigate]);
 
   const submit = async (event) => {
     event.preventDefault();

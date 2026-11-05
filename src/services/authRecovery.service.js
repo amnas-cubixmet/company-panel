@@ -4,11 +4,20 @@ import { isValidEmail, normalizeEmail } from '../utils/validation';
 // Account recovery must always be checked by Django's User database.
 // Mock UI/data mode must never issue synthetic login or password reset tokens.
 
-export const requestPasswordReset = async (email) => {
-  const cleanEmail = normalizeEmail(email);
-  if (!cleanEmail) throw new Error('Email address is required.');
-  if (!isValidEmail(cleanEmail)) throw new Error('Enter a valid email address.');
-  return apiClient.post('/auth/forgot-password', { email: cleanEmail });
+export const requestPasswordReset = async (identity) => {
+  if (typeof identity === 'string') {
+    // Legacy owner/platform recovery remains supported.
+    const cleanEmail = normalizeEmail(identity);
+    if (!cleanEmail || !isValidEmail(cleanEmail)) throw new Error('Enter a valid email address.');
+    return apiClient.post('/auth/forgot-password', { email: cleanEmail });
+  }
+  const mobile = String(identity?.mobile || '').trim();
+  const workshop = String(identity?.workshop || '').trim().toLowerCase();
+  if (!/^\+[\d\s().-]{8,22}$/.test(mobile)) {
+    throw new Error('Enter an international mobile number, e.g. +919876543210.');
+  }
+  if (!workshop) throw new Error('Workshop code is required for secure password recovery.');
+  return apiClient.post('/auth/forgot-password', { mobile, workshop });
 };
 
 export const requestMagicLink = async (email) => {

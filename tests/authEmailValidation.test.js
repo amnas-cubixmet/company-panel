@@ -29,7 +29,6 @@ test('every custom email validator reuses the same validated rule', () => {
   for (const path of [
     'src/pages/auth/Login.jsx',
     'src/pages/auth/ForgotPassword.jsx',
-    'src/pages/staff-management/StaffAddPage.jsx',
     'src/components/account/companyAccountValidation.js',
     'src/services/authRecovery.service.js',
   ]) {
@@ -37,7 +36,7 @@ test('every custom email validator reuses the same validated rule', () => {
     assert.match(source, /isValidEmail\(/, path);
     assert.doesNotMatch(source, /\\\\s@/, path);
   }
-  assert.match(read('src/pages/staff-management/StaffAddPage.jsx'), /email,\s*department:/);
+  assert.doesNotMatch(read('src/pages/staff-management/StaffAddPage.jsx'), /type="email"|name="email"/);
 });
 
 test('login and recovery requests must not send stale tokens or redirect on expected 401 errors', () => {

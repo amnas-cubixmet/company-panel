@@ -8,8 +8,8 @@ const profile = readFileSync(new URL('../src/pages/staff-management/staff/StaffP
 const forgot = readFileSync(new URL('../src/pages/auth/ForgotPassword.jsx', import.meta.url), 'utf8');
 
 test('staff creation forwards actual delivery status to staff profile', () => {
-  assert.match(add, /created\?\.emailDeliveryStatus/);
-  assert.match(profile, /staffInviteDeliveryMessage\(location\.state\?\.emailDeliveryStatus\)/);
+  assert.match(add, /created\?\.whatsappInviteStatus/);
+  assert.match(profile, /staffInviteDeliveryMessage\(location\.state\?\.whatsappInviteStatus\)/);
 });
 
 test('staff profile resend reports server status instead of claiming a sent email', () => {
@@ -20,17 +20,17 @@ test('staff profile resend reports server status instead of claiming a sent emai
   assert.doesNotMatch(profile, /showToast\('Login invite sent by email\.'\)/);
 });
 
-test('console and failed statuses tell admin how to recover without duplicate staff', () => {
-  assert.match(staffInviteDeliveryMessage('console_only'), /Django terminal/);
+test('WhatsApp provider acceptance is distinct from delivery and failed messages allow recovery', () => {
+  assert.match(staffInviteDeliveryMessage('sent'), /not yet confirmed/);
+  assert.match(staffInviteDeliveryMessage('delivered'), /delivered/);
   assert.match(staffInviteDeliveryMessage('failed'), /Do not create the staff again/);
-  assert.match(staffInviteDeliveryMessage('submitted'), /email provider/);
   assert.equal(staffInviteDeliveryMessage(undefined), '');
 });
 
 test('recovery page avoids account enumeration but still shows format errors inline', () => {
   assert.match(forgot, /If an eligible account exists, password reset instructions will be sent/);
-  assert.match(forgot, /setFieldError\(backend\.email \|\| ''\)/);
-  assert.match(forgot, /setMessage\(backend\.email \? '' :/);
+  assert.match(forgot, /mobile: backend\.mobile/);
+  assert.match(forgot, /workshop: backend\.workshop/);
   assert.match(forgot, /auth-field-error/);
 });
 
