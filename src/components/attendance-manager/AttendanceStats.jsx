@@ -1,17 +1,19 @@
 
-import { Clock3, UserCheck, Users, UserX } from 'lucide-react';
+import { Clock3, UserCheck, Users, UserX, CalendarDays, ClipboardCheck } from 'lucide-react';
 
-export const AttendanceStats = ({ stats }) => {
+export const AttendanceStats = ({ stats, pending = 0 }) => {
   const cards = [
-    { label: 'Total Staff', value: stats.total, meta: 'active employees', icon: Users },
-    { label: 'Present', value: stats.present, meta: 'checked in / present', icon: UserCheck },
-    { label: 'Absent', value: stats.absent, meta: 'not present today', icon: UserX },
-    { label: 'Late', value: stats.late, meta: 'late arrivals', icon: Clock3 },
+    { label: 'Total Staff', value: stats.total, icon: Users },
+    { label: 'Present', value: stats.present, icon: UserCheck },
+    { label: 'Absent', value: stats.absent, icon: UserX },
+    { label: 'Late', value: stats.late, icon: Clock3 },
+    { label: 'On Leave', value: stats.leave, icon: CalendarDays },
+    { label: 'Pending Approvals', value: pending, icon: ClipboardCheck },
   ];
 
   return (
     <section className="am-dashboard-stats">
-      {cards.map(({ label, value, meta, icon: Icon }) => (
+      {cards.map(({ label, value, icon: Icon }) => (
         <article key={label} className="am-dashboard-stat-card">
           <div className="am-dashboard-stat-top">
             <div>
@@ -20,7 +22,6 @@ export const AttendanceStats = ({ stats }) => {
             </div>
             <i><Icon size={15} /></i>
           </div>
-          <small>{meta}</small>
         </article>
       ))}
     </section>
