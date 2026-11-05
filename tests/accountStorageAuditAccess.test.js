@@ -10,7 +10,7 @@ test('owner storage usage, day logs and file event history share the free Accoun
     assert.equal(getPermissionForPath(url), 'billing.view');
   }
   const header = source('src/components/account/AccountHeader.jsx');
-  assert.match(header, /'storage','Storage & Logs','\/account\/storage',HardDrive,'billing\.view'/);
+  assert.match(header, /'storage','Storage','\/account\/storage',HardDrive,'billing\.view'/);
   assert.match(header, /isCompanyOwner && can\(tab\[4\]\)/);
   const routes = source('src/routes/AppRoutes.jsx');
   assert.match(routes, /<Route path="\/account\/storage" element=\{<SaaSAccount section="storage" \/>\}/);
