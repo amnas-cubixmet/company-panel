@@ -23,3 +23,12 @@ test('customer create and duplicate-check payloads normalize business type and o
   assert.match(page, /setBranch\(c\.branchId/);
   assert.match(page, /normalizeCustomerType\(customer\.customerType\)/);
 });
+
+test('duplicate-check maps Django envelope to actual customer or null before showing warning', () => {
+  const service = read('src/services/customer.service.js');
+  const page = read('src/pages/customers/CustomerList.jsx');
+  assert.match(service, /result\?\.duplicate === true && result\?\.customer\?\.id/);
+  assert.match(service, /\? result\.customer : null/);
+  assert.match(page, /if \(match\) \{/);
+  assert.match(page, /setDuplicateFound\(match\)/);
+});
