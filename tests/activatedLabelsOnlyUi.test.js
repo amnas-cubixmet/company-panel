@@ -26,8 +26,9 @@ test('protected routes, search, desktop and mobile navigation share authorizatio
     'src/components/layout/MobileBottomNav.jsx',
   ]) assert.match(read(file), /featureAccess\.can\(route\.permission\)/);
   const search = read('src/components/common/GlobalSearch.jsx');
-  assert.match(search, /visibleResults = results\.filter\(isVisibleResult\)/);
-  assert.match(search, /permission \? can\(permission\)/);
+  assert.match(search, /getPermissionForPath\(/);
+  assert.match(search, /can\(permission\)/);
+  assert.match(search, /results\.filter\(/);
 });
 
 test('dashboard and account never advertise inactive-label workshop modules', () => {

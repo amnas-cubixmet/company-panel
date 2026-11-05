@@ -51,6 +51,32 @@ const displayDate = (value, lang) => {
 const money = (value) => new Intl.NumberFormat('en-IN', { style:'currency', currency:'INR' }).format(Number(value) || 0);
 const safePhone = (phone) => String(phone || '').replace(/[^\d+]/g, '');
 
+function PortalWorkshopLogo({ token, enabled }) {
+  const [source, setSource] = useState('');
+  useEffect(() => {
+    if (!enabled) { setSource(''); return undefined; }
+    let mounted = true;
+    let objectUrl = '';
+    const controller = new AbortController();
+    fetch(`${API_BASE_URL}/c/${encodeURIComponent(token)}/logo`, {
+      signal: controller.signal, credentials: 'omit', referrerPolicy: 'no-referrer',
+    }).then((response) => {
+      if (!response.ok) throw new Error('Workshop logo unavailable');
+      return response.blob();
+    }).then((blob) => {
+      if (!mounted) return;
+      objectUrl = URL.createObjectURL(blob);
+      setSource(objectUrl);
+    }).catch(() => { if (mounted) setSource(''); });
+    return () => {
+      mounted = false;
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [token, enabled]);
+  return source ? <img className="customer-portal-workshop-logo" src={source} alt="" /> : <Car size={22}/>;
+}
+
 function PortalPhoto({ photo, token }) {
   const [url, setUrl] = useState('');
   const [error, setError] = useState(false);
@@ -93,6 +119,7 @@ export default function CustomerPortalPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [photoFilter, setPhotoFilter] = useState('all');
+  const [portalQuery, setPortalQuery] = useState('');
   const [revision, setRevision] = useState(0);
   const t = dictionaries[lang];
 
@@ -101,6 +128,7 @@ export default function CustomerPortalPage() {
     const controller = new AbortController();
     setLoading(true);
     setError('');
+    setData(null); // Do not render another customer's stale data while a new token loads.
     fetch(`${API_BASE_URL}/c/${encodeURIComponent(token)}`, {
       signal: controller.signal, credentials: 'omit',
       headers: { Accept: 'application/json' }, referrerPolicy: 'no-referrer',
@@ -122,7 +150,15 @@ export default function CustomerPortalPage() {
     setLang(newLang);
     localStorage.setItem('cubegears:customer-language', newLang);
   };
-  const jobs = data?.jobs || [];
+  // Only records from this signed, customer-scoped API are filtered.
+  const search = portalQuery.trim().toLowerCase();
+  const vehicles = (data?.vehicles || []).filter((vehicle) =>
+    !search || [vehicle.registration, vehicle.model].some((v) => String(v || '').toLowerCase().includes(search))
+  );
+  const jobs = (data?.jobs || []).filter((job) =>
+    !search || [job.number, job.vehicleRegistration, job.vehicleModel, job.status]
+      .some((v) => String(v || '').toLowerCase().includes(search))
+  );
   const photos = data?.photos || [];
   const visiblePhotos = useMemo(
     () => photoFilter === 'all' ? photos : photos.filter((photo) => photo.category === photoFilter),
@@ -136,7 +172,10 @@ export default function CustomerPortalPage() {
   return (
     <main className="customer-portal" lang={lang} data-customer-portal>
       <header className="customer-portal-header">
-        <div className="customer-portal-brand"><Car size={22}/><span>CubeGears</span></div>
+        <div className="customer-portal-brand">
+          <PortalWorkshopLogo token={token} enabled={Boolean(data?.workshop?.logoAvailable)} />
+          <span>{data?.workshop?.name || 'CubeGears'}</span>
+        </div>
         <div className="customer-portal-language" role="group" aria-label="Language">
           <button type="button" className={lang === 'en' ? 'is-active' : ''} onClick={() => changeLanguage('en')}>English</button>
           <button type="button" className={lang === 'ml' ? 'is-active' : ''} onClick={() => changeLanguage('ml')}>മലയാളം</button>
@@ -156,10 +195,16 @@ export default function CustomerPortalPage() {
           {error !== 'invalid' && <button type="button" onClick={() => setRevision((v) => v + 1)}><RefreshCw size={16}/> {t.retry}</button>}
         </section>}
         {!loading && data && <>
+          <div className="customer-portal-record-search">
+            <label htmlFor="portal-record-search">{lang === 'ml' ? 'എന്റെ വാഹനങ്ങളും ജോബുകളും തിരയുക' : 'Search my vehicles and jobs'}</label>
+            <input id="portal-record-search" type="search" value={portalQuery}
+              onChange={(event) => setPortalQuery(event.target.value)}
+              placeholder={lang === 'ml' ? 'വാഹന നമ്പർ അല്ലെങ്കിൽ ജോബ് നമ്പർ' : 'Vehicle registration or job number'} />
+          </div>
           <section className="customer-portal-card">
             <h2><Car size={18}/>{t.vehicles}</h2>
-            {data.vehicles?.length ? <div className="customer-portal-vehicle-list">
-              {data.vehicles.map((v) => <article key={v.id}><strong>{v.registration}</strong><span>{v.model} {v.year || ''}</span></article>)}
+            {vehicles.length ? <div className="customer-portal-vehicle-list">
+              {vehicles.map((v) => <article key={v.id}><strong>{v.registration}</strong><span>{v.model} {v.year || ''}</span></article>)}
             </div> : <p>{t.empty}</p>}
           </section>
 

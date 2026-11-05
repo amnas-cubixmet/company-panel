@@ -1,6 +1,6 @@
 import { appConfirm } from '../../components/common/appDialogs';
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search } from '../../components/common/Search';
 import { Input } from '../../components/common/Input';
 import { Select } from '../../components/common/Select';
@@ -14,6 +14,24 @@ import { Users, Plus, Filter, Edit, Phone, MessageSquare, Mail, AlertTriangle, C
 
 export const CustomerList = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = (searchParams.get('q') || '').slice(0, 120);
+  const statusFilter = searchParams.get('status') || 'All';
+  const branchFilter = searchParams.get('branch') || 'All';
+  const typeFilter = searchParams.get('type') || 'All';
+  const updateFilter = (name, value) => {
+    const next = new URLSearchParams(searchParams);
+    if (!value || value === 'All') next.delete(name);
+    else next.set(name, value);
+    next.delete('page');
+    setSearchParams(next, { replace: name === 'q' });
+  };
+  const setSearch = (value) => updateFilter('q', value);
+  const setStatusFilter = (value) => updateFilter('status', value);
+  const setBranchFilter = (value) => updateFilter('branch', value);
+  const setTypeFilter = (value) => updateFilter('type', value);
+  const resetFilters = () => setSearchParams(new URLSearchParams());
+
 
   // Core Data State
   const [customers, setCustomers] = useState([]);
@@ -21,10 +39,6 @@ export const CustomerList = () => {
   const [loadError, setLoadError] = useState('');
 
   // Filters State
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [branchFilter, setBranchFilter] = useState('All');
-  const [typeFilter, setTypeFilter] = useState('All');
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
 
   // Add / Edit Customer Modal State
@@ -43,7 +57,7 @@ export const CustomerList = () => {
   const [customerType, setCustomerType] = useState('Individual');
   const [companyName, setCompanyName] = useState('');
   const [gstNo, setGstNo] = useState('');
-  const [branch, setBranch] = useState('Main Garage Branch');
+  const [branch, setBranch] = useState('');
   const [notes, setNotes] = useState('');
 
   // Duplicate Check Modal State
@@ -123,12 +137,21 @@ export const CustomerList = () => {
     }
   };
 
+  const availableBranches = useMemo(() => [...new Set(
+    customers.map((item) => item.branchName).filter(Boolean)
+  )].sort(), [customers]);
+  const availableTypes = useMemo(() => [...new Set(
+    customers.map((item) => item.customerType).filter(Boolean)
+  )].sort(), [customers]);
+  const availableStatuses = useMemo(() => [...new Set(
+    customers.map((item) => item.status).filter(Boolean)
+  )].sort(), [customers]);
   const visibleCustomers = useMemo(() => {
     const q = search.trim().toLowerCase();
     return customers.filter((customer) => {
       if (statusFilter !== 'All' && (customer.status || '').toLowerCase() !== statusFilter.toLowerCase()) return false;
-      if (branchFilter !== 'All' && customer.branch !== branchFilter) return false;
-      if (typeFilter !== 'All' && customer.customerType !== typeFilter) return false;
+      if (branchFilter !== 'All' && String(customer.branchName || '') !== branchFilter) return false;
+      if (typeFilter !== 'All' && String(customer.customerType || '').toLowerCase() !== typeFilter.toLowerCase()) return false;
       if (!q) return true;
       return [customer.name, customer.email, customer.phone, customer.whatsapp, customer.companyName]
         .some((value) => String(value || '').toLowerCase().includes(q)) ||
@@ -177,7 +200,7 @@ export const CustomerList = () => {
     setCustomerType(c.customerType || 'Individual');
     setCompanyName(c.companyName || '');
     setGstNo(c.gstNo || '');
-    setBranch(c.branch || 'Main Garage Branch');
+    setBranch(c.branch || c.branchName || '');
     setNotes(c.notes || '');
     setIsAddCustomerOpen(true);
   };
@@ -194,7 +217,7 @@ export const CustomerList = () => {
     setCustomerType('Individual');
     setCompanyName('');
     setGstNo('');
-    setBranch('Main Garage Branch');
+    setBranch('');
     setNotes('');
   };
 
@@ -314,9 +337,7 @@ export const CustomerList = () => {
               containerStyle={{ width: '130px', marginBottom: 0 }}
             >
               <option value="All">All Status</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-              <option value="Archived">Archived</option>
+              {availableStatuses.map((value) => <option key={value} value={value}>{value}</option>)}
             </Select>
 
             <Select
@@ -325,11 +346,7 @@ export const CustomerList = () => {
               containerStyle={{ width: '140px', marginBottom: 0 }}
             >
               <option value="All">All Types</option>
-              <option value="Individual">Individual</option>
-              <option value="Company/Fleet">Company / Fleet</option>
-              <option value="Business / Company">Business / Company</option>
-              <option value="Insurance">Insurance</option>
-              <option value="Dealer/Partner">Dealer / Partner</option>
+              {availableTypes.map((value) => <option key={value} value={value}>{value}</option>)}
             </Select>
           </div>
 
@@ -347,6 +364,7 @@ export const CustomerList = () => {
       {/* CUSTOMER LIST: DESKTOP TABLE & MOBILE CARDS */}
       <div className="customer-directory-list-heading">
         <div><h2>All Customers</h2><p>{visibleCustomers.length} of {customers.length} customers shown</p></div>
+        <button type="button" onClick={resetFilters} aria-label="Reset customer filters">Reset Filters</button>
       </div>
       {loading ? (
         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading customers directory...</div>
@@ -533,8 +551,8 @@ export const CustomerList = () => {
               value={branch}
               onChange={(e) => setBranch(e.target.value)}
             >
-              <option value="Main Garage Branch">Main Garage Branch</option>
-              <option value="Kochi South Branch">Kochi South Branch</option>
+              <option value="">Select workshop branch</option>
+              {availableBranches.map((value) => <option key={value} value={value}>{value}</option>)}
             </Select>
           </div>
 
@@ -668,8 +686,7 @@ export const CustomerList = () => {
             onChange={(e) => setTypeFilter(e.target.value)}
           >
             <option value="All">All Types</option>
-            <option value="Individual">Individual</option>
-            <option value="Business / Company">Business</option>
+            {availableTypes.map((value) => <option key={value} value={value}>{value}</option>)}
           </Select>
 
           <Select
@@ -678,8 +695,7 @@ export const CustomerList = () => {
             onChange={(e) => setBranchFilter(e.target.value)}
           >
             <option value="All">All Branches</option>
-            <option value="Main Garage Branch">Main Garage Branch</option>
-            <option value="Kochi South Branch">Kochi South Branch</option>
+            {availableBranches.map((value) => <option key={value} value={value}>{value}</option>)}
           </Select>
 
           <button

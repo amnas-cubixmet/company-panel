@@ -43,3 +43,9 @@
 @keyframes portal-shimmer{from{background-position:100% 0}to{background-position:-100% 0}}
 @media(max-width:600px){.customer-portal-header{padding:13px}.customer-portal-brand{font-size:18px}.customer-portal-language button{padding:8px;font-size:13px}.customer-portal-timeline{grid-template-columns:repeat(2,minmax(0,1fr))}.customer-portal-content{padding:18px 12px 80px}.customer-portal-photo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(prefers-reduced-motion:reduce){.customer-portal-skeleton{animation:none}}
+
+.customer-portal-workshop-logo{width:40px;height:40px;max-width:40px;max-height:40px;object-fit:contain;flex:0 0 40px;border-radius:8px}
+.customer-portal-record-search{display:grid;gap:8px;margin:16px 0;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.customer-portal-record-search label{font-size:14px;font-weight:600;color:var(--text-primary)}
+.customer-portal-record-search input{min-height:44px;width:100%;min-width:0;padding:10px 12px;font-size:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text-primary)}
+.customer-portal-brand span{overflow-wrap:anywhere}

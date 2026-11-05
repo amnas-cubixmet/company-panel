@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { useDialogAccessibility } from "./useDialogAccessibility";
 import { X } from 'lucide-react';
 import '../../styles/responsive-modal-sheet.css';
 
@@ -11,23 +12,7 @@ export const ResponsiveModalSheet = ({
 }) => {
   const modalRef = useRef(null);
 
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape' && isOpen) onClose();
-    };
-
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      window.addEventListener('keydown', handleKeyDown);
-    } else {
-      document.body.style.overflow = '';
-    }
-
-    return () => {
-      document.body.style.overflow = '';
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onClose]);
+  useDialogAccessibility(isOpen, onClose, modalRef);
 
   if (!isOpen) return null;
 
@@ -44,6 +29,7 @@ export const ResponsiveModalSheet = ({
       <section
         ref={modalRef}
         className="responsive-modal-sheet"
+        tabIndex={-1}
         style={{ '--responsive-modal-max-width': maxWidth }}
         onMouseDown={(event) => event.stopPropagation()}
       >

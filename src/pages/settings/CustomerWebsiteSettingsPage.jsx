@@ -1,4 +1,5 @@
 import {useCallback,useEffect,useState} from 'react';
+import { appConfirm } from '../../components/common/appDialogs';
 import {AlertCircle,ArrowUpRight,Check,Copy,Globe2,Palette,RefreshCw,ShieldCheck,Trash2} from 'lucide-react';
 import apiClient from '../../api/apiClient';
 import '../../styles/customer-website-settings.css';
@@ -78,7 +79,7 @@ export default function CustomerWebsiteSettingsPage(){
   }
 
   async function disableDomain(domain){
-    if(!window.confirm('Disable this custom domain? Existing customer data will be preserved.'))return;
+    if(!await appConfirm('Disable this custom domain? Existing customer data will be preserved.'))return;
     setError('');setNotice('');
     try{
       await apiClient.delete('/company/customer-website/domains/'+domain.id);

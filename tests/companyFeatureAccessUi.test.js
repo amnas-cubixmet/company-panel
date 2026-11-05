@@ -22,14 +22,15 @@ test('company identity never comes from a shared placeholder', () => {
   assert.doesNotMatch(context, /CMP_99|CubixGear Motors Inc\./);
 });
 
-test('search filters results and stores history per company and login', () => {
+test('workspace search is tenant-scoped by backend and obeys UI route permissions', () => {
   const search = src('src/components/common/GlobalSearch.jsx');
+  const service = src('src/services/globalSearch.service.js');
   assert.match(search, /getPermissionForPath\(/);
-  assert.match(search, /return permission \? can\(permission\) : !enforced/);
-  assert.match(search, /visibleResults = results\.filter\(isVisibleResult\)/);
-  assert.match(search, /user\?\.company\?\.id/);
-  assert.match(search, /user\?\.id/);
-  assert.doesNotMatch(search, /localStorage\.setItem\(RECENT_SEARCHES_PREFIX/);
+  assert.match(search, /can\(permission\)/);
+  assert.match(search, /results\.filter\(/);
+  assert.match(service, /apiClient\.get\('\/search'/);
+  assert.doesNotMatch(service, /localStorage|searchMockData|searchPages/);
+  assert.doesNotMatch(search, /localStorage/);
 });
 
 test('account, settings, search and header share paid module access', () => {

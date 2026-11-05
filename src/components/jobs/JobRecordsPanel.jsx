@@ -5,6 +5,7 @@ import { JobCustomerContactActions } from './JobCustomerContactActions';
 
 export const JobRecordsPanel = ({
   jobs,
+  totalCount = jobs.length,
   loading,
   status,
   searchTerm = '',
@@ -16,7 +17,7 @@ export const JobRecordsPanel = ({
         <span>Job Records</span>
         <h2>{status === 'All' ? 'All Job Cards' : status}</h2>
       </div>
-      <strong aria-live="polite">{jobs.length} record{jobs.length === 1 ? '' : 's'}</strong>
+      <strong aria-live="polite">{totalCount} record{totalCount === 1 ? '' : 's'}</strong>
     </header>
 
     {loading ? (
