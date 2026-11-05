@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { HardHat, Plus, X } from 'lucide-react';
 import { OutsideLabourPanel } from './OutsideLabourPanel';
 import { useAuth } from '../../hooks/useAuth';
@@ -8,11 +8,15 @@ import { hasPermission } from '../../utils/permissions';
  * Add external workers to a specific Job Card without creating employees.
  * Reuses Outside Labour's existing company-scoped Expenses APIs and payment rules.
  */
-export function JobOutsideStaffSection({ jobId, onChanged }) {
+export function JobOutsideStaffSection({ jobId, onChanged, quickAddToken = 0 }) {
   const { user } = useAuth();
   const canView = hasPermission(user, 'expenses.view');
   const canCreate = hasPermission(user, 'expenses.create');
   const [formOpen, setFormOpen] = useState(false);
+
+  useEffect(() => {
+    if (quickAddToken > 0 && canView && canCreate) setFormOpen(true);
+  }, [quickAddToken, canView, canCreate]);
 
   const addStaff = () => {
     if (!canView || !canCreate) return;
@@ -29,7 +33,7 @@ export function JobOutsideStaffSection({ jobId, onChanged }) {
         <span className="job-outside-staff-icon" aria-hidden="true"><HardHat size={18}/></span>
         <div className="job-outside-staff-heading">
           <h3>Outside Staff</h3>
-          <p>Add an external mechanic, painter or freelance worker to this Job Card.</p>
+          <p>Freelancers and outside charges</p>
         </div>
         <div className="job-outside-staff-actions">
           {canView && canCreate && (
@@ -45,10 +49,6 @@ export function JobOutsideStaffSection({ jobId, onChanged }) {
           )}
         </div>
       </header>
-      <p className="job-outside-staff-description">
-        Outside workers are recorded here with their agreed charges and payment status.
-        They are not added to your regular staff attendance or payroll.
-      </p>
       {!canView && (
         <p className="job-outside-staff-permission" role="status">
           Expenses View permission is required to see outside staff.
