@@ -30,7 +30,7 @@ test('frontend storage history paginates all real backend events including delet
   assert.match(log, /event\.deltaBytes/);
   assert.match(service, /offset = 0/);
   assert.match(service, /params\.set\('offset'/);
-  assert.match(storage, /Upload and delete events/);
+  assert.match(storage, /Recorded storage activity/);
   assert.match(storage, /serverEvents/);
   assert.match(storage, /event\.actor/);
 });
