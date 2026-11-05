@@ -265,8 +265,11 @@ export const JobCreatePage = () => {
       showFormFieldError(formRef.current, 'kilometre', 'Enter a valid non-negative KM reading.');
       return false;
     }
-    const errors = Object.fromEntries(complaints.filter((item) => !item.description.trim())
-      .map((item) => [item.id, 'Enter this complaint or remove the empty row.']));
+    // An untouched empty row is optional. Once the user adds a category or
+    // inspection notes, however, require a description before review.
+    const errors = Object.fromEntries(complaints.filter((item) =>
+      !item.description.trim() && (item.category || item.inspectionNotes.trim())
+    ).map((item) => [item.id, 'Describe this complaint or remove the incomplete row.']));
     setComplaintErrors(errors);
     if (Object.keys(errors).length) {
       const first = complaints.findIndex((item) => errors[item.id]);
@@ -615,7 +618,7 @@ export const JobCreatePage = () => {
             </div>
           </div>
           <VehicleCameraQueue photos={pendingPhotos}
-            onChange={(updater) => { setPendingPhotos(updater); setReview(false); }}
+            onChange={(updater) => { setPendingPhotos(updater); if (!savedJobId) setReview(false); }}
             disabled={saving} uploading={uploadProgress}/>
         </section>
 
@@ -631,10 +634,10 @@ export const JobCreatePage = () => {
           <button type="button" className="h-11 flex-1 rounded-xl border border-line bg-surface px-5 text-sm font-semibold text-content md:flex-none" onClick={() => navigate('/jobs')}>Cancel</button>
           {review && !savedJobId && <button type="button"
             className="job-create-edit-again" onClick={() => setReview(false)}><RotateCcw size={17}/> Edit Details</button>}
-          <button type="submit" disabled={saving} className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border-0 bg-primary px-5 text-sm font-bold text-white md:flex-none">
+          <button type="submit" disabled={saving || Boolean(savedJobId && !pendingPhotos.length)} className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border-0 bg-primary px-5 text-sm font-bold text-white md:flex-none">
             {review ? <CheckCircle2 size={17}/> : <Eye size={17}/>}
             {saving ? (savedJobId ? 'Uploading photos…' : 'Creating…')
-              : savedJobId ? 'Retry Remaining Photos' : review ? 'Confirm & Create Job Card' : 'Review Job Card'}
+              : savedJobId ? (pendingPhotos.length ? 'Retry Remaining Photos' : 'Job Card Created') : review ? 'Confirm & Create Job Card' : 'Review Job Card'}
           </button>
         </div>
       </form>
