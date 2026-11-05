@@ -276,27 +276,26 @@ function StorageView({ storage, setStorage }) {
     <div className="saas-grid">
       <CreditCycleCard />
       <section className="saas-card saas-wide">
-        <div className="saas-card-head"><div><span className="saas-kicker">MEDIA STORAGE</span><h2>Media storage usage</h2></div><Infinity size={24} /></div>
+        <div className="saas-card-head"><div><h2>Media Storage</h2></div><Infinity size={24} /></div>
         <div className="saas-storage-summary">
           <div><span>Currently stored</span><strong>{storage.usedGb} GB</strong></div>
           <div><span>Uploaded files</span><strong>{storage.files.length}</strong></div>
-          <div><span>History</span><strong>Upload and delete events</strong></div>
+          <div><span>Storage Billing</span><strong>{storage.billing ? (storage.billing.active ? 'Active' : 'Disabled') : '—'}</strong></div>
         </div>
         {canManageStorage && <div className="saas-storage-actions">
           <select value={category} onChange={(e) => setCategory(e.target.value)}><option>Job Card</option><option>Inspection</option><option>Invoice</option><option>Delivery</option><option>General</option></select>
           <label className="saas-button"><Upload size={18} /> {storageBusy ? 'Working…' : 'Upload photos'}<input hidden multiple disabled={storageBusy} type="file" accept="image/jpeg,image/png,image/webp" onChange={upload} /></label>
           <button className="saas-button danger" disabled={!selected.length || storageBusy} onClick={() => remove(selected)}><Trash2 size={18} /> Delete selected</button>
         </div>}
-        <p className="saas-muted">
-          Storage totals come from your uploaded files. Upload and deletion events are shown in Storage History.
-        </p>
         {storageError && <p className="saas-error" role="alert">{storageError}</p>}
       </section>
 
-      {storage.billing && <section className="saas-card saas-wide"><h2>Storage billing</h2>
-        <p>{storage.billing.creditsPerGb} credits / GB / {storage.billing.period}. Free allowance: {storage.billing.includedGb} GB.</p>
-        <p>Billing meter interval: {storage.billing.meterIntervalHours ?? (Number(storage.billing.meterIntervalSeconds || 0) / 3600)} hours. {storage.billing.active ? 'Billing enabled' : 'Billing disabled'}. Read-only monitoring has a separate schedule.</p>
-        <p>Deleting a file stops future storage use; previously recorded usage remains payable. Monthly charges and due dates appear in Account → Logs.</p>
+      {storage.billing && <section className="saas-card saas-wide"><h2>Storage Billing: {storage.billing.active ? 'Active' : 'Disabled'}</h2>
+        <p>{storage.billing.creditsPerGb} credits / GB / {storage.billing.period} · {storage.billing.includedGb} GB free</p>
+        <details className="saas-storage-help"><summary>Billing details</summary>
+          <p>Meter interval: {storage.billing.meterIntervalHours ?? (Number(storage.billing.meterIntervalSeconds || 0) / 3600)} hours. Monitoring has a separate schedule.</p>
+          <p>Deleting files stops future usage. Previously recorded charges remain payable; see Account → Logs for monthly balances and due dates.</p>
+        </details>
       </section>}
       <section className="saas-card saas-wide storage-history-card">
         <div className="saas-card-head"><div><span className="saas-kicker">USAGE INTERVAL</span><h2>Storage usage history</h2></div><IndianRupee size={22} /></div>
@@ -338,10 +337,10 @@ function StorageView({ storage, setStorage }) {
 
       <section className="saas-card saas-wide storage-interval-card">
         <div className="saas-card-head">
-          <div><span className="saas-kicker">SAVED INTERVALS</span><h2>Storage interval logs</h2></div>
+          <div><h2>Storage interval logs</h2></div>
           <span>{intervalLogs.length} of {intervalCount} recorded readings</span>
         </div>
-        <p className="saas-muted">Actual monitoring checkpoints and billing meter readings. Monitoring does not debit credits, and missed scheduler intervals are not invented.</p>
+        <details className="saas-storage-help"><summary>About readings</summary><p>Only saved monitoring and billing readings are shown. Monitoring does not debit credits.</p></details>
         {intervalError && <p className="saas-error" role="alert">{intervalError}</p>}
         {intervalsLoading && <p className="saas-loading" role="status">Loading recorded intervals…</p>}
         <div className="saas-table-wrap">
@@ -359,7 +358,7 @@ function StorageView({ storage, setStorage }) {
                 </tr>
               ))}
               {!intervalsLoading && !intervalError && !intervalLogs.length && (
-                <tr><td colSpan={6}>No saved observations yet. Enable interval monitoring in Billing Settings and start the worker and scheduler.</td></tr>
+                <tr><td colSpan={6}>No usage records yet.</td></tr>
               )}
             </tbody>
           </table>
@@ -371,8 +370,8 @@ function StorageView({ storage, setStorage }) {
         )}
       </section>
 
-      <section className="saas-card">
-        <div className="saas-card-head"><div><span className="saas-kicker">STORAGE SETTINGS</span><h2>Upload policy</h2></div><ShieldCheck size={22} /></div>
+      <details className="saas-card saas-storage-advanced">
+        <summary><ShieldCheck size={18} aria-hidden="true"/> Advanced storage settings</summary>
         {!canManageStorage && <p className="saas-muted">Usage and audit logs are included with your SaaS Account. Editing upload policies requires storage management access.</p>}
         {[
           ['autoCompress', 'Compress uploads'],
@@ -381,16 +380,16 @@ function StorageView({ storage, setStorage }) {
           ['allowStaffDelete', 'Staff can delete']
         ].map(([key, label]) => <label className="saas-toggle" key={key}><span>{label}</span><input type="checkbox" checked={Boolean(storage.settings[key])} disabled={storageBusy || !canManageStorage} onChange={(e) => setting(key, e.target.checked)} /></label>)}
         <label className="saas-field"><span>Auto-delete after days (0 = never)</span><input type="number" min="0" disabled={!canManageStorage} value={storage.settings.retentionDays} onChange={(e) => setting('retentionDays', Number(e.target.value))} /></label>
-      </section>
+      </details>
 
       <section className="saas-card saas-wide">
-        <div className="saas-card-head"><div><span className="saas-kicker">FILES</span><h2>Current uploaded photos</h2></div><span>{storage.files.length} files</span></div>
+        <div className="saas-card-head"><div><h2>Uploaded Files</h2></div><span>{storage.files.length} files</span></div>
         <div className="saas-media-list">{storage.files.map((file) => <article className="saas-media-row" key={file.id}>{canManageStorage && <input type="checkbox" checked={selected.includes(file.id)} onChange={(e) => setSelected((old) => e.target.checked ? [...old, file.id] : old.filter((id) => id !== file.id))} /> }<div className="saas-file-icon">IMG</div><div className="saas-file-main"><strong>{file.name}</strong><span>{file.category} · {file.sizeMb} MB · {file.uploadedBy}</span></div><span className="saas-file-date">{date.format(new Date(file.uploadedAt))}</span>{canManageStorage && <button className="saas-icon-button" aria-label={`Delete ${file.name}`} onClick={() => remove([file.id])}><Trash2 size={17} /></button>}</article>)}</div>
       </section>
 
       <section className="saas-card saas-wide">
         <div className="saas-card-head"><div><span className="saas-kicker">{USE_MOCK_API ? 'LOCAL ACTIVITY' : 'SERVER AUDIT LOG'}</span><h2>{USE_MOCK_API ? 'Storage actions on this browser' : 'Recorded storage activity'}</h2></div><button className="saas-button" onClick={() => navigate('/account/storage/history')}>View full history <ChevronRight size={16} /></button></div>
-        <p className="saas-muted">{USE_MOCK_API ? 'Demo activity is stored in this browser.' : 'Upload and delete events are recorded in your company database. Browse recorded events for the selected date range. Deleted-file names remain in the log.'}</p>
+        {USE_MOCK_API && <p className="saas-muted">Demo activity is stored in this browser.</p>}
         {USE_MOCK_API ? (
           audit.length ? <div className="saas-table-wrap"><table className="saas-table"><thead><tr><th>Date & time</th><th>Action</th><th>Details</th><th>User</th></tr></thead><tbody>{audit.map((item) => <tr key={item.id}><td>{dateTime.format(new Date(item.at))}</td><td>{item.action}</td><td>{item.details}</td><td>{item.user}</td></tr>)}</tbody></table></div> : <p className="saas-muted">No local storage activity recorded yet.</p>
         ) : eventsLoading ? (

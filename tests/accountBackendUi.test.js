@@ -76,6 +76,6 @@ test('account company overview no longer displays subscription summary', () => {
   assert.doesNotMatch(overview, /Charges and usage from your current subscription/);
   assert.doesNotMatch(overview, /billing\?\.plan/);
   assert.match(overview, /Company Information/);
-  assert.match(overview, /Credit Balance/);
+  assert.match(overview, /Available Credits/);
   assert.match(css, /grid-template-columns:minmax\(0,1fr\)/);
 });

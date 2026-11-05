@@ -9,7 +9,7 @@ test('SaaS owner Account retains Storage tab and all nested log pages', () => {
   const routes = code('src/routes/AppRoutes.jsx');
   const access = code('src/context/FeatureAccessContext.jsx');
   const workspace = code('src/utils/accountWorkspace.js');
-  assert.match(header, /\['storage','Storage & Logs','\/account\/storage',HardDrive,'billing\.view'\]/);
+  assert.match(header, /\['storage','Storage','\/account\/storage',HardDrive,'billing\.view'\]/);
   assert.match(header, /visibleTabs = tabs\.filter\(tab => isCompanyOwner && can\(tab\[4\]\)\)/);
   assert.match(routes, /path="\/account\/storage" element=\{<SaaSAccount section="storage"\s*\/>\}/);
   assert.match(routes, /path="\/account\/storage\/history"/);
@@ -30,7 +30,7 @@ test('frontend storage history paginates all real backend events including delet
   assert.match(log, /event\.deltaBytes/);
   assert.match(service, /offset = 0/);
   assert.match(service, /params\.set\('offset'/);
-  assert.match(storage, /Upload and delete events/);
+  assert.match(storage, /Recorded storage activity/);
   assert.match(storage, /serverEvents/);
   assert.match(storage, /event\.actor/);
 });

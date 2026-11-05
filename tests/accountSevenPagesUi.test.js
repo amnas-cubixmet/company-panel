@@ -29,8 +29,7 @@ test('six account routes share one navigation and correct active state', () => {
   }
   assert.doesNotMatch(tabs, /\['settings'|\['company'|\['credits-features'/);
   assert.match(tabs, /aria-current=\{active===key\?'page':undefined\}/);
-  assert.match(tabs, /account-dashboard-eyebrow/);
-  assert.match(tabs, /account-dashboard-section-count/);
+  assert.doesNotMatch(tabs, /account-dashboard-eyebrow|account-dashboard-section-count/);
   for (const page of [credit,storage,templates,security]) assert.match(page, /<AccountHeader/);
 });
 

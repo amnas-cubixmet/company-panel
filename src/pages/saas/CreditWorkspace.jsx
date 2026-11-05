@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowDownLeft, ArrowUpRight, Coins, CreditCard, Database, FileClock, RefreshCcw, ShieldCheck, Users, Wallet, Zap } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Coins, CreditCard, Database, FileClock, RefreshCcw, ShieldCheck, Wallet, Zap } from 'lucide-react';
 import { creditWalletService, notifyCreditChange, purchaseCredits } from '../../services/creditWallet.service';
+import { saasAccountService } from '../../services/saasAccount.service';
 import { AccountHeader } from '../../components/account';
 import { CreditCycleCard } from '../../components/account/CreditCycleCard';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
@@ -33,6 +34,7 @@ export function CreditWorkspace({ section = 'overview' }) {
   const { user } = useAuth();
   const featureAccess = useFeatureAccess();
   const [wallet, setWallet] = useState(null);
+  const [storageOverview, setStorageOverview] = useState(null);
   const [account, setAccount] = useState(null);
   const [featureActivity, setFeatureActivity] = useState([]);
   const [featureUsage, setFeatureUsage] = useState(null);
@@ -48,18 +50,26 @@ export function CreditWorkspace({ section = 'overview' }) {
   const [purchaseRetryAt, setPurchaseRetryAt] = useState(0);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [logView, setLogView] = useState('transactions');
+  const [logSearch, setLogSearch] = useState('');
+  const [logKind, setLogKind] = useState('all');
+  const [logFrom, setLogFrom] = useState('');
+  const [logTo, setLogTo] = useState('');
+  const [logPage, setLogPage] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [balance, bundles, history, labels, statements, accountInfo, activity, calendarResult, usageResult] = await Promise.allSettled([
+    const [balance, bundles, history, labels, statements, accountInfo, activity, calendarResult, usageResult, storageResult] = await Promise.allSettled([
       creditWalletService.overview(), creditWalletService.packages(),
       creditWalletService.logs(),
       creditWalletService.bundles(), creditWalletService.monthlyStatements(),
       creditWalletService.account(), creditWalletService.featureActivity(),
       creditWalletService.calendarBilling(),
       creditWalletService.featureUsageLogs(),
+      section === 'overview' ? saasAccountService.getStorageAccount() : Promise.resolve(null),
     ]);
     const problems = [];
+    setStorageOverview(storageResult.status === 'fulfilled' ? storageResult.value : null);
     if (usageResult.status === 'fulfilled') setFeatureUsage(usageResult.value);
     else {
       setFeatureUsage(null);
@@ -91,7 +101,7 @@ export function CreditWorkspace({ section = 'overview' }) {
     }
     setError(problems.length ? `Could not load ${problems.join(', ')}. No balance or payment has been assumed.` : '');
     setLoading(false);
-  }, []);
+  }, [section]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -257,11 +267,22 @@ export function CreditWorkspace({ section = 'overview' }) {
     !featureAccess.freeModules?.includes(route.permission.split('.')[0]) &&
     featureAccess.can(route.permission));
   const sections = {
-    overview: ['SaaS Account', 'Track your live balance, active modules, staff charges and wallet usage.'],
+    overview: ['Account Overview', ''],
     buy: ['Buy Credits', 'Add credits with secure Razorpay checkout. Only captured payments update your wallet.'],
-    logs: ['Credit Activity Logs', 'Review wallet top-ups, feature debits, adjustments and renewals.'],
+    logs: ['Billing Logs', ''],
   };
   const [title, subtitle] = sections[section] || sections.overview;
+  const logDate = (value) => value ? new Date(value).toLocaleDateString('sv-SE') : '';
+  const filteredLogs = logs.filter(row => {
+    const date = logDate(row.createdAt);
+    const search = [row.description, row.kind, row.reference].filter(Boolean).join(' ').toLowerCase();
+    return (!logSearch || search.includes(logSearch.trim().toLowerCase()))
+      && (logKind === 'all' || row.kind === logKind)
+      && (!logFrom || date >= logFrom)
+      && (!logTo || date <= logTo);
+  }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const logPages = Math.max(1, Math.ceil(filteredLogs.length / 10));
+  const visibleLogs = filteredLogs.slice((Math.min(logPage, logPages) - 1) * 10, Math.min(logPage, logPages) * 10);
 
   return <div className="saas-page cg-credit-page">
     <AccountHeader title={title} subtitle={subtitle} active={section === 'buy' ? 'credits-buy' : section === 'logs' ? 'credits-logs' : 'overview'} onNavigate={navigate} actions={<button type="button" className="cg-credit-refresh" disabled={loading || Boolean(busy)} onClick={() => { load(); featureAccess.refresh(); }}><RefreshCcw size={16} aria-hidden="true"/> Refresh</button>}/>
@@ -271,7 +292,7 @@ export function CreditWorkspace({ section = 'overview' }) {
       {featureAccess.billingStatus.blocked && <p>Buy credits to settle outstanding usage. Storage logs and your account remain available.</p>}
       <button type="button" onClick={() => navigate('/account/credits/buy')}>Buy credits</button>
     </section>}
-    {(section === 'overview' || section === 'logs') && calendarBilling?.enabled && <section className="cg-credit-panel" aria-label="Calendar month credit billing">
+    {(section === 'overview' || (section === 'logs' && logView === 'statements')) && calendarBilling?.enabled && <section className="cg-credit-panel" aria-label="Calendar month credit billing">
       <header><div><span>CALENDAR MONTH BILLING</span><h2>{calendarBilling.restricted ? 'Payment overdue — workshop restricted' : 'Monthly usage & payment'}</h2></div><FileClock size={22}/></header>
       <p>Usage is recorded from the 1st through the last day of each calendar month. Wallet settlement is due on the {calendarBilling.dueDay}th of the next month. The due day remains a grace day; overdue restrictions start the following day.</p>
       <div className="cg-credit-inline"><span>Outstanding credits</span><strong>{credits(calendarBilling.amountDue)} credits</strong></div>
@@ -302,24 +323,37 @@ export function CreditWorkspace({ section = 'overview' }) {
     {notice && <div className="cg-credit-alert success" role="status">{notice}</div>}
     {loading && <p role="status" className="cg-credit-status">Loading your company wallet…</p>}
 
-    <div className="cg-credit-metrics">
+    {section !== 'logs' && <div className="cg-credit-metrics">
       <article className="cg-credit-metric primary">
         <div><span>Available Credits</span><Wallet size={22}/></div>
         <strong>{credits(wallet?.balance)}</strong>
-        <small>{wallet ? (low ? 'Low balance — top up to avoid module interruption' : 'Verified company wallet balance') : 'Awaiting backend wallet'}</small>
+        {low && <small>Low balance — add credits to avoid interruption</small>}
       </article>
-      <article className="cg-credit-metric"><div><span>Available Modules</span><Zap size={20}/></div><strong>{featureAccess.unavailable ? '—' : availableRoutes.length}</strong><small>{featureAccess.labelOnly ? `${featureAccess.activeLabelModules.length} company-label modules; your role decides which you can open` : 'Workshop pages available to your login'}</small></article>
-      <article className="cg-credit-metric"><div><span>Active Staff</span><Users size={20}/></div><strong>{wallet?.staffCount ?? '—'}</strong><small>Staff accounts; published feature pricing uses active login users</small></article>
-      {featureAccess.labelOnly
-        ? <article className="cg-credit-metric"><div><span>Active Feature Labels</span><Coins size={20}/></div><strong>{activeBundles.length}</strong><small>See each activated label's price and renewal period below</small></article>
-        : <article className="cg-credit-metric"><div><span>Estimated Monthly Features</span><Coins size={20}/></div><strong>{credits(wallet?.monthlyCredits)}</strong><small>Credits / month; pending postpaid usage: {credits(wallet?.postpaidAccruedCredits)} credits</small></article>}
-    </div>
+      {section === 'overview' && <>
+        <article className="cg-credit-metric">
+          <div><span>Active Modules</span><Zap size={20}/></div>
+          <strong>{featureAccess.unavailable ? '—' : featureAccess.labelOnly ? featureAccess.activeLabelModules.length : (featureAccess.modules?.length ?? '—')}</strong>
+        </article>
+        <article className="cg-credit-metric">
+          <div><span>Storage Used</span><Database size={20}/></div>
+          <strong>{storageOverview?.usedGb == null ? '—' : `${storageOverview.usedGb} GB`}</strong>
+        </article>
+      </>}
+    </div>}
+    {section === 'overview' && <details className="cg-credit-expandable">
+      <summary>More account details</summary>
+      <div className="cg-credit-inline"><span>Active Staff</span><strong>{wallet?.staffCount ?? '—'}</strong></div>
+      <div className="cg-credit-inline"><span>Estimated Monthly Features</span><strong>{credits(wallet?.monthlyCredits)} credits</strong></div>
+      <div className="cg-credit-inline"><span>Pending Postpaid Usage</span><strong>{credits(wallet?.postpaidAccruedCredits)} credits</strong></div>
+    </details>}
 
     {low && <div className="cg-credit-low" role="alert"><Coins size={20}/><div><strong>Your credit balance is running low.</strong><span>Buy more credits so paid modules can renew when due.</span></div><button onClick={() => navigate('/account/credits/buy')}>Buy Credits </button></div>}
 
     {section === 'overview' && featureAccess.paidAccessRequired && featureAccess.modules.length === 0 &&
       <div className="cg-credit-low" role="status"><Zap size={20}/><div><strong>Welcome — activate your workshop modules</strong><span>Start by buying credits and selecting features. Only modules activated by the owner become available.</span></div><button type="button" onClick={openModulePricing} aria-controls="module-pricing">Choose Features </button></div>}
 
+    {section === 'overview' && <details className="cg-credit-expandable cg-credit-module-access">
+      <summary>Module access &amp; status</summary>
     {section === 'overview' && <section className="cg-credit-panel" aria-label="Free modules">
       <header><div><span>INCLUDED — NO CREDITS</span><h2>Free modules for your company</h2></div><ShieldCheck size={22}/></header>
       <p>Dashboard, Settings, Staff Management, Roles & Permissions and SaaS Account have no feature activation or credit charge. Login and role permissions still apply. Other modules require an active paid Feature Label.</p>
@@ -368,6 +402,7 @@ export function CreditWorkspace({ section = 'overview' }) {
       </div>
     </section>}
 
+    </details>}
     {section === 'overview' && <CreditCycleCard />}
     {section === 'overview' && <div className="cg-credit-columns">
       <section className="cg-credit-panel"><header><div><span>WALLET OVERVIEW</span><h2>Your credits at a glance</h2></div><Wallet size={22}/></header>
@@ -451,11 +486,34 @@ export function CreditWorkspace({ section = 'overview' }) {
       {wallet && !wallet.canManage && <p className="cg-credit-note">Only the company account owner can purchase module access.</p>}
     </section>}
 
-    {section === 'logs' && featureUsage && <section className="cg-credit-panel" aria-label="Metered module usage history">
+    {section === 'logs' && <div className="cg-credit-log-tabs" role="tablist" aria-label="Billing log categories">
+      {[
+        ['transactions', 'Credit Transactions'],
+        ['features', 'Feature Activity'],
+        ['statements', 'Monthly Statements'],
+        ['usage', 'Usage History'],
+      ].map(([key, label]) => <button type="button" role="tab" key={key}
+        aria-selected={logView === key} className={logView === key ? 'is-active' : ''}
+        onClick={() => setLogView(key)}>{label}</button>)}
+    </div>}
+    {section === 'logs' && logView === 'transactions' && <div className="cg-credit-log-filters">
+      <label>Search<input type="search" placeholder="Search transactions" value={logSearch}
+        onChange={e => { setLogSearch(e.target.value); setLogPage(1); }}/></label>
+      <label>Type<select value={logKind} onChange={e => { setLogKind(e.target.value); setLogPage(1); }}>
+        <option value="all">All types</option>
+        {[...new Set(logs.map(item => item.kind).filter(Boolean))].map(kind =>
+          <option key={kind} value={kind}>{kind.replaceAll('_', ' ')}</option>)}
+      </select></label>
+      <label>From<input type="date" value={logFrom} max={logTo || undefined}
+        onChange={e => { setLogFrom(e.target.value); setLogPage(1); }}/></label>
+      <label>To<input type="date" value={logTo} min={logFrom || undefined}
+        onChange={e => { setLogTo(e.target.value); setLogPage(1); }}/></label>
+    </div>}
+    {section === 'logs' && logView === 'usage' && featureUsage && <section className="cg-credit-panel" aria-label="Metered module usage history">
       <header><div><span>TIME-BASED BILLING LOG</span><h2>Recorded usage checkpoints</h2></div><FileClock size={22}/></header>
-      <p>Each row is company-scoped. Used time and accrued credits are recorded by Django. A zero-second entry marks activation or a rate change; OFF still leaves previous usage logs and their payable credits.</p>
+      <details className="cg-credit-help"><summary>About usage readings</summary><p>Usage readings are company-scoped. A zero-second entry marks activation or a rate change. Previously recorded credits remain payable after a module is switched off.</p></details>
       <div className="cg-credit-table-wrap"><table><thead><tr><th>Recorded at</th><th>Module</th><th>Used time</th><th>Rate</th><th>Accrued</th><th>Login users</th></tr></thead><tbody>
-        {(featureUsage.readings || []).map(row => <tr key={row.id}>
+        {(featureUsage.readings || []).slice().sort((a,b) => new Date(b.sampledAt) - new Date(a.sampledAt)).map(row => <tr key={row.id}>
           <td>{when(row.sampledAt)}</td><td><strong>{row.name}</strong></td>
           <td>{timeUsed(row.coveredSeconds)}</td>
           <td>{credits(row.rateCredits)} / {ratePeriod(row.billingPeriod)}</td>
@@ -466,20 +524,20 @@ export function CreditWorkspace({ section = 'overview' }) {
       <p className="cg-credit-note">These are credits, not rupees. Monthly statements are authoritative for wallet settlement. Usage checkpoints do not individually debit the wallet.</p>
     </section>}
 
-    {section === 'logs' && <section className="cg-credit-panel" aria-label="Feature activation history">
+    {section === 'logs' && logView === 'features' && <section className="cg-credit-panel" aria-label="Feature activation history">
       <header><h2>Feature On / Off history</h2></header>
       <div className="cg-credit-table-wrap"><table><thead><tr><th>Date &amp; time</th><th>Change</th><th>Module / label</th><th>Changed by</th></tr></thead><tbody>
-        {featureActivity.map(row => <tr key={row.id}><td>{when(row.createdAt)}</td><td>{row.event.replaceAll('_', ' ')}</td><td>{row.details?.name || row.details?.feature || '—'}</td><td>{row.actor || 'System'}</td></tr>)}
+        {featureActivity.slice().sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).map(row => <tr key={row.id}><td>{when(row.createdAt)}</td><td>{row.event.replaceAll('_', ' ')}</td><td>{row.details?.name || row.details?.feature || '—'}</td><td>{row.actor || 'System'}</td></tr>)}
         {!featureActivity.length && <tr><td colSpan={4}>No feature changes recorded.</td></tr>}
       </tbody></table></div>
     </section>}
 
-    {section === 'logs' && <section className="cg-credit-panel" aria-label="Monthly postpaid usage statements">
+    {section === 'logs' && logView === 'statements' && <section className="cg-credit-panel" aria-label="Monthly postpaid usage statements">
       <header><div><span>MONTH-END FEATURE &amp; STORAGE BILLING</span><h2>Monthly usage statements</h2></div><Database size={22}/></header>
-      <p>Feature usage and storage GB-time are recorded by Django. Only completed calendar months can deduct wallet credits. Unpaid statements remain pending until there is sufficient balance.</p>
+      <p>Only completed-month charges are settled from the company wallet. Unpaid credits remain outstanding.</p>
       <div className="cg-credit-table-wrap"><table><thead><tr><th>Period</th><th>Features</th><th>Storage</th><th>Total credits</th><th>Due date</th><th>Status</th></tr></thead>
         <tbody>
-          {monthlyStatements.map((row) => <tr key={row.id}>
+          {monthlyStatements.slice().sort((a,b) => String(b.period).localeCompare(String(a.period))).map((row) => <tr key={row.id}>
             <td><strong>{row.period}</strong></td><td>{credits(row.featureCredits)}</td>
             <td>{credits(row.storageCredits)}</td><td><strong>{credits(row.totalCredits)}</strong></td>
             <td>{row.dueAt ? new Date(row.dueAt).toLocaleDateString() : '—'}</td>
@@ -490,11 +548,16 @@ export function CreditWorkspace({ section = 'overview' }) {
       <p className="cg-credit-note">Each statement is locked to the company and calendar month; wallet debits are recorded below with a unique reference.</p>
     </section>}
 
-    {section === 'logs' && <section className="cg-credit-panel"><header><div><span>COMPANY AUDIT TRAIL</span><h2>Credit transaction log</h2></div><FileClock size={22}/></header>
+    {section === 'logs' && logView === 'transactions' && <section className="cg-credit-panel"><header><div><span>COMPANY AUDIT TRAIL</span><h2>Credit Transactions</h2></div><FileClock size={22}/></header>
       <div className="cg-credit-table-wrap"><table><thead><tr><th>Date & time</th><th>Activity</th><th>Credits</th><th>Balance after</th><th>Reference</th></tr></thead><tbody>
-        {logs.map(row => <tr key={row.id}><td>{when(row.createdAt)}</td><td><strong>{row.description}</strong><small>{row.kind}</small></td><td className={Number(row.delta)>=0?'positive':'negative'}>{Number(row.delta)>0?'+':''}{credits(row.delta)}</td><td>{credits(row.balanceAfter)}</td><td>{row.reference || '—'}</td></tr>)}
-        {!logs.length && <tr><td colSpan={5} className="cg-credit-empty">No credit transactions recorded.</td></tr>}
+        {visibleLogs.map(row => <tr key={row.id}><td>{when(row.createdAt)}</td><td><strong>{row.description}</strong><small>{row.kind}</small></td><td className={Number(row.delta)>=0?'positive':'negative'}>{Number(row.delta)>0?'+':''}{credits(row.delta)}</td><td>{credits(row.balanceAfter)}</td><td>{row.reference || '—'}</td></tr>)}
+        {!filteredLogs.length && <tr><td colSpan={5} className="cg-credit-empty">No transactions found.</td></tr>}
       </tbody></table></div>
+      <div className="cg-credit-log-pagination">
+        <span>{filteredLogs.length} matching records · Page {Math.min(logPage,logPages)} of {logPages}</span>
+        <button type="button" disabled={logPage <= 1} onClick={() => setLogPage(p => Math.max(1,p-1))}>Previous</button>
+        <button type="button" disabled={logPage >= logPages} onClick={() => setLogPage(p => Math.min(logPages,p+1))}>Next</button>
+      </div>
       <p className="cg-credit-note">Logs are read-only and company-scoped. {featureAccess.isCompanyOwner && featureAccess.can('billing.view') && <>For storage upload/delete events, open <button onClick={() => navigate('/account/storage/history')}>Storage History </button>.</>}</p>
     </section>}
   </div>;
