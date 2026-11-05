@@ -765,7 +765,7 @@
 .jobs-dashboard .jobs-toolbar.jobs-toolbar-combined {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  align-items: end;
+  align-items: stretch;
   gap: 12px;
   padding: 14px;
   border: 1px solid var(--border);
