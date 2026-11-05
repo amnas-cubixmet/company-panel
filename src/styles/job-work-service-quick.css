@@ -1,0 +1,29 @@
+/* Work: one compact service entry. Existing theme variables for both modes. */
+.cg-job-detail .job-service-quick{display:grid;gap:14px;min-width:0;padding:16px;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text-primary)}
+.cg-job-detail .job-service-quick header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.cg-job-detail .job-service-quick header>div{display:flex;align-items:center;gap:9px;font-size:16px}
+.cg-job-detail .job-service-quick header span{color:var(--text-secondary);font-size:12px}
+.cg-job-detail .job-service-quick-filters,.cg-job-detail .job-service-quick-entry,.cg-job-detail .job-service-quick-create{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;min-width:0}
+.cg-job-detail .job-service-quick label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:650;min-width:0;color:var(--text-secondary)}
+.cg-job-detail .job-service-quick input,.cg-job-detail .job-service-quick select{width:100%;min-width:0;min-height:46px;padding:10px 11px;border:1px solid var(--border);border-radius:10px;font-size:16px;font-family:inherit;background:var(--surface);color:var(--text-primary)}
+.cg-job-detail .job-service-quick select{padding-right:24px}
+.cg-job-detail .job-service-quick-search{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding-left:10px}
+.cg-job-detail .job-service-quick-search input{border:0;background:transparent;outline:0}
+.cg-job-detail .job-service-quick-search:focus-within{outline:2px solid var(--primary)}
+.cg-job-detail .job-service-quick-results{display:grid;gap:5px;max-height:250px;overflow:auto;min-width:0}
+.cg-job-detail .job-service-quick-results button{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text-primary);cursor:pointer;text-align:left}
+.cg-job-detail .job-service-quick-results button.is-selected{border-color:var(--primary);background:var(--primary-soft)}
+.cg-job-detail .job-service-quick-results button span{display:grid;gap:3px;min-width:0}
+.cg-job-detail .job-service-quick-results small{font-size:11px;color:var(--text-secondary);overflow-wrap:anywhere}
+.cg-job-detail .job-service-quick-results button b{flex-shrink:0;white-space:nowrap}
+.cg-job-detail .job-service-quick-results p{margin:0;padding:12px;color:var(--text-secondary)}
+.cg-job-detail .job-service-quick button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.cg-job-detail .job-service-quick-new,.cg-job-detail .job-service-quick form>button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:46px;padding:10px 13px;border:1px solid var(--primary);border-radius:10px;cursor:pointer;font-weight:700;background:var(--primary);color:#fff}
+.cg-job-detail .job-service-quick-new{justify-self:start;background:var(--primary-soft);color:var(--primary)}
+.cg-job-detail .job-service-quick button:disabled{opacity:.55;cursor:not-allowed}
+.cg-job-detail .job-service-quick-entry .job-service-quick-total{display:flex;flex-direction:column;justify-content:center;gap:4px;color:var(--text-secondary);font-size:12px}
+.cg-job-detail .job-service-quick-total strong{font-size:19px;color:var(--text-primary);font-variant-numeric:tabular-nums}
+.cg-job-detail .job-service-quick-notice,.cg-job-detail .job-service-quick-error{margin:0;padding:10px 12px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border);font-size:13px}
+.cg-job-detail .job-service-quick-error{color:var(--danger);border-color:var(--danger)}
+@media(max-width:767px){.cg-job-detail .job-service-quick{padding:12px}.cg-job-detail .job-service-quick-results{max-height:205px}.cg-job-detail .job-service-quick-filters label:nth-child(2){grid-column:1/-1}.cg-job-detail .job-service-quick-filters label:nth-child(1){grid-column:1/-1}.cg-job-detail .job-service-quick form>button{grid-column:1/-1;width:100%}}
+@media(max-width:360px){.cg-job-detail .job-service-quick-entry,.cg-job-detail .job-service-quick-create{grid-template-columns:1fr}}
