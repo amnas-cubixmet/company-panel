@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowDownLeft, ArrowUpRight, Coins, CreditCard, Database, FileClock, RefreshCcw, ShieldCheck, Users, Wallet, Zap } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Coins, CreditCard, Database, FileClock, RefreshCcw, ShieldCheck, Wallet, Zap } from 'lucide-react';
 import { creditWalletService, notifyCreditChange, purchaseCredits } from '../../services/creditWallet.service';
+import { saasAccountService } from '../../services/saasAccount.service';
 import { AccountHeader } from '../../components/account';
 import { CreditCycleCard } from '../../components/account/CreditCycleCard';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
@@ -33,6 +34,7 @@ export function CreditWorkspace({ section = 'overview' }) {
   const { user } = useAuth();
   const featureAccess = useFeatureAccess();
   const [wallet, setWallet] = useState(null);
+  const [storageOverview, setStorageOverview] = useState(null);
   const [account, setAccount] = useState(null);
   const [featureActivity, setFeatureActivity] = useState([]);
   const [featureUsage, setFeatureUsage] = useState(null);
@@ -57,15 +59,17 @@ export function CreditWorkspace({ section = 'overview' }) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [balance, bundles, history, labels, statements, accountInfo, activity, calendarResult, usageResult] = await Promise.allSettled([
+    const [balance, bundles, history, labels, statements, accountInfo, activity, calendarResult, usageResult, storageResult] = await Promise.allSettled([
       creditWalletService.overview(), creditWalletService.packages(),
       creditWalletService.logs(),
       creditWalletService.bundles(), creditWalletService.monthlyStatements(),
       creditWalletService.account(), creditWalletService.featureActivity(),
       creditWalletService.calendarBilling(),
       creditWalletService.featureUsageLogs(),
+      section === 'overview' ? saasAccountService.getStorageAccount() : Promise.resolve(null),
     ]);
     const problems = [];
+    setStorageOverview(storageResult.status === 'fulfilled' ? storageResult.value : null);
     if (usageResult.status === 'fulfilled') setFeatureUsage(usageResult.value);
     else {
       setFeatureUsage(null);
@@ -97,7 +101,7 @@ export function CreditWorkspace({ section = 'overview' }) {
     }
     setError(problems.length ? `Could not load ${problems.join(', ')}. No balance or payment has been assumed.` : '');
     setLoading(false);
-  }, []);
+  }, [section]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -263,9 +267,9 @@ export function CreditWorkspace({ section = 'overview' }) {
     !featureAccess.freeModules?.includes(route.permission.split('.')[0]) &&
     featureAccess.can(route.permission));
   const sections = {
-    overview: ['SaaS Account', 'Track your live balance, active modules, staff charges and wallet usage.'],
+    overview: ['Account Overview', ''],
     buy: ['Buy Credits', 'Add credits with secure Razorpay checkout. Only captured payments update your wallet.'],
-    logs: ['Credit Activity Logs', 'Review wallet top-ups, feature debits, adjustments and renewals.'],
+    logs: ['Billing Logs', ''],
   };
   const [title, subtitle] = sections[section] || sections.overview;
   const logDate = (value) => value ? new Date(value).toLocaleDateString('sv-SE') : '';
@@ -323,14 +327,24 @@ export function CreditWorkspace({ section = 'overview' }) {
       <article className="cg-credit-metric primary">
         <div><span>Available Credits</span><Wallet size={22}/></div>
         <strong>{credits(wallet?.balance)}</strong>
-        <small>{wallet ? (low ? 'Low balance — top up to avoid module interruption' : 'Verified company wallet balance') : 'Awaiting backend wallet'}</small>
+        {low && <small>Low balance — add credits to avoid interruption</small>}
       </article>
-      {section !== 'buy' && <><article className="cg-credit-metric"><div><span>Available Modules</span><Zap size={20}/></div><strong>{featureAccess.unavailable ? '—' : availableRoutes.length}</strong><small>{featureAccess.labelOnly ? `${featureAccess.activeLabelModules.length} company-label modules; your role decides which you can open` : 'Workshop pages available to your login'}</small></article>
-      <article className="cg-credit-metric"><div><span>Active Staff</span><Users size={20}/></div><strong>{wallet?.staffCount ?? '—'}</strong><small>Staff accounts; published feature pricing uses active login users</small></article>
-      {featureAccess.labelOnly
-        ? <article className="cg-credit-metric"><div><span>Active Feature Labels</span><Coins size={20}/></div><strong>{activeBundles.length}</strong><small>See each activated label's price and renewal period below</small></article>
-        : <article className="cg-credit-metric"><div><span>Estimated Monthly Features</span><Coins size={20}/></div><strong>{credits(wallet?.monthlyCredits)}</strong><small>Credits / month; pending postpaid usage: {credits(wallet?.postpaidAccruedCredits)} credits</small></article>}</>}
+      {section === 'overview' && <>
+        <article className="cg-credit-metric">
+          <div><span>Active Modules</span><Zap size={20}/></div>
+          <strong>{featureAccess.unavailable ? '—' : featureAccess.labelOnly ? activeBundles.length : (featureAccess.modules?.length ?? '—')}</strong>
+        </article>
+        <article className="cg-credit-metric">
+          <div><span>Storage Used</span><Database size={20}/></div>
+          <strong>{storageOverview?.usedGb == null ? '—' : `${storageOverview.usedGb} GB`}</strong>
+        </article>
+      </>}
     </div>}
+    {section === 'overview' && <details className="cg-credit-expandable">
+      <summary>More account details</summary>
+      <div className="cg-credit-inline"><span>Active Staff</span><strong>{wallet?.staffCount ?? '—'}</strong></div>
+      <div className="cg-credit-inline"><span>Estimated Monthly Features</span><strong>{credits(wallet?.monthlyCredits)} credits</strong></div>
+    </details>}
 
     {low && <div className="cg-credit-low" role="alert"><Coins size={20}/><div><strong>Your credit balance is running low.</strong><span>Buy more credits so paid modules can renew when due.</span></div><button onClick={() => navigate('/account/credits/buy')}>Buy Credits </button></div>}
 
