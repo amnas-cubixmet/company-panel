@@ -40,7 +40,9 @@ test('customer search and status filters do not re-fetch all linked resources on
   assert.match(directory, /customer\.__vehicles\?\.some/);
   assert.match(directory, /customer\.__jobs\?\.some/);
   assert.match(directory, /\[customers, search, statusFilter, branchFilter, typeFilter\]/);
-  assert.match(directory, /fetchCustomers\(\);\s*}, \[\]\);/);
+  assert.match(directory, /useEffect\(\(\) => \{\s*fetchCustomers\(\);/);
+  assert.match(directory, /customerService\.getCustomerBranches\(\)/);
+  assert.match(directory, /return \(\) => \{ active = false; \};\s*}, \[\]\);/);
 });
 
 test('Add Customer on directory opens modal instead of separate route', () => {

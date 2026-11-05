@@ -12,6 +12,12 @@ import { customerInvoiceMoney, customerStatusLabel, formatCustomerMoney } from '
 import { CustomerContactActions } from '../../components/customers/CustomerContactActions';
 import { Users, Plus, Filter, Edit, Phone, MessageSquare, Mail, AlertTriangle, ChevronRight } from "lucide-react";
 
+const normalizeCustomerType = (value) =>
+  /business|company/i.test(String(value || '')) ? 'Business / Company' : 'Individual';
+
+const backendCustomerType = (value) =>
+  normalizeCustomerType(value) === 'Business / Company' ? 'business' : 'individual';
+
 export const CustomerList = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -35,6 +41,8 @@ export const CustomerList = () => {
 
   // Core Data State
   const [customers, setCustomers] = useState([]);
+  const [branchChoices, setBranchChoices] = useState([]);
+  const [branchLoadError, setBranchLoadError] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
@@ -43,6 +51,9 @@ export const CustomerList = () => {
 
   // Add / Edit Customer Modal State
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+  const [formBusy, setFormBusy] = useState(false);
+  const [duplicateChecking, setDuplicateChecking] = useState(false);
+  const [formError, setFormError] = useState('');
   const [editingCustomerId, setEditingCustomerId] = useState(null);
 
   // Form Fields
@@ -73,6 +84,13 @@ export const CustomerList = () => {
   // Load the directory once; filtering is local and never refetches all linked jobs on each keystroke.
   useEffect(() => {
     fetchCustomers();
+    let active = true;
+    customerService.getCustomerBranches()
+      .then((rows) => { if (active) setBranchChoices(rows); })
+      .catch((error) => {
+        if (active) setBranchLoadError(error?.message || 'Unable to load workshop branches.');
+      });
+    return () => { active = false; };
   }, []);
 
   const fetchCustomers = async () => {
@@ -138,10 +156,10 @@ export const CustomerList = () => {
   };
 
   const availableBranches = useMemo(() => [...new Set(
-    customers.map((item) => item.branchName).filter(Boolean)
-  )].sort(), [customers]);
+    branchChoices.map((item) => item.name).filter(Boolean)
+  )].sort(), [branchChoices]);
   const availableTypes = useMemo(() => [...new Set(
-    customers.map((item) => item.customerType).filter(Boolean)
+    customers.map((item) => normalizeCustomerType(item.customerType)).filter(Boolean)
   )].sort(), [customers]);
   const availableStatuses = useMemo(() => [...new Set(
     customers.map((item) => item.status).filter(Boolean)
@@ -151,7 +169,7 @@ export const CustomerList = () => {
     return customers.filter((customer) => {
       if (statusFilter !== 'All' && (customer.status || '').toLowerCase() !== statusFilter.toLowerCase()) return false;
       if (branchFilter !== 'All' && String(customer.branchName || '') !== branchFilter) return false;
-      if (typeFilter !== 'All' && String(customer.customerType || '').toLowerCase() !== typeFilter.toLowerCase()) return false;
+      if (typeFilter !== 'All' && normalizeCustomerType(customer.customerType).toLowerCase() !== typeFilter.toLowerCase()) return false;
       if (!q) return true;
       return [customer.name, customer.email, customer.phone, customer.whatsapp, customer.companyName]
         .some((value) => String(value || '').toLowerCase().includes(q)) ||
@@ -183,11 +201,13 @@ export const CustomerList = () => {
 
   const openAddModal = () => {
     setEditingCustomerId(null);
+    setFormError('');
     resetForm();
     setIsAddCustomerOpen(true);
   };
 
   const openEditModal = (c) => {
+    setFormError('');
     setEditingCustomerId(c.id);
     setName(c.name || '');
     setPhone(c.phone || '');
@@ -197,10 +217,10 @@ export const CustomerList = () => {
     setCity(c.city || 'Kochi');
     setState(c.state || 'Kerala');
     setPincode(c.pincode || '');
-    setCustomerType(c.customerType || 'Individual');
+    setCustomerType(normalizeCustomerType(c.customerType));
     setCompanyName(c.companyName || '');
     setGstNo(c.gstNo || '');
-    setBranch(c.branch || c.branchName || '');
+    setBranch(c.branchId || c.branch || '');
     setNotes(c.notes || '');
     setIsAddCustomerOpen(true);
   };
@@ -223,6 +243,8 @@ export const CustomerList = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    if (formBusy || duplicateChecking) return;
+    setFormError('');
 
     const payload = {
       name,
@@ -233,20 +255,28 @@ export const CustomerList = () => {
       city,
       state,
       pincode,
-      customerType,
+      customerType: backendCustomerType(customerType),
       companyName,
       gstNo,
-      branch,
+      ...(branch ? { branch } : {}),
       notes
     };
 
     // If creating a new customer, perform duplicate check first
     if (!editingCustomerId) {
-      const match = await customerService.checkDuplicateCustomer(payload);
-      if (match) {
-        setDuplicateFound(match);
-        setIsDuplicateModalOpen(true);
+      setDuplicateChecking(true);
+      try {
+        const match = await customerService.checkDuplicateCustomer(payload);
+        if (match) {
+          setDuplicateFound(match);
+          setIsDuplicateModalOpen(true);
+          return;
+        }
+      } catch (error) {
+        setFormError(error?.message || 'Could not check existing customers. Please retry.');
         return;
+      } finally {
+        setDuplicateChecking(false);
       }
     }
 
@@ -254,17 +284,26 @@ export const CustomerList = () => {
   };
 
   const saveCustomer = async (payload) => {
-    if (editingCustomerId) {
-      await customerService.updateCustomer(editingCustomerId, payload);
-      showToast('Customer information updated.');
-    } else {
-      await customerService.createCustomer(payload);
-      showToast('New customer created successfully.');
+    if (formBusy) return;
+    setFormBusy(true);
+    setFormError('');
+    try {
+      if (editingCustomerId) {
+        await customerService.updateCustomer(editingCustomerId, payload);
+        showToast('Customer information updated.');
+      } else {
+        await customerService.createCustomer(payload);
+        showToast('New customer created successfully.');
+      }
+      setIsAddCustomerOpen(false);
+      setIsDuplicateModalOpen(false);
+      resetForm();
+      await fetchCustomers();
+    } catch (error) {
+      setFormError(error?.message || 'Unable to save customer. Review the form and retry.');
+    } finally {
+      setFormBusy(false);
     }
-    setIsAddCustomerOpen(false);
-    setIsDuplicateModalOpen(false);
-    resetForm();
-    fetchCustomers();
   };
 
   const handleArchive = async (id) => {
@@ -495,6 +534,7 @@ export const CustomerList = () => {
         maxWidth="540px"
       >
         <form className="customer-directory-form" onSubmit={handleFormSubmit}>
+          {formError && <p className="customer-directory-error" role="alert">{formError}</p>}
           
           <Input
             label="Customer Name"
@@ -536,6 +576,7 @@ export const CustomerList = () => {
             placeholder="rahul.k@example.com"
           />
 
+          {branchLoadError && <p role="alert" className="customer-directory-error">{branchLoadError}</p>}
           <div className="customer-directory-form-grid">
             <Select
               label="Customer Type"
@@ -551,8 +592,8 @@ export const CustomerList = () => {
               value={branch}
               onChange={(e) => setBranch(e.target.value)}
             >
-              <option value="">Select workshop branch</option>
-              {availableBranches.map((value) => <option key={value} value={value}>{value}</option>)}
+              <option value="">Automatic branch assignment</option>
+              {branchChoices.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
             </Select>
           </div>
 
@@ -606,8 +647,9 @@ export const CustomerList = () => {
             <button
               type="submit"
               className="customer-directory-form-submit"
+              disabled={formBusy || duplicateChecking}
             >
-              {editingCustomerId ? "Save Changes" : "Create Customer"}
+              {formBusy ? "Saving…" : duplicateChecking ? "Checking…" : editingCustomerId ? "Save Changes" : "Create Customer"}
             </button>
           </div>
         </form>
@@ -621,6 +663,7 @@ export const CustomerList = () => {
         maxWidth="460px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {formError && <p className="customer-directory-error" role="alert">{formError}</p>}
           <div style={{ backgroundColor: 'var(--warning-soft)', padding: '12px', borderRadius: '10px', border: '1px solid var(--warning-soft)', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <AlertTriangle size={20} style={{ color: 'var(--warning)', flexShrink: 0 }} />
             <span style={{ fontSize: '12.5px', color: 'var(--text-primary)' }}>
@@ -649,13 +692,14 @@ export const CustomerList = () => {
             </button>
             <button
               type="button"
+              disabled={formBusy}
               onClick={() => {
-                const payload = { name, phone, whatsapp: whatsapp || phone, email, address, city, state, pincode, customerType, companyName, gstNo, branch, notes };
+                const payload = { name, phone, whatsapp: whatsapp || phone, email, address, city, state, pincode, customerType: backendCustomerType(customerType), companyName, gstNo, ...(branch ? { branch } : {}), notes };
                 saveCustomer(payload);
               }}
               style={{ flex: 1, height: '44px', borderRadius: '11px', border: 'none', backgroundColor: 'var(--primary)', color: '#ffffff', fontWeight: '700' }}
             >
-              Continue Anyway
+              {formBusy ? 'Saving…' : 'Continue Anyway'}
             </button>
           </div>
         </div>

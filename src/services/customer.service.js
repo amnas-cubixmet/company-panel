@@ -47,6 +47,13 @@ export const getCustomers = async (params = {}) => {
   return apiClient.get(API_ENDPOINTS.CUSTOMERS, { params });
 };
 
+/** Tenant-scoped options, authorized by customers.view on Django. */
+export const getCustomerBranches = async () => {
+  if (USE_MOCK_API) return [];
+  const rows = await apiClient.get(`${API_ENDPOINTS.CUSTOMERS}/branch-options`);
+  return Array.isArray(rows) ? rows : [];
+};
+
 export const getCustomerById = async (id) => {
   if (USE_MOCK_API) {
     await delay();
@@ -84,7 +91,11 @@ export const checkDuplicateCustomer = async (payload) => {
     await delay(100);
     return Promise.resolve(checkDuplicateMockCustomer(payload));
   }
-  return apiClient.post(`${API_ENDPOINTS.CUSTOMERS}/check-duplicate`, payload);
+  const result = await apiClient.post(`${API_ENDPOINTS.CUSTOMERS}/check-duplicate`, payload);
+  // The Django response is { duplicate: boolean, customer: object|null }.
+  // Returning the response envelope itself incorrectly marks every creation
+  // as a duplicate, including { duplicate: false, customer: null }.
+  return result?.duplicate === true && result?.customer?.id ? result.customer : null;
 };
 
 export const getCustomerVehicles = async (customerId) => {
@@ -220,7 +231,7 @@ export const addCustomerVehicle = async (customerId, payload) => {
 };
 
 export const customerService = {
-  getCustomers,
+  getCustomers, getCustomerBranches,
   getCustomerById,
   createCustomer,
   updateCustomer,
