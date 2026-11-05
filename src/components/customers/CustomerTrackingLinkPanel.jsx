@@ -5,7 +5,7 @@ import apiClient from '../../api/apiClient';
 import { WhatsAppManualShareButton } from '../common/WhatsAppManualShareButton';
 import { USE_MOCK_API } from '../../api/apiConfig';
 
-export function CustomerTrackingLinkPanel({ customerId, whatsapp, canManage = false }) {
+export function CustomerTrackingLinkPanel({ customerId, canManage = false }) {
   const [link, setLink] = useState('');
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
