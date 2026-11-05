@@ -98,7 +98,6 @@ export function WorkshopPlaceSearch({ selectedName, latitude, longitude, onSelec
       <form className="attendance-place-form" onSubmit={search} role="search">
         <label className="attendance-rule-field">
           <span>Workshop Location / Place</span>
-          <small>Search by place, shop, landmark, road or village name.</small>
           <input
             type="search"
             value={query}
@@ -144,9 +143,9 @@ export function WorkshopPlaceSearch({ selectedName, latitude, longitude, onSelec
         </p>
       )}
       <small className="attendance-place-attribution">
-        Place search: <a href="https://photon.komoot.io/" target="_blank" rel="noopener noreferrer">Photon</a>
+        Search: <a href="https://photon.komoot.io/" target="_blank" rel="noopener noreferrer">Photon</a>
         {' · '}Data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>.
-        Verify the pin is at the workshop before enabling a small radius.
+        Verify the workshop pin before saving.
       </small>
     </div>
   );
