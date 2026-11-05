@@ -28,6 +28,7 @@ const CRUD_PREFIXES = {
   '/services': 'services',
   '/jobs': 'jobs',
   '/stock': 'stock',
+  '/suppliers': 'stock',
   '/invoices': 'invoices',
   '/quotations': 'invoices',
   '/payments': 'payments',
