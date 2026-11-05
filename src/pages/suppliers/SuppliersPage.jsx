@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Building2, Mail, Package, Phone, Plus, RefreshCw, Search, ShoppingBag, Truck } from 'lucide-react';
+import { ArrowLeft, Building2, Mail, Package, Phone, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { supplierService } from '../../services/supplier.service';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
@@ -9,7 +9,6 @@ import '../../styles/suppliers-workspace.css';
 
 const asText = value => String(value ?? '').trim();
 const formFields = ['name', 'contact_person', 'phone', 'email', 'gstNo', 'address'];
-const blank = { name:'', contact_person:'', phone:'', email:'', gstNo:'', address:'', is_active:true };
 const money = value => new Intl.NumberFormat('en-IN', { style:'currency', currency:'INR' }).format(Number(value) || 0);
 const status = item => item?.is_active === false ? 'Inactive' : 'Active';
 const supplierIdOf = row => String(typeof row?.supplier === 'object' ? row.supplier?.id : row?.supplier || row?.supplierId || '');
