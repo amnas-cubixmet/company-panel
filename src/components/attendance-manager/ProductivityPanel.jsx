@@ -6,8 +6,7 @@ export const ProductivityPanel = ({ team, productive, idle, onOpenEmployee }) =>
     <header className="am-dashboard-panel-title">
       <div>
         <h2>Workshop Productivity</h2>
-        <p>Job hours compared with attendance hours.</p>
-      </div>
+          </div>
       <Activity size={15} />
     </header>
 
