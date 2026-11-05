@@ -181,7 +181,6 @@ export const DailyAttendance = () => {
       <section className="am-daily-heading">
         <div>
           <h2>Daily Attendance</h2>
-          <p>Employee punches, sessions, worked time, overtime and punch location.</p>
         </div>
 
         <label className="am-daily-date">
