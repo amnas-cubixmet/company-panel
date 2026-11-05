@@ -4,17 +4,13 @@ import { readFileSync } from 'node:fs';
 
 const src = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 
-test('customer tracking portal is loginless and calls only the secure allowlisted public API', () => {
+test('company panel no longer hosts /c/:token and still manages customer links', () => {
   const routes = src('src/routes/AppRoutes.jsx');
-  const portal = src('src/pages/customer-portal/CustomerPortalPage.jsx');
-  assert.match(routes, /path="\/c\/:token" element=\{<CustomerPortalPage \/>\}/);
-  assert.ok(routes.indexOf('path="/c/:token"') < routes.indexOf('<Route element={<ProtectedRoute />}>'));
-  assert.match(portal, /credentials: 'omit'/);
-  assert.match(portal, /encodeURIComponent\(token\)/);
-  assert.match(portal, /dictionaries = \{/);
-  assert.match(portal, /ml: \{/);
-  assert.match(portal, /published/);
-  assert.match(portal, /PortalPhoto/);
+  const linkPanel = src('src/components/customers/CustomerTrackingLinkPanel.jsx');
+  assert.doesNotMatch(routes, /CustomerPortalPage|path="\\/c\\/:token"/);
+  assert.match(routes, /path="\\/settings\\/customer-website"/);
+  assert.match(linkPanel, /\\/customer-portal\\/links\\//);
+  assert.match(linkPanel, /Send via WhatsApp/);
 });
 
 test('existing customer profile exposes revocable customer tracking and consent actions', () => {
