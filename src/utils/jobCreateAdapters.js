@@ -1,0 +1,60 @@
+/** Job Card field adapters; preserve old backend payload shapes. */
+export const JOB_COUNTRY_CODES = [
+  ['+91', 'India (+91)'], ['+971', 'UAE (+971)'], ['+966', 'Saudi Arabia (+966)'],
+  ['+974', 'Qatar (+974)'], ['+965', 'Kuwait (+965)'], ['+968', 'Oman (+968)'],
+  ['+973', 'Bahrain (+973)'], ['+1', 'USA/Canada (+1)'], ['+44', 'UK (+44)'],
+  ['+61', 'Australia (+61)'],
+];
+
+export const splitInternationalPhone = (raw, fallback = '+91') => {
+  const value = String(raw || '').trim().replace(/[\s().-]/g, '');
+  if (!value) return { country: fallback, national: '' };
+  const international = value.startsWith('00') ? '+' + value.slice(2) : value;
+  if (!international.startsWith('+')) {
+    return { country: fallback, national: international.replace(/\D/g, '') };
+  }
+  const country = JOB_COUNTRY_CODES.map(([code]) => code)
+    .sort((a, b) => b.length - a.length).find((code) => international.startsWith(code));
+  if (!country) return { country: fallback, national: international.replace(/\D/g, '') };
+  return { country, national: international.slice(country.length).replace(/\D/g, '') };
+};
+
+export const joinInternationalPhone = (country, national) => {
+  const code = JOB_COUNTRY_CODES.some(([item]) => item === country) ? country : '+91';
+  const digits = String(national || '').replace(/\D/g, '');
+  // Paste a whole number into the national part without repeating the prefix.
+  const normalized = digits.startsWith(code.slice(1)) && digits.length > 10
+    ? digits.slice(code.length - 1) : digits;
+  return normalized ? code + normalized : '';
+};
+
+export const validInternationalPhone = (value) => /^\+[1-9]\d{7,14}$/.test(String(value || ''));
+
+const knownMakes = ['Maruti Suzuki', 'Land Rover', 'Mercedes-Benz', 'Tata', 'Toyota', 'Hyundai',
+  'Honda', 'Mahindra', 'Kia', 'Ford', 'Renault', 'Volkswagen', 'BMW', 'Audi', 'Nissan', 'Suzuki'];
+
+export const splitVehicleMakeModel = (data) => {
+  if (data?.make || data?.model) return { make: String(data.make || ''), model: String(data.model || '') };
+  const combined = String(data?.makeModel || data?.vehicleInfo || '').trim();
+  if (!combined) return { make: '', model: '' };
+  const maker = [...knownMakes].sort((a, b) => b.length - a.length)
+    .find((name) => combined.toLowerCase() === name.toLowerCase()
+      || combined.toLowerCase().startsWith(name.toLowerCase() + ' '));
+  if (maker) return { make: maker, model: combined.slice(maker.length).trim() };
+  const [make, ...model] = combined.split(/\s+/);
+  return { make: make || '', model: model.join(' ') };
+};
+
+export const newComplaint = () => ({
+  id: typeof globalThis.crypto?.randomUUID === 'function'
+    ? globalThis.crypto.randomUUID()
+    : `CMP-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  category: '', priority: 'Medium', description: '', inspectionNotes: '',
+});
+
+export const buildJobComplaints = (entries) => (entries || [])
+  .map((entry) => ({
+    id: entry.id, category: entry.category || '', priority: entry.priority || 'Medium',
+    description: String(entry.description || '').trim(), wording: String(entry.description || '').trim(),
+    inspectionNotes: entry.inspectionNotes || '', status: 'Open',
+  })).filter((entry) => entry.description);

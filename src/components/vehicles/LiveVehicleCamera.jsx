@@ -9,7 +9,7 @@ export const VEHICLE_PHOTO_CATEGORIES = [
   ['damage', 'Existing Damage'], ['additional', 'Additional'],
 ];
 
-export function LiveVehicleCamera({ onCapture, disabled = false }) {
+export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const previewRef = useRef('');
@@ -142,12 +142,16 @@ export function LiveVehicleCamera({ onCapture, disabled = false }) {
     startCamera(facing);
   };
 
-  const save = () => {
+  const save = (captureAnother = false) => {
     if (!file) return;
-    onCapture?.({ file, category, phase, caption: caption.trim() });
+    onCapture?.({ file, category, phase, caption: caption.trim(), notes: caption.trim() });
     clearPreview();
     setCaption('');
-    close();
+    if (captureAnother) {
+      startCamera(facing);
+    } else {
+      close();
+    }
   };
 
   return (
@@ -157,8 +161,9 @@ export function LiveVehicleCamera({ onCapture, disabled = false }) {
       </button>
       {open && (
         <div className="live-camera-overlay" role="dialog" aria-modal="true" aria-label="Vehicle live camera">
+          <div className="live-camera-panel">
           <div className="live-camera-toolbar">
-            <strong>Vehicle Camera</strong>
+            <strong>Vehicle Camera <span className="live-camera-count">{count} captured</span></strong>
             <button type="button" onClick={close} aria-label="Close camera"><X size={22}/></button>
           </div>
           <div className="live-camera-stage">
@@ -189,14 +194,16 @@ export function LiveVehicleCamera({ onCapture, disabled = false }) {
             <div className="live-camera-action-row">
               {!file && <>
                 <button type="button" onClick={switchCamera} disabled={loading} title={cameras.length > 1 ? 'Switch physical camera' : 'Toggle front/rear camera'}><SwitchCamera size={18}/> Switch</button>
-                <button type="button" onClick={capture} disabled={loading || !!error}><Camera size={18}/> Capture</button>
+                <button type="button" className="live-camera-shutter" onClick={capture} disabled={loading || !!error} aria-label="Capture vehicle photo"><Camera size={25}/> <span>Capture</span></button>
                 {error && <button type="button" onClick={() => startCamera(facing)}><RefreshCw size={17}/> Retry</button>}
               </>}
               {file && <>
                 <button type="button" onClick={retake}><RefreshCw size={18}/> Retake</button>
-                <button type="button" className="is-primary" onClick={save}><Check size={18}/> Use Photo</button>
+                <button type="button" className="is-primary" onClick={() => save(false)}><Check size={18}/> Save Photo</button>
+                <button type="button" onClick={() => save(true)}><Camera size={18}/> Capture Another</button>
               </>}
             </div>
+          </div>
           </div>
         </div>
       )}

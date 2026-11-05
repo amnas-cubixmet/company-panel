@@ -19,3 +19,36 @@
 .live-camera-action-row button:disabled{opacity:.45}
 @media(max-width:500px){.live-camera-controls{padding:10px;gap:8px}.live-camera-controls label{font-size:12px}.live-camera-action-row button{flex:1}}
 @media(prefers-reduced-motion:reduce){.live-camera-overlay *{scroll-behavior:auto;transition:none}}
+
+/* Responsive centered camera dialog on desktop; full view on small devices. */
+.live-camera-overlay{
+  align-items:center;justify-content:center;
+  background:rgba(3,9,18,.8);
+  padding:14px max(14px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));
+}
+.live-camera-panel{display:flex;flex-direction:column;overflow:hidden;
+  width:min(100%,900px);height:min(90dvh,790px);max-height:calc(100dvh - 28px);
+  background:#101c2b;border:1px solid #ffffff26;border-radius:18px;
+  box-shadow:0 20px 90px #0008;min-height:0}
+.live-camera-count{font-size:12px;font-weight:500;margin-left:7px;color:#cbd5e1}
+.live-camera-stage{flex:1 1 auto;min-height:100px;max-width:100%;aspect-ratio:auto}
+.live-camera-stage video,.live-camera-stage img{object-fit:contain;max-width:100%}
+.live-camera-controls{flex:0 0 auto;max-height:43dvh;overflow-y:auto;padding:12px 18px 16px;gap:10px}
+.live-camera-action-row .live-camera-shutter{border-radius:99px;width:92px;min-height:52px;background:#2563eb;border-color:#93c5fd}
+.live-camera-toolbar button{background:transparent}
+.live-camera-controls select:focus-visible,.live-camera-controls input:focus-visible,
+.live-camera-action-row button:focus-visible{outline:2px solid #93c5fd;outline-offset:2px}
+@media(max-width:680px){
+  .live-camera-overlay{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  .live-camera-panel{width:100%;height:100dvh;max-height:100dvh;border:0;border-radius:0}
+  .live-camera-toolbar{padding:8px 14px}
+  .live-camera-controls{max-height:49dvh;padding:10px 12px calc(12px + env(safe-area-inset-bottom));grid-template-columns:repeat(2,minmax(0,1fr))}
+  .live-camera-action-row .live-camera-shutter{width:80px;height:68px;flex:0 0 80px;border-radius:50%;font-size:12px;flex-direction:column;gap:3px}
+}
+@media(max-height:620px) and (orientation:landscape){
+  .live-camera-panel{height:100dvh;max-height:100dvh;flex-direction:row}
+  .live-camera-toolbar{position:absolute;top:env(safe-area-inset-top);left:env(safe-area-inset-left);right:env(safe-area-inset-right);z-index:2}
+  .live-camera-stage{flex:1 1 55%;height:100%;min-width:0}
+  .live-camera-controls{flex:0 0 min(43%,340px);height:100%;max-height:100dvh;overflow-y:auto;padding-top:58px;grid-template-columns:1fr}
+  .live-camera-caption,.live-camera-action-row{grid-column:auto}
+}
