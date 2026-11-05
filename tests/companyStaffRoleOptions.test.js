@@ -8,9 +8,10 @@ test('role editor exposes only exact permissions authorized for the current comp
   assert.deepEqual(modules.map(module => [module.key,module.actions]), [['jobs',['view']],['staff',['edit']]]);
   assert.deepEqual(companyPermissionModules(() => false), []);
 });
-test('Celery email statuses do not claim inbox delivery and give recovery instructions', () => {
-  assert.match(staffInviteDeliveryMessage('pending'), /transaction.*Celery/);
-  assert.match(staffInviteDeliveryMessage('queued'), /queued/);
-  assert.match(staffInviteDeliveryMessage('disabled'), /Redis.*Celery/);
-  assert.match(staffInviteDeliveryMessage('failed'), /Celery Worker/);
+test('WhatsApp status messages distinguish queued, provider accepted and delivered', () => {
+  assert.match(staffInviteDeliveryMessage('pending'), /pending/);
+  assert.match(staffInviteDeliveryMessage('queued'), /not yet confirmed/);
+  assert.match(staffInviteDeliveryMessage('sent'), /not yet confirmed/);
+  assert.match(staffInviteDeliveryMessage('delivered'), /delivered/);
+  assert.match(staffInviteDeliveryMessage('failed'), /Do not create the staff again/);
 });
