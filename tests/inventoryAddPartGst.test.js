@@ -18,7 +18,7 @@ test('GST and optional alphanumeric HSN/SAC are persisted with new stock item', 
   const page = read('src/pages/stock/StockEasyPage.jsx');
   const service = read('src/services/stockCatalog.service.js');
   assert.match(page, /tax: '0', hsnCode: ''/);
-  assert.match(page, /HSN \/ SAC Code \(optional\)/);
+  assert.match(page, /label="HSN \/ SAC Code"/);
   assert.match(page, /maxLength=\{20\}/);
   assert.match(page, /if \(!validGstRate\(part\.tax\)\)/);
   assert.match(page, /tax: Number\(part\.tax\), hsnCode: part\.hsnCode\.trim\(\)/);
