@@ -95,6 +95,7 @@ export default function SuppliersPage() {
   const [error, setError] = useState('');
   const [editor, setEditor] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const statusFilter = params.get('status') || 'all';
   const search = params.get('q') || '';
 
@@ -162,12 +163,11 @@ export default function SuppliersPage() {
   }
 
   async function deleteSupplier() {
-    if (!supplier || !canDelete || actionBusy || !window.confirm(
-      'Delete this supplier? Suppliers with stock or purchase history cannot be deleted.'
-    )) return;
+    if (!supplier || !canDelete || actionBusy) return;
     setActionBusy(true); setError('');
     try {
       await supplierService.remove(supplier.id);
+      setDeleteConfirmOpen(false);
       setSuppliers(rows => rows.filter(x => String(x.id) !== String(supplier.id)));
       navigate('/suppliers');
     } catch (cause) {
@@ -252,7 +252,7 @@ export default function SuppliersPage() {
           {supplier.is_active !== false && canEdit && <button type="button" disabled={actionBusy}
             onClick={deactivateSupplier} className="cg-supplier-button">Deactivate</button>}
           {canDelete && <button type="button" disabled={actionBusy}
-            onClick={deleteSupplier} className="cg-supplier-button">Delete Supplier</button>}
+            onClick={() => setDeleteConfirmOpen(true)} className="cg-supplier-button">Delete Supplier</button>}
         </div>
       </section>
       <div className="cg-supplier-details-grid">
@@ -276,5 +276,19 @@ export default function SuppliersPage() {
     {id&&!detailsLoading&&!supplier&&!error&&<p className="cg-supplier-empty">Supplier not found.</p>}
     {editor&&<SupplierEditor key={editor.id||'new'} supplier={editor.create?null:editor}
       onClose={()=>setEditor(null)} onSaved={onSaved}/>}
+    <ResponsiveModalSheet isOpen={deleteConfirmOpen}
+      onClose={() => !actionBusy && setDeleteConfirmOpen(false)}
+      title="Delete Supplier" maxWidth="440px">
+      <div className="cg-supplier-delete-confirm">
+        <p>Delete <strong>{supplier?.name || 'this supplier'}</strong>?</p>
+        <p>Suppliers with inventory or purchase history cannot be deleted. Deactivate them instead.</p>
+        <div className="cg-supplier-modal-actions">
+          <button type="button" disabled={actionBusy} onClick={() => setDeleteConfirmOpen(false)}>Cancel</button>
+          <button type="button" disabled={actionBusy} className="primary" onClick={deleteSupplier}>
+            {actionBusy ? 'Deleting…' : 'Confirm Delete'}
+          </button>
+        </div>
+      </div>
+    </ResponsiveModalSheet>
   </div>;
 }
