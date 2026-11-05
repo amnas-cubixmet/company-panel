@@ -133,8 +133,8 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canSkip
   const submitSkip = async (event) => {
     event.preventDefault();
     const reason = skipReason === 'Other' ? skipOther.trim() : skipReason;
-    if (reason.length < 3 || reason.length > 300) {
-      setError('Enter a skip reason between 3 and 300 characters.');
+    if (reason.length < 3 || reason.length > 160) {
+      setError('Enter a skip reason between 3 and 160 characters.');
       return;
     }
     const saved = await perform('skip', () => jobInspectionService.skipInspection(job.id, reason));
@@ -334,7 +334,7 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canSkip
         </div>
       </details>
 
-      {skipConfirm && !isSkipped && !isCompleted && canSkip && (
+      {skipConfirm && !isSkipped && !isCompleted && canSkip && inspection?.skipAllowed !== false && (
         <form className="cg-inspection-skip-confirm" onSubmit={submitSkip} aria-label="Confirm skip inspection">
           <div>
             <strong>Skip this inspection?</strong>
@@ -350,7 +350,7 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canSkip
           </label>
           {skipReason === 'Other' && (
             <label htmlFor="inspection-skip-other">Specify reason
-              <textarea id="inspection-skip-other" rows={2} maxLength={300} required value={skipOther}
+              <textarea id="inspection-skip-other" rows={2} maxLength={160} required value={skipOther}
                 onChange={(event) => setSkipOther(event.target.value)}
                 placeholder="Why is the inspection being skipped?" disabled={!!busy} />
             </label>
@@ -368,7 +368,7 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canSkip
           <strong>{isSkipped ? 'Inspection skipped' : isCompleted ? 'Inspection completed' : !isStarted ? 'Start or skip inspection' : completed ? 'Ready to finish inspection' : 'Check the vehicle to continue'}</strong>
           <p>{isSkipped ? 'Reason: ' + (inspection?.skipReason || 'Not specified')
             : isCompleted ? canCorrect ? 'Use Edit Inspection to correct checks before estimate approval.' : 'Inspection is approved and read-only.'
-            : 'Complete at least one check, or skip with a recorded reason.'}</p>
+            : inspection?.skipAllowed === false ? (inspection?.skipBlockedReason || 'Skipping is unavailable for this Job Card.') : 'Complete at least one check, or skip with a recorded reason.'}</p>
         </div>
         {isSkipped ? (
           <span className="cg-inspection-skipped"><SkipForward size={16}/> Skipped</span>
@@ -377,7 +377,8 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canSkip
         ) : (
           <div className="cg-inspection-footer-actions">
             {canSkip && (
-              <button type="button" className="cg-inspection-skip-button" disabled={!!busy}
+              <button type="button" className="cg-inspection-skip-button" disabled={!!busy || inspection?.skipAllowed === false}
+                title={inspection?.skipBlockedReason || "Skip Inspection"}
                 onClick={() => setSkipConfirm((value) => !value)}>
                 <SkipForward size={16}/> Skip Inspection
               </button>
