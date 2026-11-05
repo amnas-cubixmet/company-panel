@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Clock, UserCheck, Users, DollarSign, UserPlus, Car, Wrench, Coins,
-  ClipboardList, Boxes, FileText, CreditCard, Receipt, BarChart3, Bell, Settings
+  ClipboardList, Boxes, FileText, CreditCard, Receipt, BarChart3, Bell, Settings, Globe2
 } from 'lucide-react';
 
 export const ROUTE_SECTIONS = {
@@ -46,7 +46,8 @@ export const routeConfig = [
   { id: 'expenses', label: 'Expenses', path: '/expenses', icon: Receipt, section: ROUTE_SECTIONS.FINANCE, mobilePrimary: false, permission: 'expenses.view' },
   { id: 'reports', label: 'Reports & BI', path: '/reports', icon: BarChart3, section: ROUTE_SECTIONS.ANALYTICS_SYSTEM, mobilePrimary: false, permission: 'reports.view' },
   { id: 'notifications', label: 'Notifications', path: '/notifications', icon: Bell, section: ROUTE_SECTIONS.ANALYTICS_SYSTEM, mobilePrimary: false, permission: 'notifications.view' },
-  { id: 'settings', label: 'Settings', path: '/settings', icon: Settings, section: ROUTE_SECTIONS.ANALYTICS_SYSTEM, mobilePrimary: false, permission: 'settings.view' }
+  { id: 'settings', label: 'Settings', path: '/settings', icon: Settings, section: ROUTE_SECTIONS.ANALYTICS_SYSTEM, mobilePrimary: false, permission: 'settings.view' },
+  { id: 'customer-website', label: 'Customer Website', path: '/settings/customer-website', icon: Globe2, section: ROUTE_SECTIONS.ANALYTICS_SYSTEM, mobilePrimary: false, permission: 'company.manage' }
 ];
 
 export const mobilePrimaryRoutes = routeConfig.filter((route) => route.mobilePrimary);
