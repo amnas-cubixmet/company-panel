@@ -9,7 +9,7 @@ const credit = read('src/pages/saas/CreditWorkspace.jsx');
 const storage = read('src/pages/saas/SaaSAccount.jsx');
 const templates = read('src/pages/saas/DocumentTemplates.jsx');
 const security = read('src/pages/account/AccountSecurity.jsx');
-const styles = read('src/styles/account-workspace-unified.css');
+const styles = read('src/styles/account-workspace-compact.css');
 
 test('Account navigation is compact, accessible and retains all six routes', () => {
   for (const route of ['/account', '/account/credits/buy', '/account/storage',
