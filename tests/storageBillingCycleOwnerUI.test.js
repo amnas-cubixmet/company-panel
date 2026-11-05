@@ -9,7 +9,7 @@ test('SaaS owner Account retains Storage tab and all nested log pages', () => {
   const routes = code('src/routes/AppRoutes.jsx');
   const access = code('src/context/FeatureAccessContext.jsx');
   const workspace = code('src/utils/accountWorkspace.js');
-  assert.match(header, /\['storage','Storage & Logs','\/account\/storage',HardDrive,'billing\.view'\]/);
+  assert.match(header, /\['storage','Storage','\/account\/storage',HardDrive,'billing\.view'\]/);
   assert.match(header, /visibleTabs = tabs\.filter\(tab => isCompanyOwner && can\(tab\[4\]\)\)/);
   assert.match(routes, /path="\/account\/storage" element=\{<SaaSAccount section="storage"\s*\/>\}/);
   assert.match(routes, /path="\/account\/storage\/history"/);
