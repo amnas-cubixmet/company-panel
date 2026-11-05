@@ -1,14 +1,18 @@
 import { appConfirm } from '../common/appDialogs';
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2, UsersRound } from 'lucide-react';
 import { payrollService } from '../../services/payroll.service';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
 
-export const JobWorkerAssignments = ({ jobId, staff = [], onChanged }) => {
+export const JobWorkerAssignments = ({ jobId, staff = [], onChanged, focusToken = 0 }) => {
   const { user } = useAuth();
   const canEdit = hasPermission(user, 'jobs.edit');
   const [rows, setRows] = useState([]);
+  const staffSelectRef = useRef(null);
+  useEffect(() => {
+    if (focusToken > 0) staffSelectRef.current?.focus();
+  }, [focusToken]);
   const [staffId, setStaffId] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -59,7 +63,7 @@ export const JobWorkerAssignments = ({ jobId, staff = [], onChanged }) => {
           <UsersRound size={18} />
           <div>
             <strong>Internal Staff Assignments</strong>
-            <span>Assign existing workshop employees here for time tracking. Freelancers and outside part-work are recorded separately in Outside Labour, without creating staff.</span>
+            <span>Assign mechanics for this Job Card</span>
           </div>
         </div>
         <strong>{rows.length} assigned</strong>
@@ -75,14 +79,14 @@ export const JobWorkerAssignments = ({ jobId, staff = [], onChanged }) => {
             )}
           </div>
         ))}
-        {!rows.length && <div className="job-payroll-empty">No internal staff assigned. Freelance labour can be added separately above.</div>}
+        {!rows.length && <div className="job-payroll-empty">No staff assigned yet.</div>}
       </div>
 
       {canEdit && (
         <form className="job-worker-assignment-add" onSubmit={add}>
           <label>
             Add staff member
-            <select required value={staffId} onChange={(event) => setStaffId(event.target.value)}>
+            <select ref={staffSelectRef} required value={staffId} onChange={(event) => setStaffId(event.target.value)}>
               <option value="">Select existing staff member</option>
               {staff.filter((person) => !rows.some((row) => String(row.staffId) === String(person.id))).map((person) => (
                 <option key={person.id} value={person.id}>{person.name} · {person.designation || 'Worker'}</option>
