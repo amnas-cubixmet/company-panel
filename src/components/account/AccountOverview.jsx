@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Building2, CalendarDays, CheckCircle2, CreditCard, FilePenLine, HardDrive, LockKeyhole, Mail, MapPin, Phone, ReceiptText, Save, Settings2, ShieldCheck, Users } from 'lucide-react';
+import { Building2, CheckCircle2, CreditCard, HardDrive, Mail, MapPin, Phone, ReceiptText, Save, ShieldCheck, Zap } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { creditWalletService } from '../../services/creditWallet.service';
@@ -26,7 +26,9 @@ export function AccountOverview({
   onSaveCompany, onReload, loading, onNavigate,
 }) {
   const { user } = useAuth();
-  const { can } = useFeatureAccess();
+  const featureAccess = useFeatureAccess();
+  const { can } = featureAccess;
+  const activeModules = featureAccess.labelOnly ? featureAccess.activeLabelModules : featureAccess.modules;
   const [editing, setEditing] = useState(false);
   const [creditOverview, setCreditOverview] = useState(null);
   useEffect(() => {
@@ -65,23 +67,16 @@ export function AccountOverview({
   };
 
   const cards = [
-    { label: 'Credit Balance', value: display(creditOverview?.balance),
-      note: 'Verified company wallet credits', icon: CreditCard },
-    { label: 'Active Users', value: display(creditOverview?.staffCount),
-      note: 'Active staff accounts', icon: Users },
-    { label: 'Media Storage', value: storage?.usedGb == null ? '—' : storage.usedGb + ' GB',
-      note: 'Stored media, current usage', icon: HardDrive },
-    { label: '30-day Feature Estimate', value: creditOverview?.monthlyCredits == null ? '—' : display(creditOverview.monthlyCredits) + ' credits',
-      note: 'Depends on activated modules and staff count', icon: CalendarDays },
+    { label: 'Available Credits', value: display(creditOverview?.balance), icon: CreditCard },
+    { label: 'Active Modules', value: featureAccess.unavailable || !Array.isArray(activeModules)
+      ? '—' : new Set(activeModules.map(item => typeof item === 'string' ? item : item?.key || item?.id)).size, icon: Zap },
+    { label: 'Storage Used', value: storage?.usedGb == null ? '—' : storage.usedGb + ' GB', icon: HardDrive },
   ];
   const actions = [
-    { title: 'Credit Wallet', description: 'Balance and credit purchase', href: '/account', icon: ReceiptText, permission: 'billing.view' },
-    { title: 'Feature Controls', description: 'Activate or disable paid tools', href: '/account#module-pricing', icon: CreditCard, permission: 'billing.view' },
-    { title: 'Credit Logs', description: 'Verified credits and charges', href: '/account/credits/logs', icon: ReceiptText, permission: 'billing.view' },
-    { title: 'Media Storage', description: 'Uploads and usage history', href: '/account/storage', icon: HardDrive, permission: 'storage.view' },
-    { title: 'Invoice Templates', description: 'Workshop document styling', href: '/account/templates', icon: FilePenLine, permission: 'settings.view' },
-    { title: 'Account Security', description: 'Password and sign-in', href: '/account/security', icon: ShieldCheck, permission: 'settings.view' },
-    { title: 'Company Settings', description: 'Workshop preferences', href: '/settings', icon: Settings2, permission: 'settings.view' },
+    { title: 'Buy Credits', href: '/account/credits/buy', icon: CreditCard, permission: 'billing.view' },
+    { title: 'View Logs', href: '/account/credits/logs', icon: ReceiptText, permission: 'billing.view' },
+    { title: 'Manage Storage', href: '/account/storage', icon: HardDrive, permission: 'billing.view' },
+    { title: 'Security Settings', href: '/account/security', icon: ShieldCheck, permission: 'settings.view' },
   ];
 
   return (
@@ -92,7 +87,6 @@ export function AccountOverview({
             .map((part) => part[0]?.toUpperCase()).join('')}
         </div>
         <div className="account-overview-welcome__details">
-          <span className="account-overview-eyebrow">ACCOUNT WORKSPACE</span>
           <h2>{display(company?.name || user?.companyName || 'Your workshop')}</h2>
           <p>Signed in as <strong>{display(user?.name)}</strong> · {display(user?.email)}</p>
         </div>
@@ -102,9 +96,9 @@ export function AccountOverview({
       </section>
 
       <section className="account-overview-stats" aria-label="Account overview">
-        {cards.map(({label,value,note,icon:Icon}) => (
+        {cards.map(({label,value,icon:Icon}) => (
           <article key={label}>
-            <div><span>{label}</span><strong title={value}>{value}</strong><small>{note}</small></div>
+            <div><span>{label}</span><strong title={value}>{value}</strong></div>
             <i><Icon size={19} aria-hidden="true"/></i>
           </article>
         ))}
@@ -113,8 +107,7 @@ export function AccountOverview({
       <div className="account-overview-grid">
         <article className="account-overview-panel account-overview-company">
           <header>
-            <div><h2><Building2 size={18} aria-hidden="true"/> Company Information</h2>
-              <p>Real company profile from your workshop account.</p></div>
+            <div><h2><Building2 size={18} aria-hidden="true"/> Company Information</h2></div>
             {!editing && company && can('company.manage') && (
               <button type="button" className="account-overview-edit" onClick={() => {
                 setSaveMessage('');setSaveError('');setFieldErrors({});setEditing(true);
@@ -162,21 +155,17 @@ export function AccountOverview({
 
       </div>
       <section className="account-overview-shortcuts">
-        <header><h2>Manage Your Account</h2>
-          <p>Account settings, billing, files and security in one place.</p></header>
+        <header><h2>Quick Actions</h2></header>
         <div className="account-overview-shortcut-grid">
-          {actions.filter(({permission}) => can(permission)).map(({title,description,href,icon:Icon}) => (
+          {actions.filter(({permission}) => can(permission)).map(({title,href,icon:Icon}) => (
             <button type="button" key={href} onClick={()=>onNavigate(href)}>
               <i><Icon size={20}/></i>
-              <strong>{title}</strong><span>{description}</span>
+              <strong>{title}</strong>
               
             </button>
           ))}
         </div>
       </section>
-      <p className="account-overview-footer-note"><LockKeyhole size={14}/>
-        Company records are scoped to your logged-in workshop. Restricted settings require appropriate permissions.
-      </p>
     </div>
   );
 }
