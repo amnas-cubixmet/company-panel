@@ -65,8 +65,8 @@ test('Payroll navigation has fourth tab, routing, matching approval permission a
   assert.match(nav,/\['overtime', 'Overtime Approval', '\/payroll\/daily-wages\/overtime-approvals'/);
   assert.match(nav,/to=\{\`\$\{href\}\$\{search\}\`\}/);
   assert.match(route,/path="\/payroll\/daily-wages\/overtime-approvals" element=\{<OvertimeApprovalPage \/>\}/);
-  assert.match(page,/hasPermission\(user, 'payroll.view'\)/);
-  assert.match(page,/hasPermission\(user, 'attendance.manage'\)/);
+  assert.match(page,/can\('attendance.team.view'\)/);
+  assert.match(page,/can\('attendance.overtime.approve'\)/);
   assert.match(page,/attendanceManagerService\.getApprovals\(\)/);
   assert.match(page,/attendanceManagerService\.updateApprovalStatus\(selected.id,decision,note.trim\(\),/);
   assert.match(page,/decision === 'approve' \? \{ rate:Number\(rate\) \} : \{\}/);
