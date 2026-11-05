@@ -539,53 +539,100 @@ export const JobCreatePage = () => {
           ) : null}
         </section>
 
-        <section className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5">
+        <section className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5" id="job-step-complaints">
           <div className="job-create-section-heading">
             <div>
-              <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">03</span> Complaint & Assignment</h2>
-              <p>Describe the issue and optionally assign workshop staff.</p>
+              <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">03</span> Customer Complaints</h2>
+              <p>Record each concern independently and keep the original customer wording.</p>
+            </div>
+          </div>
+          <JobComplaintEntries complaints={complaints} errors={complaintErrors} disabled={saving}
+            onChange={(updater) => {
+              setComplaints(updater);
+              setComplaintErrors({});
+              setReview(false);
+            }}/>
+        </section>
+
+        <section className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5" id="job-step-assignment">
+          <div className="job-create-section-heading">
+            <div>
+              <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">04</span> Technician & Service Assignment</h2>
+              <p>Assign a workshop technician and choose the initial priority.</p>
             </div>
           </div>
           <div className="job-create-fields-grid job-create-assignment-grid mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label className={labelClass + ' md:col-span-2'}>Customer Complaint
-              <textarea rows={4} value={form.complaint} onChange={(e) => set('complaint', e.target.value)} placeholder="Record the customer's words separately..." className="mt-1 min-h-28 w-full rounded-xl border border-line bg-surface-2 p-3 text-sm text-content outline-none focus:border-primary"/>
-            </label>
             <label className={labelClass}>Assigned Technician
-              <select value={form.assignedEmployeeId} onChange={(e) => assignStaff(e.target.value)} className={inputClass}>
+              <select name="assignedEmployeeId" value={form.assignedEmployeeId}
+                onChange={(e) => assignStaff(e.target.value)} className={inputClass}>
                 <option value="">Unassigned</option>
                 {staff.map((item)=><option key={item.id} value={item.id}>{item.name} · {item.designation}</option>)}
               </select>
             </label>
-            <label className={labelClass}>Service Advisor
-              <select value={form.serviceAdvisor} onChange={(e) => set('serviceAdvisor', e.target.value)} className={inputClass}>
-                <option value="">Unassigned</option>
-                {staff.map((item)=><option key={item.id} value={item.name}>{item.name} · {item.designation}</option>)}
+            {jobMode === 'advanced' && <label className={labelClass}>Service Advisor
+              <select name="serviceAdvisorEmployeeId" value={form.serviceAdvisorEmployeeId}
+                onChange={(event) => {
+                  const selected = staff.find((row) => row.id === event.target.value);
+                  setForm((old) => ({
+                    ...old,
+                    serviceAdvisorEmployeeId: event.target.value,
+                    serviceAdvisor: selected?.name || '',
+                  }));
+                  setReview(false);
+                }} className={inputClass}>
+                <option value="">Current logged-in advisor</option>
+                {staff.map((item)=><option key={item.id} value={item.id}>{item.name} · {item.designation}</option>)}
               </select>
-            </label>
+            </label>}
             <label className={labelClass}>Priority
               <select value={form.priority} onChange={(e) => set('priority', e.target.value)} className={inputClass}>
                 <option>Low</option><option>Medium</option><option>High</option><option>Urgent</option>
               </select>
             </label>
-            <label className={labelClass}>Initial Status
+            {jobMode === 'advanced' && <label className={labelClass}>Initial Status
               <select value={form.status} onChange={(e) => set('status', e.target.value)} className={inputClass}>
                 <option>New</option><option>Inspection</option>
               </select>
-            </label>
-            <label className={labelClass + ' md:col-span-2'}>Internal Notes
-              <textarea rows={3} value={form.notes} onChange={(e) => set('notes', e.target.value)} className="mt-1 min-h-24 w-full rounded-xl border border-line bg-surface-2 p-3 text-sm text-content outline-none focus:border-primary"/>
-            </label>
+            </label>}
+            {jobMode === 'advanced' && <label className={labelClass + ' md:col-span-2'}>Internal Notes
+              <textarea rows={3} value={form.notes} onChange={(e) => set('notes', e.target.value)}
+                className="mt-1 min-h-24 w-full rounded-xl border border-line bg-surface-2 p-3 text-sm text-content outline-none focus:border-primary"/>
+            </label>}
           </div>
+          {jobMode === 'advanced' && <p className="job-create-advanced-notice" role="note">
+            Additional fault codes, inspection, parts, work & labour, labour hours, estimates and invoices
+            are managed in the existing Job Card workspace after creation. All information entered here stays saved while switching modes.
+          </p>}
         </section>
 
-        <section className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5">
-          <VehicleCameraQueue photos={pendingPhotos} onChange={setPendingPhotos} disabled={saving} uploading={uploadProgress}/>
+        <section className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5" id="job-step-photos">
+          <div className="job-create-section-heading">
+            <div>
+              <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">05</span> Vehicle Photos / Inspection</h2>
+              <p>Capture on mobile or upload gallery photos. Photos are optional and stay private until published.</p>
+            </div>
+          </div>
+          <VehicleCameraQueue photos={pendingPhotos}
+            onChange={(updater) => { setPendingPhotos(updater); setReview(false); }}
+            disabled={saving} uploading={uploadProgress}/>
         </section>
+
+        {review && <div id="job-card-review" className="job-create-review-wrap">
+          <div className="job-create-review-label"><span className="job-create-title-step">06</span> Review & Create</div>
+          <JobCardReview form={form} complaints={buildJobComplaints(complaints)}
+            photos={pendingPhotos}
+            jobNumber={createdJob?.jobNumber || createdJob?.job_number || ''}
+            created={Boolean(savedJobId)} onPrint={() => window.print()}/>
+        </div>}
 
         <div className="job-create-actions sticky bottom-0 z-20 flex gap-2 border-t border-line bg-surface/95 p-3 backdrop-blur md:static md:justify-end md:border-0 md:bg-transparent md:p-0" aria-label="Job Card form actions">
           <button type="button" className="h-11 flex-1 rounded-xl border border-line bg-surface px-5 text-sm font-semibold text-content md:flex-none" onClick={() => navigate('/jobs')}>Cancel</button>
+          {review && !savedJobId && <button type="button"
+            className="job-create-edit-again" onClick={() => setReview(false)}><RotateCcw size={17}/> Edit Details</button>}
           <button type="submit" disabled={saving} className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border-0 bg-primary px-5 text-sm font-bold text-white md:flex-none">
-            <CheckCircle2 size={17}/>{saving ? 'Creating…' : 'Create Job Card'}
+            {review ? <CheckCircle2 size={17}/> : <Eye size={17}/>}
+            {saving ? (savedJobId ? 'Uploading photos…' : 'Creating…')
+              : savedJobId ? 'Retry Remaining Photos' : review ? 'Confirm & Create Job Card' : 'Review Job Card'}
           </button>
         </div>
       </form>
