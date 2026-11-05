@@ -5,25 +5,25 @@ const modes = [
   {
     value: 'single',
     title: 'Single Punch',
-    description: 'One session per day; no second check-in.',
+    description: 'One session per day.',
     icon: LogIn,
   },
   {
     value: 'multi',
     title: 'Multi Punch',
-    description: 'Multiple check-in/out sessions.',
+    description: 'Multiple sessions per day.',
     icon: Repeat2,
   },
   {
     value: 'auto_checkout',
     title: 'Auto Checkout',
-    description: 'Automatic checkout at shift end; no manual checkout.',
+    description: 'Checkout at shift end.',
     icon: Clock3,
   },
   {
     value: 'hybrid',
     title: 'Hybrid',
-    description: 'Manual checkout, or automatic checkout if missed.',
+    description: 'Manual or automatic checkout.',
     icon: TimerReset,
   },
 ];
@@ -38,6 +38,7 @@ export const AttendanceModeSelector = ({ value, onChange }) => (
           type="button"
           className={`attendance-mode-card ${selected ? 'is-selected' : ''}`}
           onClick={() => onChange(modeValue)}
+          aria-pressed={selected}
         >
           <span className="attendance-mode-icon"><Icon size={17} /></span>
           <span className="attendance-mode-copy">
