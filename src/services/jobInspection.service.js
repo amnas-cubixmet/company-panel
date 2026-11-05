@@ -144,7 +144,7 @@ export const getInitialInspectionData = () => {
   });
 
   return {
-    status: 'In Progress', // Not Started | In Progress | Completed
+    status: 'In Progress', // Not Started | In Progress | Completed | Skipped
     technician: 'Ajmal K',
     startedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
     completedAt: null,
@@ -330,30 +330,15 @@ export const addInspectionPhoto = async (jobId, payload) => {
   return apiClient.post(`${API_ENDPOINTS.JOBS}/${jobId}/inspection/photos`, payload);
 };
 
+/**
+ * Dedicated, authenticated operation: never calls inspection/complete or
+ * synthesizes Good checklist values. The server records staff, reason and time.
+ */
 export const skipInspection = async (jobId, reason) => {
-  const cleanReason = String(reason || '').trim();
-  if (cleanReason.length < 3 || cleanReason.length > 160) {
-    throw new Error('Enter a skip reason between 3 and 160 characters.');
-  }
   if (USE_MOCK_API) {
-    await delay();
-    const job = getMockJobById(jobId);
-    if (!job) throw new Error('Job Card not found.');
-    if (job.status !== 'Inspection') throw new Error('Only the current Inspection stage can be skipped.');
-    const inspection = job.vehicleInspection || getInitialInspectionData();
-    if (['Completed', 'Skipped'].includes(inspection.status)) {
-      throw new Error('Inspection has already been completed or skipped.');
-    }
-    const skipped = {
-      ...inspection,
-      status: 'Skipped',
-      skipReason: cleanReason,
-      skippedAt: new Date().toISOString(),
-    };
-    updateMockJob(job.id, { vehicleInspection: skipped, inspection: skipped, status: 'Estimate Pending' });
-    return { inspection: skipped, newJobStatus: 'Estimate Pending' };
+    throw new Error('Skipping inspections requires the live Django backend.');
   }
-  return apiClient.post(`${API_ENDPOINTS.JOBS}/${jobId}/inspection/skip`, { reason: cleanReason });
+  return apiClient.post(`${API_ENDPOINTS.JOBS}/${jobId}/inspection/skip`, { reason });
 };
 
 export const completeInspection = async (jobId, needsApproval = true) => {

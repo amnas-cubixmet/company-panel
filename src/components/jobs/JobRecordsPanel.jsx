@@ -62,6 +62,9 @@ export const JobRecordsPanel = ({
                     <span className={`jobs-status-chip is-${statusClass(job.status)}`}>
                       {job.status || 'New'}
                     </span>
+                    {job.inspection?.status === 'Skipped' && (
+                      <span className="jobs-inspection-skip-tag" title={job.inspection.skipReason || 'Vehicle inspection skipped'}>Inspection skipped</span>
+                    )}
                   </td>
                   <td><button type="button" className="jobs-table-open" onClick={() => onOpenJob(job.id)} aria-label={`Open ${jobDisplayLabel(job)}`}><ChevronRight size={17} /></button></td>
                 </tr>
@@ -83,6 +86,9 @@ export const JobRecordsPanel = ({
                 </span>
               </div>
 
+              {job.inspection?.status === 'Skipped' && (
+                <span className="jobs-inspection-skip-tag" title={job.inspection.skipReason || 'Vehicle inspection skipped'}>Inspection skipped</span>
+              )}
               <div className="jobs-mobile-card-meta">
                 <span><Car size={12} />{job.vehicleInfo || 'Vehicle'}</span>
                 <span><User size={12} />{job.customerName || 'Walk-in customer'}</span>
