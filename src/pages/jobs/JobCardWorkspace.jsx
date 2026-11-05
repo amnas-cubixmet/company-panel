@@ -1,6 +1,6 @@
 import { appConfirm } from '../../components/common/appDialogs';
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Clock3, FileText, Gauge, History, PackageSearch, Plus, ReceiptText, ShieldCheck, Star, UserRound, Wrench, ChevronRight, Download, Share2, LockKeyhole } from "lucide-react";
+import { CheckCircle2, Clock3, FileText, Gauge, History, PackageSearch, Plus, ReceiptText, ShieldCheck, SkipForward, Star, UserRound, Wrench, ChevronRight, Download, Share2, LockKeyhole } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { jobService } from '../../services/job.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
@@ -369,6 +369,7 @@ export function JobCardWorkspace() {
   // persisted completion; visual checks below cover auxiliary sections only.
   const coreStages = workflow?.stages || GUIDED_STAGES;
   const coreCompleted = workflow?.completed || [];
+  const coreSkipped = workflow?.skipped || [];
   const sectionComplete = {
     overview: coreCompleted.includes('overview'),
     inspection: coreCompleted.includes('inspection'),
@@ -977,15 +978,17 @@ export function JobCardWorkspace() {
                 onClick={() => openTab(key)}
                 disabled={locked}
                 aria-current={isActive ? 'step' : undefined}
-                className={['job-workflow-tab', isActive ? 'is-active' : '', complete ? 'is-complete' : '', locked ? 'is-locked' : ''].join(' ')}
-                title={locked ? label + ' – complete the previous stage first' : label}
+                className={['job-workflow-tab', isActive ? 'is-active' : '', complete ? 'is-complete' : '', coreSkipped.includes(key) ? 'is-skipped' : '', locked ? 'is-locked' : ''].join(' ')}
+                title={locked ? label + ' – complete the previous stage first' : coreSkipped.includes(key) ? label + ' – skipped' : label}
               >
                 <span className="job-workflow-tab-number" aria-hidden="true">{index + 1}</span>
                 <span className="job-workflow-tab-label">{label}</span>
                 {locked ? (
                   <LockKeyhole size={13} className="job-workflow-tab-lock" aria-label="Locked" />
                 ) : complete && !isActive ? (
-                  <CheckCircle2 size={14} className="job-workflow-tab-check" aria-label="Completed" />
+                  coreSkipped.includes(key)
+                    ? <SkipForward size={14} className="job-workflow-tab-check" aria-label="Skipped" />
+                    : <CheckCircle2 size={14} className="job-workflow-tab-check" aria-label="Completed" />
                 ) : null}
               </button>
             );
