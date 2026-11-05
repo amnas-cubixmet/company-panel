@@ -14,6 +14,7 @@ import { vehiclePhotoService } from '../../services/vehiclePhoto.service';
 import { VehicleCameraQueue } from '../../components/vehicles/VehicleCameraQueue';
 import { Car, Calendar, Gauge, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import '../../styles/vehicle-management.css';
+import '../../styles/vehicle-camera-form-responsive.css';
 
 export const AddVehicle = () => {
   const navigate = useNavigate();
