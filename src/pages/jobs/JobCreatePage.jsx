@@ -1,6 +1,6 @@
 import { appAlert } from '../../components/common/appDialogs';
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, History, Eye, RotateCcw } from 'lucide-react';
+import { CheckCircle2, History, Eye, RotateCcw, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { jobService } from '../../services/job.service';
 import { vehiclePhotoService } from '../../services/vehiclePhoto.service';
@@ -25,6 +25,17 @@ const nowLocal = () => {
   return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 16);
 };
 
+// The stepper and section headings share one ordered definition.
+const JOB_CREATE_STEPS = [
+  { id: 'customer', label: 'Customer' },
+  { id: 'complaints', label: 'Complaints' },
+  { id: 'vehicle', label: 'Vehicle' },
+  { id: 'assignment', label: 'Assignment' },
+  { id: 'photos', label: 'Photos' },
+  { id: 'review', label: 'Review' },
+];
+const stepNumber = (id) => String(JOB_CREATE_STEPS.findIndex((step) => step.id === id) + 1).padStart(2, '0');
+
 export const JobCreatePage = () => {
   const navigate = useNavigate();
   const { can } = useFeatureAccess();
@@ -33,6 +44,7 @@ export const JobCreatePage = () => {
   const [saving, setSaving] = useState(false);
   const [createdJob, setCreatedJob] = useState(null);
   const [review, setReview] = useState(false);
+  const [advancedVehicleOpen, setAdvancedVehicleOpen] = useState(false);
   const [jobMode, setJobMode] = useState('simple');
   const [complaints, setComplaints] = useState(() => [newComplaint()]);
   const [complaintErrors, setComplaintErrors] = useState({});
@@ -41,6 +53,7 @@ export const JobCreatePage = () => {
   const [pendingPhotos, setPendingPhotos] = useState([]);
   const [savedJobId, setSavedJobId] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadingPhotoId, setUploadingPhotoId] = useState(null);
   const [uploadTotal, setUploadTotal] = useState(0);
   const [uploadedPhotosCount, setUploadedPhotosCount] = useState(0);
   const [staff, setStaff] = useState([]);
@@ -342,6 +355,7 @@ export const JobCreatePage = () => {
       for (let i = 0; i < pendingPhotos.length; i += 1) {
         const photo = pendingPhotos[i];
         setUploadProgress(i + 1);
+        setUploadingPhotoId(photo.id);
         await vehiclePhotoService.upload({ jobId: created.id, ...photo });
         setPendingPhotos((items) => items.filter((entry) => entry.id !== photo.id));
         setUploadedPhotosCount((count) => count + 1);
@@ -363,6 +377,7 @@ export const JobCreatePage = () => {
     } finally {
       setSaving(false);
       setUploadProgress(0);
+      setUploadingPhotoId(null);
     }
   };
 
@@ -394,9 +409,11 @@ export const JobCreatePage = () => {
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-content">Create Job Card</h1>
           <p className="mt-1 max-w-2xl text-xs leading-5 text-muted">Add customer and vehicle details, then create a Job Card to start inspection.</p>
           <div className="job-create-steps" aria-label="Job setup steps">
-            <span><b>01</b> Customer</span><span><b>02</b> Vehicle</span>
-            <span><b>03</b> Complaints</span><span><b>04</b> Assignment</span>
-            <span><b>05</b> Photos</span><span className={review ? 'is-current' : ''}><b>06</b> Review</span>
+            {JOB_CREATE_STEPS.map((step) => (
+              <span key={step.id} className={step.id === 'review' && review ? 'is-current' : undefined}>
+                <b>{stepNumber(step.id)}</b> {step.label}
+              </span>
+            ))}
           </div>
           <div className="job-create-mode-switch" role="group" aria-label="Job Card mode">
             <button type="button" aria-pressed={jobMode === 'simple'} className={jobMode === 'simple' ? 'is-active' : ''} onClick={() => setJobMode('simple')}>Simple</button>
@@ -411,7 +428,7 @@ export const JobCreatePage = () => {
         <section className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5">
           <div className="job-create-section-heading">
             <div>
-              <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">01</span> Customer & Job Details</h2>
+              <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">{stepNumber('customer')}</span> Customer & Job Details</h2>
               <p>Select an existing customer or add a new one. Contact details fill automatically.</p>
             </div>
           </div>
@@ -452,10 +469,25 @@ export const JobCreatePage = () => {
           </div>
         </section>
 
+        <section className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5" id="job-step-complaints">
+          <div className="job-create-section-heading">
+            <div>
+              <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">{stepNumber('complaints')}</span> Customer Complaints</h2>
+              <p>Record each concern independently and keep the original customer wording.</p>
+            </div>
+          </div>
+          <JobComplaintEntries complaints={complaints} errors={complaintErrors} disabled={saving}
+            onChange={(updater) => {
+              setComplaints(updater);
+              setComplaintErrors({});
+              if (!savedJobId) setReview(false);
+            }}/>
+        </section>
+
         <section className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5">
           <div className="job-create-section-heading">
             <div>
-              <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">02</span> Vehicle Details</h2>
+              <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">{stepNumber('vehicle')}</span> Vehicle Details</h2>
               <p>Choose a saved vehicle or enter registration and vehicle information.</p>
             </div>
           </div>
@@ -524,14 +556,21 @@ export const JobCreatePage = () => {
               </select>
             </label>
           </div>
-          <details className="job-create-vehicle-advanced">
-            <summary>Advanced Vehicle Details · VIN / Chassis (optional)</summary>
-            <label className={labelClass}>VIN / Chassis
-              <input name="vin" value={form.vin} maxLength={64}
-                onChange={(e) => set('vin', e.target.value.toUpperCase())}
-                placeholder="VIN / chassis number" className={inputClass}/>
-            </label>
-          </details>
+          <div className="job-create-vehicle-advanced">
+            <button type="button" className="job-create-vehicle-advanced-toggle"
+              aria-expanded={advancedVehicleOpen} aria-controls="job-create-vehicle-advanced-content"
+              onClick={() => setAdvancedVehicleOpen((open) => !open)}>
+              <span>Advanced Vehicle Details · VIN / Chassis (optional)</span>
+              <ChevronDown size={18} aria-hidden="true" className={advancedVehicleOpen ? 'is-open' : ''}/>
+            </button>
+            {advancedVehicleOpen && <div id="job-create-vehicle-advanced-content" className="job-create-vehicle-advanced-content">
+              <label className={labelClass}>VIN / Chassis
+                <input name="vin" value={form.vin} maxLength={64}
+                  onChange={(e) => set('vin', e.target.value.toUpperCase())}
+                  placeholder="VIN / chassis number" className={inputClass}/>
+              </label>
+            </div>}
+          </div>
           {selectedVehicleId && can('vehicles.edit') && <label className="job-create-vehicle-update">
             <input type="checkbox" checked={form.vehicleDetailsUpdate}
               onChange={(e) => set('vehicleDetailsUpdate',e.target.checked)}/>
@@ -548,25 +587,10 @@ export const JobCreatePage = () => {
           ) : null}
         </section>
 
-        <section className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5" id="job-step-complaints">
-          <div className="job-create-section-heading">
-            <div>
-              <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">03</span> Customer Complaints</h2>
-              <p>Record each concern independently and keep the original customer wording.</p>
-            </div>
-          </div>
-          <JobComplaintEntries complaints={complaints} errors={complaintErrors} disabled={saving}
-            onChange={(updater) => {
-              setComplaints(updater);
-              setComplaintErrors({});
-              if (!savedJobId) setReview(false);
-            }}/>
-        </section>
-
         <section className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5" id="job-step-assignment">
           <div className="job-create-section-heading">
             <div>
-              <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">04</span> Technician & Service Assignment</h2>
+              <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">{stepNumber('assignment')}</span> Technician & Service Assignment</h2>
               <p>Assign a workshop technician and choose the initial priority.</p>
             </div>
           </div>
@@ -617,17 +641,17 @@ export const JobCreatePage = () => {
         <section className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5" id="job-step-photos">
           <div className="job-create-section-heading">
             <div>
-              <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">05</span> Vehicle Photos / Inspection</h2>
+              <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">{stepNumber('photos')}</span> Vehicle Photos / Inspection</h2>
               <p>Capture on mobile or upload gallery photos. Photos are optional and stay private until published.</p>
             </div>
           </div>
           <VehicleCameraQueue photos={pendingPhotos}
             onChange={(updater) => { setPendingPhotos(updater); if (!savedJobId) setReview(false); }}
-            disabled={saving} uploading={uploadProgress} uploadTotal={uploadTotal}/>
+            disabled={saving} uploading={uploadProgress} uploadTotal={uploadTotal} uploadingPhotoId={uploadingPhotoId}/>
         </section>
 
         {review && <div id="job-card-review" className="job-create-review-wrap">
-          <div className="job-create-review-label"><span className="job-create-title-step">06</span> Review & Create</div>
+          <div className="job-create-review-label"><span className="job-create-title-step">{stepNumber('review')}</span> Review & Create</div>
           <JobCardReview form={form} complaints={buildJobComplaints(complaints)}
             photos={pendingPhotos} uploadedPhotosCount={uploadedPhotosCount}
             jobNumber={createdJob?.jobNumber || createdJob?.job_number || ''}
