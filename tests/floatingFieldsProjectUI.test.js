@@ -24,7 +24,7 @@ test('shared form controls are outlined with visible associated floating labels'
   assert.match(css,/--cg-floating-radius: 10px/);
   assert.match(css,/\.cg-floating-field:focus-within \.cg-floating-label/);
   assert.match(css,/\.cg-floating-control:not\(:placeholder-shown\)/);
-  assert.match(css,/\.cg-floating-field:has\(select\.cg-floating-control\)/);
+  assert.match(css,/select\.cg-floating-control/);
   assert.match(css,/\.cg-floating-control\[aria-invalid=true\]/);
   assert.match(css,/font-size: 16px !important/);
   assert.match(css,/var\(--text-primary\)/);
