@@ -4,10 +4,9 @@ import { existsSync, readFileSync } from 'node:fs';
 
 const source = (path) => readFileSync(path, 'utf8');
 
-test('Staff Add has daily rate and date, not legacy compensation selectors', () => {
+test('Staff Add stays compact; wage rates are configured separately', () => {
   const code = source('src/pages/staff-management/StaffAddPage.jsx');
-  assert.match(code, /Daily Wage Rate/);
-  assert.match(code, /Effective From/);
+  assert.doesNotMatch(code, /Daily Wage Rate|Effective From|dailyWageRate/);
   assert.doesNotMatch(code, /\bPayment Type\b|\bPayment Frequency\b|\bMonthly Base Salary\b|\bCommission Based On\b/);
   assert.doesNotMatch(code, /\/payroll\/compensation-plans/);
 });
