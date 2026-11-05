@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useLocation } from 'react-router-dom';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { FilePenLine, HardDrive, ShieldCheck, Coins, FileClock, CreditCard } from 'lucide-react';
+import '../../styles/account-workspace-compact.css';
 
 // One shared navigation for every Account route. Settings remains available
 // outside Account; it is intentionally not a wallet tab.
