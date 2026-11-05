@@ -875,3 +875,16 @@
     gap:12px;
   }
 }
+
+/* URL-backed combined job filters and real pagination */
+.jobs-toolbar-combined{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.jobs-toolbar-combined .jobs-search{flex:2 1 260px;min-width:min(100%,220px)}
+.jobs-toolbar-combined .jobs-status-filter{flex:1 1 145px;min-width:0}
+.jobs-toolbar-combined .jobs-status-filter input,.jobs-toolbar-combined .jobs-status-filter select{
+  width:100%;min-height:44px;min-width:0;font-size:16px;
+}
+.jobs-toolbar-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:1 1 100%;font-size:13px;color:var(--text-secondary)}
+.jobs-filter-reset,.jobs-filter-pagination button{min-height:44px;padding:9px 13px;border:1px solid var(--border);background:var(--surface);border-radius:9px;color:var(--text-primary);cursor:pointer}
+.jobs-filter-pagination{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:11px;font-size:13px}
+.jobs-filter-pagination button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:640px){.jobs-toolbar-combined .jobs-search{flex:1 1 100%}.jobs-toolbar-combined .jobs-status-filter{flex:1 1 135px}.jobs-filter-pagination{justify-content:center}}
