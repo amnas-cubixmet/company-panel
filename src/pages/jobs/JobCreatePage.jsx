@@ -41,6 +41,8 @@ export const JobCreatePage = () => {
   const [pendingPhotos, setPendingPhotos] = useState([]);
   const [savedJobId, setSavedJobId] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadTotal, setUploadTotal] = useState(0);
+  const [uploadedPhotosCount, setUploadedPhotosCount] = useState(0);
   const [staff, setStaff] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerVehicles, setCustomerVehicles] = useState([]);
@@ -336,11 +338,13 @@ export const JobCreatePage = () => {
         }
       }
 
+      setUploadTotal(pendingPhotos.length);
       for (let i = 0; i < pendingPhotos.length; i += 1) {
         const photo = pendingPhotos[i];
         setUploadProgress(i + 1);
         await vehiclePhotoService.upload({ jobId: created.id, ...photo });
         setPendingPhotos((items) => items.filter((entry) => entry.id !== photo.id));
+        setUploadedPhotosCount((count) => count + 1);
       }
       setUploadProgress(0);
       setReview(true);
@@ -373,7 +377,7 @@ export const JobCreatePage = () => {
         Job Card {createdJob.jobNumber || createdJob.job_number || createdJob.number || ''} saved successfully.
       </div>
       <JobCardReview form={form} complaints={buildJobComplaints(complaints)}
-        photos={pendingPhotos} jobNumber={createdJob.jobNumber || createdJob.job_number || createdJob.number || ''}
+        photos={pendingPhotos} uploadedPhotosCount={uploadedPhotosCount} jobNumber={createdJob.jobNumber || createdJob.job_number || createdJob.number || ''}
         created onPrint={() => window.print()}/>
       <div className="job-create-actions no-print">
         <button type="button" onClick={() => navigate('/jobs')}>Back to Jobs</button>
@@ -555,7 +559,7 @@ export const JobCreatePage = () => {
             onChange={(updater) => {
               setComplaints(updater);
               setComplaintErrors({});
-              setReview(false);
+              if (!savedJobId) setReview(false);
             }}/>
         </section>
 
@@ -619,13 +623,13 @@ export const JobCreatePage = () => {
           </div>
           <VehicleCameraQueue photos={pendingPhotos}
             onChange={(updater) => { setPendingPhotos(updater); if (!savedJobId) setReview(false); }}
-            disabled={saving} uploading={uploadProgress}/>
+            disabled={saving} uploading={uploadProgress} uploadTotal={uploadTotal}/>
         </section>
 
         {review && <div id="job-card-review" className="job-create-review-wrap">
           <div className="job-create-review-label"><span className="job-create-title-step">06</span> Review & Create</div>
           <JobCardReview form={form} complaints={buildJobComplaints(complaints)}
-            photos={pendingPhotos}
+            photos={pendingPhotos} uploadedPhotosCount={uploadedPhotosCount}
             jobNumber={createdJob?.jobNumber || createdJob?.job_number || ''}
             created={Boolean(savedJobId)} onPrint={() => window.print()}/>
         </div>}
