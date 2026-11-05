@@ -419,7 +419,7 @@ export default function StockEasyPage() {
             </div>
             {quickSupplierOpen && <div className="cg-easy-quick-supplier" aria-label="Create supplier without leaving this form">
               <strong>New Supplier</strong>
-              <OutlinedInput label="Supplier Name *" required maxLength={180} value={quickSupplier.name} onChange={e => setQuickSupplier({ ...quickSupplier, name: e.target.value })}/>
+              <OutlinedInput label="Supplier Name *" maxLength={180} value={quickSupplier.name} onChange={e => setQuickSupplier({ ...quickSupplier, name: e.target.value })}/>
               <div className="cg-easy-fields">
                 <OutlinedInput label="Phone" type="tel" maxLength={30} value={quickSupplier.phone} onChange={e => setQuickSupplier({ ...quickSupplier, phone: e.target.value })}/>
                 <OutlinedInput label="GSTIN" maxLength={20} value={quickSupplier.gstNo} onChange={e => setQuickSupplier({ ...quickSupplier, gstNo: e.target.value })}/>
