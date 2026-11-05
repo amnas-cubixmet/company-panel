@@ -971,6 +971,14 @@
 @container (min-width: 920px) {
   .jobs-dashboard .jobs-toolbar.jobs-toolbar-combined {
     grid-template-columns: repeat(12, minmax(0, 1fr));
+    /* Keep Search and select filters aligned at a shared row top. Search
+       historically has an extra 4px of intrinsic height. Aligning grid
+       items to end made a single visual row register as two misaligned rows. */
+    align-items: stretch;
+  }
+  .jobs-dashboard .jobs-toolbar-combined .jobs-filter-field,
+  .jobs-dashboard .jobs-toolbar-combined .jobs-toolbar-actions {
+    justify-content: flex-end;
   }
   .jobs-dashboard .jobs-toolbar-combined .jobs-filter-search { grid-column: span 4; }
   .jobs-dashboard .jobs-toolbar-combined .jobs-filter-status { grid-column: span 2; }
