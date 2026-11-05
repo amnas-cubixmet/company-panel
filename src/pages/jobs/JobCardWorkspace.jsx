@@ -31,6 +31,7 @@ import { JobActivityTimeline } from '../../components/jobs/JobActivityTimeline';
 import { JobWorkPhotoPanel } from '../../components/jobs/JobWorkPhotoPanel';
 import { jobDisplayLabel } from '../../components/jobs/jobs.utils';
 import { JobBreadcrumbs } from '../../components/jobs/JobBreadcrumbs';
+import { WhatsAppManualShareButton } from '../../components/common/WhatsAppManualShareButton';
 import { complaintStatusForJob, complaintStatusClass } from '../../components/jobs/complaintStatus';
 
 const money = new Intl.NumberFormat('en-IN', {
@@ -901,6 +902,7 @@ export function JobCardWorkspace() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <WhatsAppManualShareButton targetType="job" targetId={job.id} />
           {activeTab === 'overview' ? (
             <span className="job-overview-status-badge">{normalizeJobStatus(job.status)}</span>
           ) : (
