@@ -104,7 +104,7 @@ export default function CustomerWebsiteDomainsPage(){
         action==='remove'?'Domain disabled. Existing customer data was preserved.':
         'Latest Vercel domain status retrieved.'
       ));
-    }catch(e){setError(e.message||'Could not update domain.');await load();}
+    }catch(e){await load();setError(e.message||'Could not update domain.');}
     finally{setBusy('');}
   };
   const viewHistory=async(domain)=>{
