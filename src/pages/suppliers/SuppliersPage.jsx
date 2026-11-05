@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Building2, Mail, Package, Phone, Plus, RefreshCw, Search, ShoppingBag, Truck } from 'lucide-react';
+import { ArrowLeft, Building2, Mail, Package, Phone, Plus, RefreshCw, Search, ShoppingBag, Truck } from 'lucide-react';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { supplierService } from '../../services/supplier.service';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
@@ -163,7 +163,6 @@ export default function SuppliersPage() {
               <small>{[row.contact_person||row.contactPerson,row.phone].filter(Boolean).join(' · ')||'Contact details not added'}</small>
             </span>
             <span className={row.is_active===false?'cg-supplier-status inactive':'cg-supplier-status'}>{status(row)}</span>
-            <ArrowRight size={18}/>
           </Link>)}
         </div>:<p className="cg-supplier-empty">{search?'No suppliers match your search.':'No suppliers added yet.'}</p>}
     </>}
