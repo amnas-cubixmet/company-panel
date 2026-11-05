@@ -340,7 +340,7 @@ export const JobCreatePage = () => {
       setUploadProgress(0);
       setReview(true);
     } catch (err) {
-      const shownInline = createdId ? false : showServerFormErrors(formRef.current, err, {
+      const shownInline = showServerFormErrors(formRef.current, createdId ? null : err, {
         customer_name: 'customerName', customer_phone: 'customerPhone',
         registration: 'vehicleReg', vehicle_registration: 'vehicleReg',
         fuelType: 'fuelType', vehicleInfo: 'vehicleMake', branchId: 'branchId',
