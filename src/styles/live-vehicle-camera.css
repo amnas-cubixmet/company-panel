@@ -52,3 +52,54 @@
   .live-camera-controls{flex:0 0 min(43%,340px);height:100%;max-height:100dvh;overflow-y:auto;padding-top:58px;grid-template-columns:1fr}
   .live-camera-caption,.live-camera-action-row{grid-column:auto}
 }
+
+/* Job Card mobile camera polish: avoid oversized black letterbox on desktop. */
+@media (min-width:681px) {
+  .live-camera-panel{
+    width:min(94vw,780px);
+    height:auto;
+    max-height:min(92dvh,800px);
+  }
+  .live-camera-stage{
+    flex:0 1 auto;
+    aspect-ratio:16/9;
+    min-height:220px;
+    max-height:min(49dvh,480px);
+    background:#091321;
+  }
+  .live-camera-stage video,.live-camera-stage img{
+    display:block;
+    width:100%;height:100%;
+    object-fit:contain;
+  }
+  .live-camera-controls{
+    max-height:min(37dvh,285px);
+    padding:12px 20px 18px;
+  }
+}
+.live-camera-preview-badge{
+  position:absolute;left:14px;top:12px;
+  padding:7px 10px;background:rgba(9,19,33,.85);
+  border:1px solid rgba(255,255,255,.22);
+  border-radius:9px;color:#fff;font-weight:650;font-size:12px;
+}
+.live-camera-action-row button{min-width:0;white-space:normal}
+.live-camera-action-row .live-camera-shutter{
+  display:inline-flex;align-items:center;justify-content:center;
+  gap:8px;min-width:95px;box-shadow:0 0 0 3px rgba(147,197,253,.25);
+}
+@media(max-width:680px){
+  .live-camera-stage{flex:1 1 auto;min-height:170px;max-height:none}
+  .live-camera-controls{max-height:min(47dvh,410px)}
+  .live-camera-toolbar{flex:0 0 auto}
+  .live-camera-action-row{gap:8px}
+  .live-camera-action-row button{font-size:13px;padding:8px 10px;flex:1 1 104px}
+  .live-camera-action-row .live-camera-shutter{
+    flex:0 0 78px;min-width:78px;width:78px;height:78px;border-radius:50%;
+  }
+}
+@media(max-height:620px) and (orientation:landscape){
+  .live-camera-stage{min-height:0;max-height:none}
+  .live-camera-panel{height:100dvh;max-height:100dvh}
+  .live-camera-controls{max-height:100dvh}
+}

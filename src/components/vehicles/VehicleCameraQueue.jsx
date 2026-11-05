@@ -20,7 +20,7 @@ function QueuedPhoto({ item, onRemove, disabled }) {
   );
 }
 
-export function VehicleCameraQueue({ photos = [], onChange, disabled = false, uploading = 0 }) {
+export function VehicleCameraQueue({ photos = [], onChange, disabled = false, uploading = 0, uploadTotal = 0 }) {
   const [category, setCategory] = useState('additional');
   const [phase, setPhase] = useState('before');
   const [caption, setCaption] = useState('');
@@ -93,7 +93,7 @@ export function VehicleCameraQueue({ photos = [], onChange, disabled = false, up
           {photos.map((item) => <QueuedPhoto key={item.id} item={item} onRemove={remove} disabled={disabled} />)}
         </div>
       ) : <p className="vehicle-camera-empty">No photos captured yet. Photos are optional.</p>}
-      {uploading > 0 && <p role="status">Saving photo {uploading} of {photos.length}…</p>}
+      {uploading > 0 && <p role="status">Saving photo {uploading} of {uploadTotal || photos.length}…</p>}
     </section>
   );
 }
