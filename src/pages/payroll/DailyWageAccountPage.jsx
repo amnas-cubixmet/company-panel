@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CalendarCheck2, CheckCircle2, ClipboardList, History, Pencil, Plus, Wallet, WalletCards } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
-import { useAuth } from '../../hooks/useAuth';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { dailyWageService } from '../../services/dailyWage.service';
 import { DailyWageNav, rupees, todayISO } from './DailyWagePage';
