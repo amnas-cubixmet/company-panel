@@ -1,6 +1,6 @@
 import { appConfirm } from '../../components/common/appDialogs';
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Clock3, FileText, Gauge, History, PackageSearch, Plus, ReceiptText, ShieldCheck, Star, UserRound, Wrench, ChevronRight, Download, Share2, LockKeyhole } from "lucide-react";
+import { CheckCircle2, Clock3, FileText, Gauge, History, PackageSearch, Plus, ReceiptText, ShieldCheck, Star, UserRound, Wrench, ChevronRight, Download, Share2, LockKeyhole, SkipForward } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { jobService } from '../../services/job.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
@@ -369,6 +369,7 @@ export function JobCardWorkspace() {
   // persisted completion; visual checks below cover auxiliary sections only.
   const coreStages = workflow?.stages || GUIDED_STAGES;
   const coreCompleted = workflow?.completed || [];
+  const inspectionWasSkipped = workflow?.inspectionStatus === 'Skipped' || job?.inspection?.status === 'Skipped';
   const sectionComplete = {
     overview: coreCompleted.includes('overview'),
     inspection: coreCompleted.includes('inspection'),
@@ -968,6 +969,7 @@ export function JobCardWorkspace() {
         <nav ref={workflowTabsRef} className="job-detail-tabs job-workflow-tabs" aria-label="Main Job Card stages">
           {visibleTabs.map(([key, label], index) => {
             const complete = Boolean(sectionComplete[key]);
+            const skipped = key === 'inspection' && inspectionWasSkipped;
             const locked = isSectionLocked(key);
             const isActive = activeTab === key || (key === 'work' && activeExtraTab && activeTab !== 'activity' && !locked);
             return (
@@ -977,13 +979,16 @@ export function JobCardWorkspace() {
                 onClick={() => openTab(key)}
                 disabled={locked}
                 aria-current={isActive ? 'step' : undefined}
-                className={['job-workflow-tab', isActive ? 'is-active' : '', complete ? 'is-complete' : '', locked ? 'is-locked' : ''].join(' ')}
-                title={locked ? label + ' – complete the previous stage first' : label}
+                className={['job-workflow-tab', isActive ? 'is-active' : '', skipped ? 'is-skipped' : complete ? 'is-complete' : '', locked ? 'is-locked' : ''].join(' ')}
+                title={locked ? label + ' – complete the previous stage first' : skipped ? 'Inspection skipped (not completed)' : label}
               >
                 <span className="job-workflow-tab-number" aria-hidden="true">{index + 1}</span>
                 <span className="job-workflow-tab-label">{label}</span>
+                {skipped && <span className="job-workflow-tab-skipped">Skipped</span>}
                 {locked ? (
                   <LockKeyhole size={13} className="job-workflow-tab-lock" aria-label="Locked" />
+                ) : skipped && !isActive ? (
+                  <SkipForward size={14} className="job-workflow-tab-check" aria-label="Skipped" />
                 ) : complete && !isActive ? (
                   <CheckCircle2 size={14} className="job-workflow-tab-check" aria-label="Completed" />
                 ) : null}
@@ -1328,14 +1333,16 @@ export function JobCardWorkspace() {
         <div className="job-inspection-camera-stack">
           <JobInspectionPanel
           job={job}
+          canEdit={can('jobs.edit') && !activeTabLocked}
           canCorrect={currentStage === 'estimate' && !activeTabLocked}
           startEditing={new URLSearchParams(location.search).get('edit') === '1'}
           onDoneEditing={() => navigate('/jobs/' + job.id + '/estimate')}
           onChanged={async (operation) => {
             try {
-              await refreshJobWorkflow(operation === 'complete' ? 'inspection' : null);
+              await refreshJobWorkflow(['complete', 'skip'].includes(operation) ? 'inspection' : null);
             } catch (e) {
               setError(e?.message || 'Could not refresh job details.');
+              throw e;
             }
           }}
           />
