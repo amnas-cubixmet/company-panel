@@ -51,6 +51,9 @@ export const CustomerList = () => {
 
   // Add / Edit Customer Modal State
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+  const [formBusy, setFormBusy] = useState(false);
+  const [duplicateChecking, setDuplicateChecking] = useState(false);
+  const [formError, setFormError] = useState('');
   const [editingCustomerId, setEditingCustomerId] = useState(null);
 
   // Form Fields
@@ -198,11 +201,13 @@ export const CustomerList = () => {
 
   const openAddModal = () => {
     setEditingCustomerId(null);
+    setFormError('');
     resetForm();
     setIsAddCustomerOpen(true);
   };
 
   const openEditModal = (c) => {
+    setFormError('');
     setEditingCustomerId(c.id);
     setName(c.name || '');
     setPhone(c.phone || '');
@@ -238,6 +243,8 @@ export const CustomerList = () => {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    if (formBusy || duplicateChecking) return;
+    setFormError('');
 
     const payload = {
       name,
@@ -257,11 +264,19 @@ export const CustomerList = () => {
 
     // If creating a new customer, perform duplicate check first
     if (!editingCustomerId) {
-      const match = await customerService.checkDuplicateCustomer(payload);
-      if (match) {
-        setDuplicateFound(match);
-        setIsDuplicateModalOpen(true);
+      setDuplicateChecking(true);
+      try {
+        const match = await customerService.checkDuplicateCustomer(payload);
+        if (match) {
+          setDuplicateFound(match);
+          setIsDuplicateModalOpen(true);
+          return;
+        }
+      } catch (error) {
+        setFormError(error?.message || 'Could not check existing customers. Please retry.');
         return;
+      } finally {
+        setDuplicateChecking(false);
       }
     }
 
@@ -269,17 +284,26 @@ export const CustomerList = () => {
   };
 
   const saveCustomer = async (payload) => {
-    if (editingCustomerId) {
-      await customerService.updateCustomer(editingCustomerId, payload);
-      showToast('Customer information updated.');
-    } else {
-      await customerService.createCustomer(payload);
-      showToast('New customer created successfully.');
+    if (formBusy) return;
+    setFormBusy(true);
+    setFormError('');
+    try {
+      if (editingCustomerId) {
+        await customerService.updateCustomer(editingCustomerId, payload);
+        showToast('Customer information updated.');
+      } else {
+        await customerService.createCustomer(payload);
+        showToast('New customer created successfully.');
+      }
+      setIsAddCustomerOpen(false);
+      setIsDuplicateModalOpen(false);
+      resetForm();
+      await fetchCustomers();
+    } catch (error) {
+      setFormError(error?.message || 'Unable to save customer. Review the form and retry.');
+    } finally {
+      setFormBusy(false);
     }
-    setIsAddCustomerOpen(false);
-    setIsDuplicateModalOpen(false);
-    resetForm();
-    fetchCustomers();
   };
 
   const handleArchive = async (id) => {
@@ -510,6 +534,7 @@ export const CustomerList = () => {
         maxWidth="540px"
       >
         <form className="customer-directory-form" onSubmit={handleFormSubmit}>
+          {formError && <p className="customer-directory-error" role="alert">{formError}</p>}
           
           <Input
             label="Customer Name"
@@ -622,8 +647,9 @@ export const CustomerList = () => {
             <button
               type="submit"
               className="customer-directory-form-submit"
+              disabled={formBusy || duplicateChecking}
             >
-              {editingCustomerId ? "Save Changes" : "Create Customer"}
+              {formBusy ? "Saving…" : duplicateChecking ? "Checking…" : editingCustomerId ? "Save Changes" : "Create Customer"}
             </button>
           </div>
         </form>
@@ -637,6 +663,7 @@ export const CustomerList = () => {
         maxWidth="460px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {formError && <p className="customer-directory-error" role="alert">{formError}</p>}
           <div style={{ backgroundColor: 'var(--warning-soft)', padding: '12px', borderRadius: '10px', border: '1px solid var(--warning-soft)', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <AlertTriangle size={20} style={{ color: 'var(--warning)', flexShrink: 0 }} />
             <span style={{ fontSize: '12.5px', color: 'var(--text-primary)' }}>
@@ -665,13 +692,14 @@ export const CustomerList = () => {
             </button>
             <button
               type="button"
+              disabled={formBusy}
               onClick={() => {
                 const payload = { name, phone, whatsapp: whatsapp || phone, email, address, city, state, pincode, customerType: backendCustomerType(customerType), companyName, gstNo, ...(branch ? { branch } : {}), notes };
                 saveCustomer(payload);
               }}
               style={{ flex: 1, height: '44px', borderRadius: '11px', border: 'none', backgroundColor: 'var(--primary)', color: '#ffffff', fontWeight: '700' }}
             >
-              Continue Anyway
+              {formBusy ? 'Saving…' : 'Continue Anyway'}
             </button>
           </div>
         </div>
