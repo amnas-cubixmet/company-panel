@@ -65,8 +65,10 @@ export const MonthlyAttendanceCalendar = () => {
   );
   const blocks = [days.slice(0, 15), days.slice(15)];
 
+  const isFutureMonth = (nextYear, nextMonth) => nextYear > now.getFullYear() || (nextYear === now.getFullYear() && nextMonth > now.getMonth() + 1);
   const changeMonth = (offset) => {
     const next = new Date(year, month - 1 + offset, 1);
+    if (isFutureMonth(next.getFullYear(), next.getMonth() + 1)) return;
     setMonth(next.getMonth() + 1);
     setYear(next.getFullYear());
   };
@@ -75,7 +77,7 @@ export const MonthlyAttendanceCalendar = () => {
     <div className="attendance-manager-module attendance-manager-calendar">
       <section className="am-calendar-header am-calendar-header-v2">
         <div>
-          <h2>Monthly Attendance Calendar</h2>
+          <h2>Attendance Calendar</h2>
         </div>
 
         <div className="am-calendar-month-controls">
@@ -85,20 +87,20 @@ export const MonthlyAttendanceCalendar = () => {
 
           <label>
             <CalendarDays size={13} />
-            <select aria-label="Select month" value={month} onChange={(event) => setMonth(Number(event.target.value))}>
+            <select aria-label="Select month" value={month} onChange={(event) => { const next = Number(event.target.value); if (!isFutureMonth(year, next)) setMonth(next); }}>
               {monthNames.map((name, index) => (
-                <option key={name} value={index + 1}>{name}</option>
+                <option key={name} value={index + 1} disabled={isFutureMonth(year, index + 1)}>{name}</option>
               ))}
             </select>
           </label>
 
-          <select aria-label="Select year" value={year} onChange={(event) => setYear(Number(event.target.value))}>
-            {Array.from({ length: 7 }, (_, index) => now.getFullYear() - 4 + index).map((item) => (
+          <select aria-label="Select year" value={year} onChange={(event) => { const next = Number(event.target.value); if (!isFutureMonth(next, month)) setYear(next); else { setYear(next); setMonth(Math.min(month, now.getMonth() + 1)); } }}>
+            {Array.from({ length: 5 }, (_, index) => now.getFullYear() - 4 + index).map((item) => (
               <option key={item} value={item}>{item}</option>
             ))}
           </select>
 
-          <button type="button" onClick={() => changeMonth(1)} aria-label="Next month">
+          <button type="button" onClick={() => changeMonth(1)} aria-label="Next month" disabled={isFutureMonth(year, month + 1)}>
             <ChevronRight size={14} />
           </button>
         </div>
