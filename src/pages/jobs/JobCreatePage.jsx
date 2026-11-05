@@ -647,7 +647,7 @@ export const JobCreatePage = () => {
           </div>
           <VehicleCameraQueue photos={pendingPhotos}
             onChange={(updater) => { setPendingPhotos(updater); if (!savedJobId) setReview(false); }}
-            disabled={saving} uploading={uploadProgress} uploadTotal={uploadTotal} uploadingPhotoId={uploadingPhotoId}/>
+            disabled={saving} uploading={uploadProgress} uploadingPhotoId={uploadingPhotoId} uploadTotal={uploadTotal}/>
         </section>
 
         {review && <div id="job-card-review" className="job-create-review-wrap">
