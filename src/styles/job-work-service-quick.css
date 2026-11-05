@@ -4,7 +4,7 @@
 .cg-job-detail .job-service-quick header>div{display:flex;align-items:center;gap:9px;font-size:16px}
 .cg-job-detail .job-service-quick header span{color:var(--text-secondary);font-size:12px}
 .cg-job-detail .job-service-quick-filters,.cg-job-detail .job-service-quick-entry,.cg-job-detail .job-service-quick-create{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;min-width:0}
-.cg-job-detail .job-service-quick label{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:650;min-width:0;color:var(--text-secondary)}
+.cg-job-detail .job-service-quick label{display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:650;min-width:0;color:var(--text-secondary)}
 .cg-job-detail .job-service-quick input,.cg-job-detail .job-service-quick select{width:100%;min-width:0;min-height:46px;padding:10px 11px;border:1px solid var(--border);border-radius:10px;font-size:16px;font-family:inherit;background:var(--surface);color:var(--text-primary)}
 .cg-job-detail .job-service-quick select{padding-right:24px}
 .cg-job-detail .job-service-quick-search{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding-left:10px}
