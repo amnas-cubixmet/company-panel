@@ -14,7 +14,6 @@ export const AttendanceQuickActions = ({ onNavigate }) => (
     <header className="am-dashboard-panel-title">
       <div>
         <h2>Quick Actions</h2>
-        <p>Common attendance management tools.</p>
       </div>
       <Settings size={15} />
     </header>
