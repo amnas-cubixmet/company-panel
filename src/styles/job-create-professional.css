@@ -1,0 +1,79 @@
+/* Job Card Create — refinements scoped to the existing page and design tokens. */
+.job-create-page .job-create-header>div{display:flex;align-items:flex-start;flex-wrap:wrap;justify-content:space-between;gap:12px}
+.job-create-page .job-create-header>div>h1,.job-create-page .job-create-header>div>p,.job-create-page .job-create-steps{flex-basis:100%}
+.job-create-page .job-create-steps .is-current{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
+.job-create-page .job-create-mode-switch{display:flex;gap:4px;padding:4px;background:var(--surface-2);border:1px solid var(--border);border-radius:11px}
+.job-create-page .job-create-mode-switch button{min-height:40px;padding:7px 14px;border:0;border-radius:8px;font-size:14px;font-weight:700;color:var(--text-primary);background:transparent}
+.job-create-page .job-create-mode-switch button.is-active{background:var(--primary);color:#fff}
+.job-create-page .job-create-fields-grid :is(input,select,textarea){font-size:16px!important}
+.job-create-page .job-create-fields-grid>label{font-size:13px!important}
+.job-create-page .job-create-phone{display:grid;align-content:start;gap:6px;min-width:0}
+.job-create-page .job-create-phone .ui-input-shell{min-width:0;min-height:44px;border:1px solid var(--border);background:var(--surface-2);border-radius:9px;display:flex;overflow:hidden;align-items:center}
+.job-create-page .job-create-phone .ui-phone__country{height:44px;min-height:44px;width:min(39%,150px);max-width:150px;flex:0 0 auto;padding:7px;border:0!important;border-right:1px solid var(--border)!important;border-radius:0!important;background:transparent!important;color:var(--text-primary);font-size:15px}
+.job-create-page .job-create-phone input{flex:1;min-width:0;width:100%;height:44px;min-height:44px;padding:8px 12px;border:0!important;background:transparent!important;font-size:16px!important;box-shadow:none!important;outline:none!important}
+.job-create-page .job-create-phone .ui-input-shell:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.job-create-page .job-create-phone .ui-input-shell input:focus{border:0!important;outline:0!important;box-shadow:none!important}
+.job-create-page .job-create-vehicle-advanced{margin-top:14px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)}
+.job-create-page .job-create-vehicle-advanced summary{cursor:pointer;font-size:14px;font-weight:700;color:var(--text-primary)}
+.job-create-page .job-create-vehicle-advanced label{display:grid;gap:7px;margin-top:12px;font-size:13px;color:var(--text-secondary)}
+.job-create-page .job-create-vehicle-advanced input{min-height:44px;padding:10px;border:1px solid var(--border);border-radius:9px;font-size:16px}
+.job-create-page .job-create-vehicle-update{display:flex;gap:9px;align-items:center;margin-top:13px;color:var(--text-secondary);font-size:14px;line-height:1.5}
+.job-create-page .job-create-vehicle-update input{flex:0 0 20px;width:20px;height:20px;accent-color:var(--primary)}
+.job-create-page .job-complaint-editor{display:grid;gap:12px;margin-top:16px}
+.job-create-page .job-complaint-header{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.job-create-page .job-complaint-header h3{margin:0;font-size:16px;font-weight:750;color:var(--text-primary)}
+.job-create-page .job-complaint-header p,.job-create-page .job-create-empty{margin:4px 0 0;color:var(--text-secondary);font-size:13px;line-height:1.5}
+.job-create-page .job-complaint-add,.job-create-page .job-complaint-row-head button{display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:8px 13px;border:1px solid var(--border);border-radius:10px;background:var(--surface);color:var(--text-primary);font-size:14px;font-weight:700}
+.job-create-page .job-complaint-add{background:var(--primary-soft);color:var(--primary);border-color:var(--primary)}
+.job-create-page .job-complaint-row{display:grid;gap:12px;padding:14px;border:1px solid var(--border);border-radius:11px;background:var(--surface);min-width:0}
+.job-create-page .job-complaint-row-head{display:flex;justify-content:space-between;gap:9px;align-items:center}
+.job-create-page .job-complaint-row-head strong{font-size:15px;font-weight:750}
+.job-create-page .job-complaint-row-head button{min-height:40px;font-size:13px}
+.job-create-page .job-complaint-row>label,.job-create-page .job-complaint-options>label{display:grid;gap:7px;min-width:0;font-size:13px;font-weight:650;color:var(--text-secondary)}
+.job-create-page .job-complaint-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.job-create-page .job-complaint-row :is(input,select,textarea){min-width:0;width:100%;min-height:44px;border:1px solid var(--border);border-radius:9px;padding:10px 12px;background:var(--surface-2);color:var(--text-primary);font-size:16px}
+.job-create-page .job-complaint-row textarea{min-height:80px;resize:vertical}
+.job-create-page .job-create-field-error{font-size:13px;color:#b91c1c;font-weight:650}
+.job-create-page .job-complaint-row [aria-invalid="true"]{border-color:#dc2626}
+.job-create-page .job-create-advanced-notice{margin:14px 0 0;padding:12px;border-radius:10px;background:var(--surface-2);color:var(--text-secondary);font-size:14px;line-height:1.55}
+.job-create-page .job-create-review-wrap{scroll-margin-block:125px}
+.job-create-page .job-create-review-label{display:flex;gap:10px;align-items:center;font-size:16px;font-weight:750;color:var(--text-primary);margin:8px 0 12px}
+.job-create-page .job-create-review-slip{display:grid;gap:15px;padding:20px;border:1px solid var(--border);border-radius:13px;background:var(--surface);color:var(--text-primary);min-width:0}
+.job-create-page .job-create-review-header{display:flex;align-items:start;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.job-create-page .job-create-review-header strong{font-size:22px;font-weight:800}
+.job-create-page .job-create-review-header p{margin:4px 0 0;color:var(--text-secondary);font-size:14px}
+.job-create-page .job-create-review-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px;margin:0}
+.job-create-page .job-create-review-details>div{display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.job-create-page .job-create-review-details dt{font-size:13px;color:var(--text-secondary);flex:0 1 45%}
+.job-create-page .job-create-review-details dd{font-size:14px;color:var(--text-primary);font-weight:650;margin:0;text-align:right;overflow-wrap:anywhere;flex:1}
+.job-create-page .job-create-review-complaints h3{font-size:16px;font-weight:750}
+.job-create-page .job-create-review-complaints ol{padding-left:20px;display:grid;gap:10px}
+.job-create-page .job-create-review-complaints li{font-size:14px}
+.job-create-page .job-create-review-complaints li span,.job-create-page .job-create-review-complaints li small{display:block;color:var(--text-secondary);font-size:12px}
+.job-create-page .job-create-review-photo-count{font-size:13px;color:var(--text-secondary)}
+.job-create-page .job-create-print-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;max-width:280px;padding:9px 16px;background:var(--primary);color:#fff;border-radius:10px;font-size:14px;font-weight:750}
+.job-create-page .job-create-success-banner{display:flex;align-items:center;gap:10px;background:var(--primary-soft);color:var(--primary);padding:14px 16px;border-radius:11px;font-weight:750}
+.job-create-page .vehicle-photo-add-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.job-create-page .vehicle-gallery-upload-label{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 16px;border-radius:11px;border:1px solid var(--border);color:var(--text-primary);background:var(--surface-2);font-size:14px;font-weight:750;cursor:pointer}
+.job-create-page .vehicle-gallery-upload-label input{position:absolute;opacity:0;width:1px;height:1px}
+.job-create-page .vehicle-gallery-upload-label:focus-within{outline:2px solid var(--primary)}
+.job-create-page .vehicle-gallery-upload-metadata{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.job-create-page .vehicle-gallery-upload-metadata label{display:grid;gap:5px;color:var(--text-secondary);font-size:13px;font-weight:650}
+.job-create-page .vehicle-gallery-upload-metadata :is(input,select){min-width:0;min-height:44px;padding:9px 11px;border:1px solid var(--border);border-radius:9px;color:var(--text-primary);background:var(--surface-2);font-size:16px}
+.job-create-page .vehicle-camera-counter{font-size:13px;font-weight:700;color:var(--text-primary)}
+@media(max-width:700px){
+ .job-create-page .job-create-review-details,.job-create-page .job-complaint-options,.job-create-page .vehicle-gallery-upload-metadata{grid-template-columns:1fr}
+ .job-create-page .job-create-review-slip{padding:14px}
+ .job-create-page .job-create-steps{flex-wrap:wrap}
+ .job-create-page .job-complaint-row{padding:12px}
+ .job-create-page .vehicle-photo-add-actions>*{flex:1 1 150px}
+ .job-create-page .job-create-review-header strong{font-size:19px}
+}
+@media print{
+ @page{size:A4;margin:13mm}
+ body *{visibility:hidden!important}
+ .job-create-page .job-create-review-slip,.job-create-page .job-create-review-slip *{visibility:visible!important}
+ .job-create-page .job-create-review-slip{position:absolute;top:0;left:0;width:100%;background:#fff!important;box-shadow:none!important;border:0!important;color:#000!important;padding:0!important}
+ .job-create-page .job-create-review-slip button{display:none!important}
+ .job-create-page .job-create-review-details>div{border-color:#bbb!important}
+}
