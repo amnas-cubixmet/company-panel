@@ -194,6 +194,11 @@ export const AppRoutes = () => (
       <Route path="/jobs/:id/history" element={<JobDetails />} />
       <Route path="/jobs/:id/*" element={<JobDetails />} />
 
+      <Route path="/suppliers" element={<SuppliersPage />} />
+      <Route path="/suppliers/credits" element={<SupplierWorkspace />} />
+      <Route path="/suppliers/purchases" element={<SupplierWorkspace />} />
+      <Route path="/suppliers/payments" element={<SupplierWorkspace />} />
+      <Route path="/suppliers/:id" element={<SuppliersPage />} />
       <Route path="/stock" element={<StockEasyPage />} />
       <Route path="/stock/suppliers" element={<SupplierFinancePage />} />
       <Route path="/stock/*" element={<Navigate to="/stock" replace />} />
