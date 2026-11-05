@@ -26,7 +26,7 @@ test('active Account pages use shared navigation with semantic active tab', () =
 test('account UI stylesheet loads after legacy billing styling without changing global field rules', () => {
   const imported = [...app.matchAll(/import ['"]\.\/styles\/([^'"]+\.css)['"];/g)].map((match) => match[1]);
   assert.ok(imported.indexOf('account-workspace-unified.css') > imported.indexOf('billing-ui-unified.css'));
-  assert.deepEqual(imported.slice(-4), ['form-typography.css', 'form-controls-unified.css', 'form-errors-unified.css', 'desktop-typography.css']);
+  assert.deepEqual(imported.slice(-5), ['form-typography.css', 'form-controls-unified.css', 'form-errors-unified.css', 'desktop-typography.css', 'floating-fields.css']);
   for (const scope of ['.saas-page.account-billing-page', '.document-templates-page', '.account-security-page']) {
     assert.ok(css.includes(scope), scope);
   }

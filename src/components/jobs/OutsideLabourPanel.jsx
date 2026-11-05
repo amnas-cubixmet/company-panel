@@ -246,7 +246,7 @@ export const OutsideLabourPanel = ({
           <span className="outside-labour-title-icon" aria-hidden="true"><HardHat size={19}/></span>
           <div>
             <h2>{jobId ? 'Outside Labour' : 'Freelance Work Overview'}</h2>
-            <p>Manual worker charges, outstanding payments and work history.</p>
+            
           </div>
         </div>
         {!hideToolbar && (
@@ -305,7 +305,7 @@ export const OutsideLabourPanel = ({
             <span className="outside-labour-form-icon" aria-hidden="true"><Plus size={17}/></span>
             <div>
               <h3>{compactJobMode ? 'Add Outside Staff' : 'Add Outside Labour'}</h3>
-              <p>{compactJobMode ? 'Enter outside worker details and agreed charges.' : 'Enter the worker, vehicle job and manually agreed charges.'}</p>
+              
             </div>
           </div>
           <div className="outside-labour-form-grid">
@@ -416,7 +416,7 @@ export const OutsideLabourPanel = ({
         </div>
       </div>
       {loading ? <p className="outside-labour-empty">Loading outside labour…</p>
-        : !visibleRows.length ? <p className="outside-labour-empty">{rows.length ? 'No records match the selected status.' : 'No outside labour records yet. Add a worker and manual charge above.'}</p>
+        : !visibleRows.length ? <p className="outside-labour-empty">{rows.length ? 'No records match the selected status.' : 'No outside staff added.'}</p>
         : <div className="outside-labour-list">
           <div className="outside-labour-list-columns" aria-hidden="true"><span>Worker / Job</span><span>Labour Charges</span><span>Status & Actions</span></div>
           {visibleRows.map((row) => (

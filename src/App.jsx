@@ -53,6 +53,8 @@ import './styles/form-controls-unified.css';
 import './styles/form-errors-unified.css';
 // Final regular-weight typography and responsive hierarchy over legacy page styles.
 import './styles/desktop-typography.css';
+// Shared accessible outlined floating labels for standard form controls.
+import './styles/floating-fields.css';
 
 export function App() {
   return (

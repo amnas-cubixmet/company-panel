@@ -10,8 +10,9 @@ const search = read('../src/components/jobs/OutsideLabourPanel.jsx');
 test('final global styles load after legacy modules and typography', () => {
   const imported = [...app.matchAll(/import ['"]\.\/styles\/([^'"]+\.css)['"];/g)]
     .map((match) => match[1]);
-  assert.deepEqual(imported.slice(-4), [
-    'form-typography.css', 'form-controls-unified.css', 'form-errors-unified.css', 'desktop-typography.css'
+  assert.deepEqual(imported.slice(-5), [
+    'form-typography.css', 'form-controls-unified.css', 'form-errors-unified.css',
+    'desktop-typography.css', 'floating-fields.css'
   ]);
 });
 

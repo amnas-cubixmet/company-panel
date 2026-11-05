@@ -99,7 +99,7 @@ export const AddVehicle = () => {
     <div className="vehicle-form-page cg-vehicles">
     <FormPage
       title="Add Vehicle"
-      description="Register a new customer vehicle for workshop service and job card creation."
+      
     >
       {error && <div role="alert" className="vehicle-dashboard-error">{error} {savedVehicleId && 'The vehicle was saved; retry to upload remaining photos.'}</div>}
       {toastMsg && (
@@ -114,7 +114,7 @@ export const AddVehicle = () => {
         {/* CUSTOMER SELECTION */}
         <FormSection
           title="Select Customer Owner"
-          description="Link this vehicle to an existing workshop customer."
+          
         >
           <div className="form-grid-full">
             <SearchableSelect
@@ -131,7 +131,7 @@ export const AddVehicle = () => {
         {/* VEHICLE INFORMATION */}
         <FormSection
           title="Vehicle Specifications"
-          description="Core registration, engine, and technical details."
+          
         >
           <div className="form-grid-full">
             <Input
@@ -231,7 +231,7 @@ export const AddVehicle = () => {
         {/* SERVICE & INSURANCE DATES */}
         <FormSection
           title="Service & Insurance History"
-          description="Maintenance tracking and policy expiry dates."
+          
         >
           <Input
             label="Last Service Date"

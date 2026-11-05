@@ -11,9 +11,9 @@ const select = readFileSync(new URL('../src/components/ui/Select.jsx', import.me
 test('global typography CSS is imported after legacy page styles', () => {
   const importedStyles = [...app.matchAll(/import ['"]\.\/styles\/([^'"]+\.css)['"];/g)]
     .map((match) => match[1]);
-  assert.deepEqual(importedStyles.slice(-4), [
+  assert.deepEqual(importedStyles.slice(-5), [
     'form-typography.css', 'form-controls-unified.css', 'form-errors-unified.css',
-    'desktop-typography.css'
+    'desktop-typography.css', 'floating-fields.css'
   ]);
 });
 
@@ -42,8 +42,8 @@ test('input and textarea placeholders and custom dropdowns are regular', () => {
 });
 
 test('shared Input/Select components do not introduce font-medium', () => {
-  assert.match(input, /text-\[13px\] font-normal text-content/);
-  assert.match(select, /text-\[13px\] font-normal text-content/);
+  assert.match(input, /cg-floating-control[^\n]*font-normal text-content/);
+  assert.match(select, /cg-floating-control[^\n]*font-normal text-content/);
 });
 
 test('screen typography uses a readable hierarchy without forced 16px metadata', () => {

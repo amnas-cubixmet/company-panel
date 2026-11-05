@@ -12,8 +12,8 @@ const jobCreate = read('../src/pages/jobs/JobCreatePage.jsx');
 test('red inline errors remain in the validation layer before desktop text-only styling', () => {
   const imports = [...app.matchAll(/import ['"]\.\/styles\/([^'"]+\.css)['"];/g)]
     .map((match) => match[1]);
-  assert.deepEqual(imports.slice(-4), [
-    'form-typography.css', 'form-controls-unified.css', 'form-errors-unified.css', 'desktop-typography.css'
+  assert.deepEqual(imports.slice(-5), [
+    'form-typography.css', 'form-controls-unified.css', 'form-errors-unified.css', 'desktop-typography.css', 'floating-fields.css'
   ]);
 });
 
@@ -44,7 +44,7 @@ test('shared input components render error under its own control and regular tex
     const source = read(`../src/components/ui/${name}.jsx`);
     assert.match(source, /aria-invalid=\{Boolean\(error\)\}/, name);
     assert.match(source, /aria-describedby=\{message \?/, name);
-    assert.ok(source.includes('id={`${inputId}-message`}'), name);
+    assert.ok(source.includes("id={inputId + '-message'}"), name);
   }
   assert.match(read('../src/components/ui/Select.jsx'), /data-cg-input-shell/);
   assert.match(read('../src/components/ui/Textarea.jsx'), /font-normal leading-5/);
