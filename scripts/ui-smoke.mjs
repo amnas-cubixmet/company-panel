@@ -325,10 +325,13 @@ try {
             const float=await name.evaluate(field=>{
               const shell=field.closest('[data-cg-input-shell]');
               const label=shell.querySelector('.cg-floating-label');
-              return {labelBottom:label.getBoundingClientRect().bottom,
-                shellTop:shell.getBoundingClientRect().top};
+              const labelRect=label.getBoundingClientRect();
+              const shellTop=shell.getBoundingClientRect().top;
+              return {labelCenter:(labelRect.top+labelRect.bottom)/2,
+                labelTop:labelRect.top,shellTop};
             });
-            if(float.labelBottom>float.shellTop+4) {
+            // A floating label straddles its input border and is centered on it.
+            if(Math.abs(float.labelCenter-float.shellTop)>3 || float.labelTop>=float.shellTop) {
               throw Error('Filled Customer Name label does not float: '+JSON.stringify(float));
             }
           }
