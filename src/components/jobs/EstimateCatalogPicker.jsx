@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Plus, Search } from 'lucide-react';
 import { serviceService } from '../../services/service.service';
 import { stockService } from '../../services/stock.service';
@@ -15,14 +15,21 @@ const priceOf = (row, kind) => Number(
     : row.price ?? row.defaultPrice ?? 0
 );
 
-export function EstimateCatalogPicker({ kind, value, disabled, onChange, onSelect, onAddNew, invalid = false }) {
+export function EstimateCatalogPicker({ kind, value, disabled, onChange, onSelect, onAddNew, invalid = false, autoFocus = false }) {
   const id = useId();
+  const inputRef = useRef(null);
   const [opened, setOpened] = useState(false);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
   const [active, setActive] = useState(-1);
   const isPart = kind === 'part';
+
+  useEffect(() => {
+    if (!autoFocus || disabled) return;
+    inputRef.current?.focus();
+    setOpened(true);
+  }, [autoFocus, disabled]);
 
   useEffect(() => {
     if (!opened || disabled) return;
@@ -102,6 +109,7 @@ export function EstimateCatalogPicker({ kind, value, disabled, onChange, onSelec
       <div className="job-quick-catalog-field">
         <Search size={15} aria-hidden="true" />
         <input
+          ref={inputRef}
           type="text"
           role="combobox"
           aria-invalid={invalid}

@@ -511,6 +511,30 @@ export function JobCardWorkspace() {
     }
   };
 
+  const skipEstimate = async ({ reason, details }) => {
+    if (!workflow || saving || currentStage !== 'estimate') {
+      throw new Error('Only an authorized user can skip the active Estimate stage.');
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const result = await jobService.skipJobEstimate(job.id, { reason, details });
+      if (result.job) setJob(result.job);
+      setWorkflow(result);
+      if (result.current && result.current !== 'estimate') {
+        navigate('/jobs/' + job.id + '/' + result.current, { replace: true });
+      }
+    } catch (error) {
+      const data = error?.response?.data;
+      const message = data?.estimate || data?.reason || data?.details ||
+        data?.detail || error?.message || 'Unable to skip estimate.';
+      setError(Array.isArray(message) ? message.join(' ') : message);
+      throw error;
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const continueAfterApproval = () => {
     if (!pdfOffer) return;
     const next = pdfOffer.nextStage;
@@ -1542,6 +1566,7 @@ export function JobCardWorkspace() {
           canEdit={currentStage === 'estimate' && !activeTabLocked}
           onSaved={() => refreshJobWorkflow()}
           onApprove={() => completeStage('estimate')}
+          onSkip={skipEstimate}
           onReject={(estimateId) => setEstimateApproval(estimateId, 'Rejected')}
           onDownloadApproved={(approvedEstimate) => openApprovedPdfShare(job, approvedEstimate)}
           onEditInspection={() => navigate('/jobs/' + job.id + '/inspection?edit=1')}

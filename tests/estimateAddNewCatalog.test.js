@@ -54,10 +54,11 @@ test('new catalogue selections preserve backend IDs and quote type', () => {
 });
 
 test('Work & Labour and Spare Parts have Search & Select and Add New', () => {
-  assert.match(panel, /openCatalogCreate\('service'\)/);
-  assert.match(panel, /openCatalogCreate\('part'\)/);
-  assert.match(panel, /Add New Work/);
-  assert.match(panel, /Add New Part/);
+  assert.match(panel, /onClick=\{\(\) => addLine\('Labour'\)\}/);
+  assert.match(panel, /onClick=\{\(\) => addLine\('Part'\)\}/);
+  assert.doesNotMatch(panel, /is-catalog-add/);
+  assert.match(picker, /Add New Work/);
+  assert.match(picker, /Add New Spare Part/);
   assert.match(panel, /<EstimateCatalogPicker/);
   assert.match(panel, /onAddNew=\{\(name\) => openCatalogCreate/);
   assert.match(picker, /job-quick-catalog-add-new/);

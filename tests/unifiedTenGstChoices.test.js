@@ -19,7 +19,8 @@ test('every GST editor offers ten identical independently labeled rates', () => 
   for (const mode of ['unknown', 'cgst_sgst', 'igst', 'none']) {
     assert.deepEqual(invoiceLineTaxChoices(mode).map(row => row.label), expected);
   }
-  assert.deepEqual(estimateGstOptions().map(row => row.label), expected);
+  assert.equal(estimateGstOptions()[0].value, 'none');
+  assert.deepEqual(estimateGstOptions().slice(1).map(row => row.label), expected);
   const invoice = read('src/pages/invoices/InvoiceRoutePage.jsx');
   const eway = read('src/pages/invoices/EWayBillPage.jsx');
   const job = read('src/components/jobs/QuickEstimatePanel.jsx');

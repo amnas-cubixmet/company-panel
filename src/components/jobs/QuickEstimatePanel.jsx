@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, ChevronDown, ClipboardList, Download, Package, Pencil, Plus, ReceiptText, Trash2, Wrench } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ClipboardList, Download, Package, Pencil, Plus, ReceiptText, Trash2, Wrench, SkipForward } from 'lucide-react';
 import { jobService } from '../../services/job.service';
 import { serviceService } from '../../services/service.service';
 import { stockCatalogService } from '../../services/stockCatalog.service';
@@ -9,7 +9,8 @@ import { buildEstimateCatalogSelection } from './estimateNewCatalog';
 import { estimateLineErrors, estimateFormValidation } from './quickEstimateValidation';
 import { latestApprovedEstimate } from '../../utils/approvedEstimatePdf';
 import { INDIA_STATES, calculateEstimateIndiaGst } from '../../utils/indiaGst';
-import { estimateGstOptions } from './estimateGstRates';
+import { estimateGstOptions, ESTIMATE_ZERO_TAX_TREATMENTS } from './estimateGstRates';
+import { ResponsiveModalSheet } from '../common/ResponsiveModalSheet';
 import { invoiceTaxMode, invoiceChoiceFromTotalRate } from '../../utils/invoiceTaxUi';
 
 const emptyLine = (type = 'Labour') => ({
@@ -32,6 +33,8 @@ const parseItems = (estimate) => (estimate?.items || [])
     catalogCode: row.catalogCode || '',
     taxRate: String(row.taxRate ?? (row.type === 'Part' ? '' : '18')),
     taxChoice: row.taxChoice || '',
+    taxTreatment: row.taxTreatment || '',
+    taxTreatmentConfirmed: row.taxTreatmentConfirmed === true,
     hsnSac: row.hsnSac || ''
   }));
 const inspectSuggestions = (findings) => findings.flatMap((item) => {
@@ -51,7 +54,7 @@ const inspectSuggestions = (findings) => findings.flatMap((item) => {
 });
 
 export function QuickEstimatePanel({
-  job, estimates = [], findings = [], canEdit, onSaved, onApprove,
+  job, estimates = [], findings = [], canEdit, onSaved, onApprove, onSkip,
   onReject, onEditInspection, onGoToWork, onDownloadApproved
 }) {
   const latest = estimates.at(-1) || null;
@@ -73,6 +76,12 @@ export function QuickEstimatePanel({
   const [catalogRequest, setCatalogRequest] = useState(null);
   const [catalogSaving, setCatalogSaving] = useState(false);
   const [catalogError, setCatalogError] = useState('');
+  const [focusNewLine, setFocusNewLine] = useState(null);
+  const [showSkipModal, setShowSkipModal] = useState(false);
+  const [skipReason, setSkipReason] = useState('Estimate Not Required');
+  const [skipDetails, setSkipDetails] = useState('');
+  const [skipError, setSkipError] = useState('');
+  const [skipBusy, setSkipBusy] = useState(false);
   const formRef = useRef(null);
   const revisedAt = job?.inspection?.revisedAt;
   const stale = !!(latest?.created_at && revisedAt &&
@@ -96,7 +105,7 @@ export function QuickEstimatePanel({
   }), [lines, discount, registered, supplierState, placeOfSupply]);
 
   const legalizeLineGst = (line, mode) => {
-    if (!line.taxChoice || !['cgst_sgst', 'igst'].includes(mode)) return line;
+    if (!line.taxChoice || line.taxChoice === 'none' || !['cgst_sgst', 'igst'].includes(mode)) return line;
     const options = estimateGstOptions('', mode, job?.gstInfo?.gstRateOptions);
     const picked = options.find(option => option.value === line.taxChoice);
     if (!picked || picked.taxMode === mode) return line;
@@ -117,8 +126,14 @@ export function QuickEstimatePanel({
     // The tax jurisdiction follows the legal supply state. When a previously
     // chosen label cannot be translated without changing its rate, ask for a
     // new classification instead of showing a technical tax-mode conflict.
-    if (registered && lines.some(line => !legalizeLineGst(line, taxMode).taxRate)) {
+    if (registered && lines.some(line => legalizeLineGst(line, taxMode).taxRate === '')) {
       return 'Select a GST rate for each item based on the Place of Supply.';
+    }
+    if (registered && lines.some(line => String(line.taxRate) === '0' && (
+      line.taxChoice !== 'none' || !line.taxTreatment ||
+      !line.taxTreatmentConfirmed || !String(line.hsnSac || '').trim()
+    ))) {
+      return 'No GST requires a specific tax treatment, HSN/SAC and confirmation for each eligible item.';
     }
     if (registered && lines.some((line) => !String(line.taxRate ?? '').trim() ||
       Number(line.taxRate) < 0 || Number(line.taxRate) > 100 ||
@@ -144,7 +159,9 @@ export function QuickEstimatePanel({
       .find(option => option.value === selected);
     setLines(current => current.map(line => line.key === key
       ? legalizeLineGst({ ...line, taxChoice: choice?.value || '',
-          taxRate: choice?.totalRate || '' }, taxMode)
+          taxRate: choice?.totalRate ?? '',
+          taxTreatment: selected === 'none' ? '' : 'taxable',
+          taxTreatmentConfirmed: false }, taxMode)
       : line));
     setChanged(true);
     setFeedback('');
@@ -203,9 +220,10 @@ export function QuickEstimatePanel({
         }
         const draftId = latest?.status === 'Draft' && !stale ? latest.id : null;
         await jobService.saveQuickJobEstimate(job.id, {
-          lines: preparedLines.map(({ description, type, quantity, unitPrice, catalogId, taxRate, taxChoice, hsnSac }) => ({
+          lines: preparedLines.map(({ description, type, quantity, unitPrice, catalogId, taxRate, taxChoice, taxTreatment, taxTreatmentConfirmed, hsnSac }) => ({
             description: description.trim(), type, quantity, unitPrice,
             taxRate: taxRate || '0', taxChoice: taxChoice || '', hsnSac: hsnSac || '',
+            ...(taxChoice === 'none' ? { taxTreatment, taxTreatmentConfirmed } : {}),
             ...(catalogId ? { catalogId } : {}),
           })),
           taxPercent: '0', discount,
@@ -222,11 +240,30 @@ export function QuickEstimatePanel({
       setBusy(false);
     }
   };
+  const confirmSkip = async (event) => {
+    event.preventDefault();
+    if (!canEdit || busy || skipBusy || !onSkip) return;
+    if (skipReason === 'Other' && skipDetails.trim().length < 5) {
+      setSkipError('Enter a reason of at least 5 characters.');
+      return;
+    }
+    setSkipBusy(true);
+    setSkipError('');
+    try {
+      await onSkip({ reason: skipReason, details: skipDetails.trim() });
+      setShowSkipModal(false);
+    } catch (error) {
+      setSkipError(error?.response?.data?.detail || error?.response?.data?.reason?.[0] ||
+        error?.message || 'Unable to skip this estimate.');
+    } finally {
+      setSkipBusy(false);
+    }
+  };
+
   const addLine = (type, catalogItem = null) => {
-    setLines((current) => current.length >= 75 ? current : [
-      ...current,
-      { ...emptyLine(type), ...(catalogItem || {}) }
-    ]);
+    const row = { ...emptyLine(type), ...(catalogItem || {}) };
+    setLines((current) => current.length >= 75 ? current : [row, ...current]);
+    setFocusNewLine(catalogItem ? null : row.key);
     setChanged(true);
     setFeedback('');
   };
@@ -312,6 +349,7 @@ export function QuickEstimatePanel({
             <span>{part ? 'Part name' : 'Work description'}</span>
             <EstimateCatalogPicker
               kind={part ? 'part' : 'service'}
+              autoFocus={focusNewLine === line.key}
               value={line.description}
               invalid={Boolean(errors.description)}
               disabled={!canEdit || busy}
@@ -366,7 +404,7 @@ export function QuickEstimatePanel({
               <select
                 className="job-quick-gst-select"
                 aria-label={`GST Rate (%) for ${part ? 'spare part' : 'work item'} ${index + 1}`}
-                value={invoiceChoiceFromTotalRate(line.taxRate, taxMode, line.taxChoice, job?.gstInfo?.gstRateOptions)}
+                value={line.taxChoice === 'none' ? 'none' : invoiceChoiceFromTotalRate(line.taxRate, taxMode, line.taxChoice, job?.gstInfo?.gstRateOptions)}
                 disabled={!canEdit || busy}
                 onChange={(event) => chooseGst(line.key, event.target.value)}
               >
@@ -376,6 +414,23 @@ export function QuickEstimatePanel({
                 ))}
               </select>
             </label>
+            {line.taxChoice === 'none' && <div className="job-quick-zero-tax-fields">
+              <label>Zero-GST classification
+                <select value={line.taxTreatment || ''} disabled={!canEdit || busy}
+                  aria-label={'No GST classification for item ' + (index + 1)}
+                  onChange={(event) => edit(line.key, 'taxTreatment', event.target.value)}>
+                  <option value="">Select legal supply classification</option>
+                  {ESTIMATE_ZERO_TAX_TREATMENTS.map((choice) =>
+                    <option key={choice.value} value={choice.value}>{choice.label}</option>)}
+                </select>
+              </label>
+              <label className="job-quick-zero-confirm">
+                <input type="checkbox" checked={Boolean(line.taxTreatmentConfirmed)}
+                  disabled={!canEdit || busy || !line.taxTreatment}
+                  onChange={(event) => edit(line.key, 'taxTreatmentConfirmed', event.target.checked)}/>
+                I confirm the selected classification applies to this HSN/SAC. No automatic exemption is assumed.
+              </label>
+            </div>}
           </>}
         </div>
         <div className="job-quick-line-total">
@@ -388,10 +443,9 @@ export function QuickEstimatePanel({
   const addInspection = () => {
     const suggestions = inspectSuggestions(findings);
     if (!suggestions.length) return;
-    setLines((current) => {
-      const filled = current.filter((line) => line.description.trim());
-      return [...filled, ...suggestions.slice(0, Math.max(0, 75 - filled.length))];
-    });
+    setLines((current) => [
+      ...suggestions.slice(0, Math.max(0, 75 - current.length)), ...current
+    ]);
     setChanged(true);
     setFeedback('');
   };
@@ -434,10 +488,6 @@ export function QuickEstimatePanel({
                 <button type="button" className="job-quick-add-button" disabled={busy || lines.length >= 75} onClick={() => addLine('Labour')}>
                   <Plus size={15} aria-hidden="true"/> Add Work
                 </button>
-                <button type="button" className="job-quick-add-button is-catalog-add" disabled={busy || lines.length >= 75}
-                  onClick={() => openCatalogCreate('service')}>
-                  <Plus size={15} aria-hidden="true"/> Add New Work
-                </button>
               </div>}
             </div>
             <div className="job-quick-items">
@@ -456,10 +506,6 @@ export function QuickEstimatePanel({
               {canEdit && <div className="job-quick-group-actions">
                 <button type="button" className="job-quick-add-button" disabled={busy || lines.length >= 75} onClick={() => addLine('Part')}>
                   <Plus size={15} aria-hidden="true"/> Add Part
-                </button>
-                <button type="button" className="job-quick-add-button is-catalog-add" disabled={busy || lines.length >= 75}
-                  onClick={() => openCatalogCreate('part')}>
-                  <Plus size={15} aria-hidden="true"/> Add New Part
                 </button>
               </div>}
             </div>
@@ -514,11 +560,17 @@ export function QuickEstimatePanel({
           {canEdit ? (
             <div className="job-quick-actions">
               {showValidation && validation && <p className="job-quick-invalid" role="alert">{validation}</p>}
+              <div className="job-quick-footer-actions">
+                <button type="button" className="job-quick-skip"
+                  disabled={busy || skipBusy} onClick={() => { setSkipError(''); setShowSkipModal(true); }}>
+                  <SkipForward size={16} aria-hidden="true"/> Skip Estimate
+                </button>
               <button type="button" className="job-quick-approve"
-                disabled={busy} onClick={approve}>
+                disabled={busy || skipBusy} onClick={approve}>
                 <CheckCircle2 size={16} aria-hidden="true"/>
                 {busy ? 'Please wait…' : 'Approve & Continue'}
               </button>
+              </div>
             </div>
           ) : (
             <div className="job-quick-actions">
@@ -533,6 +585,37 @@ export function QuickEstimatePanel({
           )}
         </section>
       </div>
+
+      <ResponsiveModalSheet
+        isOpen={showSkipModal}
+        onClose={() => { if (!skipBusy) setShowSkipModal(false); }}
+        title="Skip Estimate" maxWidth="480px">
+        <form className="job-estimate-skip-form" onSubmit={confirmSkip}>
+          <p>Skipping is not an estimate approval. Existing draft estimates remain in history.
+            The reason and authorized user will be recorded in the Job Card audit trail.</p>
+          <label>Reason *
+            <select value={skipReason} disabled={skipBusy} required
+              onChange={(event) => { setSkipReason(event.target.value); setSkipError(''); }}>
+              {['Estimate Not Required', 'Quick Service', 'Customer Declined Estimate', 'Other'].map((reason) =>
+                <option key={reason} value={reason}>{reason}</option>)}
+            </select>
+          </label>
+          <label>{skipReason === 'Other' ? 'Explain why (required)' : 'Additional notes (optional)'}
+            <textarea value={skipDetails} disabled={skipBusy} maxLength={500} rows={3}
+              required={skipReason === 'Other'} minLength={skipReason === 'Other' ? 5 : undefined}
+              onChange={(event) => setSkipDetails(event.target.value)}
+              placeholder="Reason recorded in the audit trail"/>
+          </label>
+          {skipError && <p className="job-estimate-skip-error" role="alert">{skipError}</p>}
+          <div className="job-estimate-skip-actions">
+            <button type="button" disabled={skipBusy} onClick={() => setShowSkipModal(false)}>Cancel</button>
+            <button type="submit" className="job-estimate-skip-confirm"
+              disabled={skipBusy || (skipReason === 'Other' && skipDetails.trim().length < 5)}>
+              <SkipForward size={16} aria-hidden="true"/>{skipBusy ? 'Skipping…' : 'Confirm Skip & Continue'}
+            </button>
+          </div>
+        </form>
+      </ResponsiveModalSheet>
 
       <EstimateAddCatalogModal
         request={catalogRequest}
