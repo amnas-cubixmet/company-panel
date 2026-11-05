@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, CameraOff, Check, RefreshCw, SwitchCamera, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import '../../styles/live-vehicle-camera.css';
 
 export const VEHICLE_PHOTO_CATEGORIES = [
@@ -11,6 +12,8 @@ export const VEHICLE_PHOTO_CATEGORIES = [
 
 export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
   const videoRef = useRef(null);
+  const dialogRef = useRef(null);
+  const closeButtonRef = useRef(null);
   const streamRef = useRef(null);
   // Generation counter invalidates late getUserMedia() promises after close/switch.
   const cameraGeneration = useRef(0);
@@ -53,9 +56,46 @@ export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
 
   useEffect(() => {
     if (!open) return undefined;
-    const onKey = (event) => { if (event.key === 'Escape') close(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+
+    // The dialog is portaled to body so it cannot be clipped by Job Card panels.
+    // Inert the application beneath it while preserving the existing camera state.
+    const previouslyFocused = document.activeElement;
+    const appRoot = document.getElementById('root');
+    const wasInert = appRoot?.inert;
+    const previousOverflow = document.body.style.overflow;
+    if (appRoot) appRoot.inert = true;
+    document.body.style.overflow = 'hidden';
+    closeButtonRef.current?.focus();
+
+    const onKey = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        close();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = Array.from(dialogRef.current?.querySelectorAll(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+      ) || []).filter((element) => element.getClientRects().length > 0);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !dialogRef.current?.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialogRef.current?.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      if (appRoot) appRoot.inert = wasInert;
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus?.();
+    };
   }, [open, close]);
 
   useEffect(() => () => {
@@ -177,12 +217,12 @@ export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
       <button type="button" className="live-camera-trigger" onClick={openCamera} disabled={disabled}>
         <Camera size={17} aria-hidden="true" /> Open Live Camera
       </button>
-      {open && (
+      {open && createPortal(
         <div className="live-camera-overlay" role="dialog" aria-modal="true" aria-label="Vehicle live camera">
-          <div className="live-camera-panel">
+          <div className="live-camera-panel" ref={dialogRef}>
           <div className="live-camera-toolbar">
             <strong>Vehicle Camera <span className="live-camera-count">{count} captured</span></strong>
-            <button type="button" onClick={close} aria-label="Close camera"><X size={22}/></button>
+            <button type="button" ref={closeButtonRef} onClick={close} aria-label="Close camera"><X size={22}/></button>
           </div>
           <div className="live-camera-stage">
             <video ref={videoRef} autoPlay playsInline muted hidden={Boolean(preview)} />
@@ -225,7 +265,7 @@ export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
             </div>
           </div>
           </div>
-        </div>
+        </div>, document.body
       )}
     </>
   );

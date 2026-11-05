@@ -1,105 +1,338 @@
-.live-camera-trigger{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:44px;padding:10px 16px;border:1px solid var(--primary);border-radius:11px;background:var(--primary);color:#fff;font-size:15px;font-weight:700;cursor:pointer}
-.live-camera-trigger:disabled{opacity:.5;cursor:not-allowed}
-.live-camera-overlay{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;background:#07101c;color:#f8fafc;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-.live-camera-toolbar{display:flex;align-items:center;justify-content:space-between;padding:12px 17px;min-height:56px;gap:12px}
-.live-camera-toolbar strong{font-size:18px;font-weight:750}
-.live-camera-toolbar button{width:44px;height:44px;border:1px solid #ffffff33;border-radius:10px;color:#fff;display:grid;place-items:center}
-.live-camera-stage{position:relative;flex:1 1 auto;min-height:120px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#000}
-.live-camera-stage video,.live-camera-stage img{width:100%;height:100%;max-height:100%;object-fit:contain}
-.live-camera-stage video[hidden]{display:none}
-.live-camera-status,.live-camera-error{position:absolute;left:14px;right:14px;bottom:14px;padding:10px 12px;border-radius:10px;background:#192537;color:#fff;font-size:14px;line-height:1.5}
-.live-camera-error{background:#7f1d1d}
-.live-camera-controls{padding:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:720px;width:100%;margin:auto}
-.live-camera-controls label{display:grid;gap:6px;font-size:13px;font-weight:600;color:#dbeafe}
-.live-camera-controls select,.live-camera-controls input{min-width:0;min-height:44px;padding:9px 11px;background:#182537;color:#fff;border:1px solid #506276;border-radius:10px;font-size:16px}
-.live-camera-caption,.live-camera-action-row{grid-column:1/-1}
-.live-camera-action-row{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
-.live-camera-action-row button{display:inline-flex;justify-content:center;align-items:center;gap:8px;min-height:48px;padding:10px 16px;border:1px solid #64748b;border-radius:12px;color:#fff;font-weight:700}
-.live-camera-action-row button.is-primary,.live-camera-action-row button:nth-child(2){background:#2563eb;border-color:#2563eb}
-.live-camera-action-row button:disabled{opacity:.45}
-@media(max-width:500px){.live-camera-controls{padding:10px;gap:8px}.live-camera-controls label{font-size:12px}.live-camera-action-row button{flex:1}}
-@media(prefers-reduced-motion:reduce){.live-camera-overlay *{scroll-behavior:auto;transition:none}}
+/* Live Vehicle Camera: use the application's existing data-theme and design tokens.
+   Kept intentionally scoped so Job Card, gallery and other modals remain untouched. */
+.live-camera-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--primary);
+  border-radius: 11px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.live-camera-trigger:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); }
+.live-camera-trigger:focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; }
+.live-camera-trigger:disabled { opacity: .55; cursor: not-allowed; }
 
-/* Responsive centered camera dialog on desktop; full view on small devices. */
-.live-camera-overlay{
-  align-items:center;justify-content:center;
-  background:rgba(3,9,18,.8);
-  padding:14px max(14px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));
+.live-camera-overlay {
+  --camera-surface: var(--surface, #fff);
+  --camera-section: var(--surface-2, #f8fafc);
+  --camera-field: var(--field-bg, #fff);
+  --camera-border: var(--border-strong, #cbd5e1);
+  --camera-text: var(--text-primary, #0f172a);
+  --camera-muted: var(--text-secondary, #475569);
+  --camera-placeholder: var(--text-muted, #64748b);
+  --camera-primary: var(--primary-hover, #2563eb);
+  --camera-focus: var(--primary, #2563eb);
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: max(14px, env(safe-area-inset-top))
+           max(14px, env(safe-area-inset-right))
+           max(14px, env(safe-area-inset-bottom))
+           max(14px, env(safe-area-inset-left));
+  background: rgba(2, 6, 23, .74);
+  color: var(--camera-text);
+  overscroll-behavior: contain;
 }
-.live-camera-panel{display:flex;flex-direction:column;overflow:hidden;
-  width:min(100%,900px);height:min(90dvh,790px);max-height:calc(100dvh - 28px);
-  background:#101c2b;border:1px solid #ffffff26;border-radius:18px;
-  box-shadow:0 20px 90px #0008;min-height:0}
-.live-camera-count{font-size:12px;font-weight:500;margin-left:7px;color:#cbd5e1}
-.live-camera-stage{flex:1 1 auto;min-height:100px;max-width:100%;aspect-ratio:auto}
-.live-camera-stage video,.live-camera-stage img{object-fit:contain;max-width:100%}
-.live-camera-controls{flex:0 0 auto;max-height:43dvh;overflow-y:auto;padding:12px 18px 16px;gap:10px}
-.live-camera-action-row .live-camera-shutter{border-radius:99px;width:92px;min-height:52px;background:#2563eb;border-color:#93c5fd}
-.live-camera-toolbar button{background:transparent}
-.live-camera-controls select:focus-visible,.live-camera-controls input:focus-visible,
-.live-camera-action-row button:focus-visible{outline:2px solid #93c5fd;outline-offset:2px}
-@media(max-width:680px){
-  .live-camera-overlay{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-  .live-camera-panel{width:100%;height:100dvh;max-height:100dvh;border:0;border-radius:0}
-  .live-camera-toolbar{padding:8px 14px}
-  .live-camera-controls{max-height:49dvh;padding:10px 12px calc(12px + env(safe-area-inset-bottom));grid-template-columns:repeat(2,minmax(0,1fr))}
-  .live-camera-action-row .live-camera-shutter{width:80px;height:68px;flex:0 0 80px;border-radius:50%;font-size:12px;flex-direction:column;gap:3px}
-}
-@media(max-height:620px) and (orientation:landscape){
-  .live-camera-panel{height:100dvh;max-height:100dvh;flex-direction:row}
-  .live-camera-toolbar{position:absolute;top:env(safe-area-inset-top);left:env(safe-area-inset-left);right:env(safe-area-inset-right);z-index:2}
-  .live-camera-stage{flex:1 1 55%;height:100%;min-width:0}
-  .live-camera-controls{flex:0 0 min(43%,340px);height:100%;max-height:100dvh;overflow-y:auto;padding-top:58px;grid-template-columns:1fr}
-  .live-camera-caption,.live-camera-action-row{grid-column:auto}
+:root[data-theme='dark'] .live-camera-overlay {
+  --camera-surface: #0b1220;
+  --camera-section: #111c2c;
+  --camera-field: #1e293b;
+  --camera-border: #475569;
 }
 
-/* Job Card mobile camera polish: avoid oversized black letterbox on desktop. */
-@media (min-width:681px) {
-  .live-camera-panel{
-    width:min(94vw,780px);
-    height:auto;
-    max-height:min(92dvh,800px);
+.live-camera-panel {
+  display: flex;
+  flex-direction: column;
+  width:min(94vw,780px);
+  max-width: 100%;
+  height: auto;
+  max-height: min(92dvh, 800px);
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--camera-border);
+  border-radius: 18px;
+  background: var(--camera-surface);
+  color: var(--camera-text);
+  color-scheme: inherit;
+  box-shadow: 0 22px 90px rgba(0, 0, 0, .35);
+}
+.live-camera-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 60px;
+  padding: 9px 18px;
+  border-bottom: 1px solid var(--camera-border);
+  background: var(--camera-section);
+  color: var(--camera-text);
+}
+.live-camera-toolbar strong {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+.live-camera-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--camera-muted);
+}
+.live-camera-toolbar button {
+  display: grid;
+  flex: 0 0 44px;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  border: 1px solid var(--camera-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--camera-text);
+  cursor: pointer;
+}
+.live-camera-toolbar button:hover { background: var(--camera-field); }
+.live-camera-toolbar button:focus-visible { outline: 3px solid var(--camera-focus); outline-offset: 2px; }
+
+.live-camera-stage {
+  position: relative;
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 170px;
+  aspect-ratio:16/9;
+  height: auto;
+  max-height: min(45dvh, 440px);
+  overflow: hidden;
+  background: #091321; /* Camera viewport, not the form/theme surface. */
+}
+.live-camera-stage video,
+.live-camera-stage img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.live-camera-stage video[hidden] { display: none; }
+.live-camera-stage > svg { color: #cbd5e1; }
+.live-camera-status,
+.live-camera-error {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  left: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, .93);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.live-camera-error { background: #991b1b; }
+.live-camera-preview-badge {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 9px;
+  background: rgba(9, 19, 33, .86);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.live-camera-controls {
+  display: grid;
+  flex: 0 1 auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  max-height: min(43dvh, 340px);
+  margin: 0;
+  padding: 16px 20px 18px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--camera-section);
+  color: var(--camera-text);
+}
+.live-camera-controls label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--camera-muted);
+}
+.live-camera-controls :is(select, input) {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid var(--camera-border);
+  border-radius: 10px;
+  background-color: var(--camera-field);
+  color: var(--camera-text);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.3;
+  color-scheme: inherit;
+  box-shadow: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.live-camera-controls select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 38px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px;
+  cursor: pointer;
+}
+.live-camera-controls select option {
+  background-color: var(--camera-field);
+  color: var(--camera-text);
+}
+.live-camera-controls input::placeholder { color: var(--camera-placeholder); opacity: 1; }
+.live-camera-controls :is(select, input):hover:not(:disabled) { border-color: var(--camera-focus); }
+.live-camera-controls :is(select, input):focus-visible {
+  outline: 2px solid var(--camera-focus);
+  outline-offset: 2px;
+  border-color: var(--camera-focus);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+.live-camera-controls :is(select, input):disabled {
+  background: var(--field-disabled-bg);
+  color: var(--camera-muted);
+  opacity: .65;
+  cursor: not-allowed;
+}
+.live-camera-caption,
+.live-camera-action-row { grid-column: 1 / -1; }
+
+.live-camera-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 4px;
+}
+.live-camera-action-row button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 10px 16px;
+  border: 1px solid var(--camera-border);
+  border-radius: 12px;
+  background: var(--camera-field);
+  color: var(--camera-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+  cursor: pointer;
+}
+.live-camera-action-row button:hover:not(:disabled) {
+  border-color: var(--camera-focus);
+  background: var(--camera-surface);
+}
+.live-camera-action-row button:focus-visible {
+  outline: 3px solid var(--camera-focus);
+  outline-offset: 2px;
+}
+.live-camera-action-row button:disabled { opacity: .5; cursor: not-allowed; }
+.live-camera-action-row button:is(.is-primary, .live-camera-shutter) {
+  border-color: var(--camera-primary);
+  background: var(--camera-primary);
+  color: #fff;
+}
+.live-camera-action-row button:is(.is-primary, .live-camera-shutter):hover:not(:disabled) {
+  background: var(--camera-primary);
+  filter: brightness(.93);
+}
+.live-camera-action-row .live-camera-shutter {
+  min-width: 94px;
+  min-height: 52px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+@media (max-width: 680px) {
+  .live-camera-overlay { padding: 0; }
+  .live-camera-panel {
+    width: 100%;
+    height: 100vh; /* Older Safari fallback */
+    height: 100dvh;
+    max-height: 100dvh;
+    border: 0;
+    border-radius: 0;
   }
-  .live-camera-stage{
-    flex:0 1 auto;
-    aspect-ratio:16/9;
-    min-height:220px;
-    max-height:min(49dvh,480px);
-    background:#091321;
+  .live-camera-toolbar {
+    min-height: 56px;
+    padding: max(8px, env(safe-area-inset-top)) 14px 8px;
   }
-  .live-camera-stage video,.live-camera-stage img{
-    display:block;
-    width:100%;height:100%;
-    object-fit:contain;
+  .live-camera-stage {
+    flex: 1 1 auto;
+    aspect-ratio: auto;
+    min-height: 145px;
+    height: auto;
+    max-height: none;
   }
-  .live-camera-controls{
-    max-height:min(37dvh,285px);
-    padding:12px 20px 18px;
+  .live-camera-controls {
+    flex: 0 1 auto;
+    max-height: min(51dvh, 430px);
+    gap: 10px;
+    padding: 12px 12px max(16px, env(safe-area-inset-bottom));
+  }
+  .live-camera-action-row { gap: 8px; }
+  .live-camera-action-row button { flex: 1 1 104px; padding: 9px 10px; }
+  .live-camera-action-row .live-camera-shutter {
+    flex: 0 0 78px;
+    width: 78px;
+    min-width: 78px;
+    height: 70px;
+    border-radius: 35px;
   }
 }
-.live-camera-preview-badge{
-  position:absolute;left:14px;top:12px;
-  padding:7px 10px;background:rgba(9,19,33,.85);
-  border:1px solid rgba(255,255,255,.22);
-  border-radius:9px;color:#fff;font-weight:650;font-size:12px;
+@media (max-width: 420px) {
+  .live-camera-controls { grid-template-columns: minmax(0, 1fr); }
 }
-.live-camera-action-row button{min-width:0;white-space:normal}
-.live-camera-action-row .live-camera-shutter{
-  display:inline-flex;align-items:center;justify-content:center;
-  gap:8px;min-width:95px;box-shadow:0 0 0 3px rgba(147,197,253,.25);
+@media (max-height: 620px) and (orientation:landscape) {
+  .live-camera-toolbar { min-height: 48px; }
+  .live-camera-stage { flex: 1 1 auto; min-height: 90px; }
+  .live-camera-controls { max-height: 55dvh; }
 }
-@media(max-width:680px){
-  .live-camera-stage{flex:1 1 auto;min-height:170px;max-height:none}
-  .live-camera-controls{max-height:min(47dvh,410px)}
-  .live-camera-toolbar{flex:0 0 auto}
-  .live-camera-action-row{gap:8px}
-  .live-camera-action-row button{font-size:13px;padding:8px 10px;flex:1 1 104px}
-  .live-camera-action-row .live-camera-shutter{
-    flex:0 0 78px;min-width:78px;width:78px;height:78px;border-radius:50%;
-  }
-}
-@media(max-height:620px) and (orientation:landscape){
-  .live-camera-stage{min-height:0;max-height:none}
-  .live-camera-panel{height:100dvh;max-height:100dvh}
-  .live-camera-controls{max-height:100dvh}
+@media (prefers-reduced-motion: reduce) {
+  .live-camera-overlay * { transition: none; scroll-behavior: auto; }
 }

@@ -1,0 +1,32 @@
+name: Vehicle Camera Modal Validation
+
+on:
+  pull_request:
+    paths:
+      - 'src/components/vehicles/LiveVehicleCamera.jsx'
+      - 'src/styles/live-vehicle-camera.css'
+      - 'tests/vehicleCameraThemeModal.test.js'
+      - 'tests/jobCreateCameraPolish.test.js'
+      - '.github/workflows/vehicle-camera-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  camera-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Focused camera regression tests
+        run: node --test tests/vehicleCameraThemeModal.test.js tests/jobCreateCameraPolish.test.js tests/customerPortalCameraWhatsappIntegration.test.js
+      - name: Production Vite build
+        run: npm run build
+        env:
+          VITE_API_URL: https://api.example.invalid/api/v1
