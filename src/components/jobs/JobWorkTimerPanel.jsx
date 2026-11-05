@@ -125,7 +125,7 @@ export const JobWorkTimerPanel = ({ jobId, jobStatus, labourRecords = [], onChan
       <header className="job-work-timer-head">
         <div>
           <h3><Wrench size={17} aria-hidden="true" /> Mechanic</h3>
-          <p>Internal mechanics, assigned work and tracked hours for this Job Card.</p>
+          <p>Work timer and approved hours</p>
         </div>
         <div className="job-work-timer-summary">
           <strong>{hoursApproved.toFixed(2)}h</strong>
@@ -166,7 +166,7 @@ export const JobWorkTimerPanel = ({ jobId, jobStatus, labourRecords = [], onChan
       <p className="job-work-timer-hint">
         {jobStatus !== 'In Progress'
           ? 'Start and resume controls become available when Job Card status is In Progress.'
-          : 'One active timer per mechanic across all Job Cards. Pause current work before changing jobs.'}
+          : 'One active timer per mechanic.'}
       </p>
 
       <div className="job-work-timer-list">
