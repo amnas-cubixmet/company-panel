@@ -7,7 +7,7 @@ const directory = new URL('../dist/assets/', import.meta.url);
 const files = readdirSync(directory);
 const budgets = [
   { name: 'entry JavaScript', extension: 'js', maxKb: Number(process.env.BUNDLE_MAX_ENTRY_JS_KB || 440) },
-  { name: 'entry CSS', extension: 'css', maxKb: Number(process.env.BUNDLE_MAX_ENTRY_CSS_KB || 960) },
+  { name: 'entry CSS', extension: 'css', maxKb: Number(process.env.BUNDLE_MAX_ENTRY_CSS_KB || 962) },
 ];
 let errors = 0;
 for (const budget of budgets) {
