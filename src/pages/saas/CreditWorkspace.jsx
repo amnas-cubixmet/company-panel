@@ -351,6 +351,8 @@ export function CreditWorkspace({ section = 'overview' }) {
     {section === 'overview' && featureAccess.paidAccessRequired && featureAccess.modules.length === 0 &&
       <div className="cg-credit-low" role="status"><Zap size={20}/><div><strong>Welcome — activate your workshop modules</strong><span>Start by buying credits and selecting features. Only modules activated by the owner become available.</span></div><button type="button" onClick={openModulePricing} aria-controls="module-pricing">Choose Features </button></div>}
 
+    {section === 'overview' && <details className="cg-credit-expandable cg-credit-module-access">
+      <summary>Module access &amp; status</summary>
     {section === 'overview' && <section className="cg-credit-panel" aria-label="Free modules">
       <header><div><span>INCLUDED — NO CREDITS</span><h2>Free modules for your company</h2></div><ShieldCheck size={22}/></header>
       <p>Dashboard, Settings, Staff Management, Roles & Permissions and SaaS Account have no feature activation or credit charge. Login and role permissions still apply. Other modules require an active paid Feature Label.</p>
@@ -399,6 +401,7 @@ export function CreditWorkspace({ section = 'overview' }) {
       </div>
     </section>}
 
+    </details>}
     {section === 'overview' && <CreditCycleCard />}
     {section === 'overview' && <div className="cg-credit-columns">
       <section className="cg-credit-panel"><header><div><span>WALLET OVERVIEW</span><h2>Your credits at a glance</h2></div><Wallet size={22}/></header>
