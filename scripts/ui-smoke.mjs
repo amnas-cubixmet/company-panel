@@ -321,7 +321,9 @@ try {
             }));
             return {containerWidth:dashboard?.getBoundingClientRect().width,
               rows,overlaps,labelAbove:fields.every(x=>x.labelAbove),
-              fieldCount:fields.length,controls};
+              fieldCount:fields.length,controls,
+              positions:elements.map((node,i)=>({field:node.className,top:fields[i].top,height:fields[i].bottom-fields[i].top})),
+              columns:getComputedStyle(root).gridTemplateColumns};
           });
           if(metrics.fieldCount!==8 || metrics.overlaps || !metrics.labelAbove) {
             throw Error('Job Cards filter grid has missing or overlapping fields: '+JSON.stringify(metrics));
