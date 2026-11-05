@@ -12,6 +12,8 @@ export const VEHICLE_PHOTO_CATEGORIES = [
 export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  // Generation counter invalidates late getUserMedia() promises after close/switch.
+  const cameraGeneration = useRef(0);
   const previewRef = useRef('');
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
@@ -25,6 +27,7 @@ export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
   const [caption, setCaption] = useState('');
 
   const stopStream = useCallback(() => {
+    cameraGeneration.current += 1;
     const stream = streamRef.current;
     streamRef.current = null;
     stream?.getTracks().forEach((track) => track.stop());
@@ -64,6 +67,7 @@ export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
     setError('');
     setLoading(true);
     stopStream();
+    const generation = cameraGeneration.current;
     if (!navigator.mediaDevices?.getUserMedia || !window.isSecureContext) {
       setError('Live camera requires HTTPS (or localhost) and a supported browser.');
       setLoading(false);
@@ -74,6 +78,10 @@ export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
         audio: false,
         video: { facingMode: { ideal: nextFacing }, width: { ideal: 1920 }, height: { ideal: 1080 } },
       });
+      if (generation !== cameraGeneration.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -82,13 +90,14 @@ export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
       const devices = await navigator.mediaDevices.enumerateDevices?.();
       setCameras((devices || []).filter((d) => d.kind === 'videoinput'));
     } catch (cause) {
+      if (generation !== cameraGeneration.current) return;
       stopStream();
       const reason = cause?.name === 'NotAllowedError'
         ? 'Camera access denied. Enable camera permission in browser settings.'
         : 'Camera unavailable. Close other apps using the camera and try again.';
       setError(reason);
     } finally {
-      setLoading(false);
+      if (generation === cameraGeneration.current) setLoading(false);
     }
   };
 
@@ -126,7 +135,10 @@ export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
     canvas.height = Math.round(video.videoHeight * scale);
     canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
     canvas.toBlob((blob) => {
-      if (!blob) { setError('Photo capture failed. Retake it.'); return; }
+      if (!blob || !streamRef.current) {
+        if (!blob) setError('Photo capture failed. Retake it.');
+        return;
+      }
       const filename = `vehicle-${Date.now()}.jpg`;
       const photo = new File([blob], filename, { type: 'image/jpeg' });
       clearPreview();
@@ -140,6 +152,11 @@ export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
   const retake = () => {
     clearPreview();
     startCamera(facing);
+  };
+
+  const discard = () => {
+    clearPreview();
+    close();
   };
 
   const save = (captureAnother = false) => {
@@ -169,6 +186,7 @@ export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
           <div className="live-camera-stage">
             <video ref={videoRef} autoPlay playsInline muted hidden={Boolean(preview)} />
             {preview && <img src={preview} alt="Captured vehicle photo preview" />}
+            {preview && <span className="live-camera-preview-badge">Photo preview · not saved yet</span>}
             {loading && <div className="live-camera-status" role="status">Starting camera…</div>}
             {error && <div className="live-camera-error" role="alert">{error}</div>}
             {!file && !loading && !streamRef.current && (
@@ -199,6 +217,7 @@ export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
               </>}
               {file && <>
                 <button type="button" onClick={retake}><RefreshCw size={18}/> Retake</button>
+                <button type="button" onClick={discard} aria-label="Delete captured photo"><X size={18}/> Delete</button>
                 <button type="button" className="is-primary" onClick={() => save(false)}><Check size={18}/> Save Photo</button>
                 <button type="button" onClick={() => save(true)}><Camera size={18}/> Capture Another</button>
               </>}
