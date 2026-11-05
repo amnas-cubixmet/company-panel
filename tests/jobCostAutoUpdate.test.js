@@ -10,7 +10,7 @@ const css = read('../src/styles/job-workspace-dashboard.css');
 test('Total Cost has no manual refresh action', () => {
   assert.doesNotMatch(panel, /RefreshCw|setReload|setReload\(/);
   assert.doesNotMatch(panel, /Refresh job total costs|job-total-cost-refresh/);
-  assert.match(panel, /Updates automatically/);
+  assert.doesNotMatch(panel, /Updates automatically|job-total-cost-auto-note/);
 });
 
 test('Total Cost immediately loads on Job, stage or successful mutation changes', () => {
@@ -45,6 +45,6 @@ test('Total Cost keeps readable 4-column summary and auto-update styling', () =>
   assert.match(panel, /summary\?\.totalCost/);
   assert.match(panel, /summary\?\.outsideStaffCost/);
   assert.match(panel, /summary\?\.partsCost/);
-  assert.match(css, /\.job-total-cost-auto-note/);
+  assert.doesNotMatch(css, /\.job-total-cost-auto-note/);
   assert.doesNotMatch(css, /job-total-cost-refresh/);
 });
