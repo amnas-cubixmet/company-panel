@@ -66,14 +66,13 @@ test('stock global navigation supports real supplier details and persisted part 
   assert.match(stock, /Close Supplier Details/);
 });
 
-test('private customer portal branding is fetched via signed token and cannot show stale customer records', () => {
-  const portal = file('src/pages/customer-portal/CustomerPortalPage.jsx');
-  assert.match(portal, /PortalWorkshopLogo/);
-  assert.match(portal, /encodeURIComponent\(token\)\}\/logo/);
-  assert.match(portal, /data\?\.workshop\?\.name/);
-  assert.match(portal, /setData\(null\); \/\/ Do not render another customer's stale data/);
-  assert.match(portal, /data\?\.vehicles/);
-  assert.match(portal, /data\?\.jobs/);
+test('private customer portal was migrated out of the Company Panel safely', () => {
+  const routes = file('src/routes/AppRoutes.jsx');
+  const panel = file('src/components/customers/CustomerTrackingLinkPanel.jsx');
+  assert.equal(routes.includes('CustomerPortalPage'), false);
+  assert.equal(routes.includes('path="/c/:token"'), false);
+  assert.ok(panel.includes('/customer-portal/links/'));
+  assert.ok(panel.includes('Revoke Link'));
 });
 
 test('shared modal components lock scroll and implement accessible focus restoration', () => {
