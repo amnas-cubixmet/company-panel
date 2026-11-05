@@ -1,3 +1,17 @@
+export const staffInviteStatusLabel = (status) => ({
+  queued: 'Invitation Queued',
+  sending: 'Invitation Sending',
+  sent: 'Invitation Sent (Meta Accepted)',
+  delivered: 'Invitation Delivered',
+  read: 'Invitation Read',
+  failed: 'Invitation Failed',
+  manual: 'Pending Invitation / Manual Share',
+  pending: 'Invitation Pending',
+  consumed: 'Password Setup Completed',
+  superseded: 'Invitation Replaced',
+  not_requested: 'Not Invited',
+}[status] || 'Not Invited');
+
 /** Status describes the Django/provider handoff, never inbox receipt. */
 export const staffInviteDeliveryMessage = (status) => {
   switch (status) {
