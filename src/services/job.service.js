@@ -198,6 +198,30 @@ export const completeJobStage = async (id, stage, options = {}) => {
   return apiClient.post(`${API_ENDPOINTS.JOBS}/${id}/workflow`, { stage, ...options });
 };
 
+export const skipJobWork = async (id, reason) => {
+  const normalized = String(reason || '').trim();
+  if (normalized.length < 3 || normalized.length > 160) {
+    throw new Error('Enter a skip reason between 3 and 160 characters.');
+  }
+  if (USE_MOCK_API) {
+    const job = getMockJobById(id);
+    if (!job || job.status !== 'In Progress') throw new Error('Work stage is not active.');
+    if ((job.work || []).length || (job.workUpdates || []).length || (job.parts || []).length) {
+      throw new Error('Work has already been recorded. Finish Work instead.');
+    }
+    const updated = updateMockJob(id, {
+      status: 'QC',
+      workflow_progress: {
+        ...(job.workflow_progress || {}),
+        skipped: [...new Set([...(job.workflow_progress?.skipped || []), 'work'])],
+        skipDetails: { ...(job.workflow_progress?.skipDetails || {}), work: { reason: normalized } },
+      },
+    });
+    return { ...mockWorkflow(updated), skipped: ['work'], job: updated };
+  }
+  return apiClient.post(`${API_ENDPOINTS.JOBS}/${id}/work/skip`, { reason: normalized });
+};
+
 export const createJobEstimate = async (id, payload) => {
   if (USE_MOCK_API) throw new Error('Use existing mock estimate workflow in demo mode.');
   return apiClient.post(`${API_ENDPOINTS.JOBS}/${id}/estimates`, payload);
@@ -276,6 +300,7 @@ export const jobService = {
   getJobWorkflow,
   getJobActivity,
   completeJobStage,
+  skipJobWork,
   createJobEstimate,
   saveQuickJobEstimate,
   rejectJobEstimate,
