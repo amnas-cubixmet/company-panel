@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, CreditCard, Plus, RefreshCw, Wallet } from 'lucide-react';
 import { supplierFinanceService as finance } from '../../services/supplierFinance.service';
 import { SupplierSectionTabs } from '../../components/suppliers/SupplierSectionTabs';
@@ -18,6 +18,7 @@ const line = () => ({ itemId: '', description: '', quantity: '1', purchaseRate: 
 const paymentKey = () => globalThis.crypto?.randomUUID?.() || ('PAY-' + Date.now() + '-' + Math.random().toString(36).slice(2));
 
 export default function SupplierFinancePage({ section = '' }) {
+  const location = useLocation();
   const supplierSection = section === 'credits' || section === 'payments';
   const access = useFeatureAccess();
   const canPay = access.can('payments.create');
@@ -59,6 +60,26 @@ export default function SupplierFinancePage({ section = '' }) {
   const [purchaseIntent, setPurchaseIntent] = useState({
     mode: 'Credit', amount: '', accountId: '', method: 'Cash', reference: '',
   });
+  const prefillDone = useRef('');
+  const requestedStockItem = searchParams.get('item') || location.state?.purchasePrefill?.itemId;
+  useEffect(() => {
+    if (!requestedStockItem || prefillDone.current === String(requestedStockItem)) return;
+    const item = inventory.find(record => String(record.id) === String(requestedStockItem));
+    if (!item) return;
+    const incoming = location.state?.purchasePrefill || {};
+    prefillDone.current = String(requestedStockItem);
+    setDraft(previous => ({
+      ...previous, receiveIntoStock: true,
+      lines: [{
+        ...line(), itemId: String(item.id),
+        description: item.partName || item.name || '',
+        quantity: String(incoming.quantity || '1'),
+        purchaseRate: String(incoming.purchaseRate ?? item.costPrice ?? item.cost ?? '0'),
+        gstRate: String(item.tax ?? '0'),
+      }],
+    }));
+  }, [requestedStockItem, inventory, location.state]);
+
   const [paymentPopupBill, setPaymentPopupBill] = useState(null);
   const [paymentPopupError, setPaymentPopupError] = useState('');
   const [paymentDraft, setPaymentDraft] = useState({
