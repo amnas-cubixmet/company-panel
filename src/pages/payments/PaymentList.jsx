@@ -58,6 +58,7 @@ export function PaymentList() {
   const canViewPayments = can('payments.view');
 
   const [payments, setPayments] = useState([]);
+  const [supplierSummary, setSupplierSummary] = useState(null);
   const [invoices, setInvoices] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [query, setQuery] = useState('');
@@ -74,11 +75,15 @@ export function PaymentList() {
     setError('');
     try {
       // Reading payment history does not imply permission to read invoices.
+      const useUnified = canViewPayments && !USE_MOCK_API && !isNew && !isView;
       const [paymentRows, invoiceRows] = await Promise.all([
-        canViewPayments ? paymentService.list() : Promise.resolve([]),
+        !canViewPayments ? Promise.resolve([]) :
+          useUnified ? financeService.getPaymentActivity({ page_size: 1000 }) : paymentService.list(),
         isNew && canCreate && canViewInvoices ? billingService.list() : Promise.resolve([]),
       ]);
-      setPayments((Array.isArray(paymentRows) ? paymentRows : []).map(normalizePaymentRow));
+      const history = useUnified ? paymentRows?.results : paymentRows;
+      setPayments((Array.isArray(history) ? history : []).map(normalizePaymentRow));
+      setSupplierSummary(useUnified ? paymentRows : null);
       setInvoices(Array.isArray(invoiceRows) ? invoiceRows : invoiceRows?.results || []);
     } catch (e) {
       setError(friendlyError(e, 'Unable to load payments.'));
@@ -107,7 +112,7 @@ export function PaymentList() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return payments.filter((row) =>
-      (!q || [row.receiptNo, row.customer, row.invoice, row.method, row.reference, row.status]
+      (!q || [row.receiptNo, row.customer, row.invoice, row.method, row.reference, row.status, row.category, row.account]
         .some((value) => String(value || '').toLowerCase().includes(q))) &&
       (statusFilter === 'All' || row.status === statusFilter) &&
       (methodFilter === 'All' || row.method === methodFilter)
@@ -338,6 +343,35 @@ export function PaymentList() {
     <div className="payments-page payments-dashboard">
       <PaymentsHeader onRecordPayment={() => navigate('/payments/new')} />
       <PaymentOverviewStats payments={payments} formatMoney={(value) => money.format(value || 0)} />
+      {supplierSummary && can('stock.view') && (
+        <section className="payments-dashboard-records" aria-label="Supplier purchase accounting">
+          <header className="payments-dashboard-section-title">
+            <div>
+              <h2>Spare Parts Purchase & Supplier Credit</h2>
+              <p>Confirmed purchases create a supplier payable. Only money actually paid appears as an outgoing payment.</p>
+            </div>
+          </header>
+          <div className="payments-dashboard-stats">
+            <article className="payments-dashboard-stat-card"><div className="payments-dashboard-stat-top">
+              <div><span>Total Parts Purchased</span><strong>{money.format(Number(supplierSummary.supplierPurchases || 0))}</strong></div>
+            </div></article>
+            <article className="payments-dashboard-stat-card"><div className="payments-dashboard-stat-top">
+              <div><span>Supplier Payments Made</span><strong>{money.format(Number(supplierSummary.supplierPayments || 0))}</strong></div>
+            </div></article>
+            <article className="payments-dashboard-stat-card"><div className="payments-dashboard-stat-top">
+              <div><span>Supplier Credit Outstanding</span><strong>{money.format(Number(supplierSummary.supplierOutstanding || 0))}</strong></div>
+            </div></article>
+          </div>
+          <div className="payment-form-actions">
+            <button type="button" className="payments-secondary-btn" onClick={() => navigate('/stock/suppliers?tab=bill')}>
+              Record Spare Parts Purchase
+            </button>
+            <button type="button" className="payments-secondary-btn" onClick={() => navigate('/suppliers/credits')}>
+              View Supplier Credits
+            </button>
+          </div>
+        </section>
+      )}
       <PaymentFilterToolbar
         query={query} onQueryChange={setQuery}
         status={statusFilter} onStatusChange={setStatusFilter}
@@ -351,7 +385,7 @@ export function PaymentList() {
       {error && <div className="payments-error" role="alert">{error}</div>}
       <PaymentRecordsPanel payments={filtered} loading={loading}
         formatMoney={(value) => money.format(value || 0)}
-        onView={(row) => navigate(`/payments/${row.id}`)} />
+        onView={(row) => navigate(row.detailPath || `/payments/${row.id}`)} />
     </div>
   );
 }
