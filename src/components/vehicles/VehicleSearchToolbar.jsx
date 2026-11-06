@@ -3,7 +3,7 @@ import { Search, X } from 'lucide-react';
 
 export const VehicleSearchToolbar = ({ query, onQueryChange, resultCount }) => (
   <section className="vehicle-dashboard-toolbar">
-    <label className="vehicle-dashboard-search">
+    <div className="vehicle-dashboard-search" role="search">
       <Search size={17} aria-hidden="true" />
       <input
         aria-label="Search vehicles"
@@ -13,7 +13,7 @@ export const VehicleSearchToolbar = ({ query, onQueryChange, resultCount }) => (
         placeholder="Search registration, VIN, make/model, customer or phone"
       />
       {query && <button type="button" className="vehicle-dashboard-clear-search" aria-label="Clear vehicle search" onClick={() => onQueryChange('')}><X size={17} aria-hidden="true"/></button>}
-    </label>
+    </div>
 
     <div className="vehicle-dashboard-result-count">
       <strong>{resultCount}</strong> <span>vehicles</span>
