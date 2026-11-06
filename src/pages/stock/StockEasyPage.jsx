@@ -331,7 +331,6 @@ export default function StockEasyPage() {
       partFormRef.current?.querySelector('select[name="supplier"]')?.focus();
       return;
     }
-    const isSupplierPurchase = Boolean(part.supplier) && openingQuantity > 0;
     setSaving(true);
     setError('');
     try {
