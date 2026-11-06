@@ -960,7 +960,7 @@ export default function SupplierFinancePage({ section = '' }) {
               {paymentErrors.allocations}</p>}
 
           </div>}
-          <p className="text-xs text-muted">Account balances are recorded ledger values, not live bank balances.</p>
+          <p className="text-xs text-muted">Payments update the recorded account ledger, not a real-time bank balance.</p>
           <button className={primary} type="submit" disabled={posting || !selectedSupplier || !paymentDraft.accountId ||
             !paymentDraft.amount || (paymentDraft.kind === 'Payment' && !outstandingBills.length)}>
             {busy === 'payment' ? 'Posting payment…' : 'Confirm Supplier Payment'}
@@ -1028,6 +1028,10 @@ export default function SupplierFinancePage({ section = '' }) {
           <p className="text-xs text-muted sm:col-span-3">Opening balances are recorded snapshots; never label them as synced live bank balances.</p>
         </form>}
       </div>}
+
+      <p className="text-xs text-muted" title="Supplier payments settle liabilities; they do not change purchase expenses.">
+        Customer selling rates are separate from supplier purchase costs.
+      </p>
 
       {paymentPopupBill && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-3 sm:p-5">
         <section role="dialog" aria-modal="true" aria-labelledby="purchase-payment-popup-title"
