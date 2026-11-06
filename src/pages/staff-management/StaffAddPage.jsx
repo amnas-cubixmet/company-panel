@@ -165,12 +165,14 @@ export const StaffAddPage = () => {
           {shareMessage && <div className="staff-directory-message" role="status">{shareMessage}</div>}
           <div className="staff-manual-invite-actions">
             {canManageLogins && createdStaff.whatsappConsent && createdStaff.loginStatus === 'Pending Password Setup' && (
+              <>
               <button type="button" className="staff-save-button" disabled={sharing} onClick={share}>
                 <MessageCircle size={17}/>{sharing ? 'Preparing…' : 'Share on WhatsApp'}
               </button>
               <button type="button" className="staff360-secondary-button" disabled={sharing} onClick={copyInvite}>
                 <Copy size={17}/> Copy Setup Message
               </button>
+              </>
             )}
             {!createdStaff.whatsappConsent &&
               <p className="staff-login-invite-hint">No WhatsApp consent recorded. Update consent in Staff Details before sharing.</p>}
