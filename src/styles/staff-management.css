@@ -109,8 +109,9 @@
 .staff-form-sheet select,
 .role-form-sheet input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 .role-form-sheet select {
-  min-height: 42px !important;
-  height: 42px !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  font-size: 16px !important;
 }
 
 .cg-staff-management textarea,
@@ -1424,7 +1425,7 @@
   flex-direction: column;
   gap: 5px;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 650;
 }
 
@@ -2015,9 +2016,7 @@
     grid-template-columns: 1fr;
   }
 
-  .cg-staff-management .staff-add-summary {
-    position: static;
-  }
+  
 
   .cg-staff-management .staff-skill-coverage {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -6327,15 +6326,10 @@
 }
 
 
-/* Unified outlined Staff Management form controls; light/dark token-aware. */
-.cg-staff-management :is(.staff-add-page,.staff-profile-edit-form,.role-editor-form,.staff-crud-form) :is(input:not([type="checkbox"]):not([type="radio"]),select){
-  box-sizing:border-box;min-height:48px;height:48px;font-size:16px!important;border:1px solid var(--staff-border)!important;border-radius:10px!important;background:var(--staff-surface)!important;color:var(--text-primary)!important;
-}
-.cg-staff-management :is(.staff-add-page,.staff-profile-edit-form,.role-editor-form,.staff-crud-form) label{font-size:14px;gap:6px}
-.cg-staff-management :is(.staff-add-page,.staff-profile-edit-form,.role-editor-form,.staff-crud-form) :is(input,select,textarea):focus-visible{outline:2px solid var(--primary);outline-offset:2px}
-.cg-staff-management :is(.staff-add-page,.staff-profile-edit-form,.role-editor-form,.staff-crud-form) :is(input,select,textarea)[aria-invalid="true"]{border-color:var(--danger,#c52233)!important;outline-color:var(--danger,#c52233)!important}
-.cg-staff-management .cg-inline-field-error{display:block;color:var(--danger,#c52233);font-size:13px;font-weight:600;line-height:1.5}
-.cg-staff-management :is(.staff-add-page,.staff-profile-edit-form,.role-editor-form,.staff-crud-form) textarea{font-size:16px!important;min-height:80px;border:1px solid var(--staff-border);border-radius:10px}
-.cg-staff-management :is(.staff-add-page,.staff-profile-edit-form,.role-editor-form,.staff-crud-form) :is(input,select,textarea){scroll-margin-top:100px}
-.cg-staff-management .staff-action-success{display:flex;align-items:center;gap:8px;color:var(--success,#168045);font-weight:700;font-size:16px}
-@media(max-width:620px){.cg-staff-management .staff-form-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Staff forms share existing outlined controls and theme tokens. */
+.cg-staff-management :is(.role-editor-form,.staff-crud-form,.staff-profile-edit-form) :is(input:not([type=checkbox]),select){min-height:48px;font-size:16px;border-radius:10px}
+.cg-staff-management :is(.role-editor-form,.staff-crud-form,.staff-profile-edit-form) label{font-size:14px}
+.cg-staff-management .cg-inline-field-error{color:var(--danger,#c52233);font-size:13px}
+.cg-staff-management [aria-invalid="true"]{border-color:var(--danger,#c52233)!important;scroll-margin-top:90px}
+.cg-staff-management .staff-action-success{color:var(--success,#168045);font-weight:700}
