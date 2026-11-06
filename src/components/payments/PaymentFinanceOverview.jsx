@@ -142,7 +142,7 @@ export default function PaymentFinanceOverview({
         <div className="cg-pay-finance-accounts">
           {accounts.map(account => (
             <article key={account.id}>
-              <div><strong>{account.name}</strong><span>{account.kind}{account.bankName ? ' · ' + account.bankName : ''}</span></div>
+              <div><strong>{account.name}</strong><span>{account.kind}{account.bankName ? ' · ' + account.bankName : ''}{account.isActive === false ? ' · Inactive' : ''}</span></div>
               <strong>{fmt(account.currentBalance)}</strong>
               <small>Opening {fmt(account.openingBalance)} · {account.accountNumber || 'No bank number stored'}</small>
             </article>
@@ -185,7 +185,7 @@ export default function PaymentFinanceOverview({
             <label>Account *<select required value={adjustment.accountId}
               onChange={e => setAdjustment(p => ({ ...p, accountId: e.target.value }))}>
               <option value="">Select account</option>
-              {accounts.map(a => <option key={a.id} value={a.id}>{a.name} — {fmt(a.currentBalance)}</option>)}
+              {accounts.filter(a => a.isActive).map(a => <option key={a.id} value={a.id}>{a.name} — {fmt(a.currentBalance)}</option>)}
             </select></label>
             <label>Correction direction *<select value={adjustment.direction}
               onChange={e => setAdjustment(p => ({ ...p, direction: e.target.value }))}>
