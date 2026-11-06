@@ -48,7 +48,8 @@ test('advance application is separate from a money-out posting', () => {
 test('supplier bill purchase cost is distinct from customer selling rate', () => {
   assert.match(page, /Purchase rate \(₹\)/);
   assert.match(page, /customer purchase costs|supplier purchase costs/);
-  assert.match(page, /Total GST Rate \(%\)/);
+  assert.match(page, /Manual GST Component/);
+  assert.match(page, /taxComponents/);
   assert.match(page, /Place of Supply/);
   assert.match(page, /GST Breakdown/);
   assert.match(page, /receiveIntoStock/);
