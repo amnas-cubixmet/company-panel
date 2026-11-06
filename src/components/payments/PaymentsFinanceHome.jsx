@@ -199,7 +199,7 @@ export default function PaymentsFinanceHome({ refreshKey = 0, canEdit = false, o
           <small>Opening balance: {fmt(account.openingBalance)}</small>
         </article>)}
       </div>
-      {overview && overview.accounts.length === 0 &&
+      {overview && (!Array.isArray(overview.accounts) || overview.accounts.length === 0) &&
         <p className="payments-finance-note">No account configured yet. Create one to track payments.</p>}
       {formError && <p className="payments-finance-error" role="alert">{formError}</p>}
       {formSuccess && <p className="payments-finance-success" role="status">{formSuccess}</p>}
