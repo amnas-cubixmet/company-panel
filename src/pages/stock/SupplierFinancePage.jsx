@@ -733,7 +733,10 @@ export default function SupplierFinancePage({ section = '' }) {
                         return;
                       }
                       const previous = row.taxComponents.filter(value => value !== 'zero');
-                      if (previous.includes(choice)) return;
+                      if (previous.some(selected => selected.split(':')[0] === choice.split(':')[0])) {
+                        setError('This GST component already has a selected rate. Remove it before changing.');
+                        return;
+                      }
                       if (previous.length >= 2) {
                         setError('Remove a selected GST component before adding another.');
                         return;
