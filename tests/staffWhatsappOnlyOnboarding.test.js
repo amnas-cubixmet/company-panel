@@ -85,6 +85,12 @@ test('only an explicit click opens WhatsApp; opening is not delivery confirmatio
     }), { phone: '+919876543210', staffName: 'Staff', workshopName: 'Garage' });
     assert.match(opened, /^https:\/\/wa\.me\/919876543210\?/);
     assert.equal(result.status, 'manual_prepared');
+    assert.equal(result.localOnlyLink, false);
+    const local = await shareManualStaffInvite(async () => ({
+      whatsappInviteStatus: 'manual',
+      setupLink: 'http://localhost:5173/set-password/local.token',
+    }), { phone: '+919876543210', staffName: 'Staff', workshopName: 'Garage' });
+    assert.equal(local.localOnlyLink, true);
     assert.equal(popup.opener, null);
     assert.equal(closed, false);
     await assert.rejects(() => shareManualStaffInvite(async () => ({ whatsappInviteStatus: 'queued' }), {
