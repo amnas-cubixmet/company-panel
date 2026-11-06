@@ -24,6 +24,7 @@ export const supplierFinanceService = {
     requireLiveBackend();
     return apiClient.post('/inventory/suppliers', payload);
   },
+  getGSTOptions: () => live('get', '/gst-options'),
   getAccounts: () => live('get', '/accounts'),
   createAccount: (payload) => live('post', '/accounts', payload),
   getAccountLedger: (id) => live('get', `/accounts/${encodeURIComponent(id)}/ledger`),
