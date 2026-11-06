@@ -102,8 +102,7 @@ export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false }) {
   return (
     <section className="vehicle-photo-gallery" aria-label="Vehicle inspection photos">
       <div className="vehicle-camera-heading">
-        <div><h3><Camera size={18}/> Vehicle Photo Gallery</h3>
-          <p>Historical vehicle photos remain accessible without copying files. Customer visibility is controlled per photo.</p></div>
+        <div><h3><Camera size={18}/> Vehicle Photo Gallery</h3></div>
         {canEdit && <LiveVehicleCamera onCapture={capture} disabled={uploading} />}
       </div>
       {uploading && <p role="status">Uploading captured photo…</p>}
