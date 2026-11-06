@@ -363,7 +363,7 @@ export function PaymentList() {
             Review Accounts & Ledger
           </button>
         </div>
-      )
+      )}
       {supplierSummary && can('stock.view') && (
         <section className="payments-dashboard-records" aria-label="Supplier purchase accounting">
           <header className="payments-dashboard-section-title">
