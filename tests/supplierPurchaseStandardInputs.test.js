@@ -1,33 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
+const page = read('src/components/suppliers/SupplierPurchaseFlow.jsx');
+const css = read('src/styles/supplier-purchase-flow.css');
 
-const read = (file) => readFileSync(new URL('../' + file, import.meta.url), 'utf8');
-const page = read('src/pages/stock/SupplierFinancePage.jsx');
-const css = read('src/styles/supplier-finance-polish.css');
-const purchase = page.split("{activeTab === 'bill' && canCreateBill && (")[1]
-  ?.split("{activeTab === 'payment' && canPay && summary && (")[0];
-
-test('supplier purchase form uses stable static labels and standard inputs', () => {
-  assert.ok(purchase, 'Expected new supplier purchase form');
-  assert.match(purchase, /cg-supplier-purchase-form/);
-  assert.match(purchase, /cg-supplier-purchase-field/);
-  assert.match(css, /cg-supplier-purchase-form label\.cg-supplier-purchase-field/);
-  assert.match(css, /position:static!important/);
-  assert.match(css, /min-height:48px!important/);
-  assert.match(css, /font-size:16px!important/);
-  assert.match(css, /\[aria-invalid=true\]/);
+test('supplier single-page purchase uses standard 16px accessible form fields', () => {
+  assert.match(page, /const fieldClass = 'cg-supplier-purchase-input'/);
+  assert.match(page, /type="number"/);
+  assert.match(page, /type="search"/);
+  assert.match(page, /type="date" readOnly/);
+  assert.match(page, /role="alert"/);
+  assert.match(page, /scrollIntoView/);
+  assert.match(css, /font-size:16px/);
+  assert.match(css, /min-height:46px/);
 });
 
-test('purchase UI hides redundant information without disabling tax and payment safeguards', () => {
-  assert.doesNotMatch(purchase, /Choose how this purchase will be paid BEFORE posting it/);
-  assert.doesNotMatch(purchase, /No component selected/);
-  assert.match(purchase, /<details className="cg-supplier-purchase-tax-details">/);
-  assert.match(purchase, /purchaseTaxLines\[index\]\?\.status !== 'valid'/);
-  assert.match(purchase, /Posting is blocked until corrected/);
-  assert.match(purchase, /finance\.createBill|createBill/);
-  assert.match(purchase, /Save Draft/);
-  assert.match(purchase, /Confirm & Post Purchase/);
-  assert.match(purchase, /purchaseIntent\.mode/);
-  assert.match(purchase, /gstOptions\.states\.map/);
+test('purchase does not clutter navigation with modal payment popups', () => {
+  assert.doesNotMatch(page, /paymentPopupBill/);
+  assert.match(page, /Finish Adding Products/);
+  assert.match(page, /Add Another Product/);
+  assert.match(page, /No payment = full credit/);
+  assert.match(page, /auto|automatic/i);
+  assert.match(page, /Confirm Purchase & Payment/);
+});
+
+test('responsive layout keeps fields and payment splits usable on small phones', () => {
+  assert.match(css, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css, /@media\(max-width:500px\)/);
+  assert.match(css, /min-width:0/);
+  assert.match(css, /var\(--surface/);
+  assert.match(css, /var\(--text-primary/);
 });

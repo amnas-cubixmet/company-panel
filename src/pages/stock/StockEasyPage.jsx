@@ -266,6 +266,20 @@ export default function StockEasyPage() {
   const beginMove = (mode, itemId = '', partItem = null) => {
     setError('');
     const item = partItem || items.find((row) => String(row.id) === String(itemId));
+    const linkedSupplier = item?.supplier?.id || item?.supplier;
+    if (mode === 'in' && item) {
+      if (!linkedSupplier) {
+        setError('This part has no Supplier linked. Assign its Supplier before receiving a purchase. Stock and supplier credit must be posted together.');
+        return;
+      }
+      navigate('/suppliers/' + encodeURIComponent(linkedSupplier), {
+        state: { purchasePrefill: {
+          itemId: String(item.id), quantity: '1',
+          purchaseRate: String(item.costPrice ?? 0), supplierId: String(linkedSupplier),
+        }},
+      });
+      return;
+    }
     setMove({ ...initialMove, mode, itemId: String(itemId || ''),
       costPrice: item ? String(item.costPrice ?? 0) : '',
       sellingPrice: item ? String(item.sellingPrice ?? 0) : '' });
@@ -303,7 +317,7 @@ export default function StockEasyPage() {
     const openingQuantity = openingText === '' ? 0 : Number(openingText);
     if (!/^\d+(?:\.\d{1,2})?$/.test(openingText || '0') ||
         !Number.isFinite(openingQuantity) || openingQuantity < 0) {
-      const message = 'Opening stock quantity must be nonnegative with up to two decimal places.';
+      const message = 'Purchase quantity must be nonnegative with up to two decimal places.';
       setPartErrors(previous => ({ ...previous, stockQuantity: message }));
       setError(message);
       requestAnimationFrame(() => {
@@ -313,9 +327,14 @@ export default function StockEasyPage() {
       });
       return;
     }
-    // A new supplier purchase must create stock and payable together through
-    // SupplierBill posting, never via an unlinked opening-stock adjustment.
-    const isSupplierPurchase = Boolean(part.supplier) && openingQuantity > 0;
+    // Catalog registration is never the posting of a supplier purchase.
+    // When quantity was supplied, the supplier detail page will create the
+    // invoice, stock receipt, cash/bank payment and remaining credit together.
+    if (openingQuantity > 0 && !part.supplier) {
+      setError('Choose the supplier before receiving purchased stock. For historical opening balances, use audited stock adjustments.');
+      partFormRef.current?.querySelector('select[name="supplier"]')?.focus();
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -325,22 +344,18 @@ export default function StockEasyPage() {
         tax: Number(part.tax), zeroTaxClassification: Number(part.tax) === 0 ? part.zeroTaxClassification : '',
         hsnCode: part.hsnCode.trim(),
         minimumStock: number(part.minimumStock),
-        stockQuantity: isSupplierPurchase ? 0 : openingQuantity,
+        stockQuantity: 0,
       });
       setPartOpen(false);
       setPart(initialPart);
       setPartLookup('');
       setPartMode('find');
-      setSuccess(isSupplierPurchase
-        ? 'Part catalog saved; confirm the supplier purchase and choose Pay Now / Partial / Credit.'
-        : openingQuantity > 0
-          ? 'Historical opening stock added. No supplier payment or credit was posted.'
-          : 'Part catalog saved. Record purchases under Supplier Purchase.');
-      if (isSupplierPurchase && created?.id) {
-        navigate('/stock/suppliers?tab=bill&supplier=' + encodeURIComponent(part.supplier), {
+      setSuccess('Part saved to catalogue without adding stock or supplier debt.');
+      if (part.supplier && created?.id) {
+        navigate('/suppliers/' + encodeURIComponent(part.supplier), {
           state: {
             purchasePrefill: {
-              itemId: String(created.id), quantity: String(openingQuantity),
+              itemId: String(created.id), quantity: String(openingQuantity || 1),
               purchaseRate: String(part.costPrice),
               supplierId: String(part.supplier),
             },
@@ -349,7 +364,6 @@ export default function StockEasyPage() {
         return;
       }
       await reload();
-      if (!openingQuantity && created?.id) beginMove('in', created.id, created);
     } catch (exception) {
       const details = exception?.response?.data || exception?.data || {};
       if (typeof details === 'object' && details && !Array.isArray(details)) {
@@ -417,7 +431,6 @@ export default function StockEasyPage() {
         </div>
         <div className="cg-easy-actions">
           <button type="button" className="cg-easy-secondary" onClick={reload} disabled={loading}><RefreshCw size={16}/> Refresh</button>
-          <Link className="cg-easy-primary" to="/stock/suppliers?tab=bill"><ShoppingCart size={16}/> Buy Spare Parts</Link>
           <button type="button" className="cg-easy-primary" onClick={() => openPartDialog()}><Plus size={16}/> Add New Part</button>
         </div>
       </header>
@@ -456,11 +469,11 @@ export default function StockEasyPage() {
       </section>
 
       <section className="cg-easy-shortcuts" aria-label="Quick actions">
-        <button type="button" onClick={() => beginMove('in')}><PackagePlus size={19}/><span>Receive Stock</span></button>
+        <Link to="/suppliers"><PackagePlus size={19}/><span>Buy / Receive from Supplier</span></Link>
         <button type="button" onClick={() => beginMove('out')}><PackageMinus size={19}/><span>Internal Use</span></button>
         <Link to="/jobs"><Wrench size={19}/><span>Job Card Parts</span></Link>
         <a href="#stock-history"><History size={19}/><span>Stock History</span></a>
-        <Link to="/stock/suppliers"><ShoppingCart size={19}/><span>Supplier Bills & Payments</span></Link>
+        <Link to="/suppliers"><ShoppingCart size={19}/><span>Suppliers</span></Link>
       </section>
 
       <section className="cg-easy-panel">
@@ -593,7 +606,7 @@ export default function StockEasyPage() {
                 ))}
                 <option value="custom">Saved/Other HSN-Specific Rate (custom %)</option>
               </OutlinedSelect>
-              <OutlinedInput label="Opening Stock Quantity" type="number" min="0" step="0.01"
+              <OutlinedInput label="Purchase Quantity (Supplier Step)" type="number" min="0" step="0.01"
                 inputMode="decimal" data-field="stockQuantity" aria-invalid={Boolean(partErrors.stockQuantity)}
                 value={part.stockQuantity} onChange={e => {
                   setPart({ ...part, stockQuantity: e.target.value });
@@ -654,11 +667,11 @@ export default function StockEasyPage() {
                 onChange={location => setPart(previous => ({ ...previous, location }))}/>
             </div>
             <p className="cg-easy-hint">
-              When a Supplier and Stock Quantity are selected, saving the part redirects to
-              a supplier purchase for Pay Now / Partial / Credit. The stock quantity is added
-              only after that bill is posted. Without a Supplier, quantity is historical opening stock only.
+              Choose a Supplier first. Saving adds product details only; it does not add stock, debt or payment.
+              You will go straight to that Supplier page to confirm the purchase quantity,
+              GST, Cash/Bank payment and remaining credit. No separate purchase screen.
             </p>
-            <div className="cg-easy-form-actions"><button type="button" onClick={() => setPartOpen(false)}>Cancel</button><button type="submit" disabled={saving}>{saving ? 'Saving...' : (number(part.stockQuantity) > 0 ? 'Save Part & Add Opening Stock' : 'Save Part')}</button></div>
+            <div className="cg-easy-form-actions"><button type="button" onClick={() => setPartOpen(false)}>Cancel</button><button type="submit" disabled={saving}>{saving ? 'Saving...' : (part.supplier ? 'Save Part & Continue to Supplier' : 'Save Part')}</button></div>
           </form>
         )}
       </ResponsiveModalSheet>

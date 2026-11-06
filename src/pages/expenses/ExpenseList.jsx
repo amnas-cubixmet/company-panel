@@ -105,10 +105,8 @@ const ExpenseForm = ({
     <form className="expense-form" onSubmit={onSubmit}>
       {error ? <div className="expense-alert" role="alert">{error}</div> : null}
       <div className="expense-alert" role="note">
-        Bought spare parts or paying a supplier? Use
-        <a href="/stock/suppliers?tab=bill"> Supplier Purchase </a>
-        or <a href="/suppliers/payments"> Supplier Payments </a>
-        instead. A supplier bill must never be recorded again as an operational expense.
+        Spare parts purchases and supplier payments belong on each Supplier Details page, not as duplicate expenses.
+        A supplier bill must never be recorded again as an operational expense.
       </div>
       <section className="expense-form-section">
         <div className="expense-section-header">
@@ -668,14 +666,7 @@ export const ExpenseList = () => {
             <div><span>Credit Outstanding</span>
               <strong>{money.format(Number(linkedSupplierTotals.supplierOutstanding))}</strong></div>
           </div>}
-          <div className="expense-form-actions">
-            <button type="button" onClick={() => navigate('/suppliers/payments')}>
-              Pay Supplier / Settle Credit
-            </button>
-            <button type="button" onClick={() => navigate('/stock/suppliers?tab=bill')}>
-              Record Parts Purchase
-            </button>
-          </div>
+          <p>To record a supplier transaction, open that supplier from the Suppliers directory.</p>
         </section>
       )}
 

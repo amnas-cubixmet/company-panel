@@ -23,15 +23,16 @@ test('new parts share CGST SGST IGST dropdown logic with invoices', () => {
   assert.equal(invoiceTotalRateFromChoice('igst:18'), '18');
 });
 
-test('new supplier-owned stock redirects to posted supplier purchase instead of opening credit twice', () => {
+test('new supplier part opens supplier details, and only posting the bill adds stock', () => {
   const stock = read('src/pages/stock/StockEasyPage.jsx');
-  const purchases = read('src/pages/stock/SupplierFinancePage.jsx');
-  assert.match(stock, /const isSupplierPurchase = Boolean\(part\.supplier\) && openingQuantity > 0/);
-  assert.match(stock, /stockQuantity: isSupplierPurchase \? 0 : openingQuantity/);
+  const purchases = read('src/components/suppliers/SupplierPurchaseFlow.jsx');
+  const supplier = read('src/pages/suppliers/SuppliersPage.jsx');
+  assert.match(stock, /stockQuantity: 0/);
+  assert.ok(stock.includes("navigate('/suppliers/' + encodeURIComponent(part.supplier)"));
   assert.match(stock, /purchasePrefill/);
-  assert.match(purchases, /location\.state\?\.purchasePrefill/);
+  assert.match(supplier, /location.state\?\.purchasePrefill/);
   assert.match(purchases, /receiveIntoStock: true/);
-  assert.match(purchases, /initialPayment \? \{ payment: initialPayment \} : \{\}/);
+  assert.match(purchases, /payments: splits\.map/);
 });
 
 test('customer, supplier and expense forms use canonical account-linked payment workflow', () => {
@@ -45,8 +46,8 @@ test('customer, supplier and expense forms use canonical account-linked payment 
   assert.match(supplier, /supplierFinanceService\.getSupplierSummary\(id\)/);
   assert.match(supplier, /supplierFinanceService\.getBills\(id\)/);
   assert.match(supplier, /supplierFinanceService\.getPayments\(id\)/);
-  assert.match(supplier, /Pay Now \/ Settle Multiple Bills/);
-  assert.match(payments, /Pay Supplier \/ Settle Credit/);
+  assert.match(supplier, /<SupplierPurchaseFlow/);
+  assert.match(payments, /supplier’s own detail page/);
   assert.match(expenses, /supplier bill must never be recorded again/);
   assert.match(expenses, /getPaymentActivity/);
   assert.match(expenses, /supplierPurchases/);
