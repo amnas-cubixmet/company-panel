@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Building2, Mail, Package, Phone, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
+import { ArrowLeft, Building2, CreditCard, Mail, Package, Phone, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { supplierService } from '../../services/supplier.service';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
@@ -79,10 +79,10 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
         : await supplierService.create(payload);
       onSaved(saved);
     } catch (cause) {
-      const data = cause?.response?.data;
+      const data = cause?.fieldErrors || cause?.data || cause?.response?.data;
       if (data && typeof data === 'object' && !Array.isArray(data)) {
         const normalized = {};
-        const aliases = { gstin: 'gstNo', gst_no: 'gstNo', contactPerson: 'contact_person', is_active: 'name' };
+        const aliases = { gstin: 'gstNo', gst_no: 'gstNo', contactPerson: 'contact_person' };
         for (const [key, value] of Object.entries(data)) {
           const target = aliases[key] || key;
           const message = Array.isArray(value) ? value.join(' ') : String(value ?? '');
@@ -429,7 +429,7 @@ export default function SuppliersPage({ section = 'all' }) {
           <Link to={'/suppliers/purchases?supplier=' + encodeURIComponent(supplier.id)}>
             <ShoppingBag size={15}/> Purchases</Link>
           {canViewFinance && <Link to={'/suppliers/payments?supplier=' + encodeURIComponent(supplier.id)}>
-            <Mail size={15}/> Payments</Link>}
+            <CreditCard size={15}/> Payments</Link>}
           {supplier.is_active !== false && canEdit && <button type="button" disabled={actionBusy}
             onClick={deactivateSupplier} className="cg-supplier-button">Deactivate</button>}
           {canDelete && <button type="button" disabled={actionBusy}
