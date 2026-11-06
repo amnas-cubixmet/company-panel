@@ -29,7 +29,7 @@ test('Stock modal search has exactly one visible border and radios keep native h
 test('Add New Part, Receive Stock and Internal Use retain current save logic', () => {
   for(const text of ['Add New Part', 'Receive Stock', 'Internal Use — Stock Out',
     'savePart', 'saveMovement', 'Confirm Stock In', 'Confirm Internal Use',
-    'Use the same prices for old stock and new stock?', 'Search part name / SKU / barcode']){
+    'Use the same prices for old stock and new stock?', 'Search part name / Part Number / SKU / barcode']){
     assert.ok(stockPage.includes(text), text);
   }
   assert.match(css,/@media \(max-width: 520px\)/);
@@ -43,6 +43,7 @@ test('Add New Part, Receive Stock and Internal Use retain current save logic', (
 test('New Part uses accessible outlined floating fields; search keeps one border', () => {
   assert.match(stockPage, /function OutlinedInput/);
   assert.match(stockPage, /function OutlinedSelect/);
+  assert.match(stockPage, /function RackCombobox/);
   assert.match(css, /label\.cg-easy-floating/);
   assert.match(css, /border: 1px solid var\(--border,#dce3ea\) !important/);
   assert.match(css, /font-size: 16px/);
