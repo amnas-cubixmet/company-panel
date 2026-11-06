@@ -136,3 +136,84 @@
   .cg-supplier-purchase-history .cg-supplier-record{align-items:flex-start}
   .cg-supplier-purchase-history .cg-supplier-record b{font-size:12px}
 }
+
+
+/* Supplier editor: static labels avoid floating-label collisions and expose errors. */
+.cg-supplier-form > label.cg-supplier-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.cg-supplier-form > label.cg-supplier-field > span {
+  position: static;
+  padding: 0;
+  background: transparent;
+  transform: none;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-secondary, #64748b);
+}
+.cg-supplier-form > label.cg-supplier-field :is(input:not([type=checkbox]), textarea) {
+  min-height: 48px;
+  border: 1px solid var(--border, #dce3ea);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  color: var(--text-primary, #142037);
+  font-size: 16px;
+  padding: 11px 13px;
+  scroll-margin-top: 110px;
+}
+.cg-supplier-form > label.cg-supplier-field :is(input, textarea)[aria-invalid="true"] {
+  border-color: var(--danger, #b42318);
+  outline-color: var(--danger, #b42318);
+}
+.cg-supplier-field-error {
+  color: var(--danger, #b42318);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.cg-supplier-success {
+  margin: 0;
+  color: var(--success, #16803c);
+  font-size: 14px;
+  font-weight: 600;
+}
+.cg-supplier-purchase-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+.cg-supplier-purchase-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-secondary, #64748b);
+}
+.cg-supplier-purchase-filters :is(input, select) {
+  width: 100%;
+  height: 46px;
+  min-width: 0;
+  border: 1px solid var(--border, #dce3ea);
+  border-radius: 10px;
+  background: var(--surface, #fff);
+  color: var(--text-primary, #142037);
+  padding: 0 12px;
+  font-size: 16px;
+}
+.cg-supplier-purchase-filters :is(input, select):focus-visible {
+  outline: 2px solid var(--primary, #2563eb);
+  outline-offset: 1px;
+}
+.cg-supplier-purchase-filters .cg-supplier-filter-date { grid-column: auto; }
+@media (max-width: 750px) {
+  .cg-supplier-purchase-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cg-supplier-purchase-filters label:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 480px) {
+  .cg-supplier-purchase-filters { grid-template-columns: 1fr; }
+  .cg-supplier-purchase-filters label:first-child { grid-column: auto; }
+}
