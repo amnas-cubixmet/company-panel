@@ -8,11 +8,14 @@ test('Payments page loads live finance, audited account ledger and period filter
   const page = read('src/pages/payments/PaymentList.jsx');
   const financeApi = read('src/services/finance.service.js');
   assert.match(page, /financeService\.getDashboard\(\{ period: financePeriod \}\)/);
-  assert.match(page, /financeService\.getLedger\(\{/);
+  assert.match(page, /financeService\.getLedger\(filters\)/);
+  assert.match(page, /ledgerAccount/);
+  assert.match(page, /ledgerQuery/);
+  assert.match(page, /ledgerPage/);
   assert.match(page, /financePeriod === 'today'/);
   assert.match(page, /dateLocal\(\)\.slice\(0, 8\) \+ '01'/);
   assert.match(page, /<PaymentFinanceOverview/);
-  assert.match(page, /onPeriodChange=\{setFinancePeriod\}/);
+  assert.match(page, /onPeriodChange=\{value =>/);
   assert.match(page, /canManage=\{canManageAccounts\}/);
   assert.match(financeApi, /getDashboard: \(params = \{\}\)/);
   assert.match(page, /can\('payments.edit'\)/);
@@ -47,7 +50,7 @@ test('Account setup and corrections use real APIs, not editable current balance'
 test('Actual payment and expense ledger columns are responsive and readable', () => {
   const view = read('src/components/payments/PaymentFinanceOverview.jsx');
   const css = read('src/styles/payment-finance-overview.css');
-  assert.match(view, /Recent Account Debit \/ Credit Log/);
+  assert.match(view, /Account Debit \/ Credit Log/);
   assert.match(view, /entry\.credit/);
   assert.match(view, /entry\.debit/);
   assert.match(css, /font-size:16px/);
