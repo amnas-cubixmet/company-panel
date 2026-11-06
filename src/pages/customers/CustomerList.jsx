@@ -527,7 +527,7 @@ export const CustomerList = () => {
                   </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', backgroundColor: 'var(--surface-2)', padding: '10px', borderRadius: '10px', fontSize: '12px' }}>
+                <div className="customer-directory-card__summary" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', backgroundColor: 'var(--surface-2)', padding: '10px', borderRadius: '10px', fontSize: '12px' }}>
                   <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px' }}>Vehicles & Jobs</span><strong>{c.vehicleCount ?? '—'} Vehicles • {c.jobsCount ?? '—'} Jobs</strong></div>
                   <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px' }}>Last Visit</span><strong>{c.lastVisit || '—'}</strong></div>
                   <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px' }}>Customer Type</span><strong>{c.customerType || 'Individual'}</strong></div>
