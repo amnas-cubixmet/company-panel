@@ -145,13 +145,14 @@ export default function SuppliersPage({ section = 'all' }) {
   const canCreate = access.can('stock.create') && !USE_MOCK_API;
   const canEdit = access.can('stock.edit') && !USE_MOCK_API;
   const canViewFinance = access.can('payments.view') && access.can('stock.view');
+  const canCreatePurchase = access.can('stock.create') && access.can('payments.create') && !USE_MOCK_API;
   const canDelete = access.can('stock.delete') && !USE_MOCK_API;
   const [suppliers, setSuppliers] = useState([]);
   const [creditBalances, setCreditBalances] = useState(null);
   const [purchaseBills, setPurchaseBills] = useState([]);
   const [purchaseHistory, setPurchaseHistory] = useState([]);
   const [purchaseQuery, setPurchaseQuery] = useState('');
-  const [purchaseSupplier, setPurchaseSupplier] = useState('');
+  const [purchaseSupplier, setPurchaseSupplier] = useState(() => params.get('supplier') || '');
   const [purchaseStatus, setPurchaseStatus] = useState('');
   const [purchaseFrom, setPurchaseFrom] = useState('');
   const [purchaseTo, setPurchaseTo] = useState('');
@@ -294,7 +295,7 @@ export default function SuppliersPage({ section = 'all' }) {
         <h1>{id ? (supplier?.name || 'Supplier Details') : purchaseView ? 'Purchase History' : 'Suppliers'}</h1>
       </div>
       {id ? canEdit && supplier && <button type="button" className="cg-supplier-button" onClick={()=>setEditor(supplier)}>Edit Supplier</button>
-        : purchaseView ? <Link className="cg-supplier-button primary" to="/stock/suppliers?tab=bill"><Plus size={17}/> New Purchase</Link>
+        : purchaseView ? (canCreatePurchase && <Link className="cg-supplier-button primary" to="/stock/suppliers?tab=bill"><Plus size={17}/> New Purchase</Link>)
         : canCreate && <button type="button" className="cg-supplier-button primary" onClick={()=>setEditor({create:true})}><Plus size={17}/> Add Supplier</button>}
     </div>
 
@@ -418,12 +419,17 @@ export default function SuppliersPage({ section = 'all' }) {
         </div>
         {canViewFinance && <div style={{ marginTop: 10, fontSize: 14 }}>
           Credit outstanding: <strong>{creditBalances ? money(creditBalances.get(String(supplier.id)) || 0) : 'Unavailable'}</strong>
-          <Link to="/suppliers/credits" style={{ marginLeft: 12, color: 'var(--primary)' }}>Credit Management</Link>
+          <Link to={'/suppliers/credits?supplier=' + encodeURIComponent(supplier.id)}
+            style={{ marginLeft: 12, color: 'var(--primary)' }}>Credit Management</Link>
         </div>}
         <div className="cg-supplier-contacts">
           {supplier.phone&&<a href={'tel:'+String(supplier.phone).replace(/[^\d+]/g,'')}><Phone size={15}/> Call</a>}
           {supplier.email&&<a href={'mailto:'+supplier.email}><Mail size={15}/> Email</a>}
           <Link to={'/stock?supplier='+encodeURIComponent(supplier.id)}><Package size={15}/> Inventory</Link>
+          <Link to={'/suppliers/purchases?supplier=' + encodeURIComponent(supplier.id)}>
+            <ShoppingBag size={15}/> Purchases</Link>
+          {canViewFinance && <Link to={'/suppliers/payments?supplier=' + encodeURIComponent(supplier.id)}>
+            <Mail size={15}/> Payments</Link>}
           {supplier.is_active !== false && canEdit && <button type="button" disabled={actionBusy}
             onClick={deactivateSupplier} className="cg-supplier-button">Deactivate</button>}
           {canDelete && <button type="button" disabled={actionBusy}
