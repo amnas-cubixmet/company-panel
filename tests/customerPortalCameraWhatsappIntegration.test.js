@@ -82,5 +82,5 @@ test('workshops independently select manual or automatic WhatsApp messages with 
   assert.match(customer, /targetType="customer"/);
   assert.match(job, /targetType="job"/);
   assert.match(invoice, /targetType="invoice"/);
-  assert.match(staff, /Send via WhatsApp/);
+  assert.match(staff, /Resend via WhatsApp/);
 });
