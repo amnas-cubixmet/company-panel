@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowDownLeft, ArrowUpRight, Download, Plus, RefreshCw, Wallet } from 'lucide-react';
+import { Download, Plus, RefreshCw } from 'lucide-react';
 import { financeService } from '../../services/finance.service';
 import { appConfirm } from '../common/appDialogs';
 import '../../styles/payments-finance-home.css';
