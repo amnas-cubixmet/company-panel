@@ -354,6 +354,16 @@ export function PaymentList() {
     <div className="payments-page payments-dashboard">
       <PaymentsHeader onRecordPayment={() => navigate('/payments/new')} />
       <PaymentOverviewStats payments={payments} formatMoney={(value) => money.format(value || 0)} />
+      {payments.some(row => row.source === 'payment' && row.direction === 'IN' && row.ledgerPosted === false) && (
+        <div className="payments-error" role="note">
+          Some historical customer receipts updated invoice balances but have no linked bank/cash ledger posting.
+          They are shown in payment history and require authorized account reconciliation.
+          Do not manually record the same customer payment twice.
+          <button type="button" className="payments-secondary-btn" onClick={() => navigate('/accounts')}>
+            Review Accounts & Ledger
+          </button>
+        </div>
+      )}
       {supplierSummary && can('stock.view') && (
         <section className="payments-dashboard-records" aria-label="Supplier purchase accounting">
           <header className="payments-dashboard-section-title">

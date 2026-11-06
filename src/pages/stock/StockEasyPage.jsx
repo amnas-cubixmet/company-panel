@@ -460,7 +460,7 @@ export default function StockEasyPage() {
         <button type="button" onClick={() => beginMove('out')}><PackageMinus size={19}/><span>Internal Use</span></button>
         <Link to="/jobs"><Wrench size={19}/><span>Job Card Parts</span></Link>
         <a href="#stock-history"><History size={19}/><span>Stock History</span></a>
-        <Link to="/stock/suppliers?tab=bill"><ShoppingCart size={19}/><span>Supplier Purchase (Pay / Credit)</span></Link>
+        <Link to="/stock/suppliers"><ShoppingCart size={19}/><span>Supplier Bills & Payments</span></Link>
       </section>
 
       <section className="cg-easy-panel">

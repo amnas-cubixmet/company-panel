@@ -245,6 +245,23 @@ export const ExpenseList = () => {
 
   const [expenses, setExpenses] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const [linkedSupplierTotals, setLinkedSupplierTotals] = useState(null);
+  const [linkedSupplierError, setLinkedSupplierError] = useState('');
+  const canViewSupplierAccounting = hasPermission(user, 'payments.view') && hasPermission(user, 'stock.view');
+
+  useEffect(() => {
+    if (!canViewSupplierAccounting || isNew || isEdit || isDetail) return undefined;
+    let alive = true;
+    financeService.getPaymentActivity({ page_size: 1 }).then(result => {
+      if (alive) {
+        setLinkedSupplierTotals(result);
+        setLinkedSupplierError('');
+      }
+    }).catch(error => {
+      if (alive) setLinkedSupplierError(error?.message || 'Linked supplier finance unavailable.');
+    });
+    return () => { alive = false; };
+  }, [canViewSupplierAccounting, isNew, isEdit, isDetail]);
   const [settlement, setSettlement] = useState({
     amount: '', account: '', method: 'Cash', reference: '',
     idempotencyKey: globalThis.crypto?.randomUUID?.() || `settlement-${Date.now()}-${Math.random()}`,
@@ -632,6 +649,36 @@ export const ExpenseList = () => {
     <div className="expense-management-page cg-expenses">
       {actionError ? <div className="expense-alert" role="alert">{actionError}</div> : null}
       <ExpensesHeader onAdd={()=>navigate('/expenses/new')} />
+      {canViewSupplierAccounting && (
+        <section className="expense-panel" aria-label="Linked supplier purchase accounting">
+          <div className="expense-section-header">
+            <div>
+              <h2>Supplier Purchases & Credit — linked accounting</h2>
+              <p>Spare parts purchases are recorded against supplier bills and stock;
+                they are not counted again as operational expense payments.</p>
+            </div>
+          </div>
+          {linkedSupplierError && <p className="expense-alert" role="alert">{linkedSupplierError}</p>}
+          {!linkedSupplierTotals && !linkedSupplierError && <p>Loading linked supplier amounts…</p>}
+          {linkedSupplierTotals && <div className="expense-detail-kpis">
+            <div><span>Posted Supplier Purchases</span>
+              <strong>{money.format(Number(linkedSupplierTotals.supplierPurchases))}</strong></div>
+            <div><span>Supplier Payments Made</span>
+              <strong>{money.format(Number(linkedSupplierTotals.supplierPayments))}</strong></div>
+            <div><span>Credit Outstanding</span>
+              <strong>{money.format(Number(linkedSupplierTotals.supplierOutstanding))}</strong></div>
+          </div>}
+          <div className="expense-form-actions">
+            <button type="button" onClick={() => navigate('/suppliers/payments')}>
+              Pay Supplier / Settle Credit
+            </button>
+            <button type="button" onClick={() => navigate('/stock/suppliers?tab=bill')}>
+              Record Parts Purchase
+            </button>
+          </div>
+        </section>
+      )}
+
 
       <ExpenseOverviewStats
         currentMonthTotal={currentMonthRows.reduce((sum,item)=>sum+item.amount,0)}

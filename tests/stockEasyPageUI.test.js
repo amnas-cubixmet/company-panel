@@ -25,7 +25,8 @@ test('stock receiving and internal consumption use backend workflow methods', ()
 });
 
 test('new parts can record optional opening stock exactly once', () => {
-  assert.match(page, /stockQuantity: openingQuantity/);
+  assert.ok(page.includes('stockQuantity: isSupplierPurchase ? 0 : openingQuantity'));
+  assert.ok(page.includes('navigate(\'/stock/suppliers?tab=bill&supplier=\''));
   assert.match(page, /if \(!openingQuantity && created\?\.id\) beginMove\('in', created\.id, created\)/);
 });
 
