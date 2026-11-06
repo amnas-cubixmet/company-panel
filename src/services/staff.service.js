@@ -194,6 +194,9 @@ export const staffService = {
         'department',
         'joiningDate',
         'employmentStatus',
+        // Explicit manual WhatsApp consent can be recorded from Staff Profile.
+        'whatsappConsent',
+        'whatsappConsentSource',
         'emergencyContact',
         'address',
         'notes',
