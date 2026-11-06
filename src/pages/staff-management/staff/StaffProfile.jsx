@@ -624,15 +624,15 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
               </label>
               <label className="staff-login-invite-hint" style={{ display: 'grid', gap: 6 }}>
                 Consent Source
-                <select aria-label="WhatsApp consent source" value={consentSource}
-                  onChange={event => { setConsentSource(event.target.value); setInviteError(''); }} required>
+                <select aria-label="WhatsApp consent source" name="whatsappConsentSource" value={consentSource}
+                  onChange={event => { setConsentSource(event.target.value); setInviteError(''); }}>
                   <option value="">Choose source</option>
                   <option value="Staff consented in person during onboarding">In person</option>
                   <option value="Signed staff WhatsApp consent form">Signed consent form</option>
                   <option value="Staff consented through approved digital form">Approved digital form</option>
                 </select>
               </label>
-              <button type="submit" disabled={consentBusy || !consentConfirmed || !consentSource}>
+              <button type="submit" disabled={consentBusy}>
                 {consentBusy ? 'Saving…' : 'Save WhatsApp Consent'}
               </button>
             </form>
