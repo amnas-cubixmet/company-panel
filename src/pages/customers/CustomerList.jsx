@@ -410,6 +410,14 @@ export const CustomerList = () => {
               <option value="All">All Types</option>
               {availableTypes.map((value) => <option key={value} value={value}>{value}</option>)}
             </Select>
+            <Select aria-label="Branch filter"
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              containerStyle={{ width: '145px', marginBottom: 0 }}>
+              <option value="All">All Branches</option>
+              {availableBranches.map((value) => <option key={value} value={value}>{value}</option>)}
+            </Select>
+            <button type="button" className="customer-directory-reset" onClick={resetFilters}>Reset Filters</button>
           </div>
 
           {/* Mobile Filter Button */}
@@ -426,7 +434,7 @@ export const CustomerList = () => {
       {/* CUSTOMER LIST: DESKTOP TABLE & MOBILE CARDS */}
       <div className="customer-directory-list-heading">
         <div><h2>All Customers</h2><span className="customer-directory-count">{loading || (loadError && !customers.length) ? '—' : `${visibleCustomers.length} / ${customers.length}`}</span></div>
-        <button type="button" onClick={resetFilters} aria-label="Reset customer filters">Reset Filters</button>
+        <span className="customer-directory-heading-spacer" aria-hidden="true" />
       </div>
       {loading ? (
         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading customers directory...</div>
@@ -564,6 +572,8 @@ export const CustomerList = () => {
           
           <Input
             label="Customer Name"
+            data-customer-field="name"
+            error={formFieldErrors.name}
             required
             icon={Users}
             value={name}
@@ -574,6 +584,8 @@ export const CustomerList = () => {
           <div className="customer-directory-form-grid">
             <Input
               label="Phone Number"
+              data-customer-field="phone"
+              error={formFieldErrors.phone}
               type="tel"
               inputMode="tel"
               required
@@ -584,6 +596,8 @@ export const CustomerList = () => {
             />
             <Input
               label="WhatsApp Number"
+              data-customer-field="whatsapp"
+              error={formFieldErrors.whatsapp}
               type="tel"
               inputMode="tel"
               icon={MessageSquare}
@@ -595,6 +609,8 @@ export const CustomerList = () => {
 
           <Input
             label="Email Address"
+            data-customer-field="email"
+            error={formFieldErrors.email}
             type="email"
             icon={Mail}
             value={email}
@@ -606,6 +622,8 @@ export const CustomerList = () => {
           <div className="customer-directory-form-grid">
             <Select
               label="Customer Type"
+              data-customer-field="customerType"
+              error={formFieldErrors.customerType}
               value={customerType}
               onChange={(e) => setCustomerType(e.target.value)}
             >
@@ -615,6 +633,8 @@ export const CustomerList = () => {
 
             <Select
               label="Assigned Branch"
+              data-customer-field="branch"
+              error={formFieldErrors.branch}
               value={branch}
               onChange={(e) => setBranch(e.target.value)}
             >
@@ -627,12 +647,16 @@ export const CustomerList = () => {
             <div className="customer-directory-form-grid">
               <Input
                 label="Company Name"
+                data-customer-field="companyName"
+                error={formFieldErrors.companyName}
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 placeholder="e.g. Apex Logistics Ltd"
               />
               <Input
                 label="GST Number"
+                data-customer-field="gstNo"
+                error={formFieldErrors.gstNo}
                 value={gstNo}
                 onChange={(e) => setGstNo(e.target.value)}
                 placeholder="32AAAAA0000A1Z5"
@@ -649,9 +673,9 @@ export const CustomerList = () => {
           />
 
           <div className="customer-directory-location-grid">
-            <Input label="City" value={city} onChange={(e) => setCity(e.target.value)} />
-            <Input label="State" value={state} onChange={(e) => setState(e.target.value)} />
-            <Input label="PIN Code" value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="682031" />
+            <Input label="City" data-customer-field="city" error={formFieldErrors.city} value={city} onChange={(e) => setCity(e.target.value)} />
+            <Input label="State" data-customer-field="state" error={formFieldErrors.state} value={state} onChange={(e) => setState(e.target.value)} />
+            <Input label="PIN Code" data-customer-field="pincode" error={formFieldErrors.pincode} value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="682031" />
           </div>
 
           <Textarea
