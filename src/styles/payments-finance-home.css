@@ -1,0 +1,41 @@
+.payments-finance-home{display:grid;gap:16px;min-width:0;margin:16px 0 22px}
+.payments-finance-section{display:grid;gap:14px;min-width:0;background:var(--surface,var(--bg-card,#fff));border:1px solid var(--border,var(--border-color,#d9dfe7));border-radius:14px;padding:18px;color:var(--text-primary,inherit)}
+.payments-finance-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;min-width:0}
+.payments-finance-heading h2{font-size:18px;font-weight:700;line-height:1.4;margin:0}
+.payments-finance-heading p{color:var(--text-secondary,var(--muted,#667085));font-size:13px;line-height:1.55;margin:5px 0 0}
+.payments-finance-heading>label,.payments-finance-filters>label{display:grid;gap:6px;font-size:13px;font-weight:600;min-width:135px}
+.payments-finance-section :is(input,select,textarea){background:var(--surface,var(--bg-card,#fff));color:var(--text-primary,inherit);width:100%;min-width:0;min-height:44px;border:1px solid var(--border,var(--border-color,#cbd5e1));border-radius:9px;padding:9px 11px;font-size:16px;outline:0}
+.payments-finance-section :is(input,select,textarea):focus-visible{border-color:var(--primary,#3472cb);box-shadow:0 0 0 2px rgba(34,100,200,.16)}
+.payments-finance-section button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;background:var(--surface,var(--bg-card,#fff));color:var(--text-primary,inherit);border:1px solid var(--border,var(--border-color,#cbd5e1));border-radius:9px;padding:8px 13px;cursor:pointer;font-size:14px;font-weight:600}
+.payments-finance-section button:hover:not(:disabled){border-color:var(--primary,#3472cb)}
+.payments-finance-section button:disabled{opacity:.55;cursor:not-allowed}
+.payments-finance-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.payments-finance-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;min-width:0}
+.payments-finance-stats>article{display:grid;align-content:start;gap:7px;padding:14px;background:var(--surface-muted,rgba(125,125,125,.06));border:1px solid var(--border,var(--border-color,#e3e7ed));border-radius:12px;min-width:0}
+.payments-finance-stats article>span{font-size:13px;color:var(--text-secondary,#667085)}
+.payments-finance-stats article>strong{font-weight:750;font-size:22px;line-height:1.2;overflow-wrap:anywhere;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.payments-finance-stats article>small,.payments-finance-accounts article>small{font-size:12px;color:var(--text-secondary,#667085);line-height:1.4}
+.payments-finance-note{margin:0;font-size:13px;color:var(--text-secondary,#667085);line-height:1.65;overflow-wrap:anywhere}
+.payments-finance-error{margin:0;padding:11px 13px;font-size:14px;border-radius:9px;background:rgba(230,50,50,.07);color:var(--danger,#b91c1c);border:1px solid rgba(200,50,50,.3)}
+.payments-finance-success{margin:0;padding:10px 12px;border-radius:9px;font-size:13px;background:rgba(16,185,129,.1)}
+.payments-finance-accounts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.payments-finance-accounts>article{display:grid;gap:7px;min-width:0;border:1px solid var(--border,var(--border-color,#dfe5ea));border-radius:10px;padding:13px}
+.payments-finance-accounts>article>span{font-size:13px;font-weight:600;overflow-wrap:anywhere}
+.payments-finance-accounts>article>strong{font-size:20px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.payments-finance-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border:1px solid var(--border,var(--border-color,#dfe5ea));padding:15px;border-radius:11px}
+.payments-finance-form h3,.payments-finance-form>p,.payments-finance-form .payments-finance-actions{grid-column:1/-1;margin:0}
+.payments-finance-form h3{font-size:16px}
+.payments-finance-form label{display:grid;gap:6px;font-size:13px;font-weight:600;min-width:0}
+.payments-finance-form .payments-finance-actions{justify-content:flex-end}
+.payments-finance-filters{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.payments-finance-ledger-wrap{overflow:auto;min-width:0;border:1px solid var(--border,var(--border-color,#dfe5ea));border-radius:10px}
+.payments-finance-ledger{width:100%;border-collapse:collapse;min-width:700px}
+.payments-finance-ledger th,.payments-finance-ledger td{text-align:left;padding:12px;font-size:13px;white-space:normal;overflow-wrap:anywhere;border-bottom:1px solid var(--border,var(--border-color,#e8edf2))}
+.payments-finance-ledger th{font-weight:650;color:var(--text-secondary,#667085);background:var(--surface-muted,rgba(127,127,127,.05))}
+.payments-finance-ledger td strong{display:block;font-size:13px}
+.payments-finance-ledger td small{display:block;color:var(--text-secondary,#667085)}
+.payments-finance-ledger .is-credit{color:var(--success,#059669);font-weight:700;white-space:nowrap}
+.payments-finance-ledger .is-debit{color:var(--danger,#dc2626);font-weight:700;white-space:nowrap}
+.payments-finance-pagination{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;font-size:13px}
+@media(max-width:880px){.payments-finance-stats,.payments-finance-accounts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.payments-finance-section{padding:13px}.payments-finance-stats,.payments-finance-accounts,.payments-finance-form{grid-template-columns:minmax(0,1fr)}.payments-finance-stats>article{min-height:88px}.payments-finance-stats article>strong{font-size:20px}.payments-finance-heading>label,.payments-finance-filters>label{flex:1 1 100%}.payments-finance-form h3,.payments-finance-form>p,.payments-finance-form .payments-finance-actions{grid-column:1}.payments-finance-section button{min-height:44px}}
