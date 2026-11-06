@@ -71,5 +71,5 @@ test('login requires real backend user identity', () => {
 });
 
 test('recovery does not announce whether a user exists', () => {
-  assert.match(read('src/pages/auth/ForgotPassword.jsx'), /If an eligible account exists/);
+  assert.match(read('src/pages/auth/ForgotPassword.jsx'), /For a staff account, ask your workshop administrator/);
 });
