@@ -8,6 +8,7 @@ import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { appConfirm, appPrompt } from '../../components/common/appDialogs';
 import apiClient from '../../api/apiClient';
 import { financeService } from '../../services/finance.service';
+import PaymentFinanceOverview from '../../components/payments/PaymentFinanceOverview';
 import {
   PaymentFilterToolbar, PaymentOverviewStats, PaymentRecordsPanel, PaymentsHeader
 } from '../../components/payments';
@@ -56,9 +57,15 @@ export function PaymentList() {
   const canReverse = can('payments.reverse') && !USE_MOCK_API;
   const canViewInvoices = can('invoices.view');
   const canViewPayments = can('payments.view');
+  const canManageAccounts = can('payments.edit') && !USE_MOCK_API;
 
   const [payments, setPayments] = useState([]);
   const [supplierSummary, setSupplierSummary] = useState(null);
+  const [financePeriod, setFinancePeriod] = useState('all');
+  const [financeSummary, setFinanceSummary] = useState(null);
+  const [financeLedger, setFinanceLedger] = useState([]);
+  const [financeLoading, setFinanceLoading] = useState(false);
+  const [financeError, setFinanceError] = useState('');
   const [invoices, setInvoices] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [query, setQuery] = useState('');
@@ -93,6 +100,32 @@ export function PaymentList() {
   }, [isNew, canCreate, canViewInvoices, canViewPayments]);
 
   useEffect(() => { load(); }, [load, refreshKey]);
+
+  useEffect(() => {
+    if (isNew || isView || !canViewPayments || USE_MOCK_API) return undefined;
+    let active = true;
+    setFinanceLoading(true);
+    setFinanceError('');
+    Promise.all([
+      financeService.getDashboard({ period: financePeriod }),
+      financeService.getLedger({ page_size: 20 }),
+    ]).then(([dashboard, ledger]) => {
+      if (!active) return;
+      setFinanceSummary(dashboard);
+      setFinanceLedger(Array.isArray(ledger?.results) ? ledger.results : []);
+    }).catch(err => {
+      if (active) {
+        setFinanceError(friendlyError(err, 'Unable to load live bank, revenue or expense totals.'));
+        setFinanceSummary(null);
+        setFinanceLedger([]);
+      }
+    }).finally(() => {
+      if (active) setFinanceLoading(false);
+    });
+    return () => { active = false; };
+  }, [financePeriod, refreshKey, isNew, isView, canViewPayments]);
+
+  const refreshFinance = () => setRefreshKey(value => value + 1);
 
   useEffect(() => {
     if (!isNew || !canCreate || USE_MOCK_API) return;
@@ -350,7 +383,22 @@ export function PaymentList() {
   return (
     <div className="payments-page payments-dashboard">
       <PaymentsHeader onRecordPayment={() => navigate('/payments/new')} />
-      <PaymentOverviewStats payments={payments} formatMoney={(value) => money.format(value || 0)} />
+      {!USE_MOCK_API ? (
+        <PaymentFinanceOverview
+          summary={financeSummary}
+          ledger={financeLedger}
+          loading={financeLoading}
+          error={financeError}
+          period={financePeriod}
+          onPeriodChange={setFinancePeriod}
+          onRefresh={refreshFinance}
+          canManage={canManageAccounts}
+          onRecord={() => navigate('/payments/new')}
+          onExpense={() => navigate('/expenses/new')}
+        />
+      ) : (
+        <PaymentOverviewStats payments={payments} formatMoney={(value) => money.format(value || 0)} />
+      )}
       {payments.some(row => row.source === 'payment' && row.direction === 'IN' && row.ledgerPosted === false) && (
         <div className="payments-error" role="note">
           Some historical customer receipts updated invoice balances but have no linked bank/cash ledger posting.
