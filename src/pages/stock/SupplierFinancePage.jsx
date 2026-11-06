@@ -760,7 +760,8 @@ export default function SupplierFinancePage({ section = '' }) {
               </select>
             </label>
             <label className="grid gap-1 text-sm font-semibold">Payment account
-              <select required value={paymentDraft.accountId} className={field} onChange={(event) => {
+              <select required value={paymentDraft.accountId} aria-invalid={Boolean(paymentErrors.account)}
+                className={field + (paymentErrors.account ? ' border-red-600' : '')} onChange={(event) => {
                 const selected = accounts.find((x) => x.id === event.target.value);
                 setPaymentDraft({ ...paymentDraft, accountId: event.target.value,
                   method: selected?.kind === 'Cash' ? 'Cash' : selected?.kind === 'UPI' ? 'UPI' : 'Bank Transfer' });
@@ -769,6 +770,7 @@ export default function SupplierFinancePage({ section = '' }) {
                 {accounts.filter((x) => x.isActive).map((a) =>
                   <option key={a.id} value={a.id}>{a.name} · Recorded {money(a.recordedBalance)}</option>)}
               </select>
+              {paymentErrors.account && <small role="alert" className="text-xs text-red-600">{paymentErrors.account}</small>}
             </label>
             <label className="grid gap-1 text-sm font-semibold">Method
               <select value={paymentDraft.method} className={field} onChange={(event) =>
@@ -777,13 +779,17 @@ export default function SupplierFinancePage({ section = '' }) {
               </select>
             </label>
             <label className="grid gap-1 text-sm font-semibold">Amount (₹)
-              <input required min="0.01" step="0.01" type="number" className={field}
+              <input required min="0.01" step="0.01" type="number" aria-invalid={Boolean(paymentErrors.amount)}
+                className={field + (paymentErrors.amount ? ' border-red-600' : '')}
                 value={paymentDraft.amount} onChange={(event) =>
                   setPaymentDraft({ ...paymentDraft, amount: event.target.value })}/>
+              {paymentErrors.amount && <small role="alert" className="text-xs text-red-600">{paymentErrors.amount}</small>}
             </label>
             <label className="grid gap-1 text-sm font-semibold">Payment date
-              <input type="date" required className={field} value={paymentDraft.paidOn}
+              <input type="date" required aria-invalid={Boolean(paymentErrors.paidOn)}
+                className={field + (paymentErrors.paidOn ? ' border-red-600' : '')} value={paymentDraft.paidOn}
                 onChange={(event) => setPaymentDraft({ ...paymentDraft, paidOn: event.target.value })}/>
+              {paymentErrors.paidOn && <small role="alert" className="text-xs text-red-600">{paymentErrors.paidOn}</small>}
             </label>
             <label className="grid gap-1 text-sm font-semibold">Reference (optional)
               <input className={field} maxLength={120} value={paymentDraft.reference}
@@ -796,12 +802,16 @@ export default function SupplierFinancePage({ section = '' }) {
               className="grid gap-2 rounded-xl border border-line p-3">
               <label className="grid gap-1 text-sm">
                 {bill.invoiceNumber} · Due {money(bill.outstanding)}
-                <input className={field} type="number" min="0" max={bill.outstanding} step="0.01"
+                <input className={field + (paymentErrors['bill:' + bill.id] || paymentErrors.allocations ? ' border-red-600' : '')}
+                  aria-invalid={Boolean(paymentErrors['bill:' + bill.id] || paymentErrors.allocations)}
+                  type="number" min="0" max={bill.outstanding} step="0.01"
                   value={paymentDraft.allocations[bill.id] || ''}
                   placeholder="Allocate amount (₹)"
                   onChange={(event) => setPaymentDraft((prev) => ({
                     ...prev, allocations: { ...prev.allocations, [bill.id]: event.target.value },
                   }))}/>
+                {paymentErrors['bill:' + bill.id] && <small role="alert" className="text-xs text-red-600">
+                  {paymentErrors['bill:' + bill.id]}</small>}
               </label>
               {!!num(paymentDraft.allocations[bill.id]) && <details className="text-sm">
                 <summary className="cursor-pointer">Allocate to specific purchase items (optional)</summary>
@@ -822,6 +832,13 @@ export default function SupplierFinancePage({ section = '' }) {
               </details>}
             </div>)}
             {!outstandingBills.length && <p className="text-sm text-muted">No posted bills remain unpaid. Use Advance Payment if appropriate.</p>}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 text-sm">
+              <span>Allocated {money(Object.values(paymentDraft.allocations).reduce((sum, value) => sum + num(value), 0))}</span>
+              <strong>Unallocated {money(num(paymentDraft.amount) -
+                Object.values(paymentDraft.allocations).reduce((sum, value) => sum + num(value), 0))}</strong>
+            </div>
+            {paymentErrors.allocations && <p role="alert" className="text-sm text-red-600">
+              {paymentErrors.allocations}</p>}
             <p className="text-xs text-muted">Allocations must equal the payment amount. The server checks every outstanding bill.</p>
           </div>}
           <p className="text-xs text-muted">This reduces only the selected recorded account ledger. It is not a real-time bank balance.</p>
