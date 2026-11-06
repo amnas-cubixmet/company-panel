@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from 'react-router-dom';
 import { FormPage } from '../../components/common/forms/FormPage';
 import { FormSection } from '../../components/common/forms/FormSection';
@@ -11,6 +11,8 @@ import { customerService } from '../../services/customer.service';
 import { vehicleService } from '../../services/vehicle.service';
 import { Car, Calendar, Gauge, ShieldCheck } from 'lucide-react';
 import '../../styles/vehicle-management.css';
+import '../../styles/vehicle-compact-cleanup.css';
+import { extractVehicleFieldErrors, focusFirstVehicleError, requiredVehicleFields } from './vehicleFormValidation';
 
 export const EditVehicle = () => {
   const { id } = useParams();
@@ -18,6 +20,11 @@ export const EditVehicle = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [formError, setFormError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [reloadKey, setReloadKey] = useState(0);
+  const formRef = useRef(null);
   const [formData, setFormData] = useState({
     customerId: '',
     regNo: '',
@@ -40,13 +47,16 @@ export const EditVehicle = () => {
 
   useEffect(() => {
     let alive = true;
+    setLoading(true);
+    setLoadError('');
 
     Promise.all([
       vehicleService.getVehicleById(id),
       customerService.getCustomers()
     ]).then(([vehicle, customerRows]) => {
       if (!alive) return;
-      setCustomers(customerRows);
+      if (!vehicle) throw new Error('Vehicle not found.');
+      setCustomers(Array.isArray(customerRows) ? customerRows : []);
       if (vehicle) {
         setFormData({
           customerId: vehicle.customerId || '',
@@ -68,12 +78,14 @@ export const EditVehicle = () => {
           status: vehicle.status || 'Active'
         });
       }
+    }).catch((cause) => {
+      if (alive) setLoadError(cause?.message || 'Unable to load vehicle details.');
     }).finally(() => {
       if (alive) setLoading(false);
     });
 
     return () => { alive = false; };
-  }, [id]);
+  }, [id, reloadKey]);
 
   const customerOptions = customers.map((customer) => ({
     value: customer.id,
@@ -82,7 +94,17 @@ export const EditVehicle = () => {
 
   const submit = async (event) => {
     event.preventDefault();
+    if (submitting) return;
+    const invalid = requiredVehicleFields(formData, customers);
+    if (Object.keys(invalid).length) {
+      setFieldErrors(invalid);
+      setFormError('Check the highlighted vehicle fields.');
+      requestAnimationFrame(() => focusFirstVehicleError(formRef.current, invalid));
+      return;
+    }
     setSubmitting(true);
+    setFieldErrors({});
+    setFormError('');
     try {
       const selectedCustomer = customers.find((customer) => customer.id === formData.customerId);
       await vehicleService.updateVehicle(id, {
@@ -90,25 +112,38 @@ export const EditVehicle = () => {
         customerName: selectedCustomer?.name || ''
       });
       navigate(`/vehicles/${id}`);
+    } catch (cause) {
+      const next = extractVehicleFieldErrors(cause);
+      setFieldErrors(next);
+      setFormError(cause?.message || 'Unable to update vehicle.');
+      requestAnimationFrame(() => focusFirstVehicleError(formRef.current, next));
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) return <div className="vehicle-empty">Loading vehicle...</div>;
+  if (loading) return <div className="vehicle-empty" role="status">Loading vehicle...</div>;
+  if (loadError) return <div className="vehicle-dashboard-error" role="alert">
+    {loadError} <button type="button" onClick={() => setReloadKey((key) => key + 1)}>Retry</button>
+  </div>;
 
   return (
     <div className="vehicle-form-page cg-vehicles">
       <FormPage
         title="Edit Vehicle"
-        description="Update customer ownership, vehicle specifications, service schedule and insurance details."
       >
-        <form className="vehicle-form" onSubmit={submit}>
-          <FormSection title="Customer Owner" description="Vehicle ownership and workshop customer link.">
-            <div className="form-grid-full">
+        {formError && <div className="vehicle-dashboard-error" role="alert">{formError}</div>}
+        <form ref={formRef} className="vehicle-form" onSubmit={submit}
+          onInvalid={(event) => {
+            event.target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            event.target?.focus();
+          }}>
+          <FormSection title="Customer Owner">
+            <div className="form-grid-full" data-vehicle-field="customerId">
               <SearchableSelect
                 label="Customer Owner"
                 required
+                error={fieldErrors.customerId}
                 options={customerOptions}
                 value={formData.customerId}
                 onChange={(value) => setFormData({ ...formData, customerId: value })}
@@ -121,12 +156,12 @@ export const EditVehicle = () => {
             </Select>
           </FormSection>
 
-          <FormSection title="Vehicle Specifications" description="Registration, chassis, engine and current odometer.">
+          <FormSection title="Vehicle Specifications">
             <div className="form-grid-full">
-              <Input label="Registration Number" required icon={Car} value={formData.regNo} onChange={(e)=>setFormData({...formData,regNo:e.target.value})}/>
+              <Input label="Registration Number" required data-vehicle-field="regNo" error={fieldErrors.regNo} icon={Car} value={formData.regNo} onChange={(e)=>setFormData({...formData,regNo:e.target.value})}/>
             </div>
-            <Input label="Make / Manufacturer" required value={formData.make} onChange={(e)=>setFormData({...formData,make:e.target.value})}/>
-            <Input label="Model" required value={formData.model} onChange={(e)=>setFormData({...formData,model:e.target.value})}/>
+            <Input label="Make / Manufacturer" required data-vehicle-field="make" error={fieldErrors.make} value={formData.make} onChange={(e)=>setFormData({...formData,make:e.target.value})}/>
+            <Input label="Model" required data-vehicle-field="model" error={fieldErrors.model} value={formData.model} onChange={(e)=>setFormData({...formData,model:e.target.value})}/>
             <Input label="Variant / Edition" value={formData.variant} onChange={(e)=>setFormData({...formData,variant:e.target.value})}/>
             <Input label="Manufacturing Year" value={formData.year} onChange={(e)=>setFormData({...formData,year:e.target.value})}/>
             <Select label="Fuel Type" value={formData.fuelType} onChange={(e)=>setFormData({...formData,fuelType:e.target.value})}>
@@ -147,7 +182,7 @@ export const EditVehicle = () => {
             <Input label="Engine Number" value={formData.engineNo} onChange={(e)=>setFormData({...formData,engineNo:e.target.value})}/>
           </FormSection>
 
-          <FormSection title="Service & Insurance" description="Maintenance and renewal reminder dates.">
+          <FormSection title="Service & Insurance">
             <Input label="Last Service Date" type="date" icon={Calendar} value={formData.lastServiceDate} onChange={(e)=>setFormData({...formData,lastServiceDate:e.target.value})}/>
             <Input label="Next Service Due Date" type="date" icon={Calendar} value={formData.nextServiceDue} onChange={(e)=>setFormData({...formData,nextServiceDue:e.target.value})}/>
             <Input label="Insurance Expiry Date" type="date" icon={ShieldCheck} value={formData.insuranceExpiry} onChange={(e)=>setFormData({...formData,insuranceExpiry:e.target.value})}/>
