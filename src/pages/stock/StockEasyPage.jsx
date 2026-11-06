@@ -313,7 +313,7 @@ export default function StockEasyPage() {
     const openingQuantity = openingText === '' ? 0 : Number(openingText);
     if (!/^\d+(?:\.\d{1,2})?$/.test(openingText || '0') ||
         !Number.isFinite(openingQuantity) || openingQuantity < 0) {
-      const message = 'Opening stock quantity must be nonnegative with up to two decimal places.';
+      const message = 'Purchase quantity must be nonnegative with up to two decimal places.';
       setPartErrors(previous => ({ ...previous, stockQuantity: message }));
       setError(message);
       requestAnimationFrame(() => {
@@ -602,7 +602,7 @@ export default function StockEasyPage() {
                 ))}
                 <option value="custom">Saved/Other HSN-Specific Rate (custom %)</option>
               </OutlinedSelect>
-              <OutlinedInput label="Opening Stock Quantity" type="number" min="0" step="0.01"
+              <OutlinedInput label="Purchase Quantity (Supplier Step)" type="number" min="0" step="0.01"
                 inputMode="decimal" data-field="stockQuantity" aria-invalid={Boolean(partErrors.stockQuantity)}
                 value={part.stockQuantity} onChange={e => {
                   setPart({ ...part, stockQuantity: e.target.value });
@@ -663,11 +663,11 @@ export default function StockEasyPage() {
                 onChange={location => setPart(previous => ({ ...previous, location }))}/>
             </div>
             <p className="cg-easy-hint">
-              When a Supplier and Stock Quantity are selected, saving the part redirects to
-              a supplier purchase for Pay Now / Partial / Credit. The stock quantity is added
-              only after that bill is posted. Without a Supplier, quantity is historical opening stock only.
+              Choose a Supplier first. Saving adds product details only; it does not add stock, debt or payment.
+              You will go straight to that Supplier page to confirm the purchase quantity,
+              GST, Cash/Bank payment and remaining credit. No separate purchase screen.
             </p>
-            <div className="cg-easy-form-actions"><button type="button" onClick={() => setPartOpen(false)}>Cancel</button><button type="submit" disabled={saving}>{saving ? 'Saving...' : (number(part.stockQuantity) > 0 ? 'Save Part & Add Opening Stock' : 'Save Part')}</button></div>
+            <div className="cg-easy-form-actions"><button type="button" onClick={() => setPartOpen(false)}>Cancel</button><button type="submit" disabled={saving}>{saving ? 'Saving...' : (part.supplier ? 'Save Part & Continue to Supplier' : 'Save Part')}</button></div>
           </form>
         )}
       </ResponsiveModalSheet>
