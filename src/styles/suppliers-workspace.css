@@ -127,3 +127,12 @@
 @media (prefers-reduced-motion: reduce) {
   .cg-supplier-form > label.cg-supplier-floating > span { transition: none; }
 }
+
+/* Purchase History is a supplier page tab, not a slide-out navigation menu. */
+.cg-supplier-purchase-history{display:grid;gap:14px;min-width:0}
+.cg-supplier-purchase-history .cg-supplier-record>div{min-width:0}
+.cg-supplier-purchase-history .cg-supplier-record b{flex-shrink:0}
+@media(max-width:480px){
+  .cg-supplier-purchase-history .cg-supplier-record{align-items:flex-start}
+  .cg-supplier-purchase-history .cg-supplier-record b{font-size:12px}
+}
