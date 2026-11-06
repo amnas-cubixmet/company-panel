@@ -6,6 +6,7 @@ import { supplierService } from '../../services/supplier.service';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { USE_MOCK_API } from '../../api/apiConfig';
+import { SupplierSectionTabs } from '../../components/suppliers/SupplierSectionTabs';
 import '../../styles/suppliers-workspace.css';
 
 const asText = value => String(value ?? '').trim();
@@ -76,7 +77,8 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
   </ResponsiveModalSheet>;
 }
 
-export default function SuppliersPage() {
+export default function SuppliersPage({ section = 'all' }) {
+  const purchaseView = section === 'purchases';
   const { id } = useParams();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -87,6 +89,10 @@ export default function SuppliersPage() {
   const canDelete = access.can('stock.delete') && !USE_MOCK_API;
   const [suppliers, setSuppliers] = useState([]);
   const [creditBalances, setCreditBalances] = useState(null);
+  const [purchaseBills, setPurchaseBills] = useState([]);
+  const [purchaseHistory, setPurchaseHistory] = useState([]);
+  const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState(false);
+  const [purchaseHistoryError, setPurchaseHistoryError] = useState('');
   const [supplier, setSupplier] = useState(null);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -125,11 +131,24 @@ export default function SuppliersPage() {
   }, [id]);
 
   useEffect(() => {
+    if (!purchaseView) return undefined;
+    let active = true;
+    setPurchaseHistoryLoading(true);
+    setPurchaseHistoryError('');
+    supplierService.purchaseOrders()
+      .then(rows => { if (active) setPurchaseHistory(rows); })
+      .catch(cause => { if (active) setPurchaseHistoryError(cause?.message || 'Unable to load purchase history.'); })
+      .finally(() => { if (active) setPurchaseHistoryLoading(false); });
+    return () => { active = false; };
+  }, [purchaseView]);
+
+  useEffect(() => {
     if (!canViewFinance || USE_MOCK_API) return undefined;
     let active = true;
     // SupplierBill is the authoritative posted payable, not a draft PO or an expense.
     supplierFinanceService.getBills().then(rows => {
       if (!active) return;
+      setPurchaseBills(rows);
       const balances = new Map();
       for (const bill of rows) {
         if (bill.postingStatus !== 'Posted') continue;
@@ -189,15 +208,18 @@ export default function SuppliersPage() {
     <div className="cg-suppliers-head">
       <div>
         {id&&<Link className="cg-suppliers-back" to="/suppliers"><ArrowLeft size={16}/> All Suppliers</Link>}
-        <h1>{id ? (supplier?.name || 'Supplier Details') : 'Suppliers'}</h1>
+        <h1>{id ? (supplier?.name || 'Supplier Details') : purchaseView ? 'Purchase History' : 'Suppliers'}</h1>
       </div>
       {id ? canEdit && supplier && <button type="button" className="cg-supplier-button" onClick={()=>setEditor(supplier)}>Edit Supplier</button>
+        : purchaseView ? <Link className="cg-supplier-button primary" to="/stock/suppliers?tab=bill"><Plus size={17}/> New Purchase</Link>
         : canCreate && <button type="button" className="cg-supplier-button primary" onClick={()=>setEditor({create:true})}><Plus size={17}/> Add Supplier</button>}
     </div>
 
+    <SupplierSectionTabs />
+
     {error&&<div className="cg-supplier-error" role="alert">{error} <button type="button" onClick={()=>window.location.reload()}>Retry</button></div>}
 
-    {!id&&<>
+    {!id&&!purchaseView&&<>
       <div className="cg-supplier-toolbar">
         <label className="cg-supplier-search"><Search size={18} aria-hidden="true"/>
           <input aria-label="Search suppliers" value={search} placeholder="Search name, phone or GSTIN"
@@ -228,6 +250,46 @@ export default function SuppliersPage() {
           </Link>)}
         </div>:<p className="cg-supplier-empty">{search?'No suppliers match your search.':'No suppliers added yet.'}</p>}
     </>}
+
+    {!id&&purchaseView&&(
+      <section className="cg-supplier-purchase-history" aria-label="Supplier purchase history">
+        {purchaseHistoryError && <p role="alert" className="cg-supplier-error">{purchaseHistoryError}</p>}
+        {purchaseHistoryLoading ? <p role="status" className="cg-supplier-empty">Loading purchase history…</p> : (
+          <div className="cg-supplier-profile">
+            <div className="cg-supplier-profile-head">
+              <ShoppingBag size={20}/><h2>Purchase Orders</h2><span>{purchaseHistory.length} records</span>
+            </div>
+            {purchaseHistory.map(order => (
+              <div className="cg-supplier-record" key={'po-'+order.id}>
+                <div>
+                  <strong>{order.purchaseNo || order.number || 'Purchase Order'}</strong>
+                  <small>{suppliers.find(row => String(row.id) === supplierIdOf(order))?.name || order.supplierName || 'Supplier'} · {order.status || '—'}</small>
+                </div>
+                <b>{money(order.total)}</b>
+              </div>
+            ))}
+            {!purchaseHistory.length && <p className="cg-supplier-empty">No purchase orders found.</p>}
+          </div>
+        )}
+        {canViewFinance && (
+          <div className="cg-supplier-profile">
+            <div className="cg-supplier-profile-head">
+              <Package size={20}/><h2>Supplier Purchase Bills</h2><span>{purchaseBills.length} records</span>
+            </div>
+            {purchaseBills.map(bill => (
+              <div className="cg-supplier-record" key={'bill-'+bill.id}>
+                <div>
+                  <strong>{bill.invoiceNumber}</strong>
+                  <small>{suppliers.find(row => String(row.id) === String(bill.supplierId))?.name || 'Supplier'} · {bill.status} · {bill.invoiceDate}</small>
+                </div>
+                <b>{money(bill.total)}</b>
+              </div>
+            ))}
+            {!purchaseBills.length && <p className="cg-supplier-empty">No supplier bills recorded.</p>}
+          </div>
+        )}
+      </section>
+    )}
 
     {id&&!detailsLoading&&supplier&&<>
       <section className="cg-supplier-profile">
