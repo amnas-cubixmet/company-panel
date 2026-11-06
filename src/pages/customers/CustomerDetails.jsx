@@ -417,18 +417,6 @@ export const CustomerDetails = () => {
 
       {loadError && <div className="customer-profile-partial-error" role="status">{loadError} <button type="button" onClick={loadCustomerData}>Retry</button></div>}
 
-      <CustomerTrackingLinkPanel
-        key={customer.id}
-        customerId={customer.id}
-        whatsapp={customer.whatsapp || customer.phone}
-        canManage={featureAccess.can('customers.edit')}
-      />
-
-      <CustomerWhatsAppConsent
-        customerId={customer.id}
-        canManage={featureAccess.can('customers.edit')}
-      />
-
       {/* Clean customer identity header — never show a raw internal UUID. */}
       <header className="customer-profile-header customer-profile-hero">
         <div className="customer-profile-hero__main">
@@ -526,10 +514,8 @@ export const CustomerDetails = () => {
             icon: Car, tone: 'neutral' },
           { label: 'Job Cards', value: jobsAvailable ? String(jobs.length) : '—',
             icon: ClipboardCheck, tone: 'neutral' },
-          { label: 'Total Billed', value: formatINR(totalBilled),
+          { label: 'Invoices', value: invoicesAvailable ? String(activeCustomerInvoices(invoices).length) : '—',
             icon: FileText, tone: 'blue' },
-          { label: 'Amount Paid', value: formatINR(totalPaid),
-            icon: CheckCircle2, tone: 'green' },
           { label: 'Outstanding', value: formatINR(totalOutstanding),
             icon: Wallet, tone: totalOutstanding > 0 ? 'danger' : 'neutral' },
         ].map((item) => {
@@ -572,6 +558,15 @@ export const CustomerDetails = () => {
         {/* 4. OVERVIEW TAB */}
         {activeTab === 'overview' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <CustomerTrackingLinkPanel
+              key={customer.id}
+              customerId={customer.id}
+              canManage={featureAccess.can('customers.edit')}
+            />
+            <CustomerWhatsAppConsent
+              customerId={customer.id}
+              canManage={featureAccess.can('customers.edit')}
+            />
             
             {/* Detailed Profile Information */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }} className="overview-details-grid">
@@ -1175,18 +1170,25 @@ export const CustomerDetails = () => {
         title="Edit Customer Profile"
         maxWidth="520px"
       >
-        <form onSubmit={handleEditCustomerSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <Input label="Customer Name" required value={editName} onChange={(e) => setEditName(e.target.value)} />
+        <form ref={editFormRef} onSubmit={handleEditCustomerSubmit}
+          onInvalid={(event) => {
+            event.target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            event.target?.focus();
+          }}
+          className="customer-profile-edit-form"
+          style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {editFormError && <p className="customer-profile-form-error" role="alert">{editFormError}</p>}
+          <Input label="Customer Name" required data-customer-field="name" error={editFieldErrors.name} value={editName} onChange={(e) => setEditName(e.target.value)} />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <Input label="Phone Number" required value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
-            <Input label="WhatsApp Number" value={editWhatsapp} onChange={(e) => setEditWhatsapp(e.target.value)} />
+            <Input label="Phone Number" required data-customer-field="phone" error={editFieldErrors.phone} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+            <Input label="WhatsApp Number" data-customer-field="whatsapp" error={editFieldErrors.whatsapp} value={editWhatsapp} onChange={(e) => setEditWhatsapp(e.target.value)} />
           </div>
 
-          <Input label="Email Address" type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+          <Input label="Email Address" type="email" data-customer-field="email" error={editFieldErrors.email} value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <Select label="Customer Type" value={editType} onChange={(e) => setEditType(e.target.value)}>
+            <Select label="Customer Type" data-customer-field="customerType" error={editFieldErrors.customerType} value={editType} onChange={(e) => setEditType(e.target.value)}>
               <option value="Individual">Individual</option>
               <option value="Business">Business</option>
             </Select>
@@ -1196,8 +1198,8 @@ export const CustomerDetails = () => {
 
           {editType === 'Business' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <Input label="Company Name" value={editCompany} onChange={(e) => setEditCompany(e.target.value)} />
-              <Input label="GST Number" value={editGst} onChange={(e) => setEditGst(e.target.value)} />
+              <Input label="Company Name" data-customer-field="companyName" error={editFieldErrors.companyName} value={editCompany} onChange={(e) => setEditCompany(e.target.value)} />
+              <Input label="GST Number" data-customer-field="gstNo" error={editFieldErrors.gstNo} value={editGst} onChange={(e) => setEditGst(e.target.value)} />
             </div>
           )}
 
@@ -1209,8 +1211,8 @@ export const CustomerDetails = () => {
             <Input label="PIN Code" value={editPincode} onChange={(e) => setEditPincode(e.target.value)} />
           </div>
 
-          <button type="submit" style={{ height: '44px', borderRadius: '11px', border: 'none', backgroundColor: 'var(--primary)', color: '#ffffff', fontWeight: '700', marginTop: '6px', cursor: 'pointer' }}>
-            Save Profile Changes
+          <button type="submit" disabled={editSaving} style={{ height: '44px', borderRadius: '11px', border: 'none', backgroundColor: 'var(--primary)', color: '#ffffff', fontWeight: '700', marginTop: '6px', cursor: 'pointer' }}>
+            {editSaving ? 'Saving…' : 'Save Profile Changes'}
           </button>
         </form>
       </ResponsiveModalSheet>
