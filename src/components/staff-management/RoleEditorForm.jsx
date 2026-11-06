@@ -49,7 +49,7 @@ export const RoleEditorForm = ({
           </label>
 
           <p className="role-editor-field is-wide" role="note">
-            Company permissions apply within this workshop. Paid features require entitlement.
+            Company permissions apply within this workshop. Paid features require entitlement. Branch-specific restrictions are not available yet.
           </p>
         </div>
       </section>
