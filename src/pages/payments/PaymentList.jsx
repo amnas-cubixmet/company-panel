@@ -9,8 +9,9 @@ import { appConfirm, appPrompt } from '../../components/common/appDialogs';
 import apiClient from '../../api/apiClient';
 import { financeService } from '../../services/finance.service';
 import {
-  PaymentFilterToolbar, PaymentOverviewStats, PaymentRecordsPanel, PaymentsHeader
+  PaymentFilterToolbar, PaymentRecordsPanel, PaymentsHeader
 } from '../../components/payments';
+import PaymentsFinanceHome from '../../components/payments/PaymentsFinanceHome';
 import {
   formatPaymentDate, invoiceOutstanding, makePaymentPayload,
   normalizePaymentRow, payableInvoices, paymentStatusClass
@@ -350,7 +351,8 @@ export function PaymentList() {
   return (
     <div className="payments-page payments-dashboard">
       <PaymentsHeader onRecordPayment={() => navigate('/payments/new')} />
-      <PaymentOverviewStats payments={payments} formatMoney={(value) => money.format(value || 0)} />
+      {!USE_MOCK_API && <PaymentsFinanceHome refreshKey={refreshKey} canEdit={can('payments.edit')}
+        onUpdated={() => setRefreshKey((value) => value + 1)} />}
       {payments.some(row => row.source === 'payment' && row.direction === 'IN' && row.ledgerPosted === false) && (
         <div className="payments-error" role="note">
           Some historical customer receipts updated invoice balances but have no linked bank/cash ledger posting.
