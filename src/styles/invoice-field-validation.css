@@ -93,3 +93,20 @@
  .billing-page .invoice-error-checklist ol{grid-template-columns:minmax(0,1fr)}
  .billing-page .invoice-error-checklist li button{min-height:48px}
 }
+
+/* Job-sourced billing: keep actionable warnings available without occupying a
+   large permanent error card. Field-level GST / HSN errors are shown in the rows. */
+.billing-page .invoice-job-review{
+  margin:10px 0 14px;padding:8px 12px;
+  border:1px solid var(--border);border-radius:10px;
+  background:var(--surface-2);color:var(--text-primary);
+  font-size:13px;line-height:1.5;
+}
+.billing-page .invoice-job-review summary{
+  cursor:pointer;font-size:13px;font-weight:650;
+}
+.billing-page .invoice-job-review summary:focus-visible{
+  outline:2px solid var(--primary);outline-offset:3px;border-radius:4px;
+}
+.billing-page .invoice-job-review ul{margin:7px 0 2px;padding-left:20px}
+.billing-page .invoice-job-review li{margin:3px 0;overflow-wrap:anywhere}

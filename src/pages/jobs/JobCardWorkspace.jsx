@@ -76,18 +76,6 @@ const TABS = [
   ['activity', 'Full Log']
 ];
 
-const SECTION_DETAILS = {
-  overview: 'Customer, vehicle and technician at a glance.',
-  complaints: 'Customer concerns and work requests.',
-  inspection: 'Vehicle checks and inspection findings.',
-  estimate: 'Labour, parts, estimates and customer approval.',
-  work: 'Track work, mechanics and parts.',
-  parts: 'Spare parts request, issue and usage.',
-  updates: 'Technician notes and work updates.',
-  qc: 'Quality inspection and final checks.',
-  invoice: 'Invoice, payments, balance and delivery.',
-  activity: 'Complete recorded history of Job Card actions, staff and timestamps.'
-};
 const GUIDED_STAGES = ['overview', 'inspection', 'estimate', 'work', 'qc', 'invoice'];
 
 const TAB_ICONS = {
@@ -118,6 +106,7 @@ export function JobCardWorkspace() {
   const navigate = useNavigate();
   const { can } = useFeatureAccess();
   const hasInvoiceAccess = can('invoices.view');
+  const canCreateInvoice = can('invoices.create');
   const hasStockAccess = can('stock.view');
   const workflowTabsRef = useRef(null);
 
@@ -252,9 +241,9 @@ export function JobCardWorkspace() {
       }
 
       setDeliveryForm({
-        finalKm: data?.delivery?.finalKm || data?.kilometre || '',
+        finalKm: data?.delivery?.finalKm ?? data?.kilometre ?? '',
         customerSignature: data?.delivery?.acknowledgedBy || '',
-        warrantyNotes: data?.delivery?.notes || ''
+        warrantyNotes: data?.delivery?.warrantyNotes || data?.delivery?.notes || ''
       });
       setPaymentForm((old) => ({
         ...old,
@@ -365,6 +354,7 @@ export function JobCardWorkspace() {
 
   const latestEstimate = estimates.at(-1) || null;
   const linkedInvoice = jobInvoices.find((row) => row.status !== 'Cancelled') || null;
+  const isInvoiceFinalized = ['Finalized', 'Paid'].includes(linkedInvoice?.status);
   const invoiceTotal = linkedInvoice
     ? cleanNumber(linkedInvoice.total)
     : (USE_MOCK_API ? cleanNumber(job?.billing?.invoiceTotal || latestEstimate?.grandTotal || 0) : 0);
@@ -445,9 +435,9 @@ export function JobCardWorkspace() {
     return flow;
   };
 
-  const completeStage = async (stage) => {
+  const completeStage = async (stage, extraOptions = {}) => {
     if (!workflow || saving) return;
-    const options = {};
+    const options = { ...extraOptions };
     if (stage === 'estimate') {
       if (!await appConfirm('Confirm that the customer approved the latest estimate?')) return;
       options.approveEstimate = true;
@@ -487,7 +477,7 @@ export function JobCardWorkspace() {
       }
     } catch (e) {
       const details = e?.response?.data;
-      setError(details?.complaints || details?.stage || details?.message || e?.message || 'Unable to complete this stage.');
+      setError(details?.delivery || details?.finalKm || details?.acknowledgedBy || details?.warrantyNotes || details?.complaints || details?.stage || details?.message || e?.message || 'Unable to complete this stage.');
     } finally {
       setSaving(false);
     }
@@ -810,6 +800,10 @@ export function JobCardWorkspace() {
     }
 
     if (!USE_MOCK_API) {
+      if (!isInvoiceFinalized) {
+        setError('Finalize the linked invoice before recording payment.');
+        return;
+      }
       if (!linkedInvoice?.id || !job?.customerId) {
         setError('Create an invoice linked to this Job Card before recording payment.');
         return;
@@ -869,7 +863,30 @@ export function JobCardWorkspace() {
 
   const saveDelivery = async () => {
     if (!USE_MOCK_API) {
-      await completeStage('invoice');
+      if (!isInvoiceFinalized) {
+        setError('Finalize the linked invoice before completing delivery.');
+        return;
+      }
+      const finalKm = String(deliveryForm.finalKm ?? '').trim();
+      const acknowledgedBy = String(deliveryForm.customerSignature ?? '').trim();
+      const warrantyNotes = String(deliveryForm.warrantyNotes ?? '').trim();
+      if (!/^\d+$/.test(finalKm) || Number(finalKm) > 2147483647 ||
+          Number(finalKm) < Number(job.kilometre || 0)) {
+        setError('Enter a valid final odometer reading, not less than check-in kilometres.');
+        return;
+      }
+      if (!acknowledgedBy || acknowledgedBy.length > 160) {
+        setError('Enter the customer acknowledging vehicle delivery (maximum 160 characters).');
+        return;
+      }
+      if (warrantyNotes.length > 1500) {
+        setError('Keep warranty notes within 1500 characters.');
+        return;
+      }
+      if (!await appConfirm('Confirm the vehicle has been handed over to the customer?')) return;
+      await completeStage('invoice', {
+        delivery: { finalKm, acknowledgedBy, warrantyNotes }
+      });
       return;
     }
     const nextDelivery = {
@@ -920,25 +937,14 @@ export function JobCardWorkspace() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <span className="job-overview-status-badge">{normalizeJobStatus(job.status)}</span>
           <WhatsAppManualShareButton targetType="job" targetId={job.id} />
-          {activeTab === 'overview' ? (
-            <span className="job-overview-status-badge">{normalizeJobStatus(job.status)}</span>
-          ) : (
-            <>
-              <select
-                aria-label="Job Card status"
-                value={normalizeJobStatus(job.status)}
-                disabled
-                title="Status advances only when the current workflow stage is completed"
-                className="h-10 rounded-xl border border-line bg-surface px-3 text-xs font-bold text-content"
-              >
-                {JOB_STATUSES.map((status) => <option key={status}>{status}</option>)}
-              </select>
-              {hasInvoiceAccess && <button type="button" onClick={() => openTab('invoice')} className="inline-flex h-10 items-center gap-2 rounded-xl border-0 bg-primary px-4 text-xs font-bold text-white">
+          {hasInvoiceAccess && !isSectionLocked('invoice') && activeTab !== 'invoice' &&
+            (linkedInvoice || canCreateInvoice) && (
+              <button type="button" onClick={() => openTab('invoice')} className="inline-flex h-10 items-center gap-2 rounded-xl border-0 bg-primary px-4 text-xs font-bold text-white">
                 <ReceiptText size={15}/>{linkedInvoice ? 'View Invoice' : 'Create Invoice'}
-              </button>}
-            </>
-          )}
+              </button>
+            )}
         </div>
       </header>
 
@@ -1065,7 +1071,6 @@ export function JobCardWorkspace() {
         <div className="job-workspace-section-icon"><ActiveSectionIcon size={17} aria-hidden="true"/></div>
         <div className="job-workspace-section-title">
           <h2>{activeTabLabel}</h2>
-          <p>{SECTION_DETAILS[activeTab]}</p>
         </div>
         {activeTab !== 'activity' && <span className={'job-workspace-section-state ' + (activeTabLocked ? 'is-locked' : activeTabComplete ? 'is-complete' : 'is-open')}>
           {activeTabLocked ? <LockKeyhole size={13} aria-hidden="true"/> : activeTabComplete ? <CheckCircle2 size={13} aria-hidden="true"/> : <Clock3 size={13} aria-hidden="true"/>}
@@ -1077,7 +1082,7 @@ export function JobCardWorkspace() {
             <SkipForward size={16} aria-hidden="true" /> Skip Work
           </button>
         )}
-        {!activeTabLocked && !activeTabComplete && activeTab === currentStage && activeTab !== 'qc' && (
+        {!activeTabLocked && !activeTabComplete && activeTab === currentStage && activeTab !== 'qc' && activeTab !== 'invoice' && (
           <button type="button" className="job-stage-complete-button" disabled={saving} onClick={() => completeStage(activeTab)}>
             <CheckCircle2 size={15} aria-hidden="true" />
             {saving ? 'Saving…' : activeTab === 'estimate' ? 'Approve & Continue' : activeTab === 'work' ? 'Finish Work & Continue' : activeTab === 'invoice' ? 'Finish Job Card' : 'Complete & Continue'}
@@ -1646,8 +1651,7 @@ export function JobCardWorkspace() {
         <div className="job-invoice-dashboard">
           <header className="job-invoice-dashboard-head">
             <div>
-              <h2><ReceiptText size={18} aria-hidden="true" /> Invoice & Payment</h2>
-              <p>Review the invoice, outstanding amount and vehicle delivery in one place.</p>
+              <h2><ReceiptText size={18} aria-hidden="true" /> Invoice & Delivery</h2>
             </div>
             <div className="job-invoice-header-actions">
               {linkedInvoice?.id && (
@@ -1657,14 +1661,14 @@ export function JobCardWorkspace() {
                   {invoicePdfLoading ? 'Generating PDF…' : 'Download Invoice PDF'}
                 </button>
               )}
-              <button
+              {(linkedInvoice || canCreateInvoice) && <button
                 type="button"
                 onClick={() => linkedInvoice ? navigate('/invoices/' + linkedInvoice.id) : createInvoice()}
                 className="job-primary-action"
               >
                 <ReceiptText size={15} aria-hidden="true" />
                 {linkedInvoice ? 'View Invoice' : 'Create Invoice'}
-              </button>
+              </button>}
             </div>
           </header>
 
@@ -1692,7 +1696,10 @@ export function JobCardWorkspace() {
             <button type="button" onClick={loadBilling}>Retry</button>
           </div>}
 
-          <div className="job-invoice-dashboard-columns">
+          {linkedInvoice && !isInvoiceFinalized && <div className="job-invoice-inline-message" role="status">
+             Invoice not finalized. <button type="button" onClick={() => navigate('/invoices/' + linkedInvoice.id)}>Open Invoice</button>
+           </div>}
+           <div className="job-invoice-dashboard-columns">
             <section className="job-panel job-invoice-billing-card">
               <div className="job-invoice-section-heading">
                 <div>
@@ -1726,8 +1733,9 @@ export function JobCardWorkspace() {
                   <FileText size={20} aria-hidden="true" />
                   <strong>No invoice linked yet</strong>
                   <p>Generate an invoice from this job before recording a payment.</p>
-                  <button type="button" onClick={createInvoice} className="job-primary-action">Create Invoice</button>
                 </div>
+              ) : (!USE_MOCK_API && !isInvoiceFinalized) ? (
+                <p className="job-invoice-inline-message">Finalize the linked invoice to record customer payments.</p>
               ) : (
                 <form className="job-payment-form" onSubmit={recordPayment}>
                   <div className="job-payment-form__title">Record payment</div>
@@ -1775,25 +1783,22 @@ export function JobCardWorkspace() {
                   <p>Confirm final handover details.</p>
                 </div>
               </div>
-              {!USE_MOCK_API && (
-                <p className="job-invoice-inline-message">The backend currently supports delivery status, but not storing the KM, acknowledgement and warranty fields shown below.</p>
-              )}
               <div className="job-invoice-delivery-fields">
                 <label>
                   Final KM
-                  <input disabled={!USE_MOCK_API} value={deliveryForm.finalKm} onChange={(e) => setDeliveryForm({ ...deliveryForm, finalKm: e.target.value })} placeholder="Vehicle odometer" />
+                  <input required inputMode="numeric" type="number" min={Number(job.kilometre || 0)} step="1" max="2147483647" disabled={normalizeJobStatus(job.status) === 'Delivered'} value={deliveryForm.finalKm} onChange={(e) => setDeliveryForm({ ...deliveryForm, finalKm: e.target.value })} placeholder="Vehicle odometer" />
                 </label>
                 <label>
                   Customer acknowledgement
-                  <input disabled={!USE_MOCK_API} value={deliveryForm.customerSignature} onChange={(e) => setDeliveryForm({ ...deliveryForm, customerSignature: e.target.value })} placeholder="Customer name" />
+                  <input required maxLength={160} disabled={normalizeJobStatus(job.status) === 'Delivered'} value={deliveryForm.customerSignature} onChange={(e) => setDeliveryForm({ ...deliveryForm, customerSignature: e.target.value })} placeholder="Customer name" />
                 </label>
                 <label>
                   Warranty / service notes
-                  <textarea disabled={!USE_MOCK_API} rows={3} value={deliveryForm.warrantyNotes} onChange={(e) => setDeliveryForm({ ...deliveryForm, warrantyNotes: e.target.value })} placeholder="Handover notes" />
+                  <textarea rows={3} maxLength={1500} disabled={normalizeJobStatus(job.status) === 'Delivered'} value={deliveryForm.warrantyNotes} onChange={(e) => setDeliveryForm({ ...deliveryForm, warrantyNotes: e.target.value })} placeholder="Handover notes" />
                 </label>
-                <button type="button" disabled={saving || normalizeJobStatus(job.status) === 'Delivered'} onClick={saveDelivery} className="job-invoice-deliver-button">
+                <button type="button" disabled={saving || !can('jobs.edit') || normalizeJobStatus(job.status) === 'Delivered' || (!USE_MOCK_API && !isInvoiceFinalized)} onClick={saveDelivery} className="job-invoice-deliver-button">
                   <CheckCircle2 size={16} aria-hidden="true" />
-                  {normalizeJobStatus(job.status) === 'Delivered' ? 'Vehicle Delivered' : 'Mark Delivered'}
+                  {normalizeJobStatus(job.status) === 'Delivered' ? 'Vehicle Delivered' : 'Complete Delivery'}
                 </button>
               </div>
             </section>

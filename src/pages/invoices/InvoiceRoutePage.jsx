@@ -89,6 +89,11 @@ export function InvoiceRoutePage() {
   const [branchStateMismatch, setBranchStateMismatch] = useState(false);
   const [jobDraftWarnings, setJobDraftWarnings] = useState([]);
   const [jobDraftLoading, setJobDraftLoading] = useState(false);
+  // GST/HSN gaps are shown next to their fields. Issued-stock information is
+  // already accounted for by the server draft and needs no warning banner.
+  const actionableJobDraftWarnings = jobDraftWarnings.filter((notice) =>
+    !/^(?:Previously issued stock is shown|Verify HSN\/SAC and applicable GST for every drafted item)/i.test(String(notice))
+  );
   const registrationMismatch = branchStateMismatch || Boolean(workshopTaxProfile?.registrationStateMismatch);
   const previewFingerprint = useMemo(() => JSON.stringify({
     invoiceType: form.invoiceType,
@@ -829,11 +834,11 @@ export function InvoiceRoutePage() {
         <button type="button" className="bill-btn secondary" onClick={() => setWorkshopTaxRetry((n) => n + 1)}>Retry Verification</button>
       </div>}
       {jobDraftLoading && <p className="billing-empty no-print" role="status">Loading verified Job Card charges…</p>}
-      {jobDraftWarnings.length > 0 && (
-        <section className="billing-error no-print" role="status" aria-label="Job Card billing review">
-          <strong>Review Job Card items before saving</strong>
-          <ul>{jobDraftWarnings.map((notice, index) => <li key={index}>{notice}</li>)}</ul>
-        </section>
+      {actionableJobDraftWarnings.length > 0 && (
+        <details className="invoice-job-review no-print" aria-label="Job Card billing review">
+          <summary>Job Card review required ({actionableJobDraftWarnings.length})</summary>
+          <ul>{actionableJobDraftWarnings.map((notice, index) => <li key={index}>{notice}</li>)}</ul>
+        </details>
       )}
       {error && <div className="billing-error no-print" role="alert" data-invoice-error-summary>{error}</div>}
       {Object.keys(fieldErrors).length > 0 && <section className="invoice-error-checklist no-print" aria-label="Invoice fields needing correction">
@@ -1003,6 +1008,9 @@ export function InvoiceRoutePage() {
               const base = Math.max(0, n(row.qty) * n(row.rate) - n(row.discount));
               const rate = form.invoiceType === 'gst' && !['none', 'unknown'].includes(appliedTaxMode) ? n(row.taxRate) : 0;
               const lineAmount = base + (base * rate / 100);
+              const linkedGstDraft = mode === 'create' && Boolean(form.sourceJobId) && form.invoiceType === 'gst';
+              const hsnNeedsReview = linkedGstDraft && !String(row.hsnCode || '').trim();
+              const gstNeedsReview = linkedGstDraft && (row.taxRate === '' || row.taxRate == null);
 
               return <div className="invoice-sale-row" key={row.id}>
                 <div className="invoice-item-main-cell">
@@ -1029,8 +1037,9 @@ export function InvoiceRoutePage() {
                 </div>
                 <div className="invoice-field-wrap invoice-hsn-field">
                   <span className="invoice-mobile-label">HSN / SAC</span>
-                  <input data-invoice-field={`items.${index}.hsnCode`} type="text" inputMode="text" maxLength={30} autoComplete="off" aria-label="HSN or SAC code" aria-invalid={Boolean(fieldErrors[`items.${index}.hsnCode`])} value={row.hsnCode ?? ''} onChange={(e) => updateItem(row.id, 'hsnCode', normalizeHsnSacCode(e.target.value))} placeholder="e.g. 998729"/>
+                  <input data-invoice-field={`items.${index}.hsnCode`} type="text" inputMode="text" maxLength={30} autoComplete="off" aria-label="HSN or SAC code" aria-invalid={Boolean(fieldErrors[`items.${index}.hsnCode`] || hsnNeedsReview)} value={row.hsnCode ?? ''} onChange={(e) => updateItem(row.id, 'hsnCode', normalizeHsnSacCode(e.target.value))} placeholder="e.g. 998729"/>
                   {fieldErrors[`items.${index}.hsnCode`] && <small className="invoice-input-error" role="alert">{fieldErrors[`items.${index}.hsnCode`]}</small>}
+                  {!fieldErrors[`items.${index}.hsnCode`] && hsnNeedsReview && <small className="invoice-input-error">HSN / SAC required</small>}
                 </div>
                 <div className="invoice-field-wrap invoice-qty-field">
                   <span className="invoice-mobile-label">Quantity</span>
@@ -1055,7 +1064,7 @@ export function InvoiceRoutePage() {
                   <select
                     data-invoice-field={`items.${index}.taxRate`}
                     aria-label="GST rate"
-                    aria-invalid={Boolean(fieldErrors[`items.${index}.taxRate`])}
+                    aria-invalid={Boolean(fieldErrors[`items.${index}.taxRate`] || gstNeedsReview)}
                     disabled={form.invoiceType !== 'gst'}
                     value={form.invoiceType === 'gst' ? invoiceChoiceFromTotalRate(
                         row.taxRate, appliedTaxMode, row.taxChoice, workshopTaxProfile?.gstRateOptions
@@ -1069,6 +1078,7 @@ export function InvoiceRoutePage() {
                         <option value={`saved:${row.taxRate}`}>{row.taxRate}% — saved classification</option>}
                   </select>
                   {fieldErrors[`items.${index}.taxRate`] && <small className="invoice-input-error" role="alert">{fieldErrors[`items.${index}.taxRate`]}</small>}
+                  {!fieldErrors[`items.${index}.taxRate`] && gstNeedsReview && <small className="invoice-input-error">Select applicable GST rate</small>}
                 </div>
                 <div className="invoice-item-amount">
                   <span className="invoice-mobile-label">Total (incl. GST)</span>
