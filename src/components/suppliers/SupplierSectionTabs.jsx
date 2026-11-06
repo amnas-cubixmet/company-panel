@@ -15,7 +15,8 @@ const icons = {
 
 export function SupplierSectionTabs() {
   const access = useFeatureAccess();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const selectedSupplier = new URLSearchParams(search).get('supplier');
   const tabs = supplierSubmenu.filter(item =>
     access.can('stock.view') && access.can(item.permission)
   );
@@ -33,7 +34,9 @@ export function SupplierSectionTabs() {
           )
           : pathname === item.path || pathname.startsWith(item.path + '/');
         return (
-          <NavLink key={item.id} to={item.path} end={item.path === '/suppliers'} aria-current={isActive ? 'page' : undefined}
+          <NavLink key={item.id}
+            to={selectedSupplier ? item.path + '?supplier=' + encodeURIComponent(selectedSupplier) : item.path}
+            end={item.path === '/suppliers'} aria-current={isActive ? 'page' : undefined}
             className={'cg-supplier-section-tab' + (isActive ? ' is-active' : '')}>
             <Icon size={17} aria-hidden="true" />
             <span>{item.label}</span>
