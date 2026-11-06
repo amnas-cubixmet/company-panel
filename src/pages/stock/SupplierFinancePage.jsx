@@ -1048,7 +1048,7 @@ export default function SupplierFinancePage({ section = '' }) {
               Close
             </button>
           </div>
-          <p className="text-xs text-muted">Closing keeps this bill as supplier credit. No account is debited.</p>
+          <p className="text-xs text-muted">Closing keeps the supplier credit. No account is debited until payment is confirmed.</p>
           <label className="grid gap-1 text-sm">Payment Mode
             <select className={field} value={purchasePayment.mode}
               onChange={event => {
