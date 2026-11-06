@@ -7,7 +7,7 @@ const card = read('src/components/staff-management/StaffDirectoryCard.jsx');
 const css = read('src/styles/staff-management-readable.css');
 
 test('Staff directory displays labeled branch, role, shift and joined values without clipping', () => {
-  for (const name of ['Branch', 'Department / Role', 'Shift', 'Joined', 'Daily wage']) {
+  for (const name of ['Branch', 'Company Role', 'Shift', 'Mobile / Login', 'Daily wage']) {
     assert.ok(card.includes('<small>'+name+'</small>'), 'Missing card label '+name);
   }
   assert.match(card, /className="staff-directory-fact__copy"/);
