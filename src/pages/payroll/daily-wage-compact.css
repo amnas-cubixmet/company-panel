@@ -394,6 +394,3 @@
   }
 }
 
-/* The overtime workspace is full-width when DashboardLayout omits the desktop sidebar. */
-.app-shell.is-overtime-full-width > .app-main-column { width:100%; min-width:0; }
-.app-shell.is-overtime-full-width .app-content { max-width:none; min-width:0; }
