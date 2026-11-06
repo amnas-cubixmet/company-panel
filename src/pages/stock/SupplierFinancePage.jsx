@@ -35,6 +35,8 @@ export default function SupplierFinancePage({ section = '' }) {
   const [selectedSupplier, setSelectedSupplier] = useState(() => searchParams.get('supplier') || '');
   const [summary, setSummary] = useState(null);
   const [ledger, setLedger] = useState(null);
+  const [supplierLoading, setSupplierLoading] = useState(false);
+  const supplierRequest = useRef(0);
   const [busy, setBusy] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -76,31 +78,41 @@ export default function SupplierFinancePage({ section = '' }) {
   const inFlight = useRef(false);
 
   const refresh = useCallback(async (supplierId = selectedSupplier) => {
-    const [supplierData, accountData, billData, paymentData, productData] = await Promise.all([
-      finance.getSuppliers(), finance.getAccounts(), finance.getBills(),
-      finance.getPayments(), finance.getInventoryItems(),
-    ]);
-    setSuppliers(supplierData);
-    setAccounts(accountData);
-    setBills(billData);
-    setPayments(paymentData);
-    setInventory(productData);
-    const target = supplierId || supplierData[0]?.id || '';
-    setSelectedSupplier(target);
-    setPaymentDraft((old) => ({ ...old, accountId: old.accountId || accountData[0]?.id || '' }));
-    setPurchasePayment((old) => ({
-      ...old, accountId: old.accountId || accountData[0]?.id || '',
-      method: old.accountId ? old.method : (accountData[0]?.kind === 'Cash' ? 'Cash' : accountData[0]?.kind === 'UPI' ? 'UPI' : 'Bank Transfer'),
-    }));
-    if (target) {
-      const [details, activity] = await Promise.all([
-        finance.getSupplierSummary(target), finance.getSupplierLedger(target),
+    const token = ++supplierRequest.current;
+    setSupplierLoading(true);
+    setSummary(null);
+    setLedger(null);
+    try {
+      // All authoritative amounts come from the Django procurement API.
+      // A failed endpoint is an error, never an empty or zero-valued ledger.
+      const [supplierData, accountData, billData, paymentData, productData] = await Promise.all([
+        finance.getSuppliers(), finance.getAccounts(), finance.getBills(),
+        finance.getPayments(), finance.getInventoryItems(),
       ]);
-      setSummary(details);
-      setLedger(activity);
-    } else {
-      setSummary(null);
-      setLedger(null);
+      if (token !== supplierRequest.current) return;
+      setSuppliers(supplierData);
+      setAccounts(accountData);
+      setBills(billData);
+      setPayments(paymentData);
+      setInventory(productData);
+      const target = supplierData.some(row => String(row.id) === String(supplierId))
+        ? supplierId : supplierData[0]?.id || '';
+      setSelectedSupplier(target);
+      setPaymentDraft(old => ({ ...old, accountId: old.accountId || accountData[0]?.id || '' }));
+      setPurchasePayment(old => ({
+        ...old, accountId: old.accountId || accountData[0]?.id || '',
+        method: old.accountId ? old.method : (accountData[0]?.kind === 'Cash' ? 'Cash' : accountData[0]?.kind === 'UPI' ? 'UPI' : 'Bank Transfer'),
+      }));
+      if (target) {
+        const [details, activity] = await Promise.all([
+          finance.getSupplierSummary(target), finance.getSupplierLedger(target),
+        ]);
+        if (token !== supplierRequest.current) return;
+        setSummary(details);
+        setLedger(activity);
+      }
+    } finally {
+      if (token === supplierRequest.current) setSupplierLoading(false);
     }
   }, [selectedSupplier]);
 
@@ -133,21 +145,33 @@ export default function SupplierFinancePage({ section = '' }) {
   }, []);
 
   const selectSupplier = async (id) => {
+    const token = ++supplierRequest.current;
     setSelectedSupplier(id);
+    const nextQuery = new URLSearchParams(searchParams);
+    if (id) nextQuery.set('supplier', id); else nextQuery.delete('supplier');
+    setSearchParams(nextQuery, { replace: true });
+    setSummary(null);
+    setLedger(null);
+    setSupplierLoading(Boolean(id));
     setPaymentDraft(prev => ({ ...prev, amount: '', reference: '', allocations: {}, lineAllocations: {} }));
     setPaymentErrors({});
     requestKey.current = paymentKey();
     setDraft(previous => ({ ...previous, placeOfSupply: '' }));
     setError('');
     setNotice('');
-    if (!id) { setSummary(null); setLedger(null); return; }
+    if (!id) return;
     try {
       const [details, activity] = await Promise.all([
         finance.getSupplierSummary(id), finance.getSupplierLedger(id),
       ]);
-      setSummary(details); setLedger(activity);
+      if (token === supplierRequest.current) {
+        setSummary(details);
+        setLedger(activity);
+      }
     } catch (exception) {
-      setError(exception?.message || 'Supplier records could not be loaded.');
+      if (token === supplierRequest.current) setError(exception?.message || 'Supplier records could not be loaded.');
+    } finally {
+      if (token === supplierRequest.current) setSupplierLoading(false);
     }
   };
 
@@ -517,6 +541,9 @@ export default function SupplierFinancePage({ section = '' }) {
         </div>
       </section>
 
+      {supplierLoading && !loading && <p role="status" className="cg-supplier-finance-empty">Loading supplier balance…</p>}
+      {!loading && !supplierLoading && !selectedSupplier && !error &&
+        <p className="cg-supplier-finance-empty">Add a supplier to view purchases and payments.</p>}
       {summary && (
         <div className="cg-supplier-finance-metrics" aria-label="Supplier financial summary">
           {[
@@ -545,7 +572,7 @@ export default function SupplierFinancePage({ section = '' }) {
         ))}
       </nav>}
 
-      {activeTab === 'overview' && (
+      {activeTab === 'overview' && summary && (
         <div className="grid min-w-0 gap-4">
           <section className={box}>
             <div className="cg-supplier-finance-heading">
@@ -839,7 +866,7 @@ export default function SupplierFinancePage({ section = '' }) {
         </form>
       )}
 
-      {activeTab === 'payment' && canPay && (
+      {activeTab === 'payment' && canPay && summary && (
         <form ref={paymentFormRef} noValidate className={box + ' cg-supplier-finance-payment-form grid gap-4'} onSubmit={paySupplier}>
           <div className="min-w-0">
             <h2 className="text-base font-semibold">Pay Supplier</h2>
@@ -943,7 +970,7 @@ export default function SupplierFinancePage({ section = '' }) {
         </form>
       )}
 
-      {activeTab === 'payment' && (
+      {activeTab === 'payment' && summary && (
         <section className={box + ' grid gap-3'} aria-label="Supplier payment history">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-base font-semibold">Payment History</h2>
