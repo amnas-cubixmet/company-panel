@@ -158,6 +158,15 @@ export default function SupplierFinancePage({ section = '' }) {
           (refreshError?.message || 'Please refresh this page.'));
       }
     } catch (exception) {
+      if (label === 'payment' && exception?.fieldErrors) {
+        const api = exception.fieldErrors;
+        setPaymentErrors({
+          ...(api.amount ? { amount: api.amount } : {}),
+          ...(api.accountId ? { account: api.accountId } : {}),
+          ...(api.paidOn ? { paidOn: api.paidOn } : {}),
+          ...(api.allocations || api.lineAllocations ? { allocations: api.allocations || api.lineAllocations } : {}),
+        });
+      }
       setError(exception?.message || 'Unable to save. Please review the current record before retrying.');
     } finally {
       setBusy(''); inFlight.current = false;
@@ -769,7 +778,7 @@ export default function SupplierFinancePage({ section = '' }) {
       )}
 
       {activeTab === 'payment' && canPay && (
-        <form ref={paymentFormRef} className={box + ' grid gap-4'} onSubmit={paySupplier}>
+        <form ref={paymentFormRef} noValidate className={box + ' grid gap-4'} onSubmit={paySupplier}>
           <div><h2 className="text-lg font-semibold">Pay Supplier — {selectedSupplierName}</h2>
             <p className="text-sm text-muted">Outstanding: {summary ? money(summary.outstanding) : 'Unavailable'} · Advance: {summary ? money(summary.availableAdvance) : 'Unavailable'}</p></div>
           <div className="grid gap-3 sm:grid-cols-2">
