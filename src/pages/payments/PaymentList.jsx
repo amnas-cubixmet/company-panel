@@ -187,9 +187,6 @@ export function PaymentList() {
             <h1>Record Payment</h1>
             <p>Receive customer invoice payments into an account; choose the correct linked module for supplier, expense and payroll payouts.</p>
             <div className="payment-form-actions">
-              <button type="button" className="payments-secondary-btn" onClick={() => navigate('/suppliers/payments')}>
-                Pay Supplier / Settle Credit
-              </button>
               <button type="button" className="payments-secondary-btn" onClick={() => navigate('/expenses')}>
                 Pay Workshop Expense
               </button>
@@ -383,14 +380,7 @@ export function PaymentList() {
               <div><span>Supplier Credit Outstanding</span><strong>{money.format(Number(supplierSummary.supplierOutstanding || 0))}</strong></div>
             </div></article>
           </div>
-          <div className="payment-form-actions">
-            <button type="button" className="payments-secondary-btn" onClick={() => navigate('/stock/suppliers?tab=bill')}>
-              Record Spare Parts Purchase
-            </button>
-            <button type="button" className="payments-secondary-btn" onClick={() => navigate('/suppliers/credits')}>
-              View Supplier Credits
-            </button>
-          </div>
+          <p>Purchase stock and settle Supplier Credit from the supplier’s own detail page under Suppliers.</p>
         </section>
       )}
       <PaymentFilterToolbar
