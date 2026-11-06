@@ -4,6 +4,7 @@ const BASE = '/finance';
 
 export const financeService = {
   getDashboard: () => apiClient.get(`${BASE}/dashboard`),
+  getPaymentsOverview: (params = {}) => apiClient.get(`${BASE}/payments-overview`, { params }),
   getPaymentActivity: (params = {}) => apiClient.get(`${BASE}/payment-activity`, { params }),
 
   // Accounts
