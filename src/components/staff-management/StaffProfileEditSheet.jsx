@@ -62,7 +62,7 @@ export const StaffProfileEditSheet = ({
       showFormFieldError(formRef.current, 'name', 'Full name is required.');
       return;
     }
-    if (form.phone?.trim() && !/^\\+[1-9]\\d{7,14}$/.test(form.phone.replace(/[\\s().-]/g, ''))) {
+    if (form.phone?.trim() && !/^\+[1-9]\d{7,14}$/.test(form.phone.replace(/[\s().-]/g, ''))) {
       showFormFieldError(formRef.current, 'phone', 'Enter a valid international mobile number.');
       return;
     }
