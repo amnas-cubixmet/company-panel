@@ -37,6 +37,23 @@ export const financeService = {
     }
   },
 
+  exportLedgerPDF: async (params = {}) => {
+    const blob = await apiClient.get(`${BASE}/ledger`, {
+      params: { ...params, export: 'pdf' }, responseType: 'blob',
+    });
+    const url = URL.createObjectURL(blob);
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'cubegears-transactions.pdf';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  },
+
   // Reports
   getReports: (params = {}) => apiClient.get(`${BASE}/reports`, { params }),
 };
