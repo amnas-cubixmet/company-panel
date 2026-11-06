@@ -108,7 +108,11 @@ export function PaymentList() {
     setFinanceError('');
     Promise.all([
       financeService.getDashboard({ period: financePeriod }),
-      financeService.getLedger({ page_size: 20 }),
+      financeService.getLedger({
+        page_size: 20,
+        ...(financePeriod === 'today' ? { from: dateLocal(), to: dateLocal() } :
+          financePeriod === 'month' ? { from: dateLocal().slice(0, 8) + '01' } : {}),
+      }),
     ]).then(([dashboard, ledger]) => {
       if (!active) return;
       setFinanceSummary(dashboard);
@@ -144,13 +148,16 @@ export function PaymentList() {
   );
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const fromDate = financePeriod === 'today' ? dateLocal() :
+      financePeriod === 'month' ? dateLocal().slice(0, 8) + '01' : '';
     return payments.filter((row) =>
+      (!fromDate || String(row.date || '').slice(0, 10) >= fromDate) &&
       (!q || [row.receiptNo, row.customer, row.invoice, row.method, row.reference, row.status, row.category, row.account]
         .some((value) => String(value || '').toLowerCase().includes(q))) &&
       (statusFilter === 'All' || row.status === statusFilter) &&
       (methodFilter === 'All' || row.method === methodFilter)
     );
-  }, [payments, query, statusFilter, methodFilter]);
+  }, [payments, query, statusFilter, methodFilter, financePeriod]);
 
   const eligibleInvoices = useMemo(
     () => payableInvoices(invoices, calculateDocumentTotals), [invoices]
