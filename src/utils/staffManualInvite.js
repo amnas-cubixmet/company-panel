@@ -51,13 +51,17 @@ export const shareManualStaffInvite = async (getInvitation, details) => {
       throw new Error('Manual invitation is not ready. Try again.');
     }
     const url = buildStaffWhatsAppUrl({ ...details, setupLink: invitation.setupLink });
+    // A localhost setup URL works on the developer's PC but cannot be opened
+    // by a staff member on another device. Surface this configuration issue.
+    const setupHost = new URL(invitation.setupLink).hostname.toLowerCase();
+    const localOnlyLink = ['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(setupHost);
     if (popup && !popup.closed) {
       popup.opener = null;
       popup.location.replace(url);
     } else if (typeof window !== 'undefined') {
       window.location.assign(url);
     }
-    return { expiresAt: invitation.expiresAt, status: 'manual_prepared' };
+    return { expiresAt: invitation.expiresAt, status: 'manual_prepared', localOnlyLink };
   } catch (error) {
     if (popup && !popup.closed) popup.close();
     throw error;
