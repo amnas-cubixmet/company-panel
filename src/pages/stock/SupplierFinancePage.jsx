@@ -54,6 +54,11 @@ export default function SupplierFinancePage({ section = '' }) {
   const [purchasePayment, setPurchasePayment] = useState({
     mode: 'Credit', amount: '', accountId: '', method: 'Cash', reference: '', lineAmounts: {},
   });
+  // For a new purchase, the payment decision is made BEFORE posting the bill.
+  // Existing draft bills retain their optional settlement popup.
+  const [purchaseIntent, setPurchaseIntent] = useState({
+    mode: 'Credit', amount: '', accountId: '', method: 'Cash', reference: '',
+  });
   const [paymentPopupBill, setPaymentPopupBill] = useState(null);
   const [paymentPopupError, setPaymentPopupError] = useState('');
   const [paymentDraft, setPaymentDraft] = useState({
@@ -284,31 +289,56 @@ export default function SupplierFinancePage({ section = '' }) {
         return;
       }
     }
+    let initialPayment = null;
+    if (postNow && purchaseIntent.mode !== 'Credit') {
+      const amount = purchaseIntent.mode === 'Full Paid' ? purchaseTotal : Number(purchaseIntent.amount);
+      if (!Number.isFinite(amount) || amount <= 0 || amount > purchaseTotal + 0.001 ||
+          (purchaseIntent.mode === 'Partial Paid' &&
+            !/^\\d+(?:\\.\\d{1,2})?$/.test(String(purchaseIntent.amount)))) {
+        setError('Paid Now must be positive, at most two decimal places, and not exceed the purchase amount.');
+        return;
+      }
+      const account = accounts.find(item => String(item.id) === String(purchaseIntent.accountId));
+      if (!account?.isActive || account.kind !== { Cash: 'Cash', UPI: 'UPI', 'Bank Transfer': 'Bank' }[purchaseIntent.method]) {
+        setError('Choose an active account matching the payment method before posting.');
+        return;
+      }
+      if (num(account.recordedBalance) < amount) {
+        setError('Insufficient recorded balance for this purchase payment.');
+        return;
+      }
+      initialPayment = {
+        supplierId: selectedSupplier, accountId: purchaseIntent.accountId,
+        kind: 'Payment', method: purchaseIntent.method, amount: amount.toFixed(2),
+        paidOn: draft.invoiceDate, reference: purchaseIntent.reference.trim(),
+        idempotencyKey: purchaseRequestKey.current,
+      };
+    }
     run('bill', async () => {
-      const previousOutstanding = num(summary?.outstanding);
       const confirmedBill = await finance.createBill({
         supplierId: selectedSupplier, invoiceNumber: draft.invoiceNumber.trim(),
         invoiceDate: draft.invoiceDate, dueDate: draft.dueDate || null,
         placeOfSupply: draft.placeOfSupply,
         receiveIntoStock: draft.receiveIntoStock, postNow,
+        ...(initialPayment ? { payment: initialPayment } : {}),
         items: draft.lines.map((row) => ({
           ...row, itemId: row.itemId || null,
           description: row.description.trim(),
         })),
       });
       if (postNow) {
-        setPaymentPopupBill({
-          ...confirmedBill, supplierId: selectedSupplier, supplierName: selectedSupplierName,
-          previousOutstanding,
-        });
-        setPaymentPopupError('');
+        // Bill, inventory receipt and optional payment are one backend transaction.
+        // A credit selection does not debit a bank/cash account.
         purchaseRequestKey.current = paymentKey();
+        setPurchaseIntent({ mode: 'Credit', amount: '', accountId: '', method: 'Cash', reference: '' });
       }
       setPurchasePayment((prev) => ({ ...prev, mode: 'Credit', amount: '', reference: '', lineAmounts: {} }));
       setDraft({ invoiceNumber: '', invoiceDate: today(), dueDate: '', placeOfSupply: draft.placeOfSupply, receiveIntoStock: false, lines: [line()] });
       setActiveTab('overview');
     }, postNow
-      ? 'Purchase posted and payable recorded. Choose Full / Partial / Credit in the payment popup.'
+      ? initialPayment
+        ? 'Purchase, supplier payment and remaining credit posted together. Bank/cash debited once.'
+        : 'Purchase posted on supplier credit. No bank/cash debit was made.'
       : 'Supplier bill saved as Draft. Posting is required to create liability and receive stock.');
   };
 
@@ -851,7 +881,68 @@ export default function SupplierFinancePage({ section = '' }) {
             <p className="mt-2">Total: <strong>{money(purchaseTotal)}</strong>
               {' · '}Previous Due: <strong>{summary ? money(summary.outstanding) : 'Unavailable'}</strong>
             </p>
-            <p className="mt-1 text-xs text-muted">After posting, choose Full Paid, Partial Paid or Credit.</p>
+            <p className="mt-1 text-xs text-muted">Choose how this purchase will be paid BEFORE posting it. Only a confirmed payment debits your account.</p>
+          </section>
+          <section className="grid gap-3 rounded-xl border border-line p-3" aria-label="Supplier purchase payment decision">
+            <h3 className="text-sm font-bold">Supplier & Payment Decision *</h3>
+            <p className="text-sm text-muted">Supplier: <strong>{selectedSupplierName || 'Choose supplier above'}</strong></p>
+            <label className="grid gap-1 text-sm font-semibold">Are you paying the supplier now?
+              <select className={field} value={purchaseIntent.mode}
+                onChange={(event) => setPurchaseIntent(previous => ({
+                  ...previous, mode: event.target.value, amount: '',
+                }))}>
+                <option value="Credit">No — Buy on Credit</option>
+                <option value="Full Paid">Yes — Pay Full Amount</option>
+                <option value="Partial Paid">Pay Part Now, Balance on Credit</option>
+              </select>
+            </label>
+            {purchaseIntent.mode !== 'Credit' && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {purchaseIntent.mode === 'Partial Paid' && (
+                  <label className="grid gap-1 text-sm font-semibold">Amount to Pay Now (₹) *
+                    <input className={field} type="number" min="0.01" max={purchaseTotal}
+                      step="0.01" value={purchaseIntent.amount}
+                      onChange={(event) => setPurchaseIntent(previous => ({
+                        ...previous, amount: event.target.value,
+                      }))}/>
+                  </label>
+                )}
+                <label className="grid gap-1 text-sm font-semibold">Pay from Account *
+                  <select className={field} required value={purchaseIntent.accountId}
+                    onChange={(event) => {
+                      const account = accounts.find(item => String(item.id) === event.target.value);
+                      setPurchaseIntent(previous => ({
+                        ...previous, accountId: event.target.value,
+                        method: account?.kind === 'Cash' ? 'Cash' :
+                          account?.kind === 'UPI' ? 'UPI' : 'Bank Transfer',
+                      }));
+                    }}>
+                    <option value="">Select Cash / Bank / UPI</option>
+                    {accounts.filter(item => item.isActive && ['Cash', 'Bank', 'UPI'].includes(item.kind)).map(item => (
+                      <option key={item.id} value={item.id}>
+                        {item.name} ({item.kind}) · Available {money(item.recordedBalance)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm font-semibold">Payment Reference
+                  <input className={field} maxLength={120} value={purchaseIntent.reference}
+                    onChange={(event) => setPurchaseIntent(previous => ({
+                      ...previous, reference: event.target.value,
+                    }))} placeholder="UPI / Bank / Cash voucher"/>
+                </label>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+              <div>Purchase Total <strong>{money(purchaseTotal)}</strong></div>
+              <div>Pay Now <strong>{money(purchaseIntent.mode === 'Credit' ? 0 :
+                purchaseIntent.mode === 'Full Paid' ? purchaseTotal : num(purchaseIntent.amount))}</strong></div>
+              <div>New Supplier Credit <strong>{money(Math.max(0, purchaseTotal -
+                (purchaseIntent.mode === 'Credit' ? 0 :
+                purchaseIntent.mode === 'Full Paid' ? purchaseTotal : num(purchaseIntent.amount))))}</strong></div>
+            </div>
+            <p className="text-xs text-muted">Saving as Draft never posts a purchase or payment.
+              Confirm & Post Purchase creates the supplier bill and optional cash/bank debit atomically.</p>
           </section>
           <div className="grid gap-2 sm:grid-cols-2">
             <button className={secondary} disabled={posting || !selectedSupplier} type="submit" value="draft">
