@@ -18,6 +18,7 @@ const toPart = (item) => ({
   costPrice: number(item.costPrice ?? item.cost),
   sellingPrice: number(item.sellingPrice ?? item.price),
   tax: number(item.tax),
+  zeroTaxClassification: item.zeroTaxClassification || item.gst_zero_classification || '',
   hsnCode: item.hsnCode || item.hsn_code || '',
   minimumStock: number(item.minimumStock ?? item.minimum),
 });
@@ -60,6 +61,7 @@ const productPayload = async (payload, { creating = false } = {}) => {
     location: payload.location || payload.rack || '',
     supplier: await resolveSupplierId(payload.supplier),
     tax: number(payload.tax),
+    zeroTaxClassification: number(payload.tax) === 0 ? (payload.zeroTaxClassification || '') : '',
     hsnCode: payload.hsnCode || '',
     status: payload.status || 'Active',
   };
@@ -110,6 +112,7 @@ export const stockCatalogService = {
         costPrice: number(payload.costPrice),
         sellingPrice: number(payload.sellingPrice),
         tax: number(payload.tax),
+        zeroTaxClassification: number(payload.tax) === 0 ? (payload.zeroTaxClassification || '') : '',
         hsnCode: payload.hsnCode || '',
         minimumStock: number(payload.minimumStock),
         location: payload.location || '',

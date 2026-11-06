@@ -18,12 +18,20 @@ const number = (value) => Number(value) || 0;
 // tax rate. The item catalogue stores the total GST percentage, not a
 // separate CGST/SGST/IGST breakdown.
 const GST_RATE_PRESETS = ['0', '3', '5', '12', '18', '28', '40'];
+// A 0% rate alone does not distinguish legal categories. Preserve that
+// distinction with the item; jurisdiction is determined at invoice time.
+const ZERO_GST_CLASSIFICATIONS = [
+  ['exempt', 'Exempt'],
+  ['nil_rated', 'Nil-rated'],
+  ['zero_rated', 'Zero-rated'],
+  ['non_gst', 'Non-GST'],
+];
 const validGstRate = (value) =>
   /^\d{1,3}(?:\.\d{1,2})?$/.test(String(value)) &&
   Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 100;
 const list = (result) => Array.isArray(result) ? result : (result?.results || []);
 const initialPart = { partName: '', partNumber: '', supplier: '', brand: '', category: '', unit: 'Piece',
-  costPrice: '', sellingPrice: '', tax: '0', hsnCode: '', stockQuantity: '',
+  costPrice: '', sellingPrice: '', tax: '0', zeroTaxClassification: '', hsnCode: '', stockQuantity: '',
   minimumStock: '5', location: '' };
 const initialSupplier = { name: '', phone: '', gstNo: '', address: '' };
 
@@ -280,6 +288,14 @@ export default function StockEasyPage() {
     if (!validGstRate(part.tax)) {
       setError('Choose a valid GST rate between 0% and 100% (up to two decimals).'); return;
     }
+    if (Number(part.tax) === 0 &&
+        !ZERO_GST_CLASSIFICATIONS.some(([code]) => code === part.zeroTaxClassification)) {
+      const message = 'Choose a 0% GST classification.';
+      setPartErrors(previous => ({ ...previous, zeroTaxClassification: message }));
+      setError(message);
+      requestAnimationFrame(() => partFormRef.current?.querySelector('[data-field="zeroTaxClassification"]')?.focus());
+      return;
+    }
     const openingText = String(part.stockQuantity ?? '').trim();
     const openingQuantity = openingText === '' ? 0 : Number(openingText);
     if (!/^\d+(?:\.\d{1,2})?$/.test(openingText || '0') ||
@@ -300,7 +316,8 @@ export default function StockEasyPage() {
       const created = await stockCatalogService.createItem({
         ...part, onHand: 0, reserved: 0, reorderLevel: number(part.minimumStock),
         costPrice: number(part.costPrice), sellingPrice: number(part.sellingPrice),
-        tax: Number(part.tax), hsnCode: part.hsnCode.trim(),
+        tax: Number(part.tax), zeroTaxClassification: Number(part.tax) === 0 ? part.zeroTaxClassification : '',
+        hsnCode: part.hsnCode.trim(),
         minimumStock: number(part.minimumStock),
         stockQuantity: openingQuantity,
       });
@@ -541,7 +558,11 @@ export default function StockEasyPage() {
             </div>
             <div className="cg-easy-fields">
               <OutlinedSelect label="GST Rate" value={GST_RATE_PRESETS.includes(String(part.tax)) ? String(part.tax) : 'custom'}
-                onChange={e => setPart({ ...part, tax: e.target.value === 'custom' ? '' : e.target.value })}>
+                onChange={e => {
+                  const tax = e.target.value === 'custom' ? '' : e.target.value;
+                  setPart({ ...part, tax, zeroTaxClassification: tax === '0' ? part.zeroTaxClassification : '' });
+                  setPartErrors(previous => ({ ...previous, zeroTaxClassification: '' }));
+                }}>
                 {GST_RATE_PRESETS.map(rate => <option key={rate} value={rate}>{rate}% GST</option>)}
                 <option value="custom">Other rate (custom %)</option>
               </OutlinedSelect>
@@ -562,7 +583,36 @@ export default function StockEasyPage() {
             </div>
             {!GST_RATE_PRESETS.includes(String(part.tax)) &&
               <OutlinedInput label="Custom GST Rate (%)" type="number" min="0" max="100" step="0.01" required
-                value={part.tax} onChange={e => setPart({ ...part, tax: e.target.value })}/>}
+                value={part.tax} onChange={e => {
+                  setPart({ ...part, tax: e.target.value, zeroTaxClassification: '' });
+                  setPartErrors(previous => ({ ...previous, zeroTaxClassification: '' }));
+                }}/>}
+            {Number(part.tax) === 0 && part.tax !== '' && (
+              <div className="cg-easy-zero-gst">
+                <OutlinedSelect label="0% GST Classification *" required
+                  data-field="zeroTaxClassification"
+                  aria-invalid={Boolean(partErrors.zeroTaxClassification)}
+                  value={part.zeroTaxClassification}
+                  onChange={e => {
+                    setPart({ ...part, zeroTaxClassification: e.target.value });
+                    setPartErrors(previous => ({ ...previous, zeroTaxClassification: '' }));
+                  }}>
+                  <option value="">Select classification</option>
+                  {ZERO_GST_CLASSIFICATIONS.map(([code, label]) =>
+                    <option value={code} key={code}>{label}</option>)}
+                </OutlinedSelect>
+                {partErrors.zeroTaxClassification &&
+                  <p className="cg-easy-alert" role="alert">{partErrors.zeroTaxClassification}</p>}
+              </div>
+            )}
+            {['5', '18'].includes(String(part.tax)) && (
+              <div className="cg-easy-gst-preview" role="note">
+                <strong>{part.tax}% GST</strong>
+                <span>Intra-state: {Number(part.tax) / 2}% CGST + {Number(part.tax) / 2}% SGST/UTGST</span>
+                <span>Inter-state: {part.tax}% IGST</span>
+              </div>
+            )}
+            <p className="cg-easy-gst-disclaimer">Final GST type is determined from the workshop's registration and invoice place of supply.</p>
             <div className="cg-easy-fields">
               <OutlinedInput label="Purchase Price (₹) *" required type="number" min="0" step="0.01" value={part.costPrice} onChange={e => setPart({ ...part, costPrice: e.target.value })}/>
               <OutlinedInput label="Selling Price (₹) *" required type="number" min="0" step="0.01" value={part.sellingPrice} onChange={e => setPart({ ...part, sellingPrice: e.target.value })}/>
