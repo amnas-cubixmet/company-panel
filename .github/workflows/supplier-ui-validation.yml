@@ -1,0 +1,66 @@
+name: Supplier Module Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/pages/suppliers/**'
+      - 'src/pages/stock/SupplierFinancePage.jsx'
+      - 'src/components/suppliers/**'
+      - 'src/styles/supplier*'
+      - 'src/services/supplier*'
+      - 'src/routes/AppRoutes.jsx'
+      - 'src/routes/routeConfig.js'
+      - 'tests/supplier*'
+      - 'scripts/ui-smoke.mjs'
+      - '.github/workflows/supplier-ui-validation.yml'
+  pull_request:
+    paths:
+      - 'src/pages/suppliers/**'
+      - 'src/pages/stock/SupplierFinancePage.jsx'
+      - 'src/components/suppliers/**'
+      - 'src/styles/supplier*'
+      - 'src/services/supplier*'
+      - 'tests/supplier*'
+      - '.github/workflows/supplier-ui-validation.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: suppliers-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Supplier-specific regressions
+        run: node --test tests/supplier*.test.js
+      - name: Production build
+        run: npm run build
+        env:
+          VITE_API_URL: https://api.example.invalid/api/v1
+      - run: npm run check:bundle
+      - run: npx playwright install --with-deps chromium
+      - name: Responsive browser smoke tests
+        run: npm run test:ui
+        env:
+          UI_PRODUCTION: '1'
+          UI_ARTIFACT_DIR: ${{ runner.temp }}/cubegears-supplier-ui-smoke
+      - name: Preserve UI screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: supplier-ui-smoke-${{ github.run_id }}
+          path: ${{ runner.temp }}/cubegears-supplier-ui-smoke
+          if-no-files-found: ignore
+          retention-days: 7
