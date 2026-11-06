@@ -80,7 +80,7 @@ export const AddVehicle = () => {
     try {
       let vehicleId = savedVehicleId;
       if (!vehicleId) {
-        const selectedCustomer = customers.find((customer) => customer.id === formData.customerId);
+        const selectedCustomer = customers.find((customer) => String(customer.id) === String(formData.customerId));
         const payload = {
           ...formData,
           customerName: selectedCustomer?.name || '',
@@ -100,7 +100,7 @@ export const AddVehicle = () => {
         setPhotos((items) => items.filter((entry) => entry.id !== photo.id));
       }
       setUploadingPhoto(0);
-      setToastMsg('Vehicle and inspection photos saved.');
+      setToastMsg(photos.length ? 'Vehicle and inspection photos saved.' : 'Vehicle saved.');
       navigate(`/vehicles/${vehicleId}`);
     } catch (cause) {
       const next = extractVehicleFieldErrors(cause);
@@ -135,7 +135,7 @@ export const AddVehicle = () => {
         </div>
       )}
 
-      <form ref={formRef} className="vehicle-form" onSubmit={handleSubmit}
+      <form ref={formRef} className="vehicle-form" noValidate onSubmit={handleSubmit}
         onInvalid={(event) => {
           event.target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
           event.target?.focus();
