@@ -1,18 +1,15 @@
-import { appConfirm, appAlert } from '../../components/common/appDialogs';
+import { appConfirm } from '../../components/common/appDialogs';
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Activity, Clock3, Edit3, IndianRupee, Layers3, Trash2 } from "lucide-react";
-import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import {
   ServiceCatalogGrid,
-  ServiceCatalogTabs,
-  ServiceCategoriesPanel,
   ServiceFilterToolbar,
   ServiceOverviewStats,
   ServicesHeader,
 } from '../../components/services';
 import { serviceService } from '../../services/service.service';
-import { buildCategoryTreeRows, categoryIsDescendantOf } from '../../utils/serviceHierarchy';
+import { buildCategoryTreeRows } from '../../utils/serviceHierarchy';
 import '../../styles/service-management.css';
 import '../../styles/service-borderless-forms.css';
 import '../../styles/service-hierarchy.css';
@@ -38,15 +35,6 @@ const emptyService = {
   checklistText: '',
   hsnSac: '', taxRate: '18', taxTreatment: 'taxable', unit: 'Job'
 };
-
-const emptyCategory = {
-  name: '',
-  description: '',
-  status: 'active', parentId: ''
-};
-
-const statusClass = (status = '') =>
-  String(status).toLowerCase() === 'active' ? 'is-active' : 'is-inactive';
 
 const durationLabel = (minutes) => {
   const total = Number(minutes || 0);
@@ -247,12 +235,7 @@ export const ServiceList = () => {
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [activeView, setActiveView] = useState('services');
   const [form, setForm] = useState(emptyService);
-
-  const [categoryEditor, setCategoryEditor] = useState(null);
-  const [categoryForm, setCategoryForm] = useState(emptyCategory);
-  const [categoryError, setCategoryError] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -363,35 +346,6 @@ export const ServiceList = () => {
     await load();
   };
 
-  const saveCategory = async (event) => {
-    event.preventDefault();
-    setCategoryError('');
-    setSubmitting(true);
-    try {
-      if (categoryEditor?.id) {
-        await serviceService.updateServiceCategory(categoryEditor.id, categoryForm);
-      } else {
-        await serviceService.createServiceCategory(categoryForm);
-      }
-      setCategoryEditor(null);
-      setCategoryForm(emptyCategory);
-      await load();
-    } catch (error) {
-      setCategoryError(error?.message || 'Unable to save category.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const deleteCategory = async (category) => {
-    if (!await appConfirm(`Delete category ${category.name}?`)) return;
-    try {
-      await serviceService.deleteServiceCategory(category.id);
-      await load();
-    } catch (error) {
-      appAlert(error?.message || 'Unable to delete category.');
-    }
-  };
 
   if (loading) return <div className="service-empty">Loading services...</div>;
 
@@ -502,108 +456,26 @@ export const ServiceList = () => {
         formatMoney={(value)=>money.format(value || 0)}
       />
 
-      <ServiceCatalogTabs
-        activeView={activeView}
-        onChange={setActiveView}
+      <ServiceFilterToolbar
+        query={query}
+        onQueryChange={setQuery}
+        categoryFilter={categoryFilter}
+        onCategoryChange={setCategoryFilter}
+        statusFilter={statusFilter}
+        onStatusChange={setStatusFilter}
+        categories={categoryTree}
       />
 
-      {activeView === 'services' ? (
-        <>
-          <ServiceFilterToolbar
-            query={query}
-            onQueryChange={setQuery}
-            categoryFilter={categoryFilter}
-            onCategoryChange={setCategoryFilter}
-            statusFilter={statusFilter}
-            onStatusChange={setStatusFilter}
-            categories={categoryTree}
-          />
+      <ServiceCatalogGrid
+        services={filtered}
+        formatMoney={(value)=>money.format(value || 0)}
+        durationLabel={durationLabel}
+        onView={(service)=>navigate(`/services/${service.id}`)}
+        onEdit={(service)=>navigate(`/services/${service.id}/edit`)}
+        onDelete={deleteService}
+      />
 
-          <ServiceCatalogGrid
-            services={filtered}
-            formatMoney={(value)=>money.format(value || 0)}
-            durationLabel={durationLabel}
-            onView={(service)=>navigate(`/services/${service.id}`)}
-            onEdit={(service)=>navigate(`/services/${service.id}/edit`)}
-            onDelete={deleteService}
-          />
-        </>
-      ) : (
-        <ServiceCategoriesPanel
-          categories={categories}
-          services={services}
-          onAdd={(parentId = null)=>{
-            setCategoryEditor({});
-            setCategoryForm({ ...emptyCategory, parentId: parentId || '' });
-          }}
-          onEdit={(category)=>{
-            setCategoryEditor(category);
-            setCategoryForm({
-              name:category.name,
-              description:category.description || '',
-              status:category.status || 'active',
-              parentId:category.parentId || ''
-            });
-          }}
-          onDelete={deleteCategory}
-        />
-      )}
 
-      <ResponsiveModalSheet
-        isOpen={categoryEditor !== null}
-        onClose={()=>{
-          setCategoryEditor(null);
-          setCategoryForm(emptyCategory);
-          setCategoryError('');
-        }}
-        title={categoryEditor?.id ? 'Edit Service Category' : 'Add Service Category'}
-        maxWidth="560px"
-      >
-        <form className="service-category-form" onSubmit={saveCategory}>
-          {categoryError ? <div className="service-form-error">{categoryError}</div> : null}
-          <Field label="Category Name">
-            <input
-              required
-              value={categoryForm.name}
-              onChange={(e)=>setCategoryForm({...categoryForm,name:e.target.value})}
-            />
-          </Field>
-          <Field label="Parent Category">
-            <select value={categoryForm.parentId || ''}
-              onChange={event => setCategoryForm({...categoryForm, parentId: event.target.value})}>
-              <option value="">Main Category (root)</option>
-              {categoryTree.filter(cat => !categoryEditor?.id ||
-                (String(cat.id) !== String(categoryEditor.id) &&
-                  !categoryIsDescendantOf(categoryEditor.id, cat.id, categories))
-              ).map(cat => <option key={cat.id} value={cat.id}>
-                {'— '.repeat(Math.min(cat.depth, 10)) + cat.name}
-              </option>)}
-            </select>
-          </Field>
-          <Field label="Description">
-            <textarea
-              rows="4"
-              value={categoryForm.description}
-              onChange={(e)=>setCategoryForm({...categoryForm,description:e.target.value})}
-            />
-          </Field>
-          <Field label="Status">
-            <select
-              value={categoryForm.status}
-              onChange={(e)=>setCategoryForm({...categoryForm,status:e.target.value})}
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </Field>
-          <div className="service-form-actions">
-            <button type="button" onClick={()=>setCategoryEditor(null)}>Cancel</button>
-            <button className="is-primary" disabled={submitting}>
-              {submitting ? 'Saving...' : 'Save Category'}
-            </button>
-          </div>
-        </form>
-      </ResponsiveModalSheet>
     </div>
   );
 };
