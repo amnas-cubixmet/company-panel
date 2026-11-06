@@ -271,7 +271,7 @@ export const VehicleDetails = () => {
             </button>
 
             <div className="vehicle-info-grid">
-              <Info label="Last Service" value={latestJob?.createdDate || vehicle.lastServiceDate}/>
+              <Info label="Last Service" value={vehicle.lastServiceDate}/>
               <Info label="Next Service Due" value={vehicle.nextServiceDue}/>
               <Info label="Insurance Expiry" value={vehicle.insuranceExpiry}/>
               <Info label="Vehicle Status" value={vehicle.status}/>
