@@ -6,7 +6,6 @@ import {
   Building2,
   CalendarDays,
   Clock3,
-  Copy,
   FilePlus2,
   FileText,
   Gauge,
@@ -31,7 +30,7 @@ import {
 import { getEmployeeLabel } from '../../../components/staff-management/staffDisplay';
 import { useAuth } from '../../../hooks/useAuth';
 import { useFeatureAccess } from '../../../context/FeatureAccessContext';
-import { staffInviteDeliveryMessage, staffInviteErrorMessage, staffInviteStatusLabel, staffLoginStatusLabel } from '../../../utils/staffInviteDelivery';
+import { staffInviteDeliveryMessage, staffInviteErrorMessage } from '../../../utils/staffInviteDelivery';
 import { attendanceManagerService } from '../../../services/attendanceManager.service';
 import { jobService } from '../../../services/job.service';
 import { roleService } from '../../../services/role.service';
@@ -177,9 +176,6 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
   const [error, setError] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [inviteBusy, setInviteBusy] = useState(false);
-  const [consentBusy, setConsentBusy] = useState(false);
-  const [consentConfirmed, setConsentConfirmed] = useState(false);
-  const [consentSource, setConsentSource] = useState('');
 
   const [roles, setRoles] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -411,35 +407,6 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
     };
   }, [jobs, staff]);
 
-  const handleRecordWhatsAppConsent = async (event) => {
-    event.preventDefault();
-    if (!canManageLogin || !staff?.id || consentBusy || staff.whatsappConsent) return;
-    if (!consentConfirmed) {
-      setInviteError('Confirm that this staff member agreed to WhatsApp setup messages.');
-      return;
-    }
-    if (!consentSource) {
-      setInviteError('Select how staff WhatsApp consent was obtained.');
-      return;
-    }
-    setInviteError('');
-    setConsentBusy(true);
-    try {
-      await staffService.updateStaff(staff.id, {
-        whatsappConsent: true,
-        whatsappConsentSource: consentSource,
-      });
-      await loadStaff();
-      setConsentConfirmed(false);
-      setConsentSource('');
-      setInviteNotice('WhatsApp consent saved. Select Share via WhatsApp to prepare the link.');
-    } catch (requestError) {
-      setInviteError(staffInviteErrorMessage(requestError));
-    } finally {
-      setConsentBusy(false);
-    }
-  };
-
   const handleSendInvite = async () => {
     if (inviteBusy || !canManageLogin) return;
     if (!staff.whatsappConsent) {
@@ -474,25 +441,6 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
       await refreshAll();
     } catch (requestError) {
       setInviteError(requestError?.message || 'Unable to change login access.');
-    }
-  };
-
-  const handleCopySetup = async () => {
-    if (!canManageLogin || inviteBusy) return;
-    setInviteError('');
-    setInviteBusy(true);
-    try {
-      const invite = await staffService.sendLoginInvite(staff.id);
-      if (!invite?.setupLink || invite?.whatsappInviteStatus !== 'manual') {
-        throw new Error('A valid manual setup link could not be generated.');
-      }
-      await navigator.clipboard.writeText(invite.setupLink);
-      setInviteNotice('Secure setup link copied. Share privately only with this staff member.');
-      await refreshAll();
-    } catch (requestError) {
-      setInviteError(staffInviteErrorMessage(requestError));
-    } finally {
-      setInviteBusy(false);
     }
   };
 
@@ -596,55 +544,6 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
           </div>
         )}
       </section>
-
-      {canManageLogin && (
-        <section className="staff-setup-link-panel" aria-label="Staff mobile login invitation">
-          <h3>Mobile + Password Login</h3>
-          <p><strong>Login:</strong> {staffLoginStatusLabel(staff.loginStatus)}</p>
-          <p><strong>WhatsApp:</strong> {staffInviteStatusLabel(staff.whatsappInviteStatus)}</p>
-          <p role="status">{staffInviteDeliveryMessage(staff.whatsappInviteStatus)}</p>
-          {staff.whatsappInviteFailure && <p role="status">{staff.whatsappInviteFailure}</p>}
-          {staff.whatsappConsent && staff.whatsappConsentSource && (
-            <p className="staff-login-invite-hint">
-              WhatsApp consent recorded: {staff.whatsappConsentSource}
-            </p>
-          )}
-          {staff.whatsappConsent && staff.loginStatus !== 'Disabled' && (
-            <div className="staff-setup-link-actions">
-              <button type="button" onClick={handleCopySetup} disabled={inviteBusy}>
-                <Copy size={16}/> Copy Secure Setup Link
-              </button>
-            </div>
-          )}
-          {!staff.whatsappConsent && (
-            <form className="staff-setup-link-actions" onSubmit={handleRecordWhatsAppConsent}
-              aria-label="Record consent for manual WhatsApp staff setup">
-              <label className="staff-login-invite-hint" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <input type="checkbox" checked={consentConfirmed}
-                  onChange={event => { setConsentConfirmed(event.target.checked); setInviteError(''); }}/>
-                Staff agreed to receive a password setup link on WhatsApp
-              </label>
-              <label className="staff-login-invite-hint" style={{ display: 'grid', gap: 6 }}>
-                Consent Source
-                <select aria-label="WhatsApp consent source" name="whatsappConsentSource" value={consentSource}
-                  onChange={event => { setConsentSource(event.target.value); setInviteError(''); }}>
-                  <option value="">Choose source</option>
-                  <option value="Staff consented in person during onboarding">In person</option>
-                  <option value="Signed staff WhatsApp consent form">Signed consent form</option>
-                  <option value="Staff consented through approved digital form">Approved digital form</option>
-                </select>
-              </label>
-              <button type="submit" disabled={consentBusy}>
-                {consentBusy ? 'Saving…' : 'Save WhatsApp Consent'}
-              </button>
-            </form>
-          )}
-          <p className="staff-login-invite-hint">
-            A secure link is retrieved only when an authorized admin chooses Share or Copy.
-            Opening WhatsApp does not confirm delivery.
-          </p>
-        </section>
-      )}
 
       <nav className="staff-profile-tabs staff360-tabs" aria-label="Staff profile sections">
         <div className="scroll-hidden">
