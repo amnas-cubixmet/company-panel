@@ -32,7 +32,7 @@ test('GST is item metadata, not a change to Receive Stock or Issue Stock behavio
   const service = read('src/services/stockCatalog.service.js');
   assert.match(page, /stockCatalogService\.stockIn\(payload\)/);
   assert.match(page, /stockCatalogService\.stockOut\(payload\)/);
-  assert.ok(page.includes('stockQuantity: isSupplierPurchase ? 0 : openingQuantity'));
-  assert.match(page, /beginMove\('in', created\.id, created\)/);
+  assert.match(page, /stockQuantity: 0/);
+  assert.ok(page.includes("navigate('/suppliers/' + encodeURIComponent(part.supplier)"));
   assert.match(service, /hsnCode: item\.hsnCode \|\| item\.hsn_code \|\| ''/);
 });
