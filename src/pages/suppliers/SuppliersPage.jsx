@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Building2, ChevronRight, CreditCard, Mail, Package, Phone, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
+import { ArrowLeft, Building2, CreditCard, Mail, MessageCircle, Package, Pencil, Phone, Plus, Search, ShoppingBag } from 'lucide-react';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { supplierService } from '../../services/supplier.service';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { USE_MOCK_API } from '../../api/apiConfig';
 import { SupplierSectionTabs } from '../../components/suppliers/SupplierSectionTabs';
+import { customerContactLinks } from '../../components/jobs/customerContact.utils';
 import '../../styles/suppliers-workspace.css';
 
 const asText = value => String(value ?? '').trim();
@@ -25,6 +26,20 @@ const initialForm = supplier => ({
   address:asText(supplier?.address),
   is_active:supplier?.is_active !== false,
 });
+
+
+function SupplierContactActions({ supplier, compact = false }) {
+  const { callUrl, whatsappUrl } = customerContactLinks({ customerPhone: supplier?.phone });
+  const name = asText(supplier?.name) || 'supplier';
+  return <span className={'cg-supplier-contact-actions' + (compact ? ' is-compact' : '')}>
+    {callUrl
+      ? <a className="cg-supplier-contact-btn is-call" href={callUrl} aria-label={'Call ' + name}><Phone size={14} aria-hidden="true"/> Call</a>
+      : <span className="cg-supplier-contact-btn is-disabled" title="No valid phone number"><Phone size={14} aria-hidden="true"/> Call</span>}
+    {whatsappUrl
+      ? <a className="cg-supplier-contact-btn is-whatsapp" href={whatsappUrl} target="_blank" rel="noopener noreferrer" aria-label={'WhatsApp ' + name}><MessageCircle size={14} aria-hidden="true"/> WhatsApp</a>
+      : <span className="cg-supplier-contact-btn is-disabled" title="No valid WhatsApp number"><MessageCircle size={14} aria-hidden="true"/> WhatsApp</span>}
+  </span>;
+}
 
 function SupplierEditor({ supplier, onClose, onSaved }) {
   const access = useFeatureAccess();
@@ -379,39 +394,84 @@ export default function SuppliersPage({ section = 'all' }) {
         </label>
         <span>{matches.length} suppliers</span>
       </div>
-      {loading?<p role="status" className="cg-supplier-empty">Loading suppliers…</p>:
-        error ? null : matches.length?<div className="cg-suppliers-list">
-          {matches.map(row => {
-            const supplierName = asText(row.name) || 'Unnamed Supplier';
-            const contactPerson = asText(row.contact_person || row.contactPerson);
-            const phone = asText(row.phone);
-            const gstin = asText(row.gstNo || row.gstin);
-            const outstanding = creditBalances?.get(String(row.id));
-            return <Link className="cg-supplier-list-item" to={'/suppliers/' + encodeURIComponent(row.id)}
-              key={row.id} aria-label={'View supplier ' + supplierName}>
-              <span className="cg-supplier-avatar" aria-hidden="true"><Building2 size={21}/></span>
-              <span className="cg-supplier-summary">
-                <span className="cg-supplier-card-header">
-                  <strong className="cg-supplier-card-name" title={supplierName}>{supplierName}</strong>
-                  <span className={row.is_active === false ? 'cg-supplier-status inactive' : 'cg-supplier-status'}>{status(row)}</span>
-                </span>
-                <span className="cg-supplier-card-meta">
-                  {contactPerson && <span className="cg-supplier-card-contact" title={contactPerson}>{contactPerson}</span>}
-                  {phone && <span className="cg-supplier-card-phone"><Phone size={14} aria-hidden="true"/>{phone}</span>}
-                  {!contactPerson && !phone && <span>Contact details not added</span>}
-                </span>
-                {(canViewFinance || gstin) && <span className="cg-supplier-card-footer">
-                  {canViewFinance && <span className="cg-supplier-card-credit">
-                    <span>Credit outstanding</span>
-                    <b>{creditBalances ? money(outstanding ?? 0) : 'Unavailable'}</b>
-                  </span>}
-                  {gstin && <span className="cg-supplier-card-gstin" title={gstin}>GSTIN: {gstin}</span>}
-                </span>}
-              </span>
-              <span className="cg-supplier-card-arrow" aria-hidden="true"><ChevronRight size={19}/></span>
-            </Link>;
-          })}
-        </div>:<p className="cg-supplier-empty">{search?'No suppliers match your search.':'No suppliers added yet.'}</p>}
+      <div className="cg-supplier-directory-heading">
+        <div><h2>All Suppliers</h2>
+          <span className="cg-supplier-directory-count">{loading ? '—' : matches.length + ' / ' + suppliers.length}</span>
+        </div>
+      </div>
+      {loading ? <p role="status" className="cg-supplier-empty">Loading suppliers…</p>
+        : error ? null : matches.length ? <>
+          <div className="cg-supplier-directory-table-wrap">
+            <table className="cg-supplier-directory-table">
+              <thead><tr>
+                <th scope="col">Supplier</th>
+                <th scope="col">Phone / WhatsApp</th>
+                <th scope="col">Contact Person</th>
+                <th scope="col">GSTIN</th>
+                {canViewFinance && <th scope="col">Outstanding</th>}
+                <th scope="col">Status</th>
+                <th scope="col" className="cg-supplier-actions-col">Actions</th>
+              </tr></thead>
+              <tbody>{matches.map(row => {
+                const name = asText(row.name) || 'Unnamed Supplier';
+                const phone = asText(row.phone);
+                const gstin = asText(row.gstNo || row.gstin);
+                const person = asText(row.contact_person || row.contactPerson);
+                const balance = creditBalances?.get(String(row.id));
+                return <tr key={row.id}>
+                  <td><Link className="cg-supplier-name-link" to={'/suppliers/' + encodeURIComponent(row.id)} title={name}>{name}</Link>
+                    {row.email && <span className="cg-supplier-secondary-text" title={row.email}>{row.email}</span>}
+                  </td>
+                  <td><span className="cg-supplier-directory-phone">{phone || 'Not added'}</span>
+                    <SupplierContactActions supplier={row} compact/>
+                  </td>
+                  <td>{person || '—'}</td>
+                  <td><span className="cg-supplier-gstin-cell" title={gstin || undefined}>{gstin || '—'}</span></td>
+                  {canViewFinance && <td><strong className={'cg-supplier-balance' + (creditBalances && Number(balance ?? 0) > 0 ? ' has-due' : '')}>
+                    {creditBalances ? money(balance ?? 0) : 'Unavailable'}
+                  </strong></td>}
+                  <td><span className={row.is_active === false ? 'cg-supplier-directory-status inactive' : 'cg-supplier-directory-status'}>{status(row)}</span></td>
+                  <td><span className="cg-supplier-row-actions">
+                    <Link className="cg-supplier-row-view" to={'/suppliers/' + encodeURIComponent(row.id)}>View</Link>
+                    {canEdit && <button type="button" className="cg-supplier-row-edit" aria-label={'Edit ' + name}
+                      title={'Edit ' + name} onClick={() => setEditor(row)}><Pencil size={15} aria-hidden="true"/></button>}
+                  </span></td>
+                </tr>;
+              })}</tbody>
+            </table>
+          </div>
+          <div className="cg-supplier-mobile-directory">
+            {matches.map(row => {
+              const name = asText(row.name) || 'Unnamed Supplier';
+              const gstin = asText(row.gstNo || row.gstin);
+              const person = asText(row.contact_person || row.contactPerson);
+              const balance = creditBalances?.get(String(row.id));
+              return <article className="cg-supplier-mobile-entry" key={row.id}>
+                <header className="cg-supplier-mobile-head">
+                  <div><Link className="cg-supplier-name-link" to={'/suppliers/' + encodeURIComponent(row.id)}>{name}</Link>
+                    <span className="cg-supplier-secondary-text">{row.email || person || 'Supplier'}</span></div>
+                  <span className={row.is_active === false ? 'cg-supplier-directory-status inactive' : 'cg-supplier-directory-status'}>{status(row)}</span>
+                </header>
+                <div className="cg-supplier-mobile-details">
+                  <div><span>Contact Person</span><strong>{person || '—'}</strong></div>
+                  <div><span>GSTIN</span><strong>{gstin || '—'}</strong></div>
+                  {canViewFinance && <div><span>Outstanding</span><strong className={'cg-supplier-balance' + (creditBalances && Number(balance ?? 0) > 0 ? ' has-due' : '')}>
+                    {creditBalances ? money(balance ?? 0) : 'Unavailable'}
+                  </strong></div>}
+                </div>
+                <div className="cg-supplier-mobile-bottom">
+                  <div><span className="cg-supplier-directory-phone">{asText(row.phone) || 'No phone number'}</span>
+                    <SupplierContactActions supplier={row}/></div>
+                  <span className="cg-supplier-row-actions">
+                    <Link className="cg-supplier-row-view" to={'/suppliers/' + encodeURIComponent(row.id)}>View</Link>
+                    {canEdit && <button type="button" className="cg-supplier-row-edit" aria-label={'Edit ' + name}
+                      title={'Edit ' + name} onClick={() => setEditor(row)}><Pencil size={15} aria-hidden="true"/></button>}
+                  </span>
+                </div>
+              </article>;
+            })}
+          </div>
+        </> : <p className="cg-supplier-empty">{search ? 'No suppliers match your search.' : 'No suppliers added yet.'}</p>}
     </>}
 
     {!id&&purchaseView&&(
