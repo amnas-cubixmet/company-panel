@@ -1,4 +1,4 @@
-import { appConfirm } from '../../components/common/appDialogs';
+import { appConfirm, appPrompt } from '../../components/common/appDialogs';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
 import { useEffect, useMemo, useState } from "react";
@@ -396,6 +396,25 @@ export const ExpenseList = () => {
     }
   };
 
+  const reverseExpenseSettlement = async (entry) => {
+    if (!canEdit || !selectedExpense || submitting || entry.reversedAt) return;
+    const reason = await appPrompt('Reason for reversing this expense payment:');
+    if (!reason?.trim()) return;
+    if (!await appConfirm('Reverse this payment and restore its bank/cash balance?', {
+      title: 'Reverse Expense Payment', confirmLabel: 'Reverse Payment', tone: 'danger'
+    })) return;
+    setSubmitting(true);
+    setActionError('');
+    try {
+      await expenseService.reverseSettlement(selectedExpense.id, entry.id, reason.trim());
+      await load();
+    } catch (err) {
+      setActionError(err?.message || 'Unable to reverse this payment.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const removeExpense = async (expense) => {
     if (!canDelete || !await appConfirm(`Delete expense ${expense.id}?`)) return;
     setActionError('');
@@ -523,6 +542,35 @@ export const ExpenseList = () => {
                 </button>
               </div>
             </form>
+          )}
+        </section>
+
+        <section className="expense-panel">
+          <div className="expense-section-header">
+            <div>
+              <h2>Expense Payment History</h2>
+              <p>Posted account movements, references and audited reversals.</p>
+            </div>
+          </div>
+          {(selectedExpense.settlementHistory || []).length === 0 ? (
+            <p>No account-linked expense settlements recorded yet.</p>
+          ) : (
+            <div className="expense-info-grid">
+              {selectedExpense.settlementHistory.map((entry) => (
+                <div key={entry.id} className="expense-settlement-record">
+                  <span>{new Date(entry.postedAt).toLocaleDateString('en-IN')} · {entry.accountName}</span>
+                  <strong>{money.format(Number(entry.amount))}</strong>
+                  <small>{entry.method} · {entry.reference || 'No reference'}</small>
+                  <small>{entry.reversedAt ? `Reversed: ${entry.reversalReason || 'Audited correction'}` : 'Posted'}</small>
+                  {canEdit && !entry.reversedAt && (
+                    <button type="button" disabled={submitting} className="is-danger"
+                      onClick={() => reverseExpenseSettlement(entry)}>
+                      Reverse Payment
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </section>
 
