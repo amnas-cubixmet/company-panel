@@ -177,6 +177,9 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
   const [error, setError] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [inviteBusy, setInviteBusy] = useState(false);
+  const [consentBusy, setConsentBusy] = useState(false);
+  const [consentConfirmed, setConsentConfirmed] = useState(false);
+  const [consentSource, setConsentSource] = useState('');
 
   const [roles, setRoles] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -408,6 +411,35 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
     };
   }, [jobs, staff]);
 
+  const handleRecordWhatsAppConsent = async (event) => {
+    event.preventDefault();
+    if (!canManageLogin || !staff?.id || consentBusy || staff.whatsappConsent) return;
+    if (!consentConfirmed) {
+      setInviteError('Confirm that this staff member agreed to WhatsApp setup messages.');
+      return;
+    }
+    if (!consentSource) {
+      setInviteError('Select how staff WhatsApp consent was obtained.');
+      return;
+    }
+    setInviteError('');
+    setConsentBusy(true);
+    try {
+      await staffService.updateStaff(staff.id, {
+        whatsappConsent: true,
+        whatsappConsentSource: consentSource,
+      });
+      await loadStaff();
+      setConsentConfirmed(false);
+      setConsentSource('');
+      setInviteNotice('WhatsApp consent saved. Select Share via WhatsApp to prepare the link.');
+    } catch (requestError) {
+      setInviteError(staffInviteErrorMessage(requestError));
+    } finally {
+      setConsentBusy(false);
+    }
+  };
+
   const handleSendInvite = async () => {
     if (inviteBusy || !canManageLogin) return;
     if (!staff.whatsappConsent) {
@@ -582,8 +614,29 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
               </button>
             </div>
           )}
-          {!staff.whatsappConsent &&
-            <p role="status">Record WhatsApp consent in the staff profile before manual sharing.</p>}
+          {!staff.whatsappConsent && (
+            <form className="staff-setup-link-actions" onSubmit={handleRecordWhatsAppConsent}
+              aria-label="Record consent for manual WhatsApp staff setup">
+              <label className="staff-login-invite-hint" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input type="checkbox" checked={consentConfirmed}
+                  onChange={event => { setConsentConfirmed(event.target.checked); setInviteError(''); }}/>
+                Staff agreed to receive a password setup link on WhatsApp
+              </label>
+              <label className="staff-login-invite-hint" style={{ display: 'grid', gap: 6 }}>
+                Consent Source
+                <select aria-label="WhatsApp consent source" value={consentSource}
+                  onChange={event => { setConsentSource(event.target.value); setInviteError(''); }} required>
+                  <option value="">Choose source</option>
+                  <option value="Staff consented in person during onboarding">In person</option>
+                  <option value="Signed staff WhatsApp consent form">Signed consent form</option>
+                  <option value="Staff consented through approved digital form">Approved digital form</option>
+                </select>
+              </label>
+              <button type="submit" disabled={consentBusy || !consentConfirmed || !consentSource}>
+                {consentBusy ? 'Saving…' : 'Save WhatsApp Consent'}
+              </button>
+            </form>
+          )}
           <p className="staff-login-invite-hint">
             A secure link is retrieved only when an authorized admin chooses Share or Copy.
             Opening WhatsApp does not confirm delivery.
