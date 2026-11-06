@@ -37,17 +37,9 @@ import { attendanceManagerService } from '../../../services/attendanceManager.se
 import { jobService } from '../../../services/job.service';
 import { roleService } from '../../../services/role.service';
 import { staffService } from '../../../services/staff.service';
+import { shareManualStaffInvite } from '../../../utils/staffManualInvite';
 import '../../../styles/staff-mobile-onboarding.css';
 import { staffManagementService } from '../../../services/staffManagement.service';
-
-const staffManualWhatsAppUrl = (phone, setupLink) => {
-  if (!setupLink) return '';
-  const raw = String(phone || '').trim();
-  const digits = raw.replace(/\D/g, '');
-  if ((!raw.startsWith('+') && digits.length < 11) || !/^[1-9]\d{7,14}$/.test(digits)) return '';
-  const draft = `Welcome to CubeGears. Set your workshop password within 24 hours: ${setupLink}`;
-  return `https://wa.me/${digits}?text=${encodeURIComponent(draft)}`;
-};
 
 const money = (value) =>
   new Intl.NumberFormat('en-IN', {
@@ -186,8 +178,6 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
   const [error, setError] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [inviteBusy, setInviteBusy] = useState(false);
-  const [setupLink, setSetupLink] = useState(() => location.state?.setupLink || '');
-  const [inviteStatus, setInviteStatus] = useState(() => location.state?.whatsappInviteStatus || '');
 
   const [roles, setRoles] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -420,19 +410,20 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
   }, [jobs, staff]);
 
   const handleSendInvite = async () => {
-    if (inviteBusy) return;
+    if (inviteBusy || !canManageLogin) return;
+    if (!staff.whatsappConsent) {
+      setInviteError('Record staff WhatsApp consent before sharing a setup link.');
+      return;
+    }
     setInviteBusy(true);
     setInviteError('');
     setInviteNotice('');
-    setSetupLink('');
     try {
-      const result = await staffService.sendLoginInvite(staff.id);
-      const status = result?.whatsappInviteStatus || '';
-      setInviteStatus(status);
-      setSetupLink(['manual', 'failed'].includes(status) ? result?.setupLink || '' : '');
-      const info = staffInviteDeliveryMessage(status) || 'Password setup request recorded.';
-      setInviteNotice(info);
-      showToast(info);
+      await shareManualStaffInvite(
+        () => staffService.sendLoginInvite(staff.id),
+        { phone: staff.phone, staffName: staff.name, workshopName: user?.company?.name },
+      );
+      setInviteNotice('WhatsApp opened — review the message and press Send manually.');
       await refreshAll();
     } catch (requestError) {
       setInviteError(staffInviteErrorMessage(requestError));
@@ -444,24 +435,33 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
   const handleToggleAccount = async () => {
     try {
       await staffService.setLoginAccess(staff.id, staff.loginStatus === 'Disabled' || staff.loginStatus === 'Not Invited');
-      showToast(staff.loginStatus === 'Disabled' ? 'Login enabled. Send a new setup link if required.' : 'Login disabled without changing payroll or employment status.');
-      setSetupLink('');
+      showToast(staff.loginStatus === 'Disabled'
+        ? 'Login enabled. Share a new setup link if required.'
+        : 'Login disabled. Employment and payroll records are unchanged.');
       await refreshAll();
     } catch (requestError) {
-      showToast(requestError?.message || 'Unable to change login access.');
+      setInviteError(requestError?.message || 'Unable to change login access.');
     }
   };
 
   const handleCopySetup = async () => {
-    if (!setupLink) return;
+    if (!canManageLogin || inviteBusy) return;
+    setInviteError('');
+    setInviteBusy(true);
     try {
-      await navigator.clipboard.writeText(setupLink);
-      setInviteNotice('Secure setup link copied. Share only with this staff member.');
-    } catch {
-      setInviteError('Clipboard is unavailable. Select and copy the secure URL.');
+      const invite = await staffService.sendLoginInvite(staff.id);
+      if (!invite?.setupLink || invite?.whatsappInviteStatus !== 'manual') {
+        throw new Error('A valid manual setup link could not be generated.');
+      }
+      await navigator.clipboard.writeText(invite.setupLink);
+      setInviteNotice('Secure setup link copied. Share privately only with this staff member.');
+      await refreshAll();
+    } catch (requestError) {
+      setInviteError(staffInviteErrorMessage(requestError));
+    } finally {
+      setInviteBusy(false);
     }
   };
-
 
   const handleEdit = async (payload) => {
     await staffService.updateStaff(staff.id, payload);
@@ -491,7 +491,7 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
     <div className="staff-profile staff360">
       {toastMsg && <div className="staff360-toast" role="status">{toastMsg}</div>}
       {inviteError && (
-        <div className="staff-directory-message" role="alert">
+        <div className="staff-directory-message is-error" role="alert">
           <span>{inviteError}</span>
           <button type="button" aria-label="Dismiss invite error" onClick={() => setInviteError('')}>Dismiss</button>
         </div>
@@ -509,7 +509,7 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
         </button>
         <div>
           <h2>Staff Profile</h2>
-          <p>Attendance, assignments, performance, payroll, documents and activity.</p>
+          
         </div>
       </div>
 
@@ -524,7 +524,7 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
               </span>
             </div>
             <p>
-              {getEmployeeLabel(staff)} · {displayText(staff.designation, 'Staff')} · {displayText(staff.department, 'Unassigned Team')}
+              {getEmployeeLabel(staff)} · {displayText(staff.role, 'No Role')} · {displayText(staff.department, 'Unassigned Team')}
             </p>
             <div className="staff360-contact-line">
               <span><Phone size={12}/>{staff.phone || 'No phone'}</span>
@@ -547,11 +547,12 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
                   Edit Profile
                 </button>
                 <button type="button" onClick={handleSendInvite}
-                  disabled={inviteBusy || staff.loginStatus === 'Disabled'}
-                  title={staff.loginStatus === 'Disabled' ? 'Enable staff login before issuing a link' : undefined}
+                  disabled={inviteBusy || staff.loginStatus === 'Disabled' || !staff.whatsappConsent}
+                  title={staff.loginStatus === 'Disabled'
+                    ? 'Enable staff login first' : !staff.whatsappConsent ? 'Record WhatsApp consent first' : undefined}
                   className="staff360-secondary-button">
                   <Send size={14}/>
-                  {staff.loginStatus === 'Active' ? 'Send Password Reset Link' : 'Resend Setup Link'}
+                  {staff.loginStatus === 'Active' ? 'Reset via WhatsApp' : 'Resend via WhatsApp'}
                 </button>
                 <button type="button" onClick={handleToggleAccount} className="staff360-secondary-button">
                   {staff.loginStatus === 'Disabled' ? <Unlock size={14}/> : <Lock size={14}/>}
@@ -575,18 +576,19 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
               WhatsApp consent recorded: {staff.whatsappConsentSource}
             </p>
           )}
-          {setupLink && ['manual', 'failed'].includes(inviteStatus) && <>
-            <label htmlFor="staff-setup-url">Latest one-time setup URL (valid for 24 hours)</label>
-            <input id="staff-setup-url" type="text" readOnly value={setupLink}
-              onFocus={(event) => event.target.select()}/>
+          {staff.whatsappConsent && staff.loginStatus !== 'Disabled' && (
             <div className="staff-setup-link-actions">
-              <button type="button" onClick={handleCopySetup}><Copy size={16}/> Copy Setup Link</button>
-              {staff.whatsappConsent && staffManualWhatsAppUrl(staff.phone, setupLink) && <a href={staffManualWhatsAppUrl(staff.phone, setupLink)}
-                target="_blank" rel="noreferrer"><ExternalLink size={16}/> Send via WhatsApp</a>}
+              <button type="button" onClick={handleCopySetup} disabled={inviteBusy}>
+                <Copy size={16}/> Copy Secure Setup Link
+              </button>
             </div>
-            <p>WhatsApp opens with a draft; review and press Send. Do not post this private password link in groups or public channels.</p>
-          </>}
-          {['manual', 'failed'].includes(inviteStatus) && !setupLink && <p role="status">To obtain a new secure link, use Resend Setup Link above. Only an authorized admin can issue it.</p>}
+          )}
+          {!staff.whatsappConsent &&
+            <p role="status">Record WhatsApp consent in the staff profile before manual sharing.</p>}
+          <p className="staff-login-invite-hint">
+            A secure link is retrieved only when an authorized admin chooses Share or Copy.
+            Opening WhatsApp does not confirm delivery.
+          </p>
         </section>
       )}
 
