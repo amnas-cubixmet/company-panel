@@ -1,5 +1,5 @@
 import { appConfirm, appAlert } from '../../components/common/appDialogs';
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Building2, Clock3, Pencil, Plus, Save, Trash2, Users } from 'lucide-react';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { BranchCreateSheet } from '../../components/staff-management/BranchCreateSheet';
@@ -7,6 +7,7 @@ import { staffManagementService } from '../../services/staffManagement.service';
 import { branchService } from '../../services/branch.service';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
+import { clearFieldValidation, showFormFieldError, showServerFormErrors } from '../../utils/formValidation';
 
 const EMPTY_FORM = {
   name: '',
@@ -33,6 +34,8 @@ export const StaffShiftCrud = ({ staff = [] }) => {
   const [branchOpen, setBranchOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const formRef = useRef(null);
 
   const activeStaff = useMemo(
     () => staff.filter((item) =>
@@ -94,10 +97,23 @@ export const StaffShiftCrud = ({ staff = [] }) => {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!form.name.trim() || saving) return;
+    if (saving) return;
+    if (!form.name.trim()) {
+      showFormFieldError(formRef.current, 'name', 'Shift name is required.');
+      return;
+    }
+    if (!/^(0?[1-9]|1[0-2]):[0-5][0-9] (AM|PM)$/.test(form.startTime.trim())) {
+      showFormFieldError(formRef.current, 'startTime', 'Use time such as 09:00 AM.');
+      return;
+    }
+    if (!/^(0?[1-9]|1[0-2]):[0-5][0-9] (AM|PM)$/.test(form.endTime.trim())) {
+      showFormFieldError(formRef.current, 'endTime', 'Use time such as 06:00 PM.');
+      return;
+    }
 
     setSaving(true);
     setError('');
+    setSuccess('');
     try {
       const branch = branches.find(
         (item) => String(item.id) === String(form.branchId),
@@ -118,10 +134,14 @@ export const StaffShiftCrud = ({ staff = [] }) => {
       }
 
       await load();
+      setSuccess(editing ? 'Shift updated successfully.' : 'Shift saved successfully.');
       setOpen(false);
       setEditing(null);
       setForm(EMPTY_FORM);
     } catch (err) {
+      showServerFormErrors(formRef.current, err, {
+        name: 'name', start_time: 'startTime', end_time: 'endTime', branchId: 'branchId',
+      });
       setError(err?.message || 'Unable to save shift.');
     } finally {
       setSaving(false);
@@ -144,6 +164,7 @@ export const StaffShiftCrud = ({ staff = [] }) => {
 
   return (
     <div className="staff-dashboard-subpage staff-crud-view">
+      {success && <div className="staff-action-success" role="status">{success}</div>}
       <section className="staff-subpage-header">
         <div>
           <h2>Shift Assignment</h2>
@@ -231,12 +252,14 @@ export const StaffShiftCrud = ({ staff = [] }) => {
         title={editing ? 'Edit Workshop Shift' : 'Add Workshop Shift'}
         maxWidth="640px"
       >
-        <form className="staff-crud-form" onSubmit={submit}>
+        <form ref={formRef} className="staff-crud-form" noValidate onSubmit={submit}
+          onChange={event => clearFieldValidation(event.target)}>
           {error ? <div className="staff-crud-error">{error}</div> : null}
 
           <label>
             Shift Name *
             <input
+              name="name"
               required
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -248,6 +271,7 @@ export const StaffShiftCrud = ({ staff = [] }) => {
             <label>
               Start Time
               <input
+                name="startTime"
                 value={form.startTime}
                 onChange={(e) => setForm({ ...form, startTime: e.target.value })}
                 placeholder="09:00 AM"
@@ -256,6 +280,7 @@ export const StaffShiftCrud = ({ staff = [] }) => {
             <label>
               End Time
               <input
+                name="endTime"
                 value={form.endTime}
                 onChange={(e) => setForm({ ...form, endTime: e.target.value })}
                 placeholder="06:00 PM"
@@ -263,7 +288,7 @@ export const StaffShiftCrud = ({ staff = [] }) => {
             </label>
             <label>
               Weekly Off
-              <select
+              <select name="weeklyOff"
                 value={form.weeklyOff}
                 onChange={(e) => setForm({ ...form, weeklyOff: e.target.value })}
               >
@@ -274,7 +299,7 @@ export const StaffShiftCrud = ({ staff = [] }) => {
             <label>
               Branch
               <div className="staff-branch-select-row">
-                <select
+                <select name="branchId"
                   value={form.branchId}
                   onChange={(e) => setForm({ ...form, branchId: e.target.value })}
                 >
@@ -308,7 +333,7 @@ export const StaffShiftCrud = ({ staff = [] }) => {
                   />
                   <span>
                     <strong>{person.name}</strong>
-                    <small>{person.designation} · {person.branch || 'No branch'}</small>
+                    <small>{person.role || 'No role'} · {person.branch || 'No branch'}</small>
                   </span>
                 </label>
               ))}
