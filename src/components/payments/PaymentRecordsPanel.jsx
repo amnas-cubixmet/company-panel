@@ -51,6 +51,9 @@ export const PaymentRecordsPanel = ({
                   <td>
                     <strong>{row.customer || 'Payment party'}</strong>
                     <span>{row.invoice || row.category || 'No related reference'}</span>
+                    {row.account && <span>Account: {row.account}</span>}
+                    {row.source === 'payment' && row.ledgerPosted === false &&
+                      <small role="note">Unlinked legacy ledger — reconciliation needed</small>}
                   </td>
                   <td>{formatPaymentDate(row.date)}</td>
                   <td>{row.method || '—'}<span>{row.category || ''}</span></td>
@@ -87,6 +90,7 @@ export const PaymentRecordsPanel = ({
 
               <div className="payments-dashboard-mobile-meta">
                 <div><span>Related</span><strong>{row.invoice || row.category || '—'}</strong></div>
+                <div><span>Account</span><strong>{row.account || 'Not linked'}</strong></div>
                 <div><span>Date</span><strong>{formatPaymentDate(row.date)}</strong></div>
                 <div><span>Method</span><strong>{row.method || '—'}</strong></div>
                 <div><span>{row.direction === 'OUT' ? 'Paid Out' : 'Received'}</span><strong>{formatMoney(row.amount || 0)}</strong></div>
