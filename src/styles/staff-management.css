@@ -1481,70 +1481,6 @@
   color: var(--primary);
 }
 
-.cg-staff-management .staff-add-summary {
-  position: sticky;
-  top: 84px;
-  text-align: center;
-}
-
-.cg-staff-management .staff-add-summary__avatar {
-  width: 58px;
-  height: 58px;
-  display: grid;
-  place-items: center;
-  margin: 0 auto;
-  border-radius: 14px;
-  background: var(--primary-soft);
-  color: var(--primary);
-  font-size: 22px;
-  font-weight: 800;
-}
-
-.cg-staff-management .staff-add-summary h3 {
-  margin: 10px 0 0;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.cg-staff-management .staff-add-summary > p {
-  margin: 3px 0 0;
-  color: var(--text-muted);
-  font-size: 10px;
-}
-
-.cg-staff-management .staff-add-summary__rows {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 12px;
-  text-align: left;
-}
-
-.cg-staff-management .staff-add-summary__rows > div {
-  padding: 8px 9px;
-  border: 1px solid var(--staff-border);
-  border-radius: 9px;
-  background: var(--staff-soft);
-}
-
-.cg-staff-management .staff-add-summary__rows span,
-.cg-staff-management .staff-add-summary__rows strong {
-  display: block;
-}
-
-.cg-staff-management .staff-add-summary__rows span {
-  color: var(--text-muted);
-  font-size: 8px;
-  text-transform: uppercase;
-}
-
-.cg-staff-management .staff-add-summary__rows strong {
-  margin-top: 2px;
-  color: var(--text-primary);
-  font-size: 10px;
-}
-
 /* 360 degree profile */
 .cg-staff-management .staff360 {
   gap: 12px !important;
@@ -6389,3 +6325,17 @@
   .cg-staff-management .roles-legacy-review { padding: 14px; }
   .cg-staff-management .roles-legacy-review button { width: 100%; }
 }
+
+
+/* Unified outlined Staff Management form controls; light/dark token-aware. */
+.cg-staff-management :is(.staff-add-page,.staff-profile-edit-form,.role-editor-form,.staff-crud-form) :is(input:not([type="checkbox"]):not([type="radio"]),select){
+  box-sizing:border-box;min-height:48px;height:48px;font-size:16px!important;border:1px solid var(--staff-border)!important;border-radius:10px!important;background:var(--staff-surface)!important;color:var(--text-primary)!important;
+}
+.cg-staff-management :is(.staff-add-page,.staff-profile-edit-form,.role-editor-form,.staff-crud-form) label{font-size:14px;gap:6px}
+.cg-staff-management :is(.staff-add-page,.staff-profile-edit-form,.role-editor-form,.staff-crud-form) :is(input,select,textarea):focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.cg-staff-management :is(.staff-add-page,.staff-profile-edit-form,.role-editor-form,.staff-crud-form) :is(input,select,textarea)[aria-invalid="true"]{border-color:var(--danger,#c52233)!important;outline-color:var(--danger,#c52233)!important}
+.cg-staff-management .cg-inline-field-error{display:block;color:var(--danger,#c52233);font-size:13px;font-weight:600;line-height:1.5}
+.cg-staff-management :is(.staff-add-page,.staff-profile-edit-form,.role-editor-form,.staff-crud-form) textarea{font-size:16px!important;min-height:80px;border:1px solid var(--staff-border);border-radius:10px}
+.cg-staff-management :is(.staff-add-page,.staff-profile-edit-form,.role-editor-form,.staff-crud-form) :is(input,select,textarea){scroll-margin-top:100px}
+.cg-staff-management .staff-action-success{display:flex;align-items:center;gap:8px;color:var(--success,#168045);font-weight:700;font-size:16px}
+@media(max-width:620px){.cg-staff-management .staff-form-grid{grid-template-columns:minmax(0,1fr)}}
