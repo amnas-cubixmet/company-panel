@@ -266,6 +266,16 @@ export default function StockEasyPage() {
   const beginMove = (mode, itemId = '', partItem = null) => {
     setError('');
     const item = partItem || items.find((row) => String(row.id) === String(itemId));
+    const linkedSupplier = item?.supplier?.id || item?.supplier;
+    if (mode === 'in' && item && linkedSupplier) {
+      navigate('/suppliers/' + encodeURIComponent(linkedSupplier), {
+        state: { purchasePrefill: {
+          itemId: String(item.id), quantity: '1',
+          purchaseRate: String(item.costPrice ?? 0), supplierId: String(linkedSupplier),
+        }},
+      });
+      return;
+    }
     setMove({ ...initialMove, mode, itemId: String(itemId || ''),
       costPrice: item ? String(item.costPrice ?? 0) : '',
       sellingPrice: item ? String(item.sellingPrice ?? 0) : '' });
@@ -313,8 +323,14 @@ export default function StockEasyPage() {
       });
       return;
     }
-    // A new supplier purchase must create stock and payable together through
-    // SupplierBill posting, never via an unlinked opening-stock adjustment.
+    // Catalog registration is never the posting of a supplier purchase.
+    // When quantity was supplied, the supplier detail page will create the
+    // invoice, stock receipt, cash/bank payment and remaining credit together.
+    if (openingQuantity > 0 && !part.supplier) {
+      setError('Choose the supplier before receiving purchased stock. For historical opening balances, use audited stock adjustments.');
+      partFormRef.current?.querySelector('select[name="supplier"]')?.focus();
+      return;
+    }
     const isSupplierPurchase = Boolean(part.supplier) && openingQuantity > 0;
     setSaving(true);
     setError('');
@@ -325,22 +341,18 @@ export default function StockEasyPage() {
         tax: Number(part.tax), zeroTaxClassification: Number(part.tax) === 0 ? part.zeroTaxClassification : '',
         hsnCode: part.hsnCode.trim(),
         minimumStock: number(part.minimumStock),
-        stockQuantity: isSupplierPurchase ? 0 : openingQuantity,
+        stockQuantity: 0,
       });
       setPartOpen(false);
       setPart(initialPart);
       setPartLookup('');
       setPartMode('find');
-      setSuccess(isSupplierPurchase
-        ? 'Part catalog saved; confirm the supplier purchase and choose Pay Now / Partial / Credit.'
-        : openingQuantity > 0
-          ? 'Historical opening stock added. No supplier payment or credit was posted.'
-          : 'Part catalog saved. Record purchases under Supplier Purchase.');
-      if (isSupplierPurchase && created?.id) {
-        navigate('/stock/suppliers?tab=bill&supplier=' + encodeURIComponent(part.supplier), {
+      setSuccess('Part saved to catalogue without adding stock or supplier debt.');
+      if (part.supplier && created?.id) {
+        navigate('/suppliers/' + encodeURIComponent(part.supplier), {
           state: {
             purchasePrefill: {
-              itemId: String(created.id), quantity: String(openingQuantity),
+              itemId: String(created.id), quantity: String(openingQuantity || 1),
               purchaseRate: String(part.costPrice),
               supplierId: String(part.supplier),
             },
@@ -349,7 +361,6 @@ export default function StockEasyPage() {
         return;
       }
       await reload();
-      if (!openingQuantity && created?.id) beginMove('in', created.id, created);
     } catch (exception) {
       const details = exception?.response?.data || exception?.data || {};
       if (typeof details === 'object' && details && !Array.isArray(details)) {
@@ -417,7 +428,6 @@ export default function StockEasyPage() {
         </div>
         <div className="cg-easy-actions">
           <button type="button" className="cg-easy-secondary" onClick={reload} disabled={loading}><RefreshCw size={16}/> Refresh</button>
-          <Link className="cg-easy-primary" to="/stock/suppliers?tab=bill"><ShoppingCart size={16}/> Buy Spare Parts</Link>
           <button type="button" className="cg-easy-primary" onClick={() => openPartDialog()}><Plus size={16}/> Add New Part</button>
         </div>
       </header>
@@ -456,11 +466,11 @@ export default function StockEasyPage() {
       </section>
 
       <section className="cg-easy-shortcuts" aria-label="Quick actions">
-        <button type="button" onClick={() => beginMove('in')}><PackagePlus size={19}/><span>Receive Stock</span></button>
+        <Link to="/suppliers"><PackagePlus size={19}/><span>Buy / Receive from Supplier</span></Link>
         <button type="button" onClick={() => beginMove('out')}><PackageMinus size={19}/><span>Internal Use</span></button>
         <Link to="/jobs"><Wrench size={19}/><span>Job Card Parts</span></Link>
         <a href="#stock-history"><History size={19}/><span>Stock History</span></a>
-        <Link to="/stock/suppliers"><ShoppingCart size={19}/><span>Supplier Bills & Payments</span></Link>
+        <Link to="/suppliers"><ShoppingCart size={19}/><span>Suppliers</span></Link>
       </section>
 
       <section className="cg-easy-panel">
