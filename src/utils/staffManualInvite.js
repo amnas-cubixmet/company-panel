@@ -5,8 +5,8 @@
  */
 export const buildStaffWhatsAppUrl = ({ phone, workshopName, staffName, setupLink }) => {
   const raw = String(phone || '').trim();
-  const compact = raw.replace(/[\\s().-]/g, '');
-  if (!/^\\+[1-9]\\d{7,14}$/.test(compact)) {
+  const compact = raw.replace(/[\s().-]/g, '');
+  if (!/^\+[1-9]\d{7,14}$/.test(compact)) {
     throw new Error('A valid international staff mobile number is required.');
   }
   let link;
@@ -17,7 +17,7 @@ export const buildStaffWhatsAppUrl = ({ phone, workshopName, staffName, setupLin
   }
   if (!['https:', 'http:'].includes(link.protocol)
       || (link.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(link.hostname))
-      || !/^\\/set-password\\/[^/]+$/.test(link.pathname)) {
+      || !/^\/set-password\/[^/]+$/.test(link.pathname)) {
     throw new Error('A secure password setup link is required.');
   }
   const message = [
@@ -34,7 +34,7 @@ export const buildStaffWhatsAppUrl = ({ phone, workshopName, staffName, setupLin
     '',
     'The link is valid for 24 hours and can be used only once.',
     'After creating your password, log in using your mobile number and password.',
-  ].join('\\n');
+  ].join('\n');
   return `https://wa.me/${compact.slice(1)}?text=${encodeURIComponent(message)}`;
 };
 
