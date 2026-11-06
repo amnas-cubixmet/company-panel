@@ -56,6 +56,7 @@ export default function SupplierPurchaseFlow({
   const [savingPart, setSavingPart] = useState(false);
   const [posting, setPosting] = useState(false);
   const [purchaseDate, setPurchaseDate] = useState(localDate);
+  const [purchaseOpenedAt, setPurchaseOpenedAt] = useState(() => new Date().toISOString());
   const [invoiceNumber, setInvoiceNumber] = useState(purchaseReference);
   const [placeOfSupply, setPlaceOfSupply] = useState('');
   const [splits, setSplits] = useState([]);
@@ -202,7 +203,8 @@ export default function SupplierPurchaseFlow({
       setParts(rows => [...rows, {
         itemId, description: part.description, quantity: fixed(qty),
         purchaseRate: fixed(cost), sellingPrice: fixed(selling),
-        gstRate: String(rate), gstTreatment: rate === 0 ? part.zeroClassification : 'taxable',
+        gstRate: String(rate), gstChoice: part.gstChoice,
+        gstTreatment: rate === 0 ? part.zeroClassification : 'taxable',
         updateItemPrices: part.updateItemPrices && part.itemId !== '__new__',
       }]);
       setActivePart(emptyPart());
@@ -227,6 +229,14 @@ export default function SupplierPurchaseFlow({
     const supplierState = String(supplier.gstNo || supplier.gstin || '').slice(0, 2);
     if (positiveGst && !/^\d{2}$/.test(supplierState)) {
       setError('Supplier GSTIN does not contain a valid state code. Verify Supplier Details.'); return;
+    }
+    if (positiveGst && parts.some(row =>
+      (['cgst', 'sgst'].includes(row.gstChoice.split(':')[0]) && placeOfSupply !== supplierState) ||
+      (row.gstChoice.startsWith('igst:') && placeOfSupply === supplierState)
+    )) {
+      setError('GST component does not match the Supplier State and Place of Supply. ' +
+        'Use CGST/SGST for same-state purchases or IGST for interstate purchases.');
+      return;
     }
     if (splits.length > 5 || paidNow > total + 0.001) {
       setError('Paid amount cannot exceed the purchase total.'); return;
@@ -274,6 +284,7 @@ export default function SupplierPurchaseFlow({
       });
       setParts([]); setSplits([]); setStep('part');
       setInvoiceNumber(purchaseReference()); setPurchaseDate(localDate());
+      setPurchaseOpenedAt(new Date().toISOString());
       setPlaceOfSupply(''); setActivePart(emptyPart());
       await Promise.resolve(onChanged());
     } catch (cause) { setError(getErrorText(cause)); }
@@ -332,7 +343,10 @@ export default function SupplierPurchaseFlow({
           </header>
           <div className="cg-supplier-purchase-clock">
             <span>Purchase date: <strong>{purchaseDate}</strong></span>
-            <span>Time is recorded automatically when you confirm the purchase.</span>
+            <span>Started: <strong>{new Date(purchaseOpenedAt).toLocaleString('en-IN', {
+              day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            })}</strong></span>
+            <span>Posting timestamp is recorded automatically on confirmation.</span>
           </div>
           {loading && <p role="status">Loading inventory and accounts…</p>}
           {!loading && step === 'part' && (
