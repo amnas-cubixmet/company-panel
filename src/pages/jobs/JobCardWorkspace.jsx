@@ -870,7 +870,7 @@ export function JobCardWorkspace() {
       const finalKm = String(deliveryForm.finalKm ?? '').trim();
       const acknowledgedBy = String(deliveryForm.customerSignature ?? '').trim();
       const warrantyNotes = String(deliveryForm.warrantyNotes ?? '').trim();
-      if (!/^\\d+$/.test(finalKm) || Number(finalKm) > 2147483647 ||
+      if (!/^\d+$/.test(finalKm) || Number(finalKm) > 2147483647 ||
           Number(finalKm) < Number(job.kilometre || 0)) {
         setError('Enter a valid final odometer reading, not less than check-in kilometres.');
         return;
