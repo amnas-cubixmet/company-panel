@@ -29,7 +29,7 @@ test('common payroll tabs keep selected period and include four routes', () => {
 });
 
 test('wages/history/payments keep real company records and permissions', () => {
-  assert.match(wages,/hasPermission\(user, 'payroll.view'\)/);
+  assert.match(wages,/can\(mode === 'payments' \? 'payroll.payments.view' : 'payroll.view'\)/);
   assert.match(wages,/dailyWageService\.dashboard\(\)/);
   assert.match(wages,/dailyWageService\.history\(/);
   assert.match(wages,/dailyWageService\.payments\(\)/);
@@ -43,8 +43,8 @@ test('wages/history/payments keep real company records and permissions', () => {
 });
 
 test('overtime approval and rejection still require backend permissions, rate and reason', () => {
-  assert.match(overtime,/hasPermission\(user, 'payroll.view'\)/);
-  assert.match(overtime,/hasPermission\(user, 'attendance.manage'\)/);
+  assert.match(overtime,/can\('attendance.team.view'\)/);
+  assert.match(overtime,/can\('attendance.overtime.approve'\)/);
   assert.match(overtime,/pendingOvertime\(/);
   assert.match(overtime,/filterOvertimeApprovals\(/);
   assert.match(overtime,/row.canReview === false/);

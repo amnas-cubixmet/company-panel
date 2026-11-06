@@ -25,6 +25,7 @@ const sections = [
 
 export function DailyWageNav({ selected = 'overview' }) {
   const { search } = useLocation();
+  const { can } = useFeatureAccess();
   const navRef = useRef(null);
   useEffect(() => {
     const nav = navRef.current;
@@ -36,7 +37,7 @@ export function DailyWageNav({ selected = 'overview' }) {
   // month, year, branch and staff query parameters.
   return (
     <nav ref={navRef} className="dw-nav" aria-label="Payroll navigation">
-      {sections.map(([id, title, href, Icon]) => (
+      {sections.filter(([id]) => id === 'overtime' ? can('attendance.team.view') : id === 'payments' ? can('payroll.payments.view') : can('payroll.view')).map(([id, title, href, Icon]) => (
         <Link key={id} to={`${href}${search}`} aria-current={selected === id ? 'page' : undefined} className={selected === id ? 'is-active' : ''}>
           <Icon size={16} aria-hidden="true"/>{title}
         </Link>
@@ -122,7 +123,7 @@ export const DailyWagePage = ({ mode = 'overview' }) => {
       </header>
       <DailyWageNav selected={mode}/>
       {mode === 'overview' && <details className="dw-payroll-help"><summary>About daily wages</summary>
-        <p>Daily wage earnings are attendance-based. Only finalized attendance contributes to the daily totals; monthly salary and automatic commission are not included.</p>
+        <p>Daily wage earnings are attendance-based. Only finalized attendance contributes to daily totals; monthly salary and automatic commission are not included.</p>
       </details>}
       {mode === 'overview' && data && (
         <div className="dw-metrics">
