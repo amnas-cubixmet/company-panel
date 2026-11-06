@@ -106,7 +106,7 @@ export const EditVehicle = () => {
     setFieldErrors({});
     setFormError('');
     try {
-      const selectedCustomer = customers.find((customer) => customer.id === formData.customerId);
+      const selectedCustomer = customers.find((customer) => String(customer.id) === String(formData.customerId));
       await vehicleService.updateVehicle(id, {
         ...formData,
         customerName: selectedCustomer?.name || ''
@@ -133,7 +133,7 @@ export const EditVehicle = () => {
         title="Edit Vehicle"
       >
         {formError && <div className="vehicle-dashboard-error" role="alert">{formError}</div>}
-        <form ref={formRef} className="vehicle-form" onSubmit={submit}
+        <form ref={formRef} className="vehicle-form" noValidate onSubmit={submit}
           onInvalid={(event) => {
             event.target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             event.target?.focus();
