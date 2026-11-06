@@ -1,3 +1,11 @@
+/** Staff login state comes from Django; it is not inferred from invitation delivery. */
+export const staffLoginStatusLabel = (status) => ({
+  Active: 'Login Active',
+  Disabled: 'Login Disabled',
+  'Pending Password Setup': 'Pending Password Setup',
+  'Not Invited': 'Not Invited',
+}[status] || 'Not Invited');
+
 export const staffInviteStatusLabel = (status) => ({
   queued: 'Invitation Queued',
   sending: 'Invitation Sending',
