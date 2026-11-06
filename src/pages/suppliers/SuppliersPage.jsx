@@ -162,6 +162,10 @@ export default function SuppliersPage({ section = 'all' }) {
   const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState(false);
   const [purchaseHistoryError, setPurchaseHistoryError] = useState('');
   const [supplier, setSupplier] = useState(null);
+  const [supplierFinancials, setSupplierFinancials] = useState(null);
+  const [supplierBills, setSupplierBills] = useState([]);
+  const [supplierPayments, setSupplierPayments] = useState([]);
+  const [supplierFinanceError, setSupplierFinanceError] = useState('');
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -210,6 +214,30 @@ export default function SuppliersPage({ section = 'all' }) {
       .finally(()=>{if(active)setDetailsLoading(false);});
     return()=>{active=false};
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !canViewFinance || USE_MOCK_API) {
+      setSupplierFinancials(null);
+      setSupplierBills([]);
+      setSupplierPayments([]);
+      return undefined;
+    }
+    let active = true;
+    setSupplierFinanceError('');
+    Promise.all([
+      supplierFinanceService.getSupplierSummary(id),
+      supplierFinanceService.getBills(id),
+      supplierFinanceService.getPayments(id),
+    ]).then(([summary, bills, payments]) => {
+      if (!active) return;
+      setSupplierFinancials(summary);
+      setSupplierBills(bills);
+      setSupplierPayments(payments);
+    }).catch(error => {
+      if (active) setSupplierFinanceError(error?.message || 'Supplier finance records could not be loaded.');
+    });
+    return () => { active = false; };
+  }, [id, canViewFinance]);
 
   useEffect(() => {
     if (!purchaseView) return undefined;
@@ -448,7 +476,9 @@ export default function SuppliersPage({ section = 'all' }) {
           <div className="full"><span>Address</span><strong>{supplier.address||'—'}</strong></div>
         </div>
         {canViewFinance && <div style={{ marginTop: 10, fontSize: 14 }}>
-          Credit outstanding: <strong>{creditBalances ? money(creditBalances.get(String(supplier.id)) || 0) : 'Unavailable'}</strong>
+          Credit outstanding: <strong>{supplierFinancials
+            ? money(supplierFinancials.outstanding)
+            : 'Loading / Unavailable'}</strong>
           <Link to={'/suppliers/credits?supplier=' + encodeURIComponent(supplier.id)}
             style={{ marginLeft: 12, color: 'var(--primary)' }}>Credit Management</Link>
         </div>}
@@ -459,13 +489,58 @@ export default function SuppliersPage({ section = 'all' }) {
           <Link to={'/suppliers/purchases?supplier=' + encodeURIComponent(supplier.id)}>
             <ShoppingBag size={15}/> Purchases</Link>
           {canViewFinance && <Link to={'/suppliers/payments?supplier=' + encodeURIComponent(supplier.id)}>
-            <CreditCard size={15}/> Payments</Link>}
+            <CreditCard size={15}/> Pay Supplier / Payment History</Link>}
+          {canCreatePurchase && <Link to={'/stock/suppliers?tab=bill&supplier=' + encodeURIComponent(supplier.id)}>
+            <ShoppingBag size={15}/> Buy Parts from Supplier</Link>}
           {supplier.is_active !== false && canEdit && <button type="button" disabled={actionBusy}
             onClick={deactivateSupplier} className="cg-supplier-button">Deactivate</button>}
           {canDelete && <button type="button" disabled={actionBusy}
             onClick={() => setDeleteConfirmOpen(true)} className="cg-supplier-button">Delete Supplier</button>}
         </div>
       </section>
+      {canViewFinance && (
+        <section className="cg-supplier-profile" aria-label="Supplier credit and settlement">
+          <div className="cg-supplier-profile-head">
+            <CreditCard size={20}/><h2>Supplier Accounts & Payments</h2>
+          </div>
+          {supplierFinanceError && <p className="cg-supplier-error" role="alert">{supplierFinanceError}</p>}
+          {supplierFinancials && (
+            <div className="cg-supplier-fields">
+              <div><span>Total Posted Purchases</span><strong>{money(supplierFinancials.totalPurchases)}</strong></div>
+              <div><span>Paid Against Bills</span><strong>{money(supplierFinancials.totalPaymentsApplied)}</strong></div>
+              <div><span>Remaining Credit</span><strong>{money(supplierFinancials.outstanding)}</strong></div>
+              <div><span>Unapplied Advances</span><strong>{money(supplierFinancials.availableAdvance)}</strong></div>
+            </div>
+          )}
+          <div className="cg-supplier-contacts">
+            <Link to={'/suppliers/payments?supplier=' + encodeURIComponent(supplier.id)}>
+              <CreditCard size={15}/> Pay Now / Settle Multiple Bills
+            </Link>
+            <Link to={'/suppliers/credits?supplier=' + encodeURIComponent(supplier.id)}>
+              <CreditCard size={15}/> Credit Management
+            </Link>
+          </div>
+          <h3>Purchase Bills</h3>
+          {supplierBills.filter(b => b.postingStatus === 'Posted').map(bill => (
+            <div key={bill.id} className="cg-supplier-record">
+              <div><strong>{bill.invoiceNumber}</strong>
+                <small>{bill.invoiceDate} · Paid {money(bill.paid)} · {bill.status}</small>
+              </div>
+              <b>Due {money(bill.outstanding)}</b>
+            </div>
+          ))}
+          {!supplierBills.length && <p className="cg-supplier-empty">No supplier purchase bills recorded.</p>}
+          <h3>Payment History</h3>
+          {supplierPayments.map(payment => (
+            <div key={payment.id} className="cg-supplier-record">
+              <div><strong>{payment.kind} · {payment.method}</strong>
+                <small>{payment.paidOn} · {payment.billReferences?.join(', ') || payment.reference || 'Advance / Unallocated'}</small>
+              </div><b>{money(payment.amount)}</b>
+            </div>
+          ))}
+          {!supplierPayments.length && <p className="cg-supplier-empty">No supplier payments recorded.</p>}
+        </section>
+      )}
       <div className="cg-supplier-details-grid">
         <section className="cg-supplier-profile">
           <div className="cg-supplier-profile-head"><ShoppingBag size={20}/><h2>Purchase Orders</h2><span>{orders.length} loaded</span></div>
