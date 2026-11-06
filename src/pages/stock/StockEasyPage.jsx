@@ -393,10 +393,11 @@ export default function StockEasyPage() {
       <header className="cg-easy-head">
         <div>
           <h1>Inventory Management</h1>
-          <p>Find parts, receive stock and track what your workshop uses.</p>
+          <p>Manage parts, record supplier purchases with Cash/Bank payment or credit, and track stock movements.</p>
         </div>
         <div className="cg-easy-actions">
           <button type="button" className="cg-easy-secondary" onClick={reload} disabled={loading}><RefreshCw size={16}/> Refresh</button>
+          <Link className="cg-easy-primary" to="/stock/suppliers?tab=bill"><ShoppingCart size={16}/> Buy Spare Parts</Link>
           <button type="button" className="cg-easy-primary" onClick={() => openPartDialog()}><Plus size={16}/> Add New Part</button>
         </div>
       </header>
@@ -439,7 +440,7 @@ export default function StockEasyPage() {
         <button type="button" onClick={() => beginMove('out')}><PackageMinus size={19}/><span>Internal Use</span></button>
         <Link to="/jobs"><Wrench size={19}/><span>Job Card Parts</span></Link>
         <a href="#stock-history"><History size={19}/><span>Stock History</span></a>
-        <Link to="/stock/suppliers"><ShoppingCart size={19}/><span>Supplier Bills & Payments</span></Link>
+        <Link to="/stock/suppliers?tab=bill"><ShoppingCart size={19}/><span>Supplier Purchase (Pay / Credit)</span></Link>
       </section>
 
       <section className="cg-easy-panel">
@@ -631,6 +632,13 @@ export default function StockEasyPage() {
       <ResponsiveModalSheet isOpen={moveOpen} onClose={() => !saving && setMoveOpen(false)} title={move.mode === 'in' ? 'Receive Stock' : 'Internal Use — Stock Out'} maxWidth="590px">
         <form className="cg-easy-form" onSubmit={saveMovement}>
           {error && <p className="cg-easy-alert" role="alert">{error}</p>}
+          {move.mode === 'in' && (
+            <p className="cg-easy-hint">
+              Bought from a supplier? <Link to={`/stock/suppliers?tab=bill${move.itemId ? '&item=' + encodeURIComponent(move.itemId) : ''}`}>
+                Record Supplier Purchase and choose Pay Now / Partial / Credit
+              </Link>. This manual Receive Stock action records only a quantity adjustment; it does not create a supplier bill or payment.
+            </p>
+          )}
           {move.mode === 'out' && <p className="cg-easy-hint">For customer vehicle repairs, issue stock on the Job Card Parts page instead. This action records internal workshop consumption only.</p>}
           <label>Search Part / Product *
             <div className="cg-easy-picker-search"><Search size={17}/><input placeholder="Search by part name, SKU, barcode or brand" value={moveLookup} onChange={(event) => { setMoveLookup(event.target.value); if(selected) setMove({ ...move, itemId: '', priceMode: '' }); }} /></div>
