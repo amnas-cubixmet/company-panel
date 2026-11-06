@@ -4,6 +4,7 @@ import { CheckCircle2, CreditCard, Plus, RefreshCw, Wallet } from 'lucide-react'
 import { supplierFinanceService as finance } from '../../services/supplierFinance.service';
 import { SupplierSectionTabs } from '../../components/suppliers/SupplierSectionTabs';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
+import { supplierComponentChoices, previewManualPurchaseTax } from '../../utils/manualGstComponents';
 
 const field = 'w-full min-w-0 min-h-12 rounded-[10px] border border-line bg-surface px-3 py-2 text-base text-content outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60';
 const secondary = 'min-h-11 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-content disabled:opacity-50';
@@ -12,7 +13,7 @@ const box = 'rounded-2xl border border-line bg-surface p-4';
 const today = () => new Date().toLocaleDateString('en-CA');
 const money = (value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(value || 0));
 const num = value => { const amount = Number(value); return Number.isFinite(amount) ? amount : 0; };
-const line = () => ({ itemId: '', description: '', quantity: '1', purchaseRate: '', gstRate: '0', gstTreatment: '' });
+const line = () => ({ itemId: '', description: '', quantity: '1', purchaseRate: '', gstRate: '0', taxComponents: [], gstTreatment: '', zeroRatingBasis: '' });
 const paymentKey = () => globalThis.crypto?.randomUUID?.() || ('PAY-' + Date.now() + '-' + Math.random().toString(36).slice(2));
 
 export default function SupplierFinancePage({ section = '' }) {
@@ -50,6 +51,8 @@ export default function SupplierFinancePage({ section = '' }) {
   const [purchasePayment, setPurchasePayment] = useState({
     mode: 'Credit', amount: '', accountId: '', method: 'Cash', reference: '', lineAmounts: {},
   });
+  const [paymentPopupBill, setPaymentPopupBill] = useState(null);
+  const [paymentPopupError, setPaymentPopupError] = useState('');
   const [paymentDraft, setPaymentDraft] = useState({
     kind: 'Payment', accountId: '', method: 'Bank Transfer', amount: '',
     paidOn: today(), reference: '', allocations: {}, lineAllocations: {},
@@ -201,24 +204,19 @@ export default function SupplierFinancePage({ section = '' }) {
       supplierGSTIN.slice(0, 2) === draft.placeOfSupply ? 'cgst_sgst' : 'igst';
   const stateTaxLabel = ['04', '26', '31', '35', '38'].includes(draft.placeOfSupply) ? 'UTGST' : 'SGST';
   const posting = Boolean(busy);
-  // Preview only. Backend Decimal snapshots are authoritative and can differ by paise.
-  const purchaseTaxLines = useMemo(() => draft.lines.map((row) => {
-    const round = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
-    const subtotal = round((Number(row.quantity) || 0) * (Number(row.purchaseRate) || 0));
-    const rate = Number(row.gstRate) || 0;
-    const half = purchaseTaxMode === 'cgst_sgst' ? round(subtotal * rate / 200) : 0;
-    const igst = purchaseTaxMode === 'igst' ? round(subtotal * rate / 100) : 0;
-    const tax = purchaseTaxMode === 'unselected' ? round(subtotal * rate / 100) : 2 * half + igst;
-    return { subtotal, cgst: half, stateTax: half, igst, total: round(subtotal + tax) };
-  }), [draft.lines, purchaseTaxMode]);
+  // Preview only explicitly selected components; server validates before posting.
+  const purchaseTaxLines = useMemo(() => draft.lines.map((row) =>
+    previewManualPurchaseTax(row, purchaseTaxMode, stateTaxLabel)
+  ), [draft.lines, purchaseTaxMode, stateTaxLabel]);
   const purchaseLines = purchaseTaxLines.map((item) => item.total);
   const purchaseTotal = purchaseLines.reduce((sum, amount) => sum + amount, 0);
   const purchaseCGST = purchaseTaxLines.reduce((sum, item) => sum + item.cgst, 0);
   const purchaseStateTax = purchaseTaxLines.reduce((sum, item) => sum + item.stateTax, 0);
   const purchaseIGST = purchaseTaxLines.reduce((sum, item) => sum + item.igst, 0);
+  const paymentBaseTotal = num(paymentPopupBill?.outstanding ?? purchaseTotal);
   const paidNow = purchasePayment.mode === 'Credit' ? 0
-    : purchasePayment.mode === 'Full Paid' ? purchaseTotal : num(purchasePayment.amount);
-  const newCredit = Math.max(0, purchaseTotal - paidNow);
+    : purchasePayment.mode === 'Full Paid' ? paymentBaseTotal : num(purchasePayment.amount);
+  const newCredit = Math.max(0, paymentBaseTotal - paidNow);
 
   const createSupplier = (event) => {
     event.preventDefault();
@@ -253,59 +251,109 @@ export default function SupplierFinancePage({ section = '' }) {
       setError('Verify the supplier GSTIN before applying GST.');
       return;
     }
-    if (draft.lines.some(row => Number(row.gstRate) === 0 && purchaseTaxMode !== 'unregistered' && !row.gstTreatment)) {
-      setError('Classify each 0% GST item as Exempt, Nil-rated, Zero-rated or Non-GST.');
-      return;
-    }
-    if (draft.lines.some(row => Number(row.gstRate) > 0 && purchaseTaxMode === 'unregistered')) {
-      setError('An unregistered supplier cannot charge GST.');
-      return;
-    }
-    if (postNow && (!Number.isFinite(paidNow) || paidNow < 0 ||
-        paidNow > purchaseTotal + 0.001 || (purchasePayment.mode === 'Partial Paid' && paidNow <= 0))) {
-      setError('Paid Now must be positive and cannot exceed the Purchase Total.');
-      return;
-    }
-    if (postNow && purchasePayment.mode !== 'Credit' && !purchasePayment.accountId) {
-      setError('Choose an authorized Cash / Bank / UPI account.');
-      return;
-    }
-    const itemAllocations = Object.entries(purchasePayment.lineAmounts)
-      .filter(([, amount]) => Number(amount) > 0)
-      .map(([lineIndex, amount]) => ({ lineIndex: Number(lineIndex), amount }));
-    if (postNow && itemAllocations.length &&
-        Math.abs(itemAllocations.reduce((sum, row) => sum + num(row.amount), 0) - paidNow) > 0.001) {
-      setError('Item-wise Paid amounts must equal Paid Now.');
-      return;
+    if (postNow) {
+      const invalidLine = purchaseTaxLines.findIndex(result => result.status !== 'valid');
+      if (invalidLine >= 0) {
+        setError('Line ' + (invalidLine + 1) + ': ' +
+          (purchaseTaxLines[invalidLine].message || 'Correct the GST selection before posting.'));
+        return;
+      }
     }
     run('bill', async () => {
-      const payment = postNow && purchasePayment.mode !== 'Credit' ? {
-        supplierId: selectedSupplier, accountId: purchasePayment.accountId,
-        kind: 'Payment', method: purchasePayment.method,
-        amount: paidNow.toFixed(2), paidOn: today(),
-        reference: purchasePayment.reference.trim(), idempotencyKey: purchaseRequestKey.current,
-        ...(itemAllocations.length ? { allocations: [{ amount: paidNow.toFixed(2), lineAllocations: itemAllocations }] } : {}),
-      } : undefined;
-      // In an atomic post, line allocation targets the newly created bill.
-      // The backend fills billId when only the current purchase is being paid.
-      await finance.createBill({
+      const previousOutstanding = num(summary?.outstanding);
+      const confirmedBill = await finance.createBill({
         supplierId: selectedSupplier, invoiceNumber: draft.invoiceNumber.trim(),
         invoiceDate: draft.invoiceDate, dueDate: draft.dueDate || null,
         placeOfSupply: draft.placeOfSupply,
         receiveIntoStock: draft.receiveIntoStock, postNow,
-        ...(payment ? { payment } : {}),
         items: draft.lines.map((row) => ({
           ...row, itemId: row.itemId || null,
           description: row.description.trim(),
         })),
       });
-      purchaseRequestKey.current = paymentKey();
+      if (postNow) {
+        setPaymentPopupBill({
+          ...confirmedBill, supplierId: selectedSupplier, supplierName: selectedSupplierName,
+          previousOutstanding,
+        });
+        setPaymentPopupError('');
+        purchaseRequestKey.current = paymentKey();
+      }
       setPurchasePayment((prev) => ({ ...prev, mode: 'Credit', amount: '', reference: '', lineAmounts: {} }));
       setDraft({ invoiceNumber: '', invoiceDate: today(), dueDate: '', placeOfSupply: draft.placeOfSupply, receiveIntoStock: false, lines: [line()] });
       setActiveTab('overview');
     }, postNow
-      ? 'Purchase posted: inventory, payable and any payment were committed together.'
+      ? 'Purchase posted and payable recorded. Choose Full / Partial / Credit in the payment popup.'
       : 'Supplier bill saved as Draft. Posting is required to create liability and receive stock.');
+  };
+
+  const settlePurchasePopup = async () => {
+    if (!paymentPopupBill || inFlight.current) return;
+    if (purchasePayment.mode === 'Credit') {
+      setPaymentPopupBill(null);
+      setPaymentPopupError('');
+      setNotice('Purchase retained as Full Credit. Supplier balance remains outstanding.');
+      return;
+    }
+    const amount = paidNow;
+    const available = num(paymentPopupBill.outstanding);
+    const chosenAccount = accounts.find(row => String(row.id) === String(purchasePayment.accountId));
+    if (!Number.isFinite(amount) || amount <= 0 || amount > available + 0.001 ||
+        (purchasePayment.mode === 'Partial Paid' &&
+          !/^\d+(?:\.\d{1,2})?$/.test(String(purchasePayment.amount)))) {
+      setPaymentPopupError('Paid Now must be positive, at most two decimals and not exceed this bill balance.');
+      return;
+    }
+    if (!chosenAccount?.isActive ||
+        ({ Cash: 'Cash', UPI: 'UPI', 'Bank Transfer': 'Bank' }[purchasePayment.method] !== chosenAccount.kind)) {
+      setPaymentPopupError('Select a matching active Cash, Bank or UPI account.');
+      return;
+    }
+    const lineAllocations = Object.entries(purchasePayment.lineAmounts)
+      .filter(([, value]) => num(value) > 0)
+      .map(([lineIndex, value]) => ({
+        lineIndex: Number(lineIndex), amount: Number(value).toFixed(2),
+      }));
+    if (lineAllocations.length &&
+        (Math.abs(lineAllocations.reduce((sum, row) => sum + num(row.amount), 0) - amount) > 0.001 ||
+          lineAllocations.some(row => row.lineIndex < 0 ||
+            row.lineIndex >= paymentPopupBill.items.length ||
+            num(row.amount) > num(paymentPopupBill.items[row.lineIndex]?.lineOutstanding)))) {
+      setPaymentPopupError('Item allocations must sum to Paid Now and remain within line balances.');
+      return;
+    }
+    inFlight.current = true;
+    setBusy('popup-payment');
+    setPaymentPopupError('');
+    try {
+      await finance.recordPayment({
+        supplierId: paymentPopupBill.supplierId,
+        accountId: purchasePayment.accountId, method: purchasePayment.method,
+        kind: 'Payment', amount: amount.toFixed(2), paidOn: today(),
+        reference: purchasePayment.reference.trim(),
+        idempotencyKey: purchaseRequestKey.current,
+        allocations: [{
+          billId: paymentPopupBill.id, amount: amount.toFixed(2),
+          ...(lineAllocations.length ? { lineAllocations } : {}),
+        }],
+      });
+      purchaseRequestKey.current = paymentKey();
+      setPaymentPopupBill(null);
+      setNotice('Supplier payment recorded once in the selected ledger. Outstanding updated.');
+      try {
+        await refresh(selectedSupplier);
+      } catch (exception) {
+        setError('Payment recorded, but summary refresh failed. Refresh to view the latest balance.');
+      }
+    } catch (exception) {
+      // Keep the same idempotency key after network errors; never auto-retry
+      // with a new key and risk charging the cash/bank ledger twice.
+      setPaymentPopupError(exception?.message ||
+        'Payment was not confirmed. Check supplier history before retrying.');
+    } finally {
+      inFlight.current = false;
+      setBusy('');
+    }
   };
 
   const paySupplier = (event) => {
@@ -541,7 +589,20 @@ export default function SupplierFinancePage({ section = '' }) {
                   </div>
                   {canPost && bill.postingStatus === 'Draft' && <button type="button" disabled={posting}
                     className={primary}
-                    onClick={() => run('post', () => finance.postBill(bill.id), 'Purchase bill posted. Supplier liability and inventory receipt (if selected) recorded exactly once.')}>
+                    onClick={() => run('post', async () => {
+                      const confirmedBill = await finance.postBill(bill.id);
+                      setPaymentPopupBill({
+                        ...confirmedBill, supplierId: selectedSupplier,
+                        supplierName: selectedSupplierName,
+                        previousOutstanding: num(summary?.outstanding),
+                      });
+                      setPurchasePayment(prev => ({
+                        ...prev, mode: 'Credit', amount: '', reference: '', lineAmounts: {},
+                      }));
+                      setPaymentPopupError('');
+                      purchaseRequestKey.current = paymentKey();
+                      return selectedSupplier;
+                    }, 'Purchase posted. Select a payment in the popup; closing retains the credit.')}>
                     {busy === 'post' ? 'Posting…' : 'Confirm & Post Bill'}
                   </button>}
                 </article>
@@ -642,7 +703,7 @@ export default function SupplierFinancePage({ section = '' }) {
                     updateLine(index, {
                       itemId: event.target.value, description: item?.partName || item?.name || row.description,
                       purchaseRate: item?.costPrice || item?.cost || row.purchaseRate,
-                      gstRate: item?.tax ?? row.gstRate, gstTreatment: '',
+                      gstRate: item?.tax ?? row.gstRate, taxComponents: [], gstTreatment: '', zeroRatingBasis: '',
                     });
                   }}>
                   <option value="">Custom / direct purchase</option>
@@ -661,35 +722,78 @@ export default function SupplierFinancePage({ section = '' }) {
                 <input className={field} type="number" required min="0" step="0.01" value={row.purchaseRate}
                   onChange={(event) => updateLine(index, { purchaseRate: event.target.value })}/>
               </label>
-              <label className="grid gap-1 text-sm">Total GST Rate (%)
-                <select className={field} value={row.gstRate}
-                  onChange={event => updateLine(index, { gstRate: event.target.value, gstTreatment: '' })}>
-                  {[...new Set(['0', '5', '18', '3', '12', '28', '40', String(row.gstRate)])].map(rate =>
-                    <option key={rate} value={rate}>
-                      {rate}% {['0', '5', '18'].includes(rate) ? 'GST' : '(special / historical — verify HSN)'}
-                    </option>)}
-                </select>
-              </label>
-              {Number(row.gstRate) === 0 && purchaseTaxMode !== 'unregistered' && <label className="grid gap-1 text-sm">
-                0% GST Treatment *
-                <select className={field} required value={row.gstTreatment || ''}
-                  onChange={event => updateLine(index, { gstTreatment: event.target.value })}>
-                  <option value="">Select classification</option>
-                  <option value="exempt">Exempt supply</option>
-                  <option value="nil_rated">Nil-rated supply</option>
-                  <option value="zero_rated">Zero-rated (eligible export / SEZ only)</option>
-                  <option value="non_gst">Non-GST supply</option>
-                </select>
-              </label>}
-              <div className="text-xs text-muted lg:col-span-5">
-                {purchaseTaxMode === 'cgst_sgst' ? <>
-                  CGST {Number(row.gstRate) / 2}% {money(purchaseTaxLines[index]?.cgst)}
-                  {' + '}{stateTaxLabel} {Number(row.gstRate) / 2}% {money(purchaseTaxLines[index]?.stateTax)}
-                </> : purchaseTaxMode === 'igst' ? <>
-                  IGST {row.gstRate}% {money(purchaseTaxLines[index]?.igst)}
-                </> : purchaseTaxMode === 'unregistered' ?
-                  'No GST: supplier GSTIN is not recorded' : 'Select Place of Supply to see GST breakdown'}
-                <strong className="ml-2 text-content">Line Total {money(purchaseLines[index])}</strong>
+              <div className="grid gap-2 text-sm lg:col-span-5">
+                <label className="grid gap-1">Manual GST Component *
+                  <select className={field} value=""
+                    onChange={event => {
+                      const choice = event.target.value;
+                      if (!choice) return;
+                      if (choice === 'zero') {
+                        updateLine(index, { taxComponents: ['zero'], gstTreatment: '', zeroRatingBasis: '' });
+                        return;
+                      }
+                      const previous = row.taxComponents.filter(value => value !== 'zero');
+                      if (previous.includes(choice)) return;
+                      if (previous.length >= 2) {
+                        setError('Remove a selected GST component before adding another.');
+                        return;
+                      }
+                      updateLine(index, {
+                        taxComponents: [...previous, choice], gstTreatment: 'taxable', zeroRatingBasis: '',
+                      });
+                      setError('');
+                    }}>
+                    <option value="">Add a GST component manually</option>
+                    {supplierComponentChoices(stateTaxLabel).map(option =>
+                      <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+                <div className="flex flex-wrap gap-2" aria-label="Selected GST components">
+                  {row.taxComponents.length === 0 && <span className="text-muted">No component selected</span>}
+                  {row.taxComponents.map(choice => (
+                    <span key={choice} className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2">
+                      {supplierComponentChoices(stateTaxLabel).find(option => option.value === choice)?.label || choice}
+                      <button type="button" className="text-red-600 underline"
+                        aria-label={'Remove ' + choice}
+                        onClick={() => updateLine(index, {
+                          taxComponents: row.taxComponents.filter(value => value !== choice),
+                          gstTreatment: '', zeroRatingBasis: '',
+                        })}>Remove</button>
+                    </span>
+                  ))}
+                </div>
+                {row.taxComponents.includes('zero') && purchaseTaxMode !== 'unregistered' &&
+                  <label className="grid gap-1">0% GST Treatment *
+                    <select className={field} value={row.gstTreatment || ''}
+                      onChange={event => updateLine(index, {
+                        gstTreatment: event.target.value, zeroRatingBasis: '',
+                      })}>
+                      <option value="">Select classification</option>
+                      <option value="exempt">Exempt supply</option>
+                      <option value="nil_rated">Nil-rated supply</option>
+                      <option value="zero_rated">Zero-rated (eligible export / SEZ only)</option>
+                      <option value="non_gst">Non-GST supply</option>
+                    </select>
+                  </label>}
+                {row.taxComponents.includes('zero') && row.gstTreatment === 'zero_rated' &&
+                  <label className="grid gap-1">Zero-rating basis *
+                    <select className={field} value={row.zeroRatingBasis || ''}
+                      onChange={event => updateLine(index, { zeroRatingBasis: event.target.value })}>
+                      <option value="">Select basis</option>
+                      <option value="export">Export</option>
+                      <option value="sez">SEZ</option>
+                    </select>
+                  </label>}
+                <div className="text-xs text-muted" role="status">
+                  CGST {money(purchaseTaxLines[index]?.cgst)}
+                  {' · '}{stateTaxLabel} {money(purchaseTaxLines[index]?.stateTax)}
+                  {' · '}IGST {money(purchaseTaxLines[index]?.igst)}
+                  <strong className="ml-2 text-content">Line Total {money(purchaseLines[index])}</strong>
+                  {purchaseTaxLines[index]?.status !== 'valid' &&
+                    <p className="mt-1 text-red-600">{purchaseTaxLines[index]?.message}
+                      {' '}Draft may be saved, but posting is blocked until corrected.
+                    </p>}
+                </div>
               </div>
               {draft.lines.length > 1 && <button className={secondary} type="button"
                 onClick={() => setDraft({ ...draft, lines: draft.lines.filter((_, i) => i !== index) })}>Remove line</button>}
@@ -706,68 +810,18 @@ export default function SupplierFinancePage({ section = '' }) {
             {purchaseTaxMode === 'igst' && <p className="text-sm">IGST: {money(purchaseIGST)}</p>}
             {purchaseTaxMode === 'unregistered' && <p className="text-sm">GST charged: {money(0)}</p>}
             {purchaseTaxMode === 'unselected' && <p className="text-sm text-muted">Select Place of Supply.</p>}
-            <p className="text-xs text-muted">A preset rate does not establish HSN/SAC classification.
-              Exact backend Decimal calculations are authoritative.</p>
+            <p className="text-xs text-muted">Preview totals use only selected components.
+              CGST-only drafts never add SGST automatically. Valid statutory components
+              and HSN/SAC rate are required before posting. Django Decimal totals are authoritative.</p>
           </section>
-          <section className="grid gap-3 rounded-xl border border-line p-3" aria-label="Purchase payment">
-            <h3 className="text-sm font-bold">Purchase Payment</h3>
-            <label className="grid gap-1 text-sm">Payment Mode
-              <select className={field} value={purchasePayment.mode}
-                onChange={event => setPurchasePayment(prev => ({ ...prev, mode: event.target.value, lineAmounts: {} }))}>
-                <option value="Credit">Full Credit</option>
-                <option value="Partial Paid">Partial Paid</option>
-                <option value="Full Paid">Full Paid</option>
-              </select>
-            </label>
-            {purchasePayment.mode !== 'Credit' && <div className="grid gap-3 sm:grid-cols-2">
-              {purchasePayment.mode === 'Partial Paid' && <label className="grid gap-1 text-sm">
-                Paid Now (₹)
-                <input className={field} required type="number" min="0.01" step="0.01"
-                  max={purchaseTotal || undefined} value={purchasePayment.amount}
-                  onChange={event => setPurchasePayment(prev => ({ ...prev, amount: event.target.value }))}/>
-              </label>}
-              <label className="grid gap-1 text-sm">Cash / Bank / UPI Account
-                <select className={field} value={purchasePayment.accountId}
-                  onChange={event => {
-                    const selected = accounts.find(a => a.id === event.target.value);
-                    setPurchasePayment(prev => ({ ...prev, accountId: event.target.value,
-                      method: selected?.kind === 'Cash' ? 'Cash' : selected?.kind === 'UPI' ? 'UPI' : 'Bank Transfer' }));
-                  }}>
-                  <option value="">Select account</option>
-                  {accounts.filter(a => a.isActive).map(a =>
-                    <option key={a.id} value={a.id}>{a.name} ({a.kind}) · {money(a.recordedBalance)}</option>)}
-                </select>
-              </label>
-              <label className="grid gap-1 text-sm">Reference
-                <input className={field} value={purchasePayment.reference} maxLength={120}
-                  onChange={event => setPurchasePayment(prev => ({ ...prev, reference: event.target.value }))}/>
-              </label>
-            </div>}
-            {purchasePayment.mode !== 'Credit' && <details>
-              <summary className="cursor-pointer text-sm font-semibold">Optional Item-wise Payment Allocation</summary>
-              <div className="mt-2 grid gap-2">
-                {draft.lines.map((row, index) => <label key={index} className="grid gap-1 text-sm">
-                  {row.description || 'Purchase Line ' + (index + 1)} · {money(purchaseLines[index])}
-                  <input className={field} type="number" min="0" step="0.01"
-                    max={purchaseLines[index]} placeholder="Paid against this item"
-                    value={purchasePayment.lineAmounts[index] || ''}
-                    onChange={event => setPurchasePayment(prev => ({ ...prev,
-                      lineAmounts: { ...prev.lineAmounts, [index]: event.target.value } }))}/>
-                </label>)}
-              </div>
-            </details>}
-            <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-              {[
-                ['Purchase Total', purchaseTotal],
-                ['Paid Now', paidNow],
-                ['New Credit', newCredit],
-                ['Previous Due', summary?.outstanding],
-                ['Total Outstanding', num(summary?.outstanding) + newCredit],
-              ].map(([label, amount]) => <div key={label} className="rounded-lg border border-line p-2">
-                <span className="block text-xs text-muted">{label}</span>
-                <strong>{money(amount)}</strong>
-              </div>)}
-            </div>
+          <section className="rounded-xl border border-line p-3 text-sm" aria-label="Purchase payment">
+            <strong>Payment after purchase</strong>
+            <p className="text-muted">Confirming the purchase posts the inventory receipt and supplier payable.
+              A payment popup then lets you choose Full Paid, Partial Paid or Full Credit.
+              Closing without payment keeps the bill outstanding.</p>
+            <p className="mt-2">Purchase Total: <strong>{money(purchaseTotal)}</strong>
+              {' · '}Previous Supplier Due: <strong>{summary ? money(summary.outstanding) : 'Unavailable'}</strong>
+            </p>
           </section>
           <div className="grid gap-2 sm:grid-cols-2">
             <button className={secondary} disabled={posting || !selectedSupplier} type="submit" value="draft">
@@ -949,6 +1003,105 @@ export default function SupplierFinancePage({ section = '' }) {
           <button type="submit" className={primary + ' sm:col-span-3'} disabled={posting}>Create Account</button>
           <p className="text-xs text-muted sm:col-span-3">Opening balances are recorded snapshots; never label them as synced live bank balances.</p>
         </form>}
+      </div>}
+
+      {paymentPopupBill && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-3 sm:p-5">
+        <section role="dialog" aria-modal="true" aria-labelledby="purchase-payment-popup-title"
+          className="flex w-full max-w-2xl flex-col gap-4 overflow-y-auto rounded-2xl border border-line bg-surface p-4 text-content shadow-xl sm:p-6"
+          style={{ maxHeight: 'calc(100dvh - 32px)' }}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 id="purchase-payment-popup-title" className="text-lg font-semibold">Supplier Payment — {paymentPopupBill.supplierName}</h2>
+              <p className="text-sm text-muted">Bill {paymentPopupBill.invoiceNumber} · Confirmed stock purchase</p>
+            </div>
+            <button type="button" className={secondary} disabled={posting}
+              onClick={() => { setPaymentPopupBill(null); setPaymentPopupError(''); }}>
+              Close
+            </button>
+          </div>
+          <p className="text-xs text-muted">Closing without payment does not cancel the posted bill
+            or erase its supplier liability. No account is debited until payment is confirmed.</p>
+          <label className="grid gap-1 text-sm">Payment Mode
+            <select className={field} value={purchasePayment.mode}
+              onChange={event => {
+                setPaymentPopupError('');
+                setPurchasePayment(prev => ({ ...prev, mode: event.target.value, lineAmounts: {} }));
+              }}>
+              <option value="Full Paid">Full Paid</option>
+              <option value="Partial Paid">Partial Paid</option>
+              <option value="Credit">Full Credit</option>
+            </select>
+          </label>
+          {purchasePayment.mode !== 'Credit' && <div className="grid gap-3 sm:grid-cols-2">
+            {purchasePayment.mode === 'Partial Paid' && <label className="grid gap-1 text-sm">
+              Paid Now (₹)
+              <input className={field} type="number" min="0.01" step="0.01" max={paymentBaseTotal}
+                value={purchasePayment.amount}
+                onChange={event => setPurchasePayment(prev => ({ ...prev, amount: event.target.value }))}/>
+            </label>}
+            <label className="grid gap-1 text-sm">Cash / Bank / UPI Account
+              <select className={field} value={purchasePayment.accountId}
+                onChange={event => {
+                  const account = accounts.find(record => record.id === event.target.value);
+                  setPurchasePayment(prev => ({
+                    ...prev, accountId: event.target.value,
+                    method: account?.kind === 'Cash' ? 'Cash' : account?.kind === 'UPI' ? 'UPI' : 'Bank Transfer',
+                  }));
+                }}>
+                <option value="">Select account</option>
+                {accounts.filter(account => account.isActive).map(account =>
+                  <option key={account.id} value={account.id}>
+                    {account.name} ({account.kind}) · Recorded {money(account.recordedBalance)}
+                  </option>)}
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm">Payment Reference
+              <input className={field} value={purchasePayment.reference} maxLength={120}
+                onChange={event => setPurchasePayment(prev => ({ ...prev, reference: event.target.value }))}/>
+            </label>
+          </div>}
+          {purchasePayment.mode !== 'Credit' && <details>
+            <summary className="cursor-pointer text-sm font-semibold">Optional Item-wise Payment Allocation</summary>
+            <div className="mt-2 grid gap-2">
+              {paymentPopupBill.items.map((item, index) =>
+                <label key={index} className="grid gap-1 text-sm">
+                  {item.description} · Remaining {money(item.lineOutstanding)}
+                  <input className={field} type="number" min="0" step="0.01"
+                    max={item.lineOutstanding} value={purchasePayment.lineAmounts[index] || ''}
+                    onChange={event => setPurchasePayment(prev => ({
+                      ...prev, lineAmounts: { ...prev.lineAmounts, [index]: event.target.value },
+                    }))}/>
+                </label>)}
+            </div>
+          </details>}
+          <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+            {[
+              ['Purchase Amount', num(paymentPopupBill.subtotal)],
+              ['GST Amount', num(paymentPopupBill.tax)],
+              ['Total Purchase', num(paymentPopupBill.total)],
+              ['Previous Due', num(paymentPopupBill.previousOutstanding)],
+              ['Paid Now', paidNow],
+              ['New Credit', newCredit],
+              ['Total Supplier Outstanding', num(paymentPopupBill.previousOutstanding) + newCredit],
+            ].map(([label, value]) =>
+              <div key={label} className="rounded-lg border border-line p-2">
+                <span className="block text-xs text-muted">{label}</span>
+                <strong>{money(value)}</strong>
+              </div>)}
+          </div>
+          {paymentPopupError && <p className="text-sm text-red-600" role="alert">{paymentPopupError}</p>}
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button type="button" className={secondary} disabled={posting}
+              onClick={() => { setPaymentPopupBill(null); setPaymentPopupError(''); }}>
+              Close Without Payment
+            </button>
+            <button type="button" className={primary} disabled={posting}
+              onClick={settlePurchasePopup}>
+              {busy === 'popup-payment' ? 'Recording…' :
+                purchasePayment.mode === 'Credit' ? 'Confirm Full Credit' : 'Record Supplier Payment'}
+            </button>
+          </div>
+        </section>
       </div>}
 
       <footer className="text-xs text-muted">
