@@ -164,9 +164,9 @@ export default function SuppliersPage({ section = 'all' }) {
   const canCreate = access.can('stock.create') && !USE_MOCK_API;
   const canEdit = access.can('stock.edit') && !USE_MOCK_API;
   const canViewFinance = access.can('payments.view') && access.can('stock.view');
-  const canCreatePurchase = access.can('stock.create') && access.can('stock.edit') &&
+  const canCreatePurchase = canViewFinance && access.can('stock.create') && access.can('stock.edit') &&
     access.can('payments.create') && !USE_MOCK_API;
-  const canPaySupplier = access.can('payments.create') && access.can('stock.view') && !USE_MOCK_API;
+  const canPaySupplier = canViewFinance && access.can('payments.create') && !USE_MOCK_API;
   const canDelete = access.can('stock.delete') && !USE_MOCK_API;
   const [suppliers, setSuppliers] = useState([]);
   const [creditBalances, setCreditBalances] = useState(null);
@@ -625,7 +625,7 @@ export default function SuppliersPage({ section = 'all' }) {
                 <small>{bill.postedAt
                   ? new Date(bill.postedAt).toLocaleString('en-IN')
                   : bill.invoiceDate} · Paid {money(bill.paid)} · {bill.status}</small>
-                <small>{bill.items?.map(item => item.description).join(', ') || 'Supplier purchase'}</small>
+                <small>{bill.items?.map(item => item.description).join(', ') || 'Supplier purchase'} · Bought by {bill.purchasedBy || 'Workshop staff'}</small>
               </div>
               <b>Due {money(bill.outstanding)}</b>
             </div>
