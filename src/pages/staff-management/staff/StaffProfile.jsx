@@ -450,11 +450,13 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
     setInviteError('');
     setInviteNotice('');
     try {
-      await shareManualStaffInvite(
+      const handoff = await shareManualStaffInvite(
         () => staffService.sendLoginInvite(staff.id),
         { phone: staff.phone, staffName: staff.name, workshopName: user?.company?.name },
       );
-      setInviteNotice('WhatsApp opened — review the message and press Send manually.');
+      setInviteNotice(handoff.localOnlyLink
+        ? 'WhatsApp opened, but the password link uses localhost. Set backend FRONTEND_URL to your public HTTPS company-panel URL before sharing with staff.'
+        : 'WhatsApp opened — review the message and press Send manually.');
       await refreshAll();
     } catch (requestError) {
       setInviteError(staffInviteErrorMessage(requestError));
