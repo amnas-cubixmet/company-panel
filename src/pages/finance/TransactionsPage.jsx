@@ -12,6 +12,7 @@ export function TransactionsPage() {
   const [data, setData] = useState({ results: [], count: 0, page: 1, totalPages: 1 });
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({ q: '', account: '', from: '', to: '', type: '' });
   const [page, setPage] = useState(1);
@@ -53,9 +54,19 @@ export function TransactionsPage() {
     setPage(1);
   };
 
-  const handleExport = () => {
-    const params = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
-    financeService.exportLedgerCSV(params);
+  const handleExport = async (format) => {
+    if (exporting) return;
+    setExporting(true);
+    setError('');
+    try {
+      const params = Object.fromEntries(Object.entries(filters).filter(([, v]) => v));
+      if (format === 'pdf') await financeService.exportLedgerPDF(params);
+      else await financeService.exportLedgerCSV(params);
+    } catch (err) {
+      setError(err?.message || 'Unable to export the ledger.');
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -66,9 +77,16 @@ export function TransactionsPage() {
           <h1>Transaction Ledger</h1>
           <p>Complete audit trail of all financial entries across accounts.</p>
         </div>
-        <button className="finance-secondary-btn" onClick={handleExport}>
-          <Download size={16} /> Export CSV
-        </button>
+        <div className="finance-form-actions">
+          <button type="button" className="finance-secondary-btn" disabled={exporting}
+            onClick={() => handleExport('csv')}>
+            <Download size={16} /> Export CSV
+          </button>
+          <button type="button" className="finance-secondary-btn" disabled={exporting}
+            onClick={() => handleExport('pdf')}>
+            <Download size={16} /> Export PDF
+          </button>
+        </div>
       </header>
 
       {/* Filters */}

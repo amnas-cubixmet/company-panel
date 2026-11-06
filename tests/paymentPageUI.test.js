@@ -71,7 +71,7 @@ test('Payments provides real API posting and safe form/filter states', () => {
   assert.match(page, /makePaymentPayload\(form, selectedInvoice, outstanding, USE_MOCK_API\)/);
   assert.match(page, /await paymentService\.create\(payload\)/);
   assert.match(page, /<strong>Completed<\/strong>/);
-  assert.match(page, /disabled=\{saving \|\| !selectedInvoice\}/);
+  assert.match(page, /form\.direction === "IN" && !selectedInvoice/);
   assert.match(page, /role="alert"/);
   assert.match(toolbar, /onClear/);
   assert.match(toolbar, /onRefresh/);
@@ -87,4 +87,15 @@ test('Payments UI has readable responsive cards, single search border, and regul
   assert.match(css, /\.payment-form-grid/);
   assert.match(records, /aria-label=\{'View payment ' \+/);
   assert.doesNotMatch(records, /<span>\{row\.id\}<\/span>/);
+});
+
+test('Outgoing payments require an account and do not create an invoice receipt', () => {
+  const outgoing = { ...form, direction: 'OUT', accountId: 'account-1', category: 'Rent', notes: 'Landlord' };
+  const payload = makePaymentPayload(outgoing, null, 0);
+  assert.equal(payload.direction, 'OUT');
+  assert.equal(payload.account, 'account-1');
+  assert.equal(payload.category, 'Rent');
+  assert.equal(payload.notes, 'Landlord');
+  assert.equal('invoice' in payload, false);
+  assert.throws(() => makePaymentPayload({ ...outgoing, accountId: '' }, null, 0), /Choose the account/);
 });

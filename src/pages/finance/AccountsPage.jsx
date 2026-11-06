@@ -11,7 +11,7 @@ const money = new Intl.NumberFormat('en-IN', {
 });
 const fmt = (v) => money.format(parseFloat(v || 0));
 
-const KINDS = ['Cash', 'Bank', 'UPI', 'Wallet'];
+const KINDS = ['Cash', 'Bank', 'UPI', 'Wallet', 'Other'];
 
 const emptyForm = {
   name: '', kind: 'Bank', bankName: '', accountNumber: '',

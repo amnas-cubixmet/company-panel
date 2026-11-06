@@ -18,9 +18,40 @@ export const financeService = {
 
   // Ledger
   getLedger: (params = {}) => apiClient.get(`${BASE}/ledger`, { params }),
-  exportLedgerCSV: (params = {}) => {
-    const q = new URLSearchParams({ ...params, export: 'csv' }).toString();
-    window.open(`/api/v1/finance/ledger?${q}`, '_blank');
+  // Download via the JWT-aware API client. window.open() omits Authorization.
+  exportLedgerCSV: async (params = {}) => {
+    const blob = await apiClient.get(`${BASE}/ledger`, {
+      params: { ...params, export: 'csv' },
+      responseType: 'blob',
+    });
+    const url = URL.createObjectURL(blob);
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'cubegears-transactions.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  },
+
+  exportLedgerPDF: async (params = {}) => {
+    const blob = await apiClient.get(`${BASE}/ledger`, {
+      params: { ...params, export: 'pdf' }, responseType: 'blob',
+    });
+    const url = URL.createObjectURL(blob);
+    try {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'cubegears-transactions.pdf';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   },
 
   // Reports
