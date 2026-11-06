@@ -267,7 +267,11 @@ export default function StockEasyPage() {
     setError('');
     const item = partItem || items.find((row) => String(row.id) === String(itemId));
     const linkedSupplier = item?.supplier?.id || item?.supplier;
-    if (mode === 'in' && item && linkedSupplier) {
+    if (mode === 'in' && item) {
+      if (!linkedSupplier) {
+        setError('This part has no Supplier linked. Assign its Supplier before receiving a purchase. Stock and supplier credit must be posted together.');
+        return;
+      }
       navigate('/suppliers/' + encodeURIComponent(linkedSupplier), {
         state: { purchasePrefill: {
           itemId: String(item.id), quantity: '1',
