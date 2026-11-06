@@ -7,7 +7,6 @@ import {
   CalendarDays,
   Clock3,
   Copy,
-  ExternalLink,
   FilePlus2,
   FileText,
   Gauge,
