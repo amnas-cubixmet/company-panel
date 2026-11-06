@@ -16,12 +16,16 @@ test('supplier accounting always uses real API, never a mock financial balance',
   assert.doesNotMatch(service, /getMock|updateMock|localStorage/);
 });
 
-test('distinct draft/post phases prevent stock receipt when only saving a purchase', () => {
-  assert.match(page, /Save Draft Purchase Bill/);
+test('purchase can save draft or atomically post with selected payment mode', () => {
+  assert.match(page, /Save Draft/);
+  assert.match(page, /Confirm & Post Purchase/);
   assert.match(page, /Confirm & Post Bill/);
   assert.match(page, /finance\.createBill\(/);
   assert.match(page, /finance\.postBill\(bill\.id\)/);
-  assert.match(page, /A Draft does not create stock or supplier debt/);
+  assert.match(page, /postNow/);
+  assert.match(page, /Partial Paid/);
+  assert.match(page, /Full Credit/);
+  assert.match(page, /Item-wise Payment Allocation/);
 });
 
 test('supplier payments select a recorded account and allocate to real outstanding bills', () => {
