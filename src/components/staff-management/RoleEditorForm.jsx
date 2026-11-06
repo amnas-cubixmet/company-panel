@@ -1,6 +1,7 @@
 
 import { Save } from 'lucide-react';
 import { RolePermissionMatrix } from './RolePermissionMatrix';
+import { clearFieldValidation } from '../../utils/formValidation';
 
 export const RoleEditorForm = ({
   editingRole,
@@ -12,17 +13,21 @@ export const RoleEditorForm = ({
   onCancel,
   onPermissionToggle,
   onToggleModule,
+  error,
 }) => {
   const protectedRole = Boolean(editingRole?.isProtected);
 
   return (
-    <form className="role-editor-form" onSubmit={onSubmit}>
+    <form className="role-editor-form" noValidate onSubmit={onSubmit}
+      onChange={event => clearFieldValidation(event.target)}>
+      {error && <div className="staff-directory-message is-error" role="alert">{error}</div>}
       <section className="role-editor-card">
         <div className="role-editor-grid">
           <label className="role-editor-field">
             <span>Role Name *</span>
             <input
               type="text"
+              name="name"
               required
               disabled={protectedRole}
               value={formData.name}
@@ -33,7 +38,7 @@ export const RoleEditorForm = ({
 
           <label className="role-editor-field">
             <span>Role Status</span>
-            <select
+            <select name="status"
               value={formData.status}
               disabled={protectedRole}
               onChange={(event) => setFormData((current) => ({ ...current, status: event.target.value }))}
@@ -44,8 +49,7 @@ export const RoleEditorForm = ({
           </label>
 
           <p className="role-editor-field is-wide" role="note">
-            Staff permissions apply only within this company. Paid modules also require an active company entitlement.
-            Branch-specific restrictions are not available yet.
+            Company permissions apply within this workshop. Paid features require entitlement.
           </p>
         </div>
       </section>
