@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ArrowDownLeft, ArrowUpRight, Building2, Wallet, TrendingUp, RefreshCw, Plus, SlidersHorizontal } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Building2, Wallet, TrendingUp, RefreshCw, Plus, SlidersHorizontal, Download } from 'lucide-react';
+import { appConfirm } from '../common/appDialogs';
 import { financeService } from '../../services/finance.service';
 import '../../styles/payment-finance-overview.css';
 
@@ -19,11 +20,15 @@ export default function PaymentFinanceOverview({
   summary, ledger = [], loading = false, error = '', period, onPeriodChange,
   canManage = false, onRefresh = () => {}, onExpense = () => {},
   onRecord = () => {},
+  ledgerPage = 1, ledgerCount = 0, ledgerTotalPages = 1, ledgerAccount = '', ledgerQuery = '',
+  onLedgerPageChange = () => {}, onLedgerAccountChange = () => {},
+  onLedgerQueryChange = () => {},
 }) {
   const [mode, setMode] = useState('');
   const [newAccount, setNewAccount] = useState(emptyAccount);
   const [adjustment, setAdjustment] = useState(emptyAdjustment);
   const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [actionError, setActionError] = useState('');
   const [success, setSuccess] = useState('');
   const accounts = summary?.accounts || [];
@@ -58,6 +63,10 @@ export default function PaymentFinanceOverview({
       setActionError('A reason is required for any balance adjustment.');
       return;
     }
+    if (!await appConfirm(
+      'Post this account correction? It will remain in the audit ledger.',
+      { title: 'Confirm Balance Correction', confirmLabel: 'Post Adjustment' },
+    )) return;
     setBusy(true);
     try {
       await financeService.adjustBalance(adjustment.accountId, {
@@ -72,6 +81,27 @@ export default function PaymentFinanceOverview({
       setActionError(cause?.response?.data?.detail || cause?.message || 'Unable to adjust the balance.');
     } finally {
       setBusy(false);
+    }
+  };
+
+  const downloadLedger = async format => {
+    if (exporting) return;
+    setActionError('');
+    setExporting(true);
+    const date = localDate();
+    const filters = {
+      ...(ledgerAccount ? { account: ledgerAccount } : {}),
+      ...(ledgerQuery.trim() ? { q: ledgerQuery.trim() } : {}),
+      ...(period === 'today' ? { from: date, to: date } :
+        period === 'month' ? { from: date.slice(0, 8) + '01' } : {}),
+    };
+    try {
+      if (format === 'csv') await financeService.exportLedgerCSV(filters);
+      else await financeService.exportLedgerPDF(filters);
+    } catch (cause) {
+      setActionError(cause?.message || 'Unable to export transaction ledger.');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -207,8 +237,32 @@ export default function PaymentFinanceOverview({
       {success && <p className="cg-pay-finance-success" role="status">{success}</p>}
 
       <div className="cg-pay-finance-subhead">
-        <h3>Recent Account Debit / Credit Log</h3>
-        <small>Latest posted transactions across all accounts; no transfers counted as income or expense.</small>
+        <h3>Account Debit / Credit Log</h3>
+        <small>Search and review real account movements. Transfers appear in history but never count as income or expenses.</small>
+      </div>
+      <div className="cg-pay-finance-ledger-controls" aria-label="Transaction log filters and exports">
+        <label>Account
+          <select aria-label="Filter payment ledger by account" value={ledgerAccount}
+            onChange={event => onLedgerAccountChange(event.target.value)}>
+            <option value="">All Accounts</option>
+            {accounts.map(acc => <option key={acc.id} value={acc.id}>
+              {acc.name} ({acc.kind})
+            </option>)}
+          </select>
+        </label>
+        <label>Reference Search
+          <input type="search" aria-label="Search payment ledger reference"
+            value={ledgerQuery} onChange={event => onLedgerQueryChange(event.target.value)}
+            placeholder="Voucher, invoice or reference" />
+        </label>
+        <div className="cg-pay-finance-buttons">
+          <button type="button" disabled={exporting} onClick={() => downloadLedger('csv')}>
+            <Download size={15} aria-hidden="true" /> CSV
+          </button>
+          <button type="button" disabled={exporting} onClick={() => downloadLedger('pdf')}>
+            <Download size={15} aria-hidden="true" /> PDF
+          </button>
+        </div>
       </div>
       <div className="cg-pay-finance-log" role="region" aria-label="Recent account transactions" tabIndex={0}>
         <table>
@@ -227,6 +281,15 @@ export default function PaymentFinanceOverview({
             {!ledger.length && <tr><td colSpan={5}>No posted account transactions available.</td></tr>}
           </tbody>
         </table>
+      </div>
+      <div className="cg-pay-finance-ledger-pagination">
+        <span>{ledgerCount} posted transaction{ledgerCount === 1 ? '' : 's'} · Page {ledgerPage} / {ledgerTotalPages}</span>
+        <div className="cg-pay-finance-buttons">
+          <button type="button" disabled={ledgerPage <= 1 || loading}
+            onClick={() => onLedgerPageChange(Math.max(1, ledgerPage - 1))}>Previous</button>
+          <button type="button" disabled={ledgerPage >= ledgerTotalPages || loading}
+            onClick={() => onLedgerPageChange(ledgerPage + 1)}>Next</button>
+        </div>
       </div>
     </section>
   );
