@@ -22,7 +22,8 @@ test('Payment finance overview separates todays cash movement and recognized sal
   assert.ok(view.includes("Today's Money Out"));
   for (const key of [
     'bankBalance', 'cashBalance', 'netSalesRevenue', 'recordedExpenses',
-    'knownCostOfSales', 'estimatedProfit', 'profitNote', 'todayReceived', 'todayPaid'
+    'knownCostOfSales', 'estimatedProfit', 'profitNote', 'todayReceived', 'todayPaid',
+    'todayExpensesRecorded', 'todaySupplierPaid'
   ]) assert.ok(view.includes(key), key);
   assert.ok(view.includes('All Time'));
   assert.ok(view.includes('This Month'));
