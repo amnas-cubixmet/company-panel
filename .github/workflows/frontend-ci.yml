@@ -29,6 +29,8 @@ jobs:
           # Harmless build-only placeholder; deployment must supply its real API URL.
           VITE_API_URL: https://api.example.invalid/api/v1
       - run: npm run check:bundle
+      - name: Finance workflow regression tests
+        run: node --test tests/paymentPageUI.test.js tests/paymentsBorderlessForms.test.js tests/expenseBackendMapping.test.js
       - run: npm test
       - run: npx playwright install --with-deps chromium
       - run: npm run test:ui
