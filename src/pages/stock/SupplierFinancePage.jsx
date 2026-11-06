@@ -368,6 +368,11 @@ export default function SupplierFinancePage() {
                     <strong>{bill.invoiceNumber}</strong>
                     <p className="text-sm text-muted">{bill.status} · {bill.invoiceDate} · {bill.receiveIntoStock ? 'Inventory receipt' : 'Direct purchase'}</p>
                     <p className="text-sm">Total {money(bill.total)} · Due {money(bill.outstanding)}</p>
+                    {bill.taxComponentsVerified && <p className="text-xs text-muted">
+                      {bill.taxMode === 'igst' ? 'IGST ' + money(bill.igst) :
+                        'CGST ' + money(bill.cgst) + ' · ' +
+                        (Number(bill.utgst) ? 'UTGST ' + money(bill.utgst) : 'SGST ' + money(bill.sgst))}
+                    </p>}
                   </div>
                   {bill.postingStatus === 'Draft' && <button type="button" disabled={posting}
                     className={primary}
@@ -438,6 +443,26 @@ export default function SupplierFinancePage() {
                 onChange={(event) => setDraft({ ...draft, dueDate: event.target.value })}/>
             </label>
           </div>
+          <section className="grid gap-2 rounded-xl border border-line p-3">
+            <label className="grid gap-1 text-sm font-semibold">Place of Supply *
+              <select className={field} required value={draft.placeOfSupply}
+                onChange={event => setDraft(previous => ({ ...previous, placeOfSupply: event.target.value }))}>
+                <option value="">Select legal supply state / UT</option>
+                {gstOptions.states.map(state => <option key={state.code} value={state.code}>
+                  {state.name} ({state.code})
+                </option>)}
+              </select>
+            </label>
+            <p className="text-xs text-muted">Supplier GSTIN: {supplierGSTIN || 'Not recorded (unregistered supplier)'}.
+              Verify the legal Place of Supply and HSN/SAC rate before posting.</p>
+            {draft.placeOfSupply && <p className="text-sm font-semibold" role="status">
+              {purchaseTaxMode === 'cgst_sgst' ? 'Intra-state: CGST + ' + stateTaxLabel :
+                purchaseTaxMode === 'igst' ? 'Inter-state: IGST' : 'Unregistered supplier: no GST charged'}
+            </p>}
+            {!gstOptions.states.length && <p role="alert" className="text-sm text-red-600">
+              GST state options unavailable. Refresh before posting a purchase.
+            </p>}
+          </section>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={draft.receiveIntoStock}
               onChange={(event) => setDraft({ ...draft, receiveIntoStock: event.target.checked })}/>
@@ -452,7 +477,7 @@ export default function SupplierFinancePage() {
                     updateLine(index, {
                       itemId: event.target.value, description: item?.partName || item?.name || row.description,
                       purchaseRate: item?.costPrice || item?.cost || row.purchaseRate,
-                      gstRate: item?.tax || row.gstRate,
+                      gstRate: item?.tax ?? row.gstRate, gstTreatment: '',
                     });
                   }}>
                   <option value="">Custom / direct purchase</option>
@@ -471,11 +496,36 @@ export default function SupplierFinancePage() {
                 <input className={field} type="number" required min="0" step="0.01" value={row.purchaseRate}
                   onChange={(event) => updateLine(index, { purchaseRate: event.target.value })}/>
               </label>
-              <label className="grid gap-1 text-sm">GST %
-                <select className={field} value={row.gstRate} onChange={(event) => updateLine(index, { gstRate: event.target.value })}>
-                  {['0', '5', '12', '18', '28'].map((rate) => <option key={rate} value={rate}>{rate === '0' ? 'None / 0%' : rate + '%'}</option>)}
+              <label className="grid gap-1 text-sm">Total GST Rate (%)
+                <select className={field} value={row.gstRate}
+                  onChange={event => updateLine(index, { gstRate: event.target.value, gstTreatment: '' })}>
+                  {[...new Set(['0', '5', '18', '3', '12', '28', '40', String(row.gstRate)])].map(rate =>
+                    <option key={rate} value={rate}>
+                      {rate}% {['0', '5', '18'].includes(rate) ? 'GST' : '(special / historical — verify HSN)'}
+                    </option>)}
                 </select>
               </label>
+              {Number(row.gstRate) === 0 && purchaseTaxMode !== 'unregistered' && <label className="grid gap-1 text-sm">
+                0% GST Treatment *
+                <select className={field} required value={row.gstTreatment || ''}
+                  onChange={event => updateLine(index, { gstTreatment: event.target.value })}>
+                  <option value="">Select classification</option>
+                  <option value="exempt">Exempt supply</option>
+                  <option value="nil_rated">Nil-rated supply</option>
+                  <option value="zero_rated">Zero-rated (eligible export / SEZ only)</option>
+                  <option value="non_gst">Non-GST supply</option>
+                </select>
+              </label>}
+              <div className="text-xs text-muted lg:col-span-5">
+                {purchaseTaxMode === 'cgst_sgst' ? <>
+                  CGST {Number(row.gstRate) / 2}% {money(purchaseTaxLines[index]?.cgst)}
+                  {' + '}{stateTaxLabel} {Number(row.gstRate) / 2}% {money(purchaseTaxLines[index]?.stateTax)}
+                </> : purchaseTaxMode === 'igst' ? <>
+                  IGST {row.gstRate}% {money(purchaseTaxLines[index]?.igst)}
+                </> : purchaseTaxMode === 'unregistered' ?
+                  'No GST: supplier GSTIN is not recorded' : 'Select Place of Supply to see GST breakdown'}
+                <strong className="ml-2 text-content">Line Total {money(purchaseLines[index])}</strong>
+              </div>
               {draft.lines.length > 1 && <button className={secondary} type="button"
                 onClick={() => setDraft({ ...draft, lines: draft.lines.filter((_, i) => i !== index) })}>Remove line</button>}
             </div>
@@ -483,6 +533,17 @@ export default function SupplierFinancePage() {
           <button type="button" className={secondary} onClick={() => setDraft({ ...draft, lines: [...draft.lines, line()] })}>
             <span className="inline-flex items-center gap-2"><Plus size={16}/> Add Product Line</span>
           </button>
+          <section className="grid gap-2 rounded-xl border border-line p-3" aria-label="Purchase GST breakdown">
+            <h3 className="text-sm font-bold">Purchase GST Breakdown (preview)</h3>
+            {purchaseTaxMode === 'cgst_sgst' && <p className="text-sm">
+              CGST: {money(purchaseCGST)} · {stateTaxLabel}: {money(purchaseStateTax)}
+            </p>}
+            {purchaseTaxMode === 'igst' && <p className="text-sm">IGST: {money(purchaseIGST)}</p>}
+            {purchaseTaxMode === 'unregistered' && <p className="text-sm">GST charged: {money(0)}</p>}
+            {purchaseTaxMode === 'unselected' && <p className="text-sm text-muted">Select Place of Supply.</p>}
+            <p className="text-xs text-muted">A preset rate does not establish HSN/SAC classification.
+              Exact backend Decimal calculations are authoritative.</p>
+          </section>
           <section className="grid gap-3 rounded-xl border border-line p-3" aria-label="Purchase payment">
             <h3 className="text-sm font-bold">Purchase Payment</h3>
             <label className="grid gap-1 text-sm">Payment Mode
