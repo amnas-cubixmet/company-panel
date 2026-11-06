@@ -64,6 +64,11 @@ export function PaymentList() {
   const [financePeriod, setFinancePeriod] = useState('all');
   const [financeSummary, setFinanceSummary] = useState(null);
   const [financeLedger, setFinanceLedger] = useState([]);
+  const [ledgerCount, setLedgerCount] = useState(0);
+  const [ledgerTotalPages, setLedgerTotalPages] = useState(1);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerAccount, setLedgerAccount] = useState('');
+  const [ledgerQuery, setLedgerQuery] = useState('');
   const [financeLoading, setFinanceLoading] = useState(false);
   const [financeError, setFinanceError] = useState('');
   const [invoices, setInvoices] = useState([]);
@@ -106,17 +111,22 @@ export function PaymentList() {
     let active = true;
     setFinanceLoading(true);
     setFinanceError('');
+    const filters = {
+      page_size: 20, page: ledgerPage,
+      ...(ledgerAccount ? { account: ledgerAccount } : {}),
+      ...(ledgerQuery.trim() ? { q: ledgerQuery.trim() } : {}),
+      ...(financePeriod === 'today' ? { from: dateLocal(), to: dateLocal() } :
+        financePeriod === 'month' ? { from: dateLocal().slice(0, 8) + '01' } : {}),
+    };
     Promise.all([
       financeService.getDashboard({ period: financePeriod }),
-      financeService.getLedger({
-        page_size: 20,
-        ...(financePeriod === 'today' ? { from: dateLocal(), to: dateLocal() } :
-          financePeriod === 'month' ? { from: dateLocal().slice(0, 8) + '01' } : {}),
-      }),
+      financeService.getLedger(filters),
     ]).then(([dashboard, ledger]) => {
       if (!active) return;
       setFinanceSummary(dashboard);
       setFinanceLedger(Array.isArray(ledger?.results) ? ledger.results : []);
+      setLedgerCount(Number(ledger?.count) || 0);
+      setLedgerTotalPages(Number(ledger?.totalPages) || 1);
     }).catch(err => {
       if (active) {
         setFinanceError(friendlyError(err, 'Unable to load live bank, revenue or expense totals.'));
@@ -127,7 +137,7 @@ export function PaymentList() {
       if (active) setFinanceLoading(false);
     });
     return () => { active = false; };
-  }, [financePeriod, refreshKey, isNew, isView, canViewPayments]);
+  }, [financePeriod, ledgerAccount, ledgerQuery, ledgerPage, refreshKey, isNew, isView, canViewPayments]);
 
   const refreshFinance = () => setRefreshKey(value => value + 1);
 
@@ -397,8 +407,16 @@ export function PaymentList() {
           loading={financeLoading}
           error={financeError}
           period={financePeriod}
-          onPeriodChange={setFinancePeriod}
+          onPeriodChange={value => { setFinancePeriod(value); setLedgerPage(1); }}
           onRefresh={refreshFinance}
+          ledgerPage={ledgerPage}
+          ledgerCount={ledgerCount}
+          ledgerTotalPages={ledgerTotalPages}
+          ledgerAccount={ledgerAccount}
+          ledgerQuery={ledgerQuery}
+          onLedgerPageChange={setLedgerPage}
+          onLedgerAccountChange={value => { setLedgerAccount(value); setLedgerPage(1); }}
+          onLedgerQueryChange={value => { setLedgerQuery(value); setLedgerPage(1); }}
           canManage={canManageAccounts}
           onRecord={() => navigate('/payments/new')}
           onExpense={() => navigate('/expenses/new')}
