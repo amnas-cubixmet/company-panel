@@ -387,7 +387,8 @@ export const CustomerDetails = () => {
     customerProfileFinancials(invoices, invoicesAvailable);
   const lastVisitDate = customerVisitLabel(customer, jobs);
   const contact = customerContactLinks({ customerPhone: customer.phone, customerWhatsapp: customer.whatsapp });
-  const archived = String(customer.status || '').toLowerCase() === 'archived';
+  const statusLabel = String(customer.status || '').trim() || '—';
+  const archived = statusLabel.toLowerCase() === 'archived';
   const payableInvoices = activeCustomerInvoices(invoices).filter(
     (inv) => Number(inv.balance ?? inv.balanceDue ?? 0) > 0
   );
@@ -428,8 +429,8 @@ export const CustomerDetails = () => {
             <div className="customer-profile-identity__text">
               <div className="customer-profile-name-row">
                 <h1>{customer.name || 'Customer'}</h1>
-                <span className={'customer-profile-status ' + (archived ? 'is-archived' : 'is-active')}>
-                  <span aria-hidden="true"/> {archived ? 'Archived' : 'Active'}
+                <span className={'customer-profile-status ' + (statusLabel.toLowerCase() === 'active' ? 'is-active' : 'is-archived')}>
+                  <span aria-hidden="true"/> {statusLabel}
                 </span>
               </div>
               <p>
@@ -631,7 +632,7 @@ export const CustomerDetails = () => {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Status</span>
-                    <span style={{ color: 'var(--success)', fontWeight: '700' }}>{archived ? 'Archived' : 'Active'}</span>
+                    <span style={{ color: archived ? 'var(--text-secondary)' : 'var(--text-primary)', fontWeight: '600' }}>{statusLabel}</span>
                   </div>
                 </div>
               </div>
