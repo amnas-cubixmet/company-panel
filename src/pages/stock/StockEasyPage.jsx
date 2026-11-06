@@ -68,7 +68,7 @@ function RackCombobox({ value, onChange, suggestions }) {
       {entries.map((name, index) => <button type="button" role="option" aria-selected={active === index}
         id={id + '-option-' + index} key={name.toLowerCase()}
         className={active === index ? 'is-active' : ''}
-        onMouseDown={event => event.preventDefault()}
+        onPointerDown={event => event.preventDefault()}
         onClick={() => select(name)}>
         {newLocation && index === entries.length - 1 ? '+ Use new location: ' : ''}{name}
       </button>)}
