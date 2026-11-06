@@ -13,6 +13,7 @@ import {
 import './daily-wage.css';
 import './daily-wage-readable.css';
 import './overtime-approvals.css';
+import './daily-wage-compact.css';
 
 const showDate = value => {
   if (!value) return '—';
@@ -164,8 +165,7 @@ export function OvertimeApprovalPage() {
     <main className="dw-page dashboard-page dw-overtime-page">
       <header className="dw-header dashboard-heading">
         <div className="dashboard-heading-copy">
-          <h1>Overtime Approval</h1>
-          <p>Review attendance overtime requests and approve their hourly rates before payout.</p>
+          <h1>Overtime Approvals</h1>
         </div>
         <button className="dw-button" type="button" onClick={() => setRefresh(v=>v+1)} disabled={loading}>
           <Clock3 size={17} aria-hidden="true"/> Refresh
@@ -184,9 +184,8 @@ export function OvertimeApprovalPage() {
           </p>}
           <section className="dw-card" aria-labelledby="dw-overtime-title">
             <div className="dw-card-head">
-              <div><h2 id="dw-overtime-title">Pending Overtime Requests</h2>
-                <p>Approval requires an hourly rate. Rejections require a reason.</p></div>
-              <span>{rows.length} pending · {rows.reduce((sum,row)=>sum+overtimeHours(row),0).toFixed(2)} hours</span>
+              <div><h2 id="dw-overtime-title">Pending Requests</h2></div>
+              <span>{loading || loadError ? '—' : rows.length} pending · {loading || loadError ? '—' : rows.reduce((sum,row)=>sum+overtimeHours(row),0).toFixed(2)} hours</span>
             </div>
             <div className="dw-overtime-filters">
               <label>Month
@@ -255,10 +254,9 @@ export function OvertimeApprovalPage() {
                 ))}
               </div>}
           </section>
-          <p className="dw-overtime-footnote">
-            This tab reviews attendance overtime. Daily Wage extra earnings are managed separately
-            in each employee's Wage Account; approval alone does not create a duplicate wage entry.
-          </p>
+          <details className="dw-overtime-help"><summary>About overtime payments</summary>
+            <p>Overtime approvals are separate from Daily Wage extra earnings. Approving overtime does not create a duplicate wage entry.</p>
+          </details>
         </>
       )}
       <ResponsiveModalSheet isOpen={Boolean(selected)} onClose={closeDecision}
