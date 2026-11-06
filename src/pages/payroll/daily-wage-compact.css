@@ -228,6 +228,24 @@
 .dw-page.dashboard-page .dw-alert {font-size:14px;line-height:1.5}
 .dw-page.dashboard-page .dw-alert button {min-height:44px}
 
+.dw-page.dashboard-page .dw-payroll-help {
+  margin:0;
+  padding:0 12px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--surface);
+  color:var(--text-secondary);
+  font-size:13px;
+}
+.dw-page.dashboard-page .dw-payroll-help summary {
+  display:flex;
+  align-items:center;
+  min-height:44px;
+  cursor:pointer;
+  font-size:14px;
+  font-weight:600;
+}
+.dw-page.dashboard-page .dw-payroll-help p {margin:0 0 12px;line-height:1.5}
 /* Overtime retains exact server-owned approval and rate entry checks. */
 .dw-page.dw-overtime-page .dw-overtime-filters {
   display:grid;
