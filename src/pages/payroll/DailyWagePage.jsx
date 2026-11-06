@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Banknote, CalendarCheck2, CheckCircle2, Clock3, History, Search, Users, Wallet } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { dailyWageService } from '../../services/dailyWage.service';
-import { useAuth } from '../../hooks/useAuth';
-import { hasPermission } from '../../utils/permissions';
+import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import './daily-wage.css';
 import './daily-wage-readable.css';
 
@@ -25,11 +24,12 @@ const sections = [
 
 export function DailyWageNav({ selected = 'overview' }) {
   const { search } = useLocation();
+  const { can } = useFeatureAccess();
   // Moving between the payroll views must retain the user's selected
   // month, year, branch and staff query parameters.
   return (
     <nav className="dw-nav" aria-label="Daily Wage Navigation">
-      {sections.map(([id, title, href, Icon]) => (
+      {sections.filter(([id]) => id === 'overtime' ? can('attendance.team.view') : id === 'payments' ? can('payroll.payments.view') : can('payroll.view')).map(([id, title, href, Icon]) => (
         <Link key={id} to={`${href}${search}`} aria-current={selected === id ? 'page' : undefined} className={selected === id ? 'is-active' : ''}>
           <Icon size={16} aria-hidden="true"/>{title}
         </Link>
@@ -52,9 +52,9 @@ const Metric = ({ label, value, Icon, meta }) => (
 const Empty = ({ text }) => <div className="dw-empty">{text}</div>;
 
 export const DailyWagePage = ({ mode = 'overview' }) => {
-  const { user } = useAuth();
+  const { can } = useFeatureAccess();
   const navigate = useNavigate();
-  const canView = hasPermission(user, 'payroll.view');
+  const canView = can(mode === 'payments' ? 'payroll.payments.view' : 'payroll.view');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
