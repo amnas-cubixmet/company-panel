@@ -8,6 +8,7 @@ import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/customer-tracking-link.css';
 import { paymentService } from '../../services/payment.service';
 import '../../styles/customer-profile-polished.css';
+import '../../styles/customer-workspace-compact.css';
 import {
   customerProfileFinancials, activeCustomerInvoices, customerInvoiceLabel,
   customerInvoiceTotal, customerInvoiceBalance, customerVisitLabel,
@@ -47,6 +48,10 @@ export const CustomerDetails = () => {
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
   const [isEditCustomerOpen, setIsEditCustomerOpen] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editFormError, setEditFormError] = useState('');
+  const [editFieldErrors, setEditFieldErrors] = useState({});
+  const editFormRef = useRef(null);
   const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
 
   // New Vehicle form state
@@ -247,6 +252,11 @@ export const CustomerDetails = () => {
 
   const handleEditCustomerSubmit = async (e) => {
     e.preventDefault();
+    if (editSaving) return;
+    setEditSaving(true);
+    setEditFormError('');
+    setEditFieldErrors({});
+    try {
     const updated = await customerService.updateCustomer(customer.id, {
       name: editName,
       phone: editPhone,
@@ -263,6 +273,28 @@ export const CustomerDetails = () => {
     setCustomer(updated);
     showToast('Customer profile updated.');
     setIsEditCustomerOpen(false);
+    } catch (error) {
+      const data = error?.response?.data || error?.data;
+      const fields = ['name', 'phone', 'whatsapp', 'email', 'customerType', 'companyName', 'gstNo'];
+      const aliases = { customer_type: 'customerType', company_name: 'companyName', gstin: 'gstNo' };
+      const next = {};
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        for (const [key, value] of Object.entries(data)) {
+          const field = aliases[key] || key;
+          if (fields.includes(field)) next[field] = Array.isArray(value) ? String(value[0]) : String(value);
+        }
+      }
+      setEditFieldErrors(next);
+      setEditFormError(error?.message || 'Unable to save customer. Check the highlighted fields.');
+      requestAnimationFrame(() => {
+        const first = Object.keys(next)[0];
+        const input = first && editFormRef.current?.querySelector(`[data-customer-field="${first}"]`);
+        input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        input?.focus();
+      });
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   const handleAddNoteSubmit = async (e) => {
@@ -406,7 +438,6 @@ export const CustomerDetails = () => {
                 .map((name) => name.charAt(0).toUpperCase()).join('')}
             </div>
             <div className="customer-profile-identity__text">
-              <span className="customer-profile-eyebrow">CUSTOMER PROFILE</span>
               <div className="customer-profile-name-row">
                 <h1>{customer.name || 'Customer'}</h1>
                 <span className={'customer-profile-status ' + (archived ? 'is-archived' : 'is-active')}>
@@ -572,7 +603,7 @@ export const CustomerDetails = () => {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Email</span>
-                    <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{customer.email || 'N/A'}</span>
+                    <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{customer.email || '—'}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Customer Type</span>
@@ -648,8 +679,7 @@ export const CustomerDetails = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Linked Vehicles</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>All vehicles registered under this customer account</p>
-              </div>
+                    </div>
               <button
                 onClick={() => setIsAddVehicleOpen(true)}
                 style={{ height: '38px', padding: '0 14px', borderRadius: '10px', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -704,7 +734,7 @@ export const CustomerDetails = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Job Card History</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>All repair & service jobs executed for this customer</p>
+                
               </div>
               <button
                 onClick={() => navigate(`/jobs/new?customerId=${customer.id}`)}
@@ -764,7 +794,7 @@ export const CustomerDetails = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Chronological Service History</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>Complete history of services, replaced parts, and costs across all vehicles</p>
+                
               </div>
 
               {/* Filters Toolbar */}
@@ -835,7 +865,7 @@ export const CustomerDetails = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Customer Invoices</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>Calculated from actual unpaid & paid invoice balances</p>
+                
               </div>
               <button
                 onClick={() => navigate(`/invoices/create?customerId=${customer.id}`)}
@@ -891,7 +921,7 @@ export const CustomerDetails = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Payment Records</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>All transactions recorded against customer invoices</p>
+                
               </div>
               <button
                 onClick={() => { setPaymentError(''); setIsRecordPaymentOpen(true); }}
@@ -928,7 +958,7 @@ export const CustomerDetails = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Staff Internal Notes</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>Special preferences & observations maintained by workshop staff</p>
+                
               </div>
               <button
                 onClick={() => setIsAddNoteOpen(true)}
@@ -957,7 +987,7 @@ export const CustomerDetails = () => {
             <div className="customer-profile-documents__head">
               <div>
                 <h3>Customer & Vehicle Documents</h3>
-                <p>Vehicle RC, insurance, company documents and attachments.</p>
+                
               </div>
               <button onClick={() => setIsAddDocumentOpen(true)}>
                 <Plus size={15}/> Add Document
@@ -1000,7 +1030,7 @@ export const CustomerDetails = () => {
           <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Full Audit & Activity Timeline</h3>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>System events logged for this customer account</p>
+              
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative', paddingLeft: '22px' }}>
