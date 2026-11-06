@@ -46,7 +46,10 @@ export const SimpleStaffOverview = () => {
 
   const stats = useMemo(() => {
     const active = staff.filter(person => ACTIVE_STATUSES.has(normalizedStatus(person.employmentStatus))).length;
-    return { total: staff.length, active, other: staff.length - active };
+    const pendingSetup = staff.filter(person => person.loginStatus === 'Pending Password Setup').length;
+    const teams = new Set(staff.map(person => person.teamId || person.department).filter(Boolean)).size;
+    const roles = new Set(staff.map(person => person.roleId || person.role).filter(Boolean)).size;
+    return { total: staff.length, active, other: staff.length - active, pendingSetup, teams, roles };
   }, [staff]);
 
   const matchingStaff = useMemo(() => {
@@ -56,7 +59,7 @@ export const SimpleStaffOverview = () => {
       person.name,
       person.employeeId,
       person.displayEmployeeNo,
-      person.designation,
+      person.role,
       person.department,
       person.branch,
     ].some(value => String(value || '').toLowerCase().includes(search)));
@@ -91,12 +94,15 @@ export const SimpleStaffOverview = () => {
       <section className="staff-simple-metrics" aria-label="Staff totals">
         <article><span><Users size={18} /> Total Staff</span><strong>{loading ? '—' : stats.total}</strong></article>
         <article><span><UserCheck size={18} /> Active Staff</span><strong>{loading ? '—' : stats.active}</strong></article>
-        <article><span><UserX size={18} /> Other Statuses</span><strong>{loading ? '—' : stats.other}</strong></article>
+        <article><span><UserX size={18} /> Inactive / Other</span><strong>{loading ? '—' : stats.other}</strong></article>
+        <article><span><ShieldCheck size={18}/> Pending Password Setup</span><strong>{loading ? '—' : stats.pendingSetup}</strong></article>
+        <article><span><Users size={18}/> Teams</span><strong>{loading ? '—' : stats.teams}</strong></article>
+        <article><span><ShieldCheck size={18}/> Roles</span><strong>{loading ? '—' : stats.roles}</strong></article>
       </section>
 
       <section className="staff-simple-list" aria-label="Staff directory preview">
         <div className="staff-simple-list-head">
-          <div><h3>Employees</h3><p>Search the people added to your company.</p></div>
+          <div><h3>Employees</h3></div>
           <button type="button" onClick={() => navigate('/staff-management/staff')}>
             View All Staff 
           </button>
@@ -124,7 +130,7 @@ export const SimpleStaffOverview = () => {
                 <span className="staff-simple-avatar" aria-hidden="true">{String(person.name || '?').trim().charAt(0).toUpperCase()}</span>
                 <span className="staff-simple-person-details">
                   <strong>{readable(person.name)}</strong>
-                  <small>{readable(person.displayEmployeeNo || person.employeeId)} · {readable(person.designation || person.department)}</small>
+                  <small>{readable(person.displayEmployeeNo || person.employeeId)} · {readable(person.role)}</small>
                 </span>
                 <span className="staff-simple-person-branch">{readable(person.branch)}</span>
                 <span className="staff-simple-status">{readable(person.employmentStatus)}</span>
