@@ -199,21 +199,21 @@ export const AddVehicle = () => {
           />
 
           <Input
-            label="Variant / Edition"
+            label="Variant / Edition" data-vehicle-field="variant" error={fieldErrors.variant}
             placeholder="2.5V VX Seven Seater"
             value={formData.variant}
             onChange={(e) => setFormData({ ...formData, variant: e.target.value })}
           />
 
           <Input
-            label="Manufacturing Year"
+            label="Manufacturing Year" data-vehicle-field="year" error={fieldErrors.year}
             placeholder="2021"
             value={formData.year}
             onChange={(e) => setFormData({ ...formData, year: e.target.value })}
           />
 
           <Select
-            label="Fuel Type"
+            label="Fuel Type" data-vehicle-field="fuelType" error={fieldErrors.fuelType}
             value={formData.fuelType}
             onChange={(e) => setFormData({ ...formData, fuelType: e.target.value })}
           >
@@ -225,7 +225,7 @@ export const AddVehicle = () => {
           </Select>
 
           <Select
-            label="Transmission"
+            label="Transmission" data-vehicle-field="transmission" error={fieldErrors.transmission}
             value={formData.transmission}
             onChange={(e) => setFormData({ ...formData, transmission: e.target.value })}
           >
@@ -235,14 +235,14 @@ export const AddVehicle = () => {
           </Select>
 
           <Input
-            label="Exterior Colour"
+            label="Exterior Colour" data-vehicle-field="color" error={fieldErrors.color}
             placeholder="Pearl White"
             value={formData.color}
             onChange={(e) => setFormData({ ...formData, color: e.target.value })}
           />
 
           <Input
-            label="Current Odometer Reading"
+            label="Current Odometer Reading" data-vehicle-field="odometer" error={fieldErrors.odometer}
             icon={Gauge}
             placeholder="1,24,500 km"
             value={formData.odometer}
@@ -250,14 +250,14 @@ export const AddVehicle = () => {
           />
 
           <Input
-            label="VIN / Chassis Number"
+            label="VIN / Chassis Number" data-vehicle-field="vin" error={fieldErrors.vin}
             placeholder="MBJ112233445566"
             value={formData.vin}
             onChange={(e) => setFormData({ ...formData, vin: e.target.value })}
           />
 
           <Input
-            label="Engine Number"
+            label="Engine Number" data-vehicle-field="engineNo" error={fieldErrors.engineNo}
             placeholder="ENG9081234"
             value={formData.engineNo}
             onChange={(e) => setFormData({ ...formData, engineNo: e.target.value })}
@@ -274,7 +274,7 @@ export const AddVehicle = () => {
           
         >
           <Input
-            label="Last Service Date"
+            label="Last Service Date" data-vehicle-field="lastServiceDate" error={fieldErrors.lastServiceDate}
             type="date"
             icon={Calendar}
             value={formData.lastServiceDate}
@@ -282,7 +282,7 @@ export const AddVehicle = () => {
           />
 
           <Input
-            label="Next Service Due Date"
+            label="Next Service Due Date" data-vehicle-field="nextServiceDue" error={fieldErrors.nextServiceDue}
             type="date"
             icon={Calendar}
             value={formData.nextServiceDue}
@@ -290,7 +290,7 @@ export const AddVehicle = () => {
           />
 
           <Input
-            label="Insurance Expiry Date"
+            label="Insurance Expiry Date" data-vehicle-field="insuranceExpiry" error={fieldErrors.insuranceExpiry}
             type="date"
             icon={ShieldCheck}
             value={formData.insuranceExpiry}
@@ -303,7 +303,7 @@ export const AddVehicle = () => {
 
           <div className="form-grid-full">
             <Textarea
-              label="Vehicle Condition & Staff Notes"
+              label="Vehicle Condition & Staff Notes" data-vehicle-field="notes" error={fieldErrors.notes}
               rows={3}
               placeholder="e.g. Minor dent on left rear door, aftermarket alloy wheels..."
               value={formData.notes}
