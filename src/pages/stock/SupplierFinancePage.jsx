@@ -847,13 +847,11 @@ export default function SupplierFinancePage({ section = '' }) {
               and HSN/SAC rate are required before posting. Django Decimal totals are authoritative.</p>
           </section>
           <section className="rounded-xl border border-line p-3 text-sm" aria-label="Purchase payment">
-            <strong>Payment after purchase</strong>
-            <p className="text-muted">Confirming the purchase posts the inventory receipt and supplier payable.
-              A payment popup then lets you choose Full Paid, Partial Paid or Full Credit.
-              Closing without payment keeps the bill outstanding.</p>
-            <p className="mt-2">Purchase Total: <strong>{money(purchaseTotal)}</strong>
-              {' · '}Previous Supplier Due: <strong>{summary ? money(summary.outstanding) : 'Unavailable'}</strong>
+            <strong>Purchase Summary</strong>
+            <p className="mt-2">Total: <strong>{money(purchaseTotal)}</strong>
+              {' · '}Previous Due: <strong>{summary ? money(summary.outstanding) : 'Unavailable'}</strong>
             </p>
+            <p className="mt-1 text-xs text-muted">After posting, choose Full Paid, Partial Paid or Credit.</p>
           </section>
           <div className="grid gap-2 sm:grid-cols-2">
             <button className={secondary} disabled={posting || !selectedSupplier} type="submit" value="draft">
@@ -862,7 +860,7 @@ export default function SupplierFinancePage({ section = '' }) {
             <button className={primary} disabled={posting || !selectedSupplier || purchaseTotal <= 0}
               type="submit" value="post">{busy === 'bill' ? 'Posting…' : 'Confirm & Post Purchase'}</button>
           </div>
-          <p className="text-xs text-muted">Backend-posted totals are authoritative. Existing purchase orders are not automatically converted into supplier liabilities.</p>
+
         </form>
       )}
 
@@ -976,16 +974,8 @@ export default function SupplierFinancePage({ section = '' }) {
             <h2 className="text-base font-semibold">Payment History</h2>
             <span className="text-sm text-muted">{supplierPayments.length} records</span>
           </div>
-          <div className="grid gap-2 sm:grid-cols-3">
-            {[
-              ['Total recorded payments', paidTotal],
-              ['Allocated to bills', appliedTotal],
-              ['Unallocated advances', supplierPayments.reduce((sum, row) => sum + (row.kind === 'Advance' ? num(row.unapplied) : 0), 0)],
-            ].map(([label, value]) => <div className="rounded-xl border border-line p-3" key={label}>
-              <span className="block text-xs text-muted">{label}</span>
-              <strong className="block text-base">{money(value)}</strong>
-            </div>)}
-          </div>
+          <p className="text-xs text-muted">Recorded payments: <strong>{money(paidTotal)}</strong>
+            {' · '}Applied to bills: <strong>{money(appliedTotal)}</strong></p>
           <label className="grid gap-1 text-sm">Search payments
             <input className={field} aria-label="Search supplier payments" placeholder="Reference, method, type or date"
               value={paymentSearch} onChange={event => setPaymentSearch(event.target.value)}/>
@@ -1045,16 +1035,16 @@ export default function SupplierFinancePage({ section = '' }) {
           style={{ maxHeight: 'calc(100dvh - 32px)' }}>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 id="purchase-payment-popup-title" className="text-lg font-semibold">Supplier Payment — {paymentPopupBill.supplierName}</h2>
-              <p className="text-sm text-muted">Bill {paymentPopupBill.invoiceNumber} · Confirmed stock purchase</p>
+              <h2 id="purchase-payment-popup-title" className="text-lg font-semibold">Supplier Payment</h2>
+              <p className="cg-supplier-finance-subtitle" title={paymentPopupBill.supplierName}>{paymentPopupBill.supplierName}</p>
+              <p className="text-sm text-muted">Bill {paymentPopupBill.invoiceNumber}</p>
             </div>
             <button type="button" className={secondary} disabled={posting}
               onClick={() => { setPaymentPopupBill(null); setPaymentPopupError(''); }}>
               Close
             </button>
           </div>
-          <p className="text-xs text-muted">Closing without payment does not cancel the posted bill
-            or erase its supplier liability. No account is debited until payment is confirmed.</p>
+          <p className="text-xs text-muted">Closing keeps this bill as supplier credit. No account is debited.</p>
           <label className="grid gap-1 text-sm">Payment Mode
             <select className={field} value={purchasePayment.mode}
               onChange={event => {
