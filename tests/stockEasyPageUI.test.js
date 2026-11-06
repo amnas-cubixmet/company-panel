@@ -38,7 +38,7 @@ test('advanced stock management is removed from all navigation', () => {
 
 test('add product searches existing stock before creating duplicate parts', () => {
   assert.match(page, /matchingParts = useMemo/);
-  assert.match(page, /Search part name \/ SKU \/ barcode/);
+  assert.match(page, /Search part name \/ Part Number \/ SKU \/ barcode/);
   assert.match(page, /Add as New Product/);
   assert.match(page, /beginMove\('in', item\.id, item\)/);
   assert.match(page, /Save Part & Add Opening Stock/);
