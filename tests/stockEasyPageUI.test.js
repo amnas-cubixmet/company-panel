@@ -12,7 +12,7 @@ test('/stock opens the quick stock page rather than redirecting', () => {
 test('easy stock searches real inventory and keeps Job Card parts linked', () => {
   assert.match(page, /stockCatalogService\.getItems\(\)/);
   assert.match(page, /stockCatalogService\.getStockDashboard\(\)/);
-  assert.match(page, /Search part name, SKU, barcode or brand/);
+  assert.match(page, /Search part name, Part Number, SKU, supplier or rack/);
   assert.match(page, /to="\/jobs"/);
   assert.match(page, /issue parts from the Job Card/);
 });
@@ -42,6 +42,8 @@ test('add product searches existing stock before creating duplicate parts', () =
   assert.match(page, /Add as New Product/);
   assert.match(page, /beginMove\('in', item\.id, item\)/);
   assert.match(page, /Save Part & Add Opening Stock/);
+  assert.match(page, /RackCombobox/);
+  assert.match(page, /Part Number/);
 });
 
 test('receiving stock asks whether new prices apply to old stock', () => {
