@@ -3,8 +3,9 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, CreditCard, Plus, RefreshCw, Wallet } from 'lucide-react';
 import { supplierFinanceService as finance } from '../../services/supplierFinance.service';
 import { SupplierSectionTabs } from '../../components/suppliers/SupplierSectionTabs';
+import { useFeatureAccess } from '../../context/FeatureAccessContext';
 
-const field = 'w-full min-w-0 min-h-12 rounded-xl border border-line bg-surface px-3 py-2 text-base text-content outline-none focus:border-primary';
+const field = 'w-full min-w-0 min-h-12 rounded-[10px] border border-line bg-surface px-3 py-2 text-base text-content outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60';
 const secondary = 'min-h-11 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-content disabled:opacity-50';
 const primary = 'min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50';
 const box = 'rounded-2xl border border-line bg-surface p-4';
@@ -16,6 +17,12 @@ const paymentKey = () => globalThis.crypto?.randomUUID?.() || ('PAY-' + Date.now
 
 export default function SupplierFinancePage({ section = '' }) {
   const supplierSection = section === 'credits' || section === 'payments';
+  const access = useFeatureAccess();
+  const canPay = access.can('payments.create');
+  const canPost = canPay && access.can('stock.edit');
+  const canCreateBill = canPay && access.can('stock.create');
+  const canCreateSupplier = access.can('stock.create');
+  const paymentFormRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [suppliers, setSuppliers] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -23,13 +30,17 @@ export default function SupplierFinancePage({ section = '' }) {
   const [payments, setPayments] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [gstOptions, setGSTOptions] = useState({ states: [], rates: [] });
-  const [selectedSupplier, setSelectedSupplier] = useState('');
+  const [selectedSupplier, setSelectedSupplier] = useState(() => searchParams.get('supplier') || '');
   const [summary, setSummary] = useState(null);
   const [ledger, setLedger] = useState(null);
   const [busy, setBusy] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [paymentErrors, setPaymentErrors] = useState({});
+  const [creditSearch, setCreditSearch] = useState('');
+  const [creditStatus, setCreditStatus] = useState('');
+  const [paymentSearch, setPaymentSearch] = useState('');
   const [supplierDraft, setSupplierDraft] = useState({ name: '', phone: '', gstNo: '', address: '' });
   const [accountDraft, setAccountDraft] = useState({ name: '', kind: 'Cash', openingBalance: '0' });
   const [draft, setDraft] = useState({
@@ -90,6 +101,15 @@ export default function SupplierFinancePage({ section = '' }) {
   }, [selectedSupplier]);
 
   useEffect(() => {
+    if (!Object.keys(paymentErrors).length) return;
+    const first = paymentFormRef.current?.querySelector('[aria-invalid="true"]');
+    if (first) {
+      first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      first.focus({ preventScroll: true });
+    }
+  }, [paymentErrors]);
+
+  useEffect(() => {
     let valid = true;
     setLoading(true);
     refresh().catch((exception) => {
@@ -138,6 +158,15 @@ export default function SupplierFinancePage({ section = '' }) {
           (refreshError?.message || 'Please refresh this page.'));
       }
     } catch (exception) {
+      if (label === 'payment' && exception?.fieldErrors) {
+        const api = exception.fieldErrors;
+        setPaymentErrors({
+          ...(api.amount ? { amount: api.amount } : {}),
+          ...(api.accountId ? { account: api.accountId } : {}),
+          ...(api.paidOn ? { paidOn: api.paidOn } : {}),
+          ...(api.allocations || api.lineAllocations ? { allocations: api.allocations || api.lineAllocations } : {}),
+        });
+      }
       setError(exception?.message || 'Unable to save. Please review the current record before retrying.');
     } finally {
       setBusy(''); inFlight.current = false;
@@ -147,6 +176,19 @@ export default function SupplierFinancePage({ section = '' }) {
   const supplierBills = useMemo(() => bills.filter((b) => b.supplierId === selectedSupplier), [bills, selectedSupplier]);
   const outstandingBills = supplierBills.filter((b) => b.postingStatus === 'Posted' && Number(b.outstanding) > 0);
   const advances = payments.filter((p) => p.supplierId === selectedSupplier && p.kind === 'Advance' && Number(p.unapplied) > 0);
+  const filteredBills = supplierBills.filter((bill) => {
+    const status = bill.postingStatus === 'Posted' && num(bill.outstanding) > 0 &&
+      bill.dueDate && bill.dueDate < today() ? 'Overdue' : bill.status;
+    return (!creditStatus || status === creditStatus) &&
+      [bill.invoiceNumber, bill.invoiceDate, bill.dueDate, status].some(value =>
+        String(value || '').toLowerCase().includes(creditSearch.trim().toLowerCase()));
+  });
+  const supplierPayments = payments.filter(row => String(row.supplierId) === String(selectedSupplier));
+  const filteredPayments = supplierPayments.filter(row =>
+    [row.paidOn, row.reference, row.method, row.kind].some(value =>
+      String(value || '').toLowerCase().includes(paymentSearch.trim().toLowerCase())));
+  const paidTotal = supplierPayments.reduce((sum, row) => sum + num(row.amount), 0);
+  const appliedTotal = supplierPayments.reduce((sum, row) => sum + num(row.applied), 0);
   const account = accounts.find((a) => a.id === paymentDraft.accountId);
   const selectedSupplierRecord = suppliers.find((record) => record.id === selectedSupplier);
   const selectedSupplierName = selectedSupplierRecord?.name || 'Supplier';
@@ -177,6 +219,7 @@ export default function SupplierFinancePage({ section = '' }) {
 
   const createSupplier = (event) => {
     event.preventDefault();
+    if (!canCreateSupplier) return;
     run('supplier', async () => {
       const created = await finance.addSupplier(supplierDraft);
       setSupplierDraft({ name: '', phone: '', gstNo: '', address: '' });
@@ -186,6 +229,7 @@ export default function SupplierFinancePage({ section = '' }) {
 
   const createAccount = (event) => {
     event.preventDefault();
+    if (!canPay) return;
     run('account', () => finance.createAccount(accountDraft), 'Recorded financial account created.');
   };
 
@@ -196,6 +240,7 @@ export default function SupplierFinancePage({ section = '' }) {
 
   const createBill = (event) => {
     event.preventDefault();
+    if (!canCreateBill) return;
     const postNow = event.nativeEvent.submitter?.value === 'post';
     if (!draft.placeOfSupply) {
       setError('Select the legal Place of Supply before saving this purchase.');
@@ -262,6 +307,61 @@ export default function SupplierFinancePage({ section = '' }) {
 
   const paySupplier = (event) => {
     event.preventDefault();
+    if (!canPay || inFlight.current) return;
+    const errors = {};
+    const amount = Number(paymentDraft.amount);
+    const chosenAccount = accounts.find(item => String(item.id) === String(paymentDraft.accountId));
+    if (!Number.isFinite(amount) || amount <= 0 || !/^\d+(\.\d{1,2})?$/.test(String(paymentDraft.amount))) {
+      errors.amount = 'Enter a positive payment amount with up to two decimals.';
+    }
+    if (!chosenAccount || !chosenAccount.isActive) {
+      errors.account = 'Select an active payment account.';
+    } else if ({ Cash: 'Cash', 'Bank Transfer': 'Bank', UPI: 'UPI' }[paymentDraft.method] !== chosenAccount.kind) {
+      errors.account = 'Payment method must match the selected account type.';
+    }
+    if (!paymentDraft.paidOn) errors.paidOn = 'Choose a payment date.';
+    if (paymentDraft.kind === 'Payment') {
+      let allocatedCents = 0;
+      for (const bill of outstandingBills) {
+        const raw = paymentDraft.allocations[bill.id];
+        if (raw === '' || raw === undefined) continue;
+        const billAmount = Number(raw);
+        if (!Number.isFinite(billAmount) || billAmount < 0 || !/^\d+(\.\d{1,2})?$/.test(String(raw)) ||
+            billAmount > Number(bill.outstanding)) {
+          errors['bill:' + bill.id] = 'Allocation must not exceed the posted bill outstanding.';
+        }
+        if (billAmount > 0 && Number.isFinite(billAmount)) {
+          allocatedCents += Math.round(billAmount * 100);
+          const lineAmounts = Object.entries(paymentDraft.lineAllocations[bill.id] || {})
+            .filter(([, value]) => value !== '' && value !== undefined);
+          if (lineAmounts.length) {
+            let lineCents = 0;
+            for (const [index, value] of lineAmounts) {
+              const lineAmount = Number(value);
+              const item = bill.items?.[Number(index)];
+              if (!item || !Number.isFinite(lineAmount) || lineAmount < 0 ||
+                  !/^\d+(\.\d{1,2})?$/.test(String(value)) ||
+                  lineAmount > Number(item.lineOutstanding)) {
+                errors['bill:' + bill.id] = 'Item allocation exceeds an item outstanding amount.';
+              }
+              if (Number.isFinite(lineAmount) && lineAmount > 0) lineCents += Math.round(lineAmount * 100);
+            }
+            if (lineCents !== Math.round(billAmount * 100)) {
+              errors['bill:' + bill.id] = 'Item allocations must equal this bill allocation.';
+            }
+          }
+        }
+      }
+      if (!errors.amount && allocatedCents !== Math.round(amount * 100)) {
+        errors.allocations = 'Bill allocations must equal the payment amount.';
+      }
+    }
+    if (Object.keys(errors).length) {
+      setPaymentErrors(errors);
+      setError(Object.values(errors)[0]);
+      return;
+    }
+    setPaymentErrors({});
     const allocations = paymentDraft.kind === 'Advance' ? [] : outstandingBills
       .filter((bill) => Number(paymentDraft.allocations[bill.id] || 0) > 0)
       .map((bill) => {
@@ -287,6 +387,15 @@ export default function SupplierFinancePage({ section = '' }) {
 
   const applyAdvance = (event) => {
     event.preventDefault();
+    if (!canPay) return;
+    const amount = Number(applyDraft.amount);
+    const advance = advances.find(item => String(item.id) === String(applyDraft.paymentId));
+    const bill = outstandingBills.find(item => String(item.id) === String(applyDraft.billId));
+    if (!advance || !bill || !Number.isFinite(amount) || amount <= 0 ||
+        amount > Number(advance.unapplied) || amount > Number(bill.outstanding)) {
+      setError('Choose an advance, outstanding bill and a valid amount within both remaining balances.');
+      return;
+    }
     run('advance', () => finance.applyAdvance(applyDraft.paymentId, {
       billId: applyDraft.billId, amount: applyDraft.amount,
     }).then(() => setApplyDraft({ paymentId: '', billId: '', amount: '' })),
@@ -300,7 +409,7 @@ export default function SupplierFinancePage({ section = '' }) {
           <Link to={supplierSection ? '/suppliers' : '/stock'} className="text-sm font-semibold text-primary">
             {supplierSection ? 'Suppliers' : 'Inventory Management'}
           </Link>
-          <h1 className="mt-1 text-2xl font-bold text-content">
+          <h1 className="mt-1 text-[23px] font-semibold text-content">
             {section === 'credits' ? 'Credit Management' : section === 'payments' ? 'Supplier Payments' : 'Supplier Credit & Payments'}
           </h1>
           {!supplierSection && <p className="mt-1 text-sm text-muted">Purchases, payables and recorded cash / bank entries.</p>}
@@ -315,7 +424,7 @@ export default function SupplierFinancePage({ section = '' }) {
       {section === 'credits' && (
         <div className="flex flex-wrap gap-2">
           <Link to="/suppliers/payments" className={secondary}>Pay Supplier</Link>
-          <Link to="/stock/suppliers?tab=bill" className={secondary}>+ New Purchase</Link>
+          {canCreateBill && <Link to="/stock/suppliers?tab=bill" className={secondary}>+ New Purchase</Link>}
         </div>
       )}
       {section === 'payments' && (
@@ -340,7 +449,7 @@ export default function SupplierFinancePage({ section = '' }) {
               {suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
             </select>
           </label>
-          <details className="min-w-0 md:w-64">
+          {canCreateSupplier && <details className="min-w-0 md:w-64">
             <summary className={secondary + ' cursor-pointer'}>+ Add Supplier</summary>
             <form className="mt-3 grid gap-2" onSubmit={createSupplier}>
               <input required maxLength={180} className={field} placeholder="Supplier name" aria-label="New supplier name"
@@ -353,7 +462,7 @@ export default function SupplierFinancePage({ section = '' }) {
                 value={supplierDraft.address} onChange={(event) => setSupplierDraft({ ...supplierDraft, address: event.target.value })}/>
               <button type="submit" disabled={posting} className={primary}>Save Supplier</button>
             </form>
-          </details>
+          </details>}
         </div>
       </section>
 
@@ -390,30 +499,51 @@ export default function SupplierFinancePage({ section = '' }) {
           <section className={box}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg font-bold">Purchase Bills — {selectedSupplierName}</h2>
-              {supplierSection ? <Link to="/stock/suppliers?tab=bill" className={secondary}>+ New Purchase</Link>
-                : <button className={secondary} type="button" onClick={() => setActiveTab('bill')}>+ New Purchase</button>}
+              {supplierSection ? (canCreateBill && <Link to="/stock/suppliers?tab=bill" className={secondary}>+ New Purchase</Link>)
+                : (canCreateBill && <button className={secondary} type="button" onClick={() => setActiveTab('bill')}>+ New Purchase</button>)}
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1 text-sm">Search bills
+                <input className={field} aria-label="Search supplier bills" placeholder="Invoice number, date or status"
+                  value={creditSearch} onChange={event => setCreditSearch(event.target.value)}/>
+              </label>
+              <label className="grid gap-1 text-sm">Payment status
+                <select className={field} aria-label="Filter bill status" value={creditStatus}
+                  onChange={event => setCreditStatus(event.target.value)}>
+                  <option value="">All statuses</option>
+                  {['Draft', 'Unpaid', 'Partially Paid', 'Paid', 'Overdue'].map(status =>
+                    <option key={status} value={status}>{status}</option>)}
+                </select>
+              </label>
             </div>
             <div className="mt-3 grid gap-2">
-              {supplierBills.map((bill) => (
+              {filteredBills.map((bill) => (
                 <article key={bill.id} className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-3 md:flex-row md:items-center md:justify-between">
                   <div className="min-w-0">
                     <strong>{bill.invoiceNumber}</strong>
-                    <p className="text-sm text-muted">{bill.status} · {bill.invoiceDate} · {bill.receiveIntoStock ? 'Inventory receipt' : 'Direct purchase'}</p>
-                    <p className="text-sm">Total {money(bill.total)} · Due {money(bill.outstanding)}</p>
+                    <p className="text-sm text-muted">
+                      {bill.postingStatus === 'Posted' && num(bill.outstanding) > 0 && bill.dueDate && bill.dueDate < today()
+                        ? 'Overdue' : bill.status}
+                      {' · '}{bill.invoiceDate} · Due date {bill.dueDate || '—'}
+                      {' · '}{bill.receiveIntoStock ? 'Inventory receipt' : 'Direct purchase'}
+                    </p>
+                    <p className="text-sm">Total {money(bill.total)} · Paid {money(bill.paid)}
+                      {' · '}<strong>Outstanding {bill.postingStatus === 'Posted' ? money(bill.outstanding) : 'Not posted'}</strong>
+                    </p>
                     {bill.taxComponentsVerified && <p className="text-xs text-muted">
                       {bill.taxMode === 'igst' ? 'IGST ' + money(bill.igst) :
                         'CGST ' + money(bill.cgst) + ' · ' +
                         (Number(bill.utgst) ? 'UTGST ' + money(bill.utgst) : 'SGST ' + money(bill.sgst))}
                     </p>}
                   </div>
-                  {bill.postingStatus === 'Draft' && <button type="button" disabled={posting}
+                  {canPost && bill.postingStatus === 'Draft' && <button type="button" disabled={posting}
                     className={primary}
                     onClick={() => run('post', () => finance.postBill(bill.id), 'Purchase bill posted. Supplier liability and inventory receipt (if selected) recorded exactly once.')}>
                     {busy === 'post' ? 'Posting…' : 'Confirm & Post Bill'}
                   </button>}
                 </article>
               ))}
-              {!supplierBills.length && <p className="py-5 text-sm text-muted">No purchase bills recorded for this supplier.</p>}
+              {!filteredBills.length && <p className="py-5 text-sm text-muted">No matching purchase bills for this supplier.</p>}
             </div>
           </section>
           <section className={box}>
@@ -431,7 +561,7 @@ export default function SupplierFinancePage({ section = '' }) {
               {!ledger?.entries?.length && <p className="py-3 text-sm text-muted">No posted financial transactions.</p>}
             </div>
           </section>
-          {!!advances.length && <section className={box}>
+          {canPay && !!advances.length && <section className={box}>
             <h2 className="text-lg font-bold">Apply Supplier Advance</h2>
             <form onSubmit={applyAdvance} className="mt-3 grid gap-3 md:grid-cols-3">
               <label className="grid gap-1 text-sm">Advance
@@ -458,9 +588,9 @@ export default function SupplierFinancePage({ section = '' }) {
         </div>
       )}
 
-      {activeTab === 'bill' && (
+      {activeTab === 'bill' && canCreateBill && (
         <form className={box + ' grid gap-4'} onSubmit={createBill}>
-          <h2 className="text-lg font-bold">New Supplier Purchase — Draft</h2>
+          <h2 className="text-lg font-semibold">New Supplier Purchase — Draft</h2>
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="grid gap-1 text-sm font-semibold">Supplier invoice number
               <input className={field} required maxLength={100} value={draft.invoiceNumber}
@@ -647,10 +777,10 @@ export default function SupplierFinancePage({ section = '' }) {
         </form>
       )}
 
-      {activeTab === 'payment' && (
-        <form className={box + ' grid gap-4'} onSubmit={paySupplier}>
-          <div><h2 className="text-lg font-bold">Pay Supplier — {selectedSupplierName}</h2>
-            <p className="text-sm text-muted">Outstanding: {money(summary?.outstanding)} · Advance: {money(summary?.availableAdvance)}</p></div>
+      {activeTab === 'payment' && canPay && (
+        <form ref={paymentFormRef} noValidate className={box + ' grid gap-4'} onSubmit={paySupplier}>
+          <div><h2 className="text-lg font-semibold">Pay Supplier — {selectedSupplierName}</h2>
+            <p className="text-sm text-muted">Outstanding: {summary ? money(summary.outstanding) : 'Unavailable'} · Advance: {summary ? money(summary.availableAdvance) : 'Unavailable'}</p></div>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1 text-sm font-semibold">Payment type
               <select value={paymentDraft.kind} className={field} onChange={(event) =>
@@ -660,7 +790,8 @@ export default function SupplierFinancePage({ section = '' }) {
               </select>
             </label>
             <label className="grid gap-1 text-sm font-semibold">Payment account
-              <select required value={paymentDraft.accountId} className={field} onChange={(event) => {
+              <select required value={paymentDraft.accountId} aria-invalid={Boolean(paymentErrors.account)}
+                className={field + (paymentErrors.account ? ' border-red-600' : '')} onChange={(event) => {
                 const selected = accounts.find((x) => x.id === event.target.value);
                 setPaymentDraft({ ...paymentDraft, accountId: event.target.value,
                   method: selected?.kind === 'Cash' ? 'Cash' : selected?.kind === 'UPI' ? 'UPI' : 'Bank Transfer' });
@@ -669,6 +800,7 @@ export default function SupplierFinancePage({ section = '' }) {
                 {accounts.filter((x) => x.isActive).map((a) =>
                   <option key={a.id} value={a.id}>{a.name} · Recorded {money(a.recordedBalance)}</option>)}
               </select>
+              {paymentErrors.account && <small role="alert" className="text-xs text-red-600">{paymentErrors.account}</small>}
             </label>
             <label className="grid gap-1 text-sm font-semibold">Method
               <select value={paymentDraft.method} className={field} onChange={(event) =>
@@ -677,13 +809,17 @@ export default function SupplierFinancePage({ section = '' }) {
               </select>
             </label>
             <label className="grid gap-1 text-sm font-semibold">Amount (₹)
-              <input required min="0.01" step="0.01" type="number" className={field}
+              <input required min="0.01" step="0.01" type="number" aria-invalid={Boolean(paymentErrors.amount)}
+                className={field + (paymentErrors.amount ? ' border-red-600' : '')}
                 value={paymentDraft.amount} onChange={(event) =>
                   setPaymentDraft({ ...paymentDraft, amount: event.target.value })}/>
+              {paymentErrors.amount && <small role="alert" className="text-xs text-red-600">{paymentErrors.amount}</small>}
             </label>
             <label className="grid gap-1 text-sm font-semibold">Payment date
-              <input type="date" required className={field} value={paymentDraft.paidOn}
+              <input type="date" required aria-invalid={Boolean(paymentErrors.paidOn)}
+                className={field + (paymentErrors.paidOn ? ' border-red-600' : '')} value={paymentDraft.paidOn}
                 onChange={(event) => setPaymentDraft({ ...paymentDraft, paidOn: event.target.value })}/>
+              {paymentErrors.paidOn && <small role="alert" className="text-xs text-red-600">{paymentErrors.paidOn}</small>}
             </label>
             <label className="grid gap-1 text-sm font-semibold">Reference (optional)
               <input className={field} maxLength={120} value={paymentDraft.reference}
@@ -696,12 +832,16 @@ export default function SupplierFinancePage({ section = '' }) {
               className="grid gap-2 rounded-xl border border-line p-3">
               <label className="grid gap-1 text-sm">
                 {bill.invoiceNumber} · Due {money(bill.outstanding)}
-                <input className={field} type="number" min="0" max={bill.outstanding} step="0.01"
+                <input className={field + (paymentErrors['bill:' + bill.id] || paymentErrors.allocations ? ' border-red-600' : '')}
+                  aria-invalid={Boolean(paymentErrors['bill:' + bill.id] || paymentErrors.allocations)}
+                  type="number" min="0" max={bill.outstanding} step="0.01"
                   value={paymentDraft.allocations[bill.id] || ''}
                   placeholder="Allocate amount (₹)"
                   onChange={(event) => setPaymentDraft((prev) => ({
                     ...prev, allocations: { ...prev.allocations, [bill.id]: event.target.value },
                   }))}/>
+                {paymentErrors['bill:' + bill.id] && <small role="alert" className="text-xs text-red-600">
+                  {paymentErrors['bill:' + bill.id]}</small>}
               </label>
               {!!num(paymentDraft.allocations[bill.id]) && <details className="text-sm">
                 <summary className="cursor-pointer">Allocate to specific purchase items (optional)</summary>
@@ -722,6 +862,13 @@ export default function SupplierFinancePage({ section = '' }) {
               </details>}
             </div>)}
             {!outstandingBills.length && <p className="text-sm text-muted">No posted bills remain unpaid. Use Advance Payment if appropriate.</p>}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 text-sm">
+              <span>Allocated {money(Object.values(paymentDraft.allocations).reduce((sum, value) => sum + num(value), 0))}</span>
+              <strong>Unallocated {money(num(paymentDraft.amount) -
+                Object.values(paymentDraft.allocations).reduce((sum, value) => sum + num(value), 0))}</strong>
+            </div>
+            {paymentErrors.allocations && <p role="alert" className="text-sm text-red-600">
+              {paymentErrors.allocations}</p>}
             <p className="text-xs text-muted">Allocations must equal the payment amount. The server checks every outstanding bill.</p>
           </div>}
           <p className="text-xs text-muted">This reduces only the selected recorded account ledger. It is not a real-time bank balance.</p>
@@ -730,6 +877,42 @@ export default function SupplierFinancePage({ section = '' }) {
             {busy === 'payment' ? 'Posting payment…' : 'Confirm Supplier Payment'}
           </button>
         </form>
+      )}
+
+      {activeTab === 'payment' && (
+        <section className={box + ' grid gap-3'} aria-label="Supplier payment history">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold">Payment History — {selectedSupplierName}</h2>
+            <span className="text-sm text-muted">{supplierPayments.length} records</span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {[
+              ['Total recorded payments', paidTotal],
+              ['Allocated to bills', appliedTotal],
+              ['Unallocated advances', supplierPayments.reduce((sum, row) => sum + (row.kind === 'Advance' ? num(row.unapplied) : 0), 0)],
+            ].map(([label, value]) => <div className="rounded-xl border border-line p-3" key={label}>
+              <span className="block text-xs text-muted">{label}</span>
+              <strong className="block text-base">{money(value)}</strong>
+            </div>)}
+          </div>
+          <label className="grid gap-1 text-sm">Search payments
+            <input className={field} aria-label="Search supplier payments" placeholder="Reference, method, type or date"
+              value={paymentSearch} onChange={event => setPaymentSearch(event.target.value)}/>
+          </label>
+          <div className="grid gap-2">
+            {filteredPayments.map(row => (
+              <article key={row.id} className="flex min-w-0 flex-wrap items-start justify-between gap-3 rounded-xl border border-line p-3">
+                <div className="min-w-0">
+                  <strong className="text-sm">{row.kind} · {row.method}</strong>
+                  <p className="text-xs text-muted">{row.paidOn} · {row.reference || 'No reference'}</p>
+                  <p className="text-xs text-muted">Allocated {money(row.applied)} · Unallocated {money(row.unapplied)}</p>
+                </div>
+                <strong className="text-sm">{money(row.amount)}</strong>
+              </article>
+            ))}
+            {!filteredPayments.length && <p className="py-4 text-sm text-muted">No matching supplier payments found.</p>}
+          </div>
+        </section>
       )}
 
       {activeTab === 'accounts' && <div className="grid gap-4">
@@ -744,7 +927,7 @@ export default function SupplierFinancePage({ section = '' }) {
             {!accounts.length && <p className="text-sm text-muted">No recorded financial accounts yet.</p>}
           </div>
         </section>
-        <form className={box + ' grid gap-3 sm:grid-cols-3'} onSubmit={createAccount}>
+        {canPay && <form className={box + ' grid gap-3 sm:grid-cols-3'} onSubmit={createAccount}>
           <h3 className="text-lg font-bold sm:col-span-3">Add Financial Account</h3>
           <label className="grid gap-1 text-sm">Account name
             <input required maxLength={120} className={field} value={accountDraft.name}
@@ -762,7 +945,7 @@ export default function SupplierFinancePage({ section = '' }) {
           </label>
           <button type="submit" className={primary + ' sm:col-span-3'} disabled={posting}>Create Account</button>
           <p className="text-xs text-muted sm:col-span-3">Opening balances are recorded snapshots; never label them as synced live bank balances.</p>
-        </form>
+        </form>}
       </div>}
 
       <footer className="text-xs text-muted">

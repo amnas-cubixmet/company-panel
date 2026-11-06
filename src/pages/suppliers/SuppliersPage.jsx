@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Building2, Mail, Package, Phone, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
+import { ArrowLeft, Building2, CreditCard, Mail, Package, Phone, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { supplierService } from '../../services/supplier.service';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
@@ -29,47 +29,106 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
   const canWrite = access.can(supplier ? 'stock.edit' : 'stock.create') && !USE_MOCK_API;
   const [form, setForm] = useState(() => initialForm(supplier));
   const [busy, setBusy] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
   const [error, setError] = useState('');
-  const setField = (key, value) => setForm(prev => ({ ...prev, [key]:value }));
+  const inputRefs = useRef({});
+  const labels = {
+    name: 'Supplier Name *', contact_person: 'Contact Person', phone: 'Mobile Number',
+    email: 'Email', gstNo: 'GSTIN', address: 'Address',
+  };
+
+  useEffect(() => {
+    const first = formFields.find(key => formErrors[key]);
+    const element = first ? inputRefs.current[first] : null;
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.focus({ preventScroll: true });
+    }
+  }, [formErrors]);
+
+  const setField = (key, value) => {
+    setForm(prev => ({ ...prev, [key]: value }));
+    setFormErrors(prev => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
   const submit = async event => {
     event.preventDefault();
     if (!canWrite || busy) return;
-    if (!form.name.trim()) { setError('Supplier Name is required.'); return; }
-    setBusy(true); setError('');
+    const errors = {};
+    if (!form.name.trim()) errors.name = 'Supplier Name is required.';
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      errors.email = 'Enter a valid email address.';
+    }
+    if (Object.keys(errors).length) {
+      setFormErrors(errors);
+      setError('');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    setFormErrors({});
     try {
-      const payload = { ...form, name:form.name.trim(), email:form.email.trim() };
+      const payload = { ...form, name: form.name.trim(), email: form.email.trim() };
       const saved = supplier
         ? await supplierService.update(supplier.id, payload)
         : await supplierService.create(payload);
       onSaved(saved);
     } catch (cause) {
-      const data = cause?.response?.data;
-      setError(asText(data?.name?.[0] || data?.gstNo?.[0] || data?.phone?.[0] || data?.detail || data?.message || cause?.message || 'Unable to save supplier.'));
-    } finally { setBusy(false); }
+      const data = cause?.fieldErrors || cause?.data || cause?.response?.data;
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        const normalized = {};
+        const aliases = { gstin: 'gstNo', gst_no: 'gstNo', contactPerson: 'contact_person' };
+        for (const [key, value] of Object.entries(data)) {
+          const target = aliases[key] || key;
+          const message = Array.isArray(value) ? value.join(' ') : String(value ?? '');
+          if (formFields.includes(target)) normalized[target] = message;
+        }
+        if (Object.keys(normalized).length) {
+          setFormErrors(normalized);
+          setError('');
+        } else {
+          const detail = data.detail || data.message || data.non_field_errors;
+          setError(Array.isArray(detail) ? detail.join(' ') : String(detail || cause?.message || 'Unable to save supplier.'));
+        }
+      } else {
+        setError(cause?.message || 'Unable to save supplier.');
+      }
+    } finally {
+      setBusy(false);
+    }
   };
-  const labels = {
-    name:'Supplier Name *', contact_person:'Contact Person', phone:'Phone',
-    email:'Email', gstNo:'GSTIN', address:'Address',
-  };
-  return <ResponsiveModalSheet isOpen onClose={() => !busy && onClose()} title={supplier ? 'Edit Supplier' : 'Add Supplier'} maxWidth="590px">
-    <form className="cg-supplier-form" onSubmit={submit}>
-      {formFields.map(key => <label key={key} className="cg-supplier-floating">
-        {key === 'address'
-          ? <textarea rows={2} placeholder=" " value={form[key]} onChange={e => setField(key,e.target.value)} />
-          : <input placeholder=" " required={key==='name'} type={key==='email'?'email':key==='phone'?'tel':'text'}
-              maxLength={key==='name'?180:key==='contact_person'?120:key==='phone'?30:key==='gstNo'?20:254}
-              value={form[key]} onChange={e => setField(key,e.target.value)} />}
+
+  return <ResponsiveModalSheet isOpen onClose={() => !busy && onClose()}
+    title={supplier ? 'Edit Supplier' : 'Add Supplier'} maxWidth="590px">
+    <form className="cg-supplier-form" noValidate onSubmit={submit}>
+      {formFields.map(key => <label key={key} className="cg-supplier-field">
         <span>{labels[key]}</span>
+        {key === 'address'
+          ? <textarea ref={node => { inputRefs.current[key] = node; }} rows={2}
+              aria-invalid={Boolean(formErrors[key])} aria-describedby={formErrors[key] ? 'supplier-error-' + key : undefined}
+              value={form[key]} onChange={e => setField(key, e.target.value)} />
+          : <input ref={node => { inputRefs.current[key] = node; }} required={key === 'name'}
+              type={key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}
+              maxLength={key === 'name' ? 180 : key === 'contact_person' ? 120 : key === 'phone' ? 30 : key === 'gstNo' ? 20 : 254}
+              aria-invalid={Boolean(formErrors[key])} aria-describedby={formErrors[key] ? 'supplier-error-' + key : undefined}
+              value={form[key]} onChange={e => setField(key, e.target.value)} />}
+        {formErrors[key] && <small id={'supplier-error-' + key} role="alert"
+          className="cg-supplier-field-error">{formErrors[key]}</small>}
       </label>)}
       {supplier && <label className="cg-supplier-toggle">
-        <input type="checkbox" checked={form.is_active} onChange={e=>setField('is_active',e.target.checked)}/>
+        <input type="checkbox" checked={form.is_active} onChange={e => setField('is_active', e.target.checked)} />
         <span>Active Supplier</span>
       </label>}
       {error && <p role="alert" className="cg-supplier-error">{error}</p>}
       {USE_MOCK_API && <p className="cg-supplier-note">Saving requires the Django backend.</p>}
       <div className="cg-supplier-modal-actions">
         <button type="button" onClick={onClose} disabled={busy}>Cancel</button>
-        <button type="submit" className="primary" disabled={!canWrite||busy}>
+        <button type="submit" className="primary" disabled={!canWrite || busy}>
           {busy ? 'Saving…' : 'Save Supplier'}
         </button>
       </div>
@@ -86,11 +145,17 @@ export default function SuppliersPage({ section = 'all' }) {
   const canCreate = access.can('stock.create') && !USE_MOCK_API;
   const canEdit = access.can('stock.edit') && !USE_MOCK_API;
   const canViewFinance = access.can('payments.view') && access.can('stock.view');
+  const canCreatePurchase = access.can('stock.create') && access.can('payments.create') && !USE_MOCK_API;
   const canDelete = access.can('stock.delete') && !USE_MOCK_API;
   const [suppliers, setSuppliers] = useState([]);
   const [creditBalances, setCreditBalances] = useState(null);
   const [purchaseBills, setPurchaseBills] = useState([]);
   const [purchaseHistory, setPurchaseHistory] = useState([]);
+  const [purchaseQuery, setPurchaseQuery] = useState('');
+  const [purchaseSupplier, setPurchaseSupplier] = useState(() => params.get('supplier') || '');
+  const [purchaseStatus, setPurchaseStatus] = useState('');
+  const [purchaseFrom, setPurchaseFrom] = useState('');
+  const [purchaseTo, setPurchaseTo] = useState('');
   const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState(false);
   const [purchaseHistoryError, setPurchaseHistoryError] = useState('');
   const [supplier, setSupplier] = useState(null);
@@ -99,6 +164,7 @@ export default function SuppliersPage({ section = 'all' }) {
   const [loading, setLoading] = useState(true);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [editor, setEditor] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -169,6 +235,23 @@ export default function SuppliersPage({ section = 'all' }) {
     );
   },[search,suppliers,statusFilter]);
 
+  // Purchase orders and posted supplier bills are distinct records; never sum them as
+  // separate outstanding liabilities. Filter each data source independently.
+  const matchesPurchase = (number, rowSupplier, date, state) => {
+    const supplierName = suppliers.find(row => String(row.id) === String(rowSupplier))?.name || '';
+    const query = purchaseQuery.trim().toLowerCase();
+    if (purchaseSupplier && String(rowSupplier) !== purchaseSupplier) return false;
+    if (purchaseStatus && String(state || '').toLowerCase() !== purchaseStatus) return false;
+    if (purchaseFrom && (!date || String(date).slice(0, 10) < purchaseFrom)) return false;
+    if (purchaseTo && (!date || String(date).slice(0, 10) > purchaseTo)) return false;
+    return !query || [number, supplierName, state].some(value => asText(value).toLowerCase().includes(query));
+  };
+  const filteredPurchaseHistory = purchaseHistory.filter(order =>
+    matchesPurchase(order.purchaseNo || order.number, supplierIdOf(order),
+      order.purchaseDate || order.orderDate || order.date || order.createdAt, order.status));
+  const filteredPurchaseBills = purchaseBills.filter(bill =>
+    matchesPurchase(bill.invoiceNumber, bill.supplierId, bill.invoiceDate, bill.status));
+
   async function deactivateSupplier() {
     if (!supplier || !canEdit || actionBusy) return;
     setActionBusy(true); setError('');
@@ -196,6 +279,7 @@ export default function SuppliersPage({ section = 'all' }) {
 
   function onSaved(saved) {
     setEditor(null);
+    setNotice(supplier ? 'Supplier updated successfully.' : 'Supplier saved successfully.');
     setSuppliers(rows => {
       const exists=rows.some(row=>String(row.id)===String(saved.id));
       return exists ? rows.map(row=>String(row.id)===String(saved.id)?saved:row) : [saved,...rows];
@@ -211,13 +295,14 @@ export default function SuppliersPage({ section = 'all' }) {
         <h1>{id ? (supplier?.name || 'Supplier Details') : purchaseView ? 'Purchase History' : 'Suppliers'}</h1>
       </div>
       {id ? canEdit && supplier && <button type="button" className="cg-supplier-button" onClick={()=>setEditor(supplier)}>Edit Supplier</button>
-        : purchaseView ? <Link className="cg-supplier-button primary" to="/stock/suppliers?tab=bill"><Plus size={17}/> New Purchase</Link>
+        : purchaseView ? (canCreatePurchase && <Link className="cg-supplier-button primary" to="/stock/suppliers?tab=bill"><Plus size={17}/> New Purchase</Link>)
         : canCreate && <button type="button" className="cg-supplier-button primary" onClick={()=>setEditor({create:true})}><Plus size={17}/> Add Supplier</button>}
     </div>
 
     <SupplierSectionTabs />
 
     {error&&<div className="cg-supplier-error" role="alert">{error} <button type="button" onClick={()=>window.location.reload()}>Retry</button></div>}
+    {notice&&<p className="cg-supplier-success" role="status">{notice}</p>}
 
     {!id&&!purchaseView&&<>
       <div className="cg-supplier-toolbar">
@@ -253,13 +338,42 @@ export default function SuppliersPage({ section = 'all' }) {
 
     {!id&&purchaseView&&(
       <section className="cg-supplier-purchase-history" aria-label="Supplier purchase history">
+        <div className="cg-supplier-purchase-filters">
+          <label>Search purchases
+            <input aria-label="Search purchases" placeholder="Purchase number, invoice or supplier"
+              value={purchaseQuery} onChange={event => setPurchaseQuery(event.target.value)} />
+          </label>
+          <label>Supplier
+            <select aria-label="Purchase supplier" value={purchaseSupplier}
+              onChange={event => setPurchaseSupplier(event.target.value)}>
+              <option value="">All suppliers</option>
+              {suppliers.map(row => <option key={row.id} value={String(row.id)}>{row.name}</option>)}
+            </select>
+          </label>
+          <label>Status
+            <select aria-label="Purchase status" value={purchaseStatus}
+              onChange={event => setPurchaseStatus(event.target.value)}>
+              <option value="">All statuses</option>
+              {['Draft', 'Received', 'Completed', 'Posted', 'Unpaid', 'Partially Paid', 'Paid'].map(value =>
+                <option key={value} value={value.toLowerCase()}>{value}</option>)}
+            </select>
+          </label>
+          <label className="cg-supplier-filter-date">From date
+            <input aria-label="Purchase from date" type="date" value={purchaseFrom}
+              max={purchaseTo || undefined} onChange={event => setPurchaseFrom(event.target.value)} />
+          </label>
+          <label className="cg-supplier-filter-date">To date
+            <input aria-label="Purchase to date" type="date" value={purchaseTo}
+              min={purchaseFrom || undefined} onChange={event => setPurchaseTo(event.target.value)} />
+          </label>
+        </div>
         {purchaseHistoryError && <p role="alert" className="cg-supplier-error">{purchaseHistoryError}</p>}
         {purchaseHistoryLoading ? <p role="status" className="cg-supplier-empty">Loading purchase history…</p> : (
           <div className="cg-supplier-profile">
             <div className="cg-supplier-profile-head">
-              <ShoppingBag size={20}/><h2>Purchase Orders</h2><span>{purchaseHistory.length} records</span>
+              <ShoppingBag size={20}/><h2>Purchase Orders</h2><span>{filteredPurchaseHistory.length} records</span>
             </div>
-            {purchaseHistory.map(order => (
+            {filteredPurchaseHistory.map(order => (
               <div className="cg-supplier-record" key={'po-'+order.id}>
                 <div>
                   <strong>{order.purchaseNo || order.number || 'Purchase Order'}</strong>
@@ -268,24 +382,24 @@ export default function SuppliersPage({ section = 'all' }) {
                 <b>{money(order.total)}</b>
               </div>
             ))}
-            {!purchaseHistory.length && <p className="cg-supplier-empty">No purchase orders found.</p>}
+            {!filteredPurchaseHistory.length && <p className="cg-supplier-empty">No matching purchase orders found.</p>}
           </div>
         )}
         {canViewFinance && (
           <div className="cg-supplier-profile">
             <div className="cg-supplier-profile-head">
-              <Package size={20}/><h2>Supplier Purchase Bills</h2><span>{purchaseBills.length} records</span>
+              <Package size={20}/><h2>Supplier Purchase Bills</h2><span>{filteredPurchaseBills.length} records</span>
             </div>
-            {purchaseBills.map(bill => (
+            {filteredPurchaseBills.map(bill => (
               <div className="cg-supplier-record" key={'bill-'+bill.id}>
                 <div>
                   <strong>{bill.invoiceNumber}</strong>
-                  <small>{suppliers.find(row => String(row.id) === String(bill.supplierId))?.name || 'Supplier'} · {bill.status} · {bill.invoiceDate}</small>
+                  <small>{suppliers.find(row => String(row.id) === String(bill.supplierId))?.name || 'Supplier'} · {bill.status} · {bill.invoiceDate} · {bill.postingStatus === 'Posted' ? 'Posted liability' : 'Draft — not payable'}</small>
                 </div>
-                <b>{money(bill.total)}</b>
+                <b>{bill.postingStatus === 'Posted' ? 'Due ' + money(bill.outstanding) : 'Draft ' + money(bill.total)}</b>
               </div>
             ))}
-            {!purchaseBills.length && <p className="cg-supplier-empty">No supplier bills recorded.</p>}
+            {!filteredPurchaseBills.length && <p className="cg-supplier-empty">No matching supplier bills found.</p>}
           </div>
         )}
       </section>
@@ -305,12 +419,17 @@ export default function SuppliersPage({ section = 'all' }) {
         </div>
         {canViewFinance && <div style={{ marginTop: 10, fontSize: 14 }}>
           Credit outstanding: <strong>{creditBalances ? money(creditBalances.get(String(supplier.id)) || 0) : 'Unavailable'}</strong>
-          <Link to="/suppliers/credits" style={{ marginLeft: 12, color: 'var(--primary)' }}>Credit Management</Link>
+          <Link to={'/suppliers/credits?supplier=' + encodeURIComponent(supplier.id)}
+            style={{ marginLeft: 12, color: 'var(--primary)' }}>Credit Management</Link>
         </div>}
         <div className="cg-supplier-contacts">
           {supplier.phone&&<a href={'tel:'+String(supplier.phone).replace(/[^\d+]/g,'')}><Phone size={15}/> Call</a>}
           {supplier.email&&<a href={'mailto:'+supplier.email}><Mail size={15}/> Email</a>}
           <Link to={'/stock?supplier='+encodeURIComponent(supplier.id)}><Package size={15}/> Inventory</Link>
+          <Link to={'/suppliers/purchases?supplier=' + encodeURIComponent(supplier.id)}>
+            <ShoppingBag size={15}/> Purchases</Link>
+          {canViewFinance && <Link to={'/suppliers/payments?supplier=' + encodeURIComponent(supplier.id)}>
+            <CreditCard size={15}/> Payments</Link>}
           {supplier.is_active !== false && canEdit && <button type="button" disabled={actionBusy}
             onClick={deactivateSupplier} className="cg-supplier-button">Deactivate</button>}
           {canDelete && <button type="button" disabled={actionBusy}
