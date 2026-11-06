@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
 import { USE_MOCK_API } from '../../api/apiConfig';
 import { AlertTriangle, Boxes, History, PackageMinus, PackagePlus, Plus, RefreshCw, Search, ShoppingCart, Wrench } from 'lucide-react';
@@ -95,6 +95,7 @@ function stockState(item) {
 }
 
 export default function StockEasyPage() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const query = (searchParams.get('search') || '').slice(0, 120);
   const filterValue = searchParams.get('filter') || 'all';
@@ -312,6 +313,9 @@ export default function StockEasyPage() {
       });
       return;
     }
+    // A new supplier purchase must create stock and payable together through
+    // SupplierBill posting, never via an unlinked opening-stock adjustment.
+    const isSupplierPurchase = Boolean(part.supplier) && openingQuantity > 0;
     setSaving(true);
     setError('');
     try {
@@ -321,15 +325,29 @@ export default function StockEasyPage() {
         tax: Number(part.tax), zeroTaxClassification: Number(part.tax) === 0 ? part.zeroTaxClassification : '',
         hsnCode: part.hsnCode.trim(),
         minimumStock: number(part.minimumStock),
-        stockQuantity: openingQuantity,
+        stockQuantity: isSupplierPurchase ? 0 : openingQuantity,
       });
       setPartOpen(false);
       setPart(initialPart);
       setPartLookup('');
       setPartMode('find');
-      setSuccess(openingQuantity > 0
-        ? 'Part created with opening stock. No supplier bill or payment was posted.'
-        : 'Part created. Use Receive Stock when goods arrive.');
+      setSuccess(isSupplierPurchase
+        ? 'Part catalog saved; confirm the supplier purchase and choose Pay Now / Partial / Credit.'
+        : openingQuantity > 0
+          ? 'Historical opening stock added. No supplier payment or credit was posted.'
+          : 'Part catalog saved. Record purchases under Supplier Purchase.');
+      if (isSupplierPurchase && created?.id) {
+        navigate('/stock/suppliers?tab=bill&supplier=' + encodeURIComponent(part.supplier), {
+          state: {
+            purchasePrefill: {
+              itemId: String(created.id), quantity: String(openingQuantity),
+              purchaseRate: String(part.costPrice),
+              supplierId: String(part.supplier),
+            },
+          },
+        });
+        return;
+      }
       await reload();
       if (!openingQuantity && created?.id) beginMove('in', created.id, created);
     } catch (exception) {
@@ -399,6 +417,7 @@ export default function StockEasyPage() {
         </div>
         <div className="cg-easy-actions">
           <button type="button" className="cg-easy-secondary" onClick={reload} disabled={loading}><RefreshCw size={16}/> Refresh</button>
+          <Link className="cg-easy-primary" to="/stock/suppliers?tab=bill"><ShoppingCart size={16}/> Buy Spare Parts</Link>
           <button type="button" className="cg-easy-primary" onClick={() => openPartDialog()}><Plus size={16}/> Add New Part</button>
         </div>
       </header>
@@ -441,7 +460,7 @@ export default function StockEasyPage() {
         <button type="button" onClick={() => beginMove('out')}><PackageMinus size={19}/><span>Internal Use</span></button>
         <Link to="/jobs"><Wrench size={19}/><span>Job Card Parts</span></Link>
         <a href="#stock-history"><History size={19}/><span>Stock History</span></a>
-        <Link to="/stock/suppliers"><ShoppingCart size={19}/><span>Supplier Bills & Payments</span></Link>
+        <Link to="/stock/suppliers?tab=bill"><ShoppingCart size={19}/><span>Supplier Purchase (Pay / Credit)</span></Link>
       </section>
 
       <section className="cg-easy-panel">
@@ -634,7 +653,11 @@ export default function StockEasyPage() {
               <RackCombobox value={part.location} suggestions={rackLocations}
                 onChange={location => setPart(previous => ({ ...previous, location }))}/>
             </div>
-            <p className="cg-easy-hint">Opening stock records quantity only. Supplier credit and payment require a confirmed purchase bill.</p>
+            <p className="cg-easy-hint">
+              When a Supplier and Stock Quantity are selected, saving the part redirects to
+              a supplier purchase for Pay Now / Partial / Credit. The stock quantity is added
+              only after that bill is posted. Without a Supplier, quantity is historical opening stock only.
+            </p>
             <div className="cg-easy-form-actions"><button type="button" onClick={() => setPartOpen(false)}>Cancel</button><button type="submit" disabled={saving}>{saving ? 'Saving...' : (number(part.stockQuantity) > 0 ? 'Save Part & Add Opening Stock' : 'Save Part')}</button></div>
           </form>
         )}
