@@ -197,9 +197,9 @@ export const AppRoutes = () => (
       <Route path="/jobs/:id/*" element={<JobDetails />} />
 
       <Route path="/suppliers" element={<SuppliersPage />} />
-      <Route path="/suppliers/credits" element={<Navigate to="/stock/suppliers?tab=overview" replace />} />
-      <Route path="/suppliers/purchases" element={<Navigate to="/stock/suppliers?tab=overview" replace />} />
-      <Route path="/suppliers/payments" element={<Navigate to="/stock/suppliers?tab=payment" replace />} />
+      <Route path="/suppliers/credits" element={<SupplierFinancePage section="credits" />} />
+      <Route path="/suppliers/purchases" element={<SuppliersPage section="purchases" />} />
+      <Route path="/suppliers/payments" element={<SupplierFinancePage section="payments" />} />
       <Route path="/suppliers/:id" element={<SuppliersPage />} />
       <Route path="/stock" element={<StockEasyPage />} />
       <Route path="/stock/suppliers" element={<SupplierFinancePage />} />
