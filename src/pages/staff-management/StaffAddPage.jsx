@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { CheckCircle2, MessageCircle, Save, UserPlus } from 'lucide-react';
+import { CheckCircle2, Copy, MessageCircle, Save, UserPlus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { roleService } from '../../services/role.service';
 import { staffService } from '../../services/staff.service';
@@ -7,7 +7,7 @@ import { branchService } from '../../services/branch.service';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
 import { clearFieldValidation, showFormFieldError, showServerFormErrors } from '../../utils/formValidation';
-import { shareManualStaffInvite } from '../../utils/staffManualInvite';
+import { copyManualStaffInvite, shareManualStaffInvite } from '../../utils/staffManualInvite';
 import '../../styles/staff-mobile-onboarding.css';
 
 const statuses = ['Active', 'Probation', 'Notice Period', 'Inactive', 'Suspended', 'Resigned', 'Terminated'];
@@ -129,6 +129,24 @@ export const StaffAddPage = () => {
     }
   };
 
+  const copyInvite = async () => {
+    if (sharing || !createdStaff?.id || !createdStaff.whatsappConsent) return;
+    setSharing(true);
+    setShareError('');
+    setShareMessage('');
+    try {
+      await copyManualStaffInvite(
+        () => staffService.sendLoginInvite(createdStaff.id),
+        { phone: createdStaff.phone, staffName: createdStaff.name, workshopName: user?.company?.name },
+      );
+      setShareMessage('Setup message copied. Paste it only into the registered staff WhatsApp chat and press Send manually.');
+    } catch (cause) {
+      setShareError(cause?.message || 'Unable to copy the setup message.');
+    } finally {
+      setSharing(false);
+    }
+  };
+
   if (createdStaff) {
     return (
       <section className="staff-add-page staff-manual-invite-result" aria-label="Staff creation complete">
@@ -149,6 +167,9 @@ export const StaffAddPage = () => {
             {canManageLogins && createdStaff.whatsappConsent && createdStaff.loginStatus === 'Pending Password Setup' && (
               <button type="button" className="staff-save-button" disabled={sharing} onClick={share}>
                 <MessageCircle size={17}/>{sharing ? 'Preparing…' : 'Share on WhatsApp'}
+              </button>
+              <button type="button" className="staff360-secondary-button" disabled={sharing} onClick={copyInvite}>
+                <Copy size={17}/> Copy Setup Message
               </button>
             )}
             {!createdStaff.whatsappConsent &&
