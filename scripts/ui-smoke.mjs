@@ -236,12 +236,12 @@ try {
         // Suppliers has one drawer link and four page tabs (no slide-out submenu).
         if(path==='/suppliers' && (profile.width===390 || profile.width===1440)) {
           await page.getByRole('heading',{name:'Suppliers',exact:true}).waitFor({state:'visible'});
-          await page.getByText('Fixture Auto Parts').first().waitFor({state:'visible'});
+          await page.locator('a.cg-supplier-name-link:visible').first().waitFor({state:'visible'});
           // Supplier actions are now on /suppliers/:id, not separate tabs.
           if (await page.getByRole('navigation',{name:'Supplier sections'}).count()) {
             throw Error('Obsolete supplier finance tabs should be removed');
           }
-          const supplierProfile = page.getByRole('link',{name:/Fixture Auto Parts/}).first();
+          const supplierProfile = page.locator('a.cg-supplier-name-link:visible').first();
           await supplierProfile.waitFor({state:'visible'});
           const target = await supplierProfile.getAttribute('href');
           if (!target?.startsWith('/suppliers/')) throw Error('Supplier must link to its detail profile');
