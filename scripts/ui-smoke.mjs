@@ -225,22 +225,31 @@ try {
         }
         await page.locator('.route-loading').waitFor({state:'hidden',timeout:15000});
         await page.waitForFunction(()=>document.body.innerText.length>=20);
-        // Supplier routes and responsive expandable menu, without money writes.
+        // Suppliers has one drawer link and four page tabs (no slide-out submenu).
         if(path==='/suppliers' && (profile.width===390 || profile.width===1440)) {
           await page.getByRole('heading',{name:'Suppliers',exact:true}).waitFor({state:'visible'});
           await page.getByText('Fixture Auto Parts').first().waitFor({state:'visible'});
+          const tabNav=page.getByRole('navigation',{name:'Supplier sections'});
+          await tabNav.waitFor({state:'visible'});
+          for(const [label,target] of [
+            ['All Suppliers','/suppliers'],
+            ['Credit Management','/suppliers/credits'],
+            ['Purchase History','/suppliers/purchases'],
+            ['Supplier Payments','/suppliers/payments'],
+          ]) {
+            const tab=tabNav.getByRole('link',{name:label,exact:true});
+            await tab.waitFor({state:'visible'});
+            if(await tab.getAttribute('href')!==target) throw Error('Incorrect supplier tab URL: '+label);
+          }
+          const tabOverflow=await tabNav.evaluate(el=>el.scrollWidth>el.clientWidth+1);
+          if(tabOverflow) throw Error('Supplier tabs must wrap into the grid rather than slide horizontally');
           const drawerMode=profile.width<1024;
           if(drawerMode) await page.getByRole('button',{name:'Open all authorized pages'}).click();
           const sidebar=page.locator(drawerMode ? '.mobile-drawer' : '.app-sidebar');
-          const toggle=sidebar.getByRole('button',{name:'Suppliers',exact:true});
-          await toggle.waitFor({state:'visible'});
-          if(await toggle.getAttribute('aria-expanded')!=='true') throw Error('Suppliers submenu must start expanded');
-          const submenu=sidebar.locator(drawerMode ? '#supplier-mobile-submenu' : '#supplier-desktop-submenu');
-          if(await submenu.getByRole('link').count()!==4) throw Error('Expected four supplier submenu links');
-          await toggle.click();
-          if(await toggle.getAttribute('aria-expanded')!=='false') throw Error('Collapse suppliers failed');
-          await toggle.click();
-          if(await toggle.getAttribute('aria-expanded')!=='true') throw Error('Expand suppliers failed');
+          const supplierLink=sidebar.getByRole('link',{name:'Suppliers',exact:true});
+          await supplierLink.waitFor({state:'visible'});
+          if(await supplierLink.getAttribute('href')!=='/suppliers') throw Error('Suppliers parent link is incorrect');
+          if(await sidebar.locator('[id*="supplier-"][id*="submenu"]').count()) throw Error('Old Suppliers submenu is still present');
           if(drawerMode) await sidebar.getByRole('button',{name:'Close menu',exact:true}).click();
         }
         // Job Card creation: exercise the actual React form, image blob URLs,
