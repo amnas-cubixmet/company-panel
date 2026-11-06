@@ -17,11 +17,12 @@ test('Add New Part form offers a total GST rate dropdown and custom rate', () =>
 test('GST and optional alphanumeric HSN/SAC are persisted with new stock item', () => {
   const page = read('src/pages/stock/StockEasyPage.jsx');
   const service = read('src/services/stockCatalog.service.js');
-  assert.match(page, /tax: '0', hsnCode: ''/);
+  assert.match(page, /tax: '0', zeroTaxClassification: '', hsnCode: ''/);
   assert.match(page, /label="HSN \/ SAC Code"/);
   assert.match(page, /maxLength=\{20\}/);
   assert.match(page, /if \(!validGstRate\(part\.tax\)\)/);
-  assert.match(page, /tax: Number\(part\.tax\), hsnCode: part\.hsnCode\.trim\(\)/);
+  assert.match(page, /tax: Number\(part\.tax\), zeroTaxClassification:/);
+  assert.match(page, /hsnCode: part\.hsnCode\.trim\(\)/);
   assert.match(service, /tax: number\(payload\.tax\)/);
   assert.match(service, /hsnCode: payload\.hsnCode \|\| ''/);
   assert.match(service, /apiClient\.post\('\/stock', await productPayload\(payload, \{ creating: true \}\)\)/);
