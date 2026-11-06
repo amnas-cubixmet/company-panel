@@ -59,6 +59,25 @@ export default function SupplierFinancePage({ section = '' }) {
   const [purchaseIntent, setPurchaseIntent] = useState({
     mode: 'Credit', amount: '', accountId: '', method: 'Cash', reference: '',
   });
+
+  const requestedItemId = searchParams.get('item');
+  const itemPrefillDone = useRef('');
+  useEffect(() => {
+    if (!requestedItemId || itemPrefillDone.current === requestedItemId) return;
+    const found = inventory.find(item => String(item.id) === requestedItemId);
+    if (!found) return;
+    itemPrefillDone.current = requestedItemId;
+    setDraft(previous => ({
+      ...previous,
+      receiveIntoStock: true,
+      lines: [{
+        ...line(), itemId: String(found.id),
+        description: found.partName || found.name || '',
+        purchaseRate: String(found.costPrice ?? found.cost ?? '0'),
+        gstRate: String(found.tax ?? 0),
+      }],
+    }));
+  }, [inventory, requestedItemId]);
   const [paymentPopupBill, setPaymentPopupBill] = useState(null);
   const [paymentPopupError, setPaymentPopupError] = useState('');
   const [paymentDraft, setPaymentDraft] = useState({
