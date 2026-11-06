@@ -11,7 +11,9 @@ import '../../styles/suppliers-workspace.css';
 
 const asText = value => String(value ?? '').trim();
 const formFields = ['name', 'contact_person', 'phone', 'email', 'gstNo', 'address'];
-const money = value => new Intl.NumberFormat('en-IN', { style:'currency', currency:'INR' }).format(Number(value) || 0);
+const money = value => value === null || value === undefined || value === '' || !Number.isFinite(Number(value))
+  ? 'Unavailable'
+  : new Intl.NumberFormat('en-IN', { style:'currency', currency:'INR' }).format(Number(value));
 const status = item => item?.is_active === false ? 'Inactive' : 'Active';
 const supplierIdOf = row => String(typeof row?.supplier === 'object' ? row.supplier?.id : row?.supplier || row?.supplierId || '');
 const initialForm = supplier => ({
@@ -150,6 +152,7 @@ export default function SuppliersPage({ section = 'all' }) {
   const [suppliers, setSuppliers] = useState([]);
   const [creditBalances, setCreditBalances] = useState(null);
   const [purchaseBills, setPurchaseBills] = useState([]);
+  const [purchaseBillsError, setPurchaseBillsError] = useState('');
   const [purchaseHistory, setPurchaseHistory] = useState([]);
   const [purchaseQuery, setPurchaseQuery] = useState('');
   const [purchaseSupplier, setPurchaseSupplier] = useState(() => params.get('supplier') || '');
@@ -172,6 +175,12 @@ export default function SuppliersPage({ section = 'all' }) {
   const search = params.get('q') || '';
 
   useEffect(() => {
+    if (USE_MOCK_API) {
+      setSuppliers([]);
+      setLoading(false);
+      setError('Supplier records require the live Django backend. Disable mock mode.');
+      return undefined;
+    }
     let active=true;
     setLoading(true);setError('');
     supplierService.list()
@@ -183,6 +192,12 @@ export default function SuppliersPage({ section = 'all' }) {
 
   useEffect(() => {
     if (!id) { setSupplier(null);setOrders([]);setProducts([]);setDetailsLoading(false);return undefined; }
+    if (USE_MOCK_API) {
+      setSupplier(null);
+      setDetailsLoading(false);
+      setError('Supplier details require the live Django backend.');
+      return undefined;
+    }
     let active=true;
     setDetailsLoading(true);setSupplier(null);setError('');
     Promise.all([supplierService.get(id), supplierService.purchaseOrders(), supplierService.products()])
@@ -198,6 +213,12 @@ export default function SuppliersPage({ section = 'all' }) {
 
   useEffect(() => {
     if (!purchaseView) return undefined;
+    if (USE_MOCK_API) {
+      setPurchaseHistory([]);
+      setPurchaseHistoryLoading(false);
+      setPurchaseHistoryError('Purchase history requires the live Django backend.');
+      return undefined;
+    }
     let active = true;
     setPurchaseHistoryLoading(true);
     setPurchaseHistoryError('');
@@ -212,6 +233,7 @@ export default function SuppliersPage({ section = 'all' }) {
     if (!canViewFinance || USE_MOCK_API) return undefined;
     let active = true;
     // SupplierBill is the authoritative posted payable, not a draft PO or an expense.
+    setPurchaseBillsError('');
     supplierFinanceService.getBills().then(rows => {
       if (!active) return;
       setPurchaseBills(rows);
@@ -222,7 +244,12 @@ export default function SuppliersPage({ section = 'all' }) {
         balances.set(key, (balances.get(key) || 0) + Number(bill.outstanding || 0));
       }
       setCreditBalances(balances);
-    }).catch(() => { if (active) setCreditBalances(null); });
+    }).catch(cause => {
+      if (!active) return;
+      setCreditBalances(null);
+      setPurchaseBills([]);
+      setPurchaseBillsError(cause?.message || 'Unable to load supplier purchase bills.');
+    });
     return () => { active = false; };
   }, [canViewFinance]);
 
@@ -292,7 +319,9 @@ export default function SuppliersPage({ section = 'all' }) {
     <div className="cg-suppliers-head">
       <div>
         {id&&<Link className="cg-suppliers-back" to="/suppliers"><ArrowLeft size={16}/> All Suppliers</Link>}
-        <h1>{id ? (supplier?.name || 'Supplier Details') : purchaseView ? 'Purchase History' : 'Suppliers'}</h1>
+        <h1 title={id ? (supplier?.name || 'Supplier Details') : undefined}>
+          {id ? (supplier?.name || 'Supplier Details') : purchaseView ? 'Purchase History' : 'Suppliers'}
+        </h1>
       </div>
       {id ? canEdit && supplier && <button type="button" className="cg-supplier-button" onClick={()=>setEditor(supplier)}>Edit Supplier</button>
         : purchaseView ? (canCreatePurchase && <Link className="cg-supplier-button primary" to="/stock/suppliers?tab=bill"><Plus size={17}/> New Purchase</Link>)
@@ -323,11 +352,11 @@ export default function SuppliersPage({ section = 'all' }) {
         <span>{matches.length} suppliers</span>
       </div>
       {loading?<p role="status" className="cg-supplier-empty">Loading suppliers…</p>:
-        matches.length?<div className="cg-suppliers-list">
+        error ? null : matches.length?<div className="cg-suppliers-list">
           {matches.map(row=><Link className="cg-supplier-list-item" to={'/suppliers/'+encodeURIComponent(row.id)} key={row.id}>
             <span className="cg-supplier-avatar"><Truck size={21}/></span>
             <span className="cg-supplier-summary">
-              <strong>{row.name}</strong>
+              <strong title={row.name}>{row.name}</strong>
               <small>{[row.contact_person||row.contactPerson,row.phone].filter(Boolean).join(' · ')||'Contact details not added'}</small>
               {canViewFinance && <small>Credit outstanding: {creditBalances ? money(creditBalances.get(String(row.id)) || 0) : 'Unavailable'}</small>}
             </span>
@@ -368,7 +397,7 @@ export default function SuppliersPage({ section = 'all' }) {
           </label>
         </div>
         {purchaseHistoryError && <p role="alert" className="cg-supplier-error">{purchaseHistoryError}</p>}
-        {purchaseHistoryLoading ? <p role="status" className="cg-supplier-empty">Loading purchase history…</p> : (
+        {purchaseHistoryLoading ? <p role="status" className="cg-supplier-empty">Loading purchase history…</p> : !purchaseHistoryError && (
           <div className="cg-supplier-profile">
             <div className="cg-supplier-profile-head">
               <ShoppingBag size={20}/><h2>Purchase Orders</h2><span>{filteredPurchaseHistory.length} records</span>
@@ -390,7 +419,8 @@ export default function SuppliersPage({ section = 'all' }) {
             <div className="cg-supplier-profile-head">
               <Package size={20}/><h2>Supplier Purchase Bills</h2><span>{filteredPurchaseBills.length} records</span>
             </div>
-            {filteredPurchaseBills.map(bill => (
+            {purchaseBillsError && <p className="cg-supplier-error" role="alert">{purchaseBillsError}</p>}
+            {!purchaseBillsError && filteredPurchaseBills.map(bill => (
               <div className="cg-supplier-record" key={'bill-'+bill.id}>
                 <div>
                   <strong>{bill.invoiceNumber}</strong>
@@ -399,7 +429,7 @@ export default function SuppliersPage({ section = 'all' }) {
                 <b>{bill.postingStatus === 'Posted' ? 'Due ' + money(bill.outstanding) : 'Draft ' + money(bill.total)}</b>
               </div>
             ))}
-            {!filteredPurchaseBills.length && <p className="cg-supplier-empty">No matching supplier bills found.</p>}
+            {!purchaseBillsError && !filteredPurchaseBills.length && <p className="cg-supplier-empty">No matching supplier bills found.</p>}
           </div>
         )}
       </section>
