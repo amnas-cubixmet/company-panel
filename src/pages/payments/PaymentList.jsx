@@ -185,7 +185,18 @@ export function PaymentList() {
           <div>
             <span className="payments-kicker">FINANCIAL PAYMENTS</span>
             <h1>Record Payment</h1>
-            <p>Record a customer receipt or make an outgoing payment against a real cash/bank account.</p>
+            <p>Receive customer invoice payments into an account; choose the correct linked module for supplier, expense and payroll payouts.</p>
+            <div className="payment-form-actions">
+              <button type="button" className="payments-secondary-btn" onClick={() => navigate('/suppliers/payments')}>
+                Pay Supplier / Settle Credit
+              </button>
+              <button type="button" className="payments-secondary-btn" onClick={() => navigate('/expenses')}>
+                Pay Workshop Expense
+              </button>
+              <button type="button" className="payments-secondary-btn" onClick={() => navigate('/payroll/daily-wages')}>
+                Pay Staff Daily Wages
+              </button>
+            </div>
           </div>
           <button type="button" className="payments-secondary-btn" onClick={() => navigate('/payments')}>
             <ArrowLeft size={16} aria-hidden="true" /> Back to Payments
@@ -262,10 +273,10 @@ export function PaymentList() {
               </label>
               {form.direction === 'OUT' && (
                 <>
-                  <label><span>Payment Category *</span>
+                  <label><span>Other Payment Category * (use Supplier Payments for supplier credit)</span>
                     <input required value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
                   </label>
-                  <label><span>Payee / Payment Details</span>
+                  <label><span>Other Payee / Details (not supplier, stock or payroll)</span>
                     <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Supplier, staff or other payee" />
                   </label>
                 </>
