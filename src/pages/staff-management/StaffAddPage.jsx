@@ -115,11 +115,13 @@ export const StaffAddPage = () => {
     setShareMessage('');
     setSharing(true);
     try {
-      await shareManualStaffInvite(
+      const handoff = await shareManualStaffInvite(
         () => staffService.sendLoginInvite(createdStaff.id),
         { phone: createdStaff.phone, staffName: createdStaff.name, workshopName: user?.company?.name },
       );
-      setShareMessage('WhatsApp opened — press Send manually to share the invitation.');
+      setShareMessage(handoff.localOnlyLink
+        ? 'WhatsApp opened, but the setup link uses localhost. Configure backend FRONTEND_URL with the public HTTPS company-panel URL before sharing.'
+        : 'WhatsApp opened — press Send manually to share the invitation.');
     } catch (cause) {
       setShareError(cause?.message || 'Unable to prepare WhatsApp sharing.');
     } finally {
