@@ -9,7 +9,7 @@ const primary = 'min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-semibold 
 const box = 'rounded-2xl border border-line bg-surface p-4';
 const today = () => new Date().toLocaleDateString('en-CA');
 const money = (value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(value || 0));
-const line = () => ({ itemId: '', description: '', quantity: '1', purchaseRate: '', gstRate: '0' });
+const line = () => ({ itemId: '', description: '', quantity: '1', purchaseRate: '', gstRate: '0', gstTreatment: '' });
 const paymentKey = () => globalThis.crypto?.randomUUID?.() || ('PAY-' + Date.now() + '-' + Math.random().toString(36).slice(2));
 
 export default function SupplierFinancePage() {
@@ -19,6 +19,7 @@ export default function SupplierFinancePage() {
   const [bills, setBills] = useState([]);
   const [payments, setPayments] = useState([]);
   const [inventory, setInventory] = useState([]);
+  const [gstOptions, setGSTOptions] = useState({ states: [], rates: [] });
   const [selectedSupplier, setSelectedSupplier] = useState('');
   const [summary, setSummary] = useState(null);
   const [ledger, setLedger] = useState(null);
@@ -29,7 +30,7 @@ export default function SupplierFinancePage() {
   const [supplierDraft, setSupplierDraft] = useState({ name: '', phone: '', gstNo: '', address: '' });
   const [accountDraft, setAccountDraft] = useState({ name: '', kind: 'Cash', openingBalance: '0' });
   const [draft, setDraft] = useState({
-    invoiceNumber: '', invoiceDate: today(), dueDate: '', receiveIntoStock: false,
+    invoiceNumber: '', invoiceDate: today(), dueDate: '', placeOfSupply: '', receiveIntoStock: false,
     lines: [line()],
   });
   const [purchasePayment, setPurchasePayment] = useState({
@@ -88,8 +89,17 @@ export default function SupplierFinancePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    finance.getGSTOptions()
+      .then(options => { if (active) setGSTOptions(options); })
+      .catch(() => { if (active) setGSTOptions({ states: [], rates: [] }); });
+    return () => { active = false; };
+  }, []);
+
   const selectSupplier = async (id) => {
     setSelectedSupplier(id);
+    setDraft(previous => ({ ...previous, placeOfSupply: '' }));
     setError('');
     setNotice('');
     if (!id) { setSummary(null); setLedger(null); return; }
@@ -127,14 +137,29 @@ export default function SupplierFinancePage() {
   const outstandingBills = supplierBills.filter((b) => b.postingStatus === 'Posted' && Number(b.outstanding) > 0);
   const advances = payments.filter((p) => p.supplierId === selectedSupplier && p.kind === 'Advance' && Number(p.unapplied) > 0);
   const account = accounts.find((a) => a.id === paymentDraft.accountId);
-  const selectedSupplierName = suppliers.find((s) => s.id === selectedSupplier)?.name || 'Supplier';
+  const selectedSupplierRecord = suppliers.find((record) => record.id === selectedSupplier);
+  const selectedSupplierName = selectedSupplierRecord?.name || 'Supplier';
+  const supplierGSTIN = String(selectedSupplierRecord?.gstin || selectedSupplierRecord?.gstNo || '').trim().toUpperCase();
+  const purchaseTaxMode = !draft.placeOfSupply ? 'unselected' :
+    !supplierGSTIN ? 'unregistered' :
+      supplierGSTIN.slice(0, 2) === draft.placeOfSupply ? 'cgst_sgst' : 'igst';
+  const stateTaxLabel = ['04', '26', '31', '35', '38'].includes(draft.placeOfSupply) ? 'UTGST' : 'SGST';
   const posting = Boolean(busy);
-  const purchaseLines = useMemo(() => draft.lines.map((row) => {
-    const subtotal = Math.round((Number(row.quantity) || 0) * (Number(row.purchaseRate) || 0) * 100) / 100;
-    const gst = Math.round(subtotal * (Number(row.gstRate) || 0)) / 100;
-    return Math.round((subtotal + gst) * 100) / 100;
-  }), [draft.lines]);
+  // Preview only. Backend Decimal snapshots are authoritative and can differ by paise.
+  const purchaseTaxLines = useMemo(() => draft.lines.map((row) => {
+    const round = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
+    const subtotal = round((Number(row.quantity) || 0) * (Number(row.purchaseRate) || 0));
+    const rate = Number(row.gstRate) || 0;
+    const half = purchaseTaxMode === 'cgst_sgst' ? round(subtotal * rate / 200) : 0;
+    const igst = purchaseTaxMode === 'igst' ? round(subtotal * rate / 100) : 0;
+    const tax = purchaseTaxMode === 'unselected' ? round(subtotal * rate / 100) : 2 * half + igst;
+    return { subtotal, cgst: half, stateTax: half, igst, total: round(subtotal + tax) };
+  }), [draft.lines, purchaseTaxMode]);
+  const purchaseLines = purchaseTaxLines.map((item) => item.total);
   const purchaseTotal = purchaseLines.reduce((sum, amount) => sum + amount, 0);
+  const purchaseCGST = purchaseTaxLines.reduce((sum, item) => sum + item.cgst, 0);
+  const purchaseStateTax = purchaseTaxLines.reduce((sum, item) => sum + item.stateTax, 0);
+  const purchaseIGST = purchaseTaxLines.reduce((sum, item) => sum + item.igst, 0);
   const paidNow = purchasePayment.mode === 'Credit' ? 0
     : purchasePayment.mode === 'Full Paid' ? purchaseTotal : num(purchasePayment.amount);
   const newCredit = Math.max(0, purchaseTotal - paidNow);
@@ -161,6 +186,22 @@ export default function SupplierFinancePage() {
   const createBill = (event) => {
     event.preventDefault();
     const postNow = event.nativeEvent.submitter?.value === 'post';
+    if (!draft.placeOfSupply) {
+      setError('Select the legal Place of Supply before saving this purchase.');
+      return;
+    }
+    if (supplierGSTIN && !/^[0-9]{2}[A-Z0-9]{13}$/.test(supplierGSTIN)) {
+      setError('Verify the supplier GSTIN before applying GST.');
+      return;
+    }
+    if (draft.lines.some(row => Number(row.gstRate) === 0 && purchaseTaxMode !== 'unregistered' && !row.gstTreatment)) {
+      setError('Classify each 0% GST item as Exempt, Nil-rated, Zero-rated or Non-GST.');
+      return;
+    }
+    if (draft.lines.some(row => Number(row.gstRate) > 0 && purchaseTaxMode === 'unregistered')) {
+      setError('An unregistered supplier cannot charge GST.');
+      return;
+    }
     if (postNow && (!Number.isFinite(paidNow) || paidNow < 0 ||
         paidNow > purchaseTotal + 0.001 || (purchasePayment.mode === 'Partial Paid' && paidNow <= 0))) {
       setError('Paid Now must be positive and cannot exceed the Purchase Total.');
@@ -191,6 +232,7 @@ export default function SupplierFinancePage() {
       await finance.createBill({
         supplierId: selectedSupplier, invoiceNumber: draft.invoiceNumber.trim(),
         invoiceDate: draft.invoiceDate, dueDate: draft.dueDate || null,
+        placeOfSupply: draft.placeOfSupply,
         receiveIntoStock: draft.receiveIntoStock, postNow,
         ...(payment ? { payment } : {}),
         items: draft.lines.map((row) => ({
@@ -200,7 +242,7 @@ export default function SupplierFinancePage() {
       });
       purchaseRequestKey.current = paymentKey();
       setPurchasePayment((prev) => ({ ...prev, mode: 'Credit', amount: '', reference: '', lineAmounts: {} }));
-      setDraft({ invoiceNumber: '', invoiceDate: today(), dueDate: '', receiveIntoStock: false, lines: [line()] });
+      setDraft({ invoiceNumber: '', invoiceDate: today(), dueDate: '', placeOfSupply: draft.placeOfSupply, receiveIntoStock: false, lines: [line()] });
       setActiveTab('overview');
     }, postNow
       ? 'Purchase posted: inventory, payable and any payment were committed together.'
