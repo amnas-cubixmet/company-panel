@@ -6,6 +6,7 @@ import {
   Building2,
   CalendarDays,
   Clock3,
+  Copy,
   FilePlus2,
   FileText,
   Gauge,
@@ -35,7 +36,7 @@ import { attendanceManagerService } from '../../../services/attendanceManager.se
 import { jobService } from '../../../services/job.service';
 import { roleService } from '../../../services/role.service';
 import { staffService } from '../../../services/staff.service';
-import { shareManualStaffInvite } from '../../../utils/staffManualInvite';
+import { copyManualStaffInvite, shareManualStaffInvite } from '../../../utils/staffManualInvite';
 import '../../../styles/staff-mobile-onboarding.css';
 import { staffManagementService } from '../../../services/staffManagement.service';
 
@@ -432,6 +433,25 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
     }
   };
 
+  const handleCopyInvite = async () => {
+    if (inviteBusy || !canManageLogin || !staff?.whatsappConsent) return;
+    setInviteBusy(true);
+    setInviteError('');
+    setInviteNotice('');
+    try {
+      await copyManualStaffInvite(
+        () => staffService.sendLoginInvite(staff.id),
+        { phone: staff.phone, staffName: staff.name, workshopName: user?.company?.name },
+      );
+      setInviteNotice('Setup message copied. Paste it into the staff WhatsApp chat and manually press Send.');
+      await refreshAll();
+    } catch (cause) {
+      setInviteError(staffInviteErrorMessage(cause));
+    } finally {
+      setInviteBusy(false);
+    }
+  };
+
   const handleToggleAccount = async () => {
     try {
       await staffService.setLoginAccess(staff.id, staff.loginStatus === 'Disabled' || staff.loginStatus === 'Not Invited');
@@ -534,6 +554,11 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
                   className="staff360-secondary-button">
                   <Send size={14}/>
                   {staff.loginStatus === 'Active' ? 'Reset via WhatsApp' : 'Resend via WhatsApp'}
+                </button>
+                <button type="button" className="staff360-secondary-button"
+                  disabled={inviteBusy || staff.loginStatus === 'Disabled' || !staff.whatsappConsent}
+                  onClick={handleCopyInvite}>
+                  <Copy size={14}/> Copy Setup Message
                 </button>
                 <button type="button" onClick={handleToggleAccount} className="staff360-secondary-button">
                   {staff.loginStatus === 'Disabled' ? <Unlock size={14}/> : <Lock size={14}/>}

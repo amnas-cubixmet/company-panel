@@ -33,9 +33,6 @@ export const StaffProfileEditSheet = ({
       employmentStatus: staff.employmentStatus || 'Active',
       whatsappConsent: Boolean(staff.whatsappConsent),
       whatsappConsentSource: staff.whatsappConsentSource || '',
-      emergencyContact: staff.emergencyContact || '',
-      address: staff.address || '',
-      notes: staff.notes || '',
     });
 
     const currentNames = new Set(staff.skills || []);
@@ -65,6 +62,14 @@ export const StaffProfileEditSheet = ({
       showFormFieldError(formRef.current, 'name', 'Full name is required.');
       return;
     }
+    if (form.phone?.trim() && !/^\+[1-9]\d{7,14}$/.test(form.phone.replace(/[\s().-]/g, ''))) {
+      showFormFieldError(formRef.current, 'phone', 'Enter a valid international mobile number.');
+      return;
+    }
+    if (canAssignRole && (!form.roleId || !roles.some(role => String(role.id) === String(form.roleId)))) {
+      showFormFieldError(formRef.current, 'role', 'Choose an active company role.');
+      return;
+    }
     if (canAssignRole && form.whatsappConsent && !form.whatsappConsentSource?.trim()) {
       showFormFieldError(formRef.current, 'whatsappConsentSource', 'Select how WhatsApp consent was recorded.');
       return;
@@ -73,7 +78,10 @@ export const StaffProfileEditSheet = ({
     setError('');
     try {
       await onSave({
-        ...Object.fromEntries(Object.entries(form).filter(([key]) => canAssignRole || !['role', 'roleId', 'whatsappConsent', 'whatsappConsentSource'].includes(key))),
+        ...Object.fromEntries(Object.entries(form).filter(([key]) =>
+          (canAssignRole || !['role', 'roleId', 'whatsappConsent', 'whatsappConsentSource'].includes(key))
+          && !['email', 'designation', 'emergencyContact', 'address', 'notes'].includes(key)
+        )),
         teamId: form.teamId || null,
         shiftId: form.shiftId || null,
         skillIds: skills
@@ -140,10 +148,6 @@ export const StaffProfileEditSheet = ({
             </select>
           </label>
 
-          <label>Emergency Contact<input value={form.emergencyContact || ''} onChange={(e) => set('emergencyContact', e.target.value)} /></label>
-
-          <label className="is-wide">Address<textarea rows={3} value={form.address || ''} onChange={(e) => set('address', e.target.value)} /></label>
-          <label className="is-wide">Notes<textarea rows={3} value={form.notes || ''} onChange={(e) => set('notes', e.target.value)} /></label>
         </div>
 
         {canAssignRole && (
@@ -167,10 +171,6 @@ export const StaffProfileEditSheet = ({
           </div>
         )}
 
-        <p className="staff-profile-edit-pay-note">
-          Pay type and rates are managed in the staff profile's Payroll tab.
-          Use Change Pay Configuration there to preserve effective-dated payroll history.
-        </p>
 
         <div className="staff-profile-edit-skills">
           <span>Skills</span>

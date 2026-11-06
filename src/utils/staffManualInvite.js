@@ -67,3 +67,21 @@ export const shareManualStaffInvite = async (getInvitation, details) => {
     throw error;
   }
 };
+
+/** Explicit admin-only fallback when opening WhatsApp is blocked.
+ * Keep the one-use capability exclusively in a synchronous clipboard gesture
+ * after authorization; never add the message/link to React state or URLs.
+ */
+export const copyManualStaffInvite = async (getInvitation, details) => {
+  const invitation = await getInvitation();
+  if (!invitation || invitation.whatsappInviteStatus !== 'manual') {
+    throw new Error('Manual invitation is not ready. Try again.');
+  }
+  const whatsappUrl = buildStaffWhatsAppUrl({ ...details, setupLink: invitation.setupLink });
+  const text = new URL(whatsappUrl).searchParams.get('text');
+  if (!text || typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+    throw new Error('Clipboard is unavailable. Use Share on WhatsApp instead.');
+  }
+  await navigator.clipboard.writeText(text);
+  return { status: 'copied', expiresAt: invitation.expiresAt };
+};
