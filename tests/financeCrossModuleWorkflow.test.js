@@ -48,4 +48,9 @@ test('customer, supplier and expense forms use canonical account-linked payment 
   assert.match(supplier, /Pay Now \/ Settle Multiple Bills/);
   assert.match(payments, /Pay Supplier \/ Settle Credit/);
   assert.match(expenses, /supplier bill must never be recorded again/);
+  assert.match(expenses, /getPaymentActivity/);
+  assert.match(expenses, /supplierPurchases/);
+  assert.match(expenses, /supplierPayments/);
+  assert.match(expenses, /supplierOutstanding/);
+  assert.match(expenses, /Linked supplier purchase accounting/);
 });
