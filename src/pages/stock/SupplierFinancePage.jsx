@@ -733,24 +733,24 @@ export default function SupplierFinancePage({ section = '' }) {
       )}
 
       {activeTab === 'bill' && canCreateBill && (
-        <form className={box + ' grid gap-4'} onSubmit={createBill}>
-          <h2 className="text-lg font-semibold">New Supplier Purchase — Draft</h2>
+        <form className={box + ' cg-supplier-purchase-form grid gap-4'} onSubmit={createBill}>
+          <h2 className="text-lg font-semibold">New Purchase Bill</h2>
           <div className="grid gap-3 sm:grid-cols-3">
-            <label className="grid gap-1 text-sm font-semibold">Supplier invoice number
+            <label className="cg-supplier-purchase-field grid gap-1 text-sm font-semibold">Supplier invoice number
               <input className={field} required maxLength={100} value={draft.invoiceNumber}
                 onChange={(event) => setDraft({ ...draft, invoiceNumber: event.target.value })}/>
             </label>
-            <label className="grid gap-1 text-sm font-semibold">Invoice date
+            <label className="cg-supplier-purchase-field grid gap-1 text-sm font-semibold">Invoice date
               <input className={field} type="date" required value={draft.invoiceDate}
                 onChange={(event) => setDraft({ ...draft, invoiceDate: event.target.value })}/>
             </label>
-            <label className="grid gap-1 text-sm font-semibold">Due date (optional)
+            <label className="cg-supplier-purchase-field grid gap-1 text-sm font-semibold">Due date (optional)
               <input className={field} type="date" value={draft.dueDate}
                 onChange={(event) => setDraft({ ...draft, dueDate: event.target.value })}/>
             </label>
           </div>
-          <section className="grid gap-2 rounded-xl border border-line p-3">
-            <label className="grid gap-1 text-sm font-semibold">Place of Supply *
+          <section className="cg-supplier-purchase-tax-location grid gap-2">
+            <label className="cg-supplier-purchase-field grid gap-1 text-sm font-semibold">Place of Supply *
               <select className={field} required value={draft.placeOfSupply}
                 onChange={event => setDraft(previous => ({ ...previous, placeOfSupply: event.target.value }))}>
                 <option value="">Select legal supply state / UT</option>
@@ -759,8 +759,7 @@ export default function SupplierFinancePage({ section = '' }) {
                 </option>)}
               </select>
             </label>
-            <p className="text-xs text-muted">Supplier GSTIN: {supplierGSTIN || 'Not recorded (unregistered supplier)'}.
-              Verify the legal Place of Supply and HSN/SAC rate before posting.</p>
+            <p className="cg-supplier-purchase-inline-info">Supplier GSTIN: <strong>{supplierGSTIN || 'Unregistered'}</strong></p>
             {draft.placeOfSupply && <p className="text-sm font-semibold" role="status">
               {purchaseTaxMode === 'cgst_sgst' ? 'Intra-state: CGST + ' + stateTaxLabel :
                 purchaseTaxMode === 'igst' ? 'Inter-state: IGST' : 'Unregistered supplier: no GST charged'}
@@ -769,14 +768,14 @@ export default function SupplierFinancePage({ section = '' }) {
               GST state options unavailable. Refresh before posting a purchase.
             </p>}
           </section>
-          <label className="flex items-center gap-2 text-sm">
+          <label className="cg-supplier-purchase-checkbox flex items-center gap-2 text-sm">
             <input type="checkbox" checked={draft.receiveIntoStock}
               onChange={(event) => setDraft({ ...draft, receiveIntoStock: event.target.checked })}/>
-            Receive products into Inventory only when this bill is posted
+            Receive products into inventory on posting
           </label>
           {draft.lines.map((row, index) => (
-            <div key={index} className="grid gap-2 rounded-xl border border-line p-3 sm:grid-cols-2 lg:grid-cols-5">
-              <label className="grid gap-1 text-sm lg:col-span-2">Inventory product (optional for direct purchases)
+            <div key={index} className="cg-supplier-purchase-line grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <label className="cg-supplier-purchase-field grid gap-1 text-sm lg:col-span-2">Inventory product (optional for direct purchases)
                 <select className={field} value={row.itemId}
                   onChange={(event) => {
                     const item = inventory.find((record) => record.id === event.target.value);
@@ -790,20 +789,20 @@ export default function SupplierFinancePage({ section = '' }) {
                   {inventory.map((item) => <option key={item.id} value={item.id}>{item.partName || item.name} · {item.sku}</option>)}
                 </select>
               </label>
-              <label className="grid gap-1 text-sm">Product name
+              <label className="cg-supplier-purchase-field grid gap-1 text-sm">Product name
                 <input className={field} required maxLength={180} value={row.description}
                   onChange={(event) => updateLine(index, { description: event.target.value })}/>
               </label>
-              <label className="grid gap-1 text-sm">Quantity
+              <label className="cg-supplier-purchase-field grid gap-1 text-sm">Quantity
                 <input className={field} type="number" required min="0.01" step="0.01" value={row.quantity}
                   onChange={(event) => updateLine(index, { quantity: event.target.value })}/>
               </label>
-              <label className="grid gap-1 text-sm">Purchase rate (₹)
+              <label className="cg-supplier-purchase-field grid gap-1 text-sm">Purchase rate (₹)
                 <input className={field} type="number" required min="0" step="0.01" value={row.purchaseRate}
                   onChange={(event) => updateLine(index, { purchaseRate: event.target.value })}/>
               </label>
               <div className="grid gap-2 text-sm lg:col-span-5">
-                <label className="grid gap-1">Manual GST Component *
+                <label className="cg-supplier-purchase-field grid gap-1">Manual GST Component *
                   <select className={field} value=""
                     onChange={event => {
                       const choice = event.target.value;
@@ -832,7 +831,7 @@ export default function SupplierFinancePage({ section = '' }) {
                   </select>
                 </label>
                 <div className="flex flex-wrap gap-2" aria-label="Selected GST components">
-                  {row.taxComponents.length === 0 && <span className="text-muted">No component selected</span>}
+                  
                   {row.taxComponents.map(choice => (
                     <span key={choice} className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2">
                       {supplierComponentChoices(stateTaxLabel).find(option => option.value === choice)?.label || choice}
@@ -846,7 +845,7 @@ export default function SupplierFinancePage({ section = '' }) {
                   ))}
                 </div>
                 {row.taxComponents.includes('zero') && purchaseTaxMode !== 'unregistered' &&
-                  <label className="grid gap-1">0% GST Treatment *
+                  <label className="cg-supplier-purchase-field grid gap-1">0% GST Treatment *
                     <select className={field} value={row.gstTreatment || ''}
                       onChange={event => updateLine(index, {
                         gstTreatment: event.target.value, zeroRatingBasis: '',
@@ -859,7 +858,7 @@ export default function SupplierFinancePage({ section = '' }) {
                     </select>
                   </label>}
                 {row.taxComponents.includes('zero') && row.gstTreatment === 'zero_rated' &&
-                  <label className="grid gap-1">Zero-rating basis *
+                  <label className="cg-supplier-purchase-field grid gap-1">Zero-rating basis *
                     <select className={field} value={row.zeroRatingBasis || ''}
                       onChange={event => updateLine(index, { zeroRatingBasis: event.target.value })}>
                       <option value="">Select basis</option>
@@ -867,15 +866,10 @@ export default function SupplierFinancePage({ section = '' }) {
                       <option value="sez">SEZ</option>
                     </select>
                   </label>}
-                <div className="text-xs text-muted" role="status">
-                  CGST {money(purchaseTaxLines[index]?.cgst)}
-                  {' · '}{stateTaxLabel} {money(purchaseTaxLines[index]?.stateTax)}
-                  {' · '}IGST {money(purchaseTaxLines[index]?.igst)}
-                  <strong className="ml-2 text-content">Line Total {money(purchaseLines[index])}</strong>
+                <div className="cg-supplier-purchase-line-total" role="status">
+                  <strong>Line Total {money(purchaseLines[index])}</strong>
                   {purchaseTaxLines[index]?.status !== 'valid' &&
-                    <p className="mt-1 text-red-600">{purchaseTaxLines[index]?.message}
-                      {' '}Draft may be saved, but posting is blocked until corrected.
-                    </p>}
+                    <p className="cg-supplier-purchase-validation" role="alert">{purchaseTaxLines[index]?.message} Posting is blocked until corrected.</p>}
                 </div>
               </div>
               {draft.lines.length > 1 && <button className={secondary} type="button"
@@ -893,21 +887,21 @@ export default function SupplierFinancePage({ section = '' }) {
             {purchaseTaxMode === 'igst' && <p className="text-sm">IGST: {money(purchaseIGST)}</p>}
             {purchaseTaxMode === 'unregistered' && <p className="text-sm">GST charged: {money(0)}</p>}
             {purchaseTaxMode === 'unselected' && <p className="text-sm text-muted">Select Place of Supply.</p>}
-            <p className="text-xs text-muted">Preview totals use only selected components.
-              CGST-only drafts never add SGST automatically. Valid statutory components
-              and HSN/SAC rate are required before posting. Django Decimal totals are authoritative.</p>
+            <details className="cg-supplier-purchase-tax-details">
+              <summary>GST calculation notes</summary>
+              <p>Only selected GST components are included. Verify HSN/SAC rates before posting.</p>
+            </details>
           </section>
           <section className="rounded-xl border border-line p-3 text-sm" aria-label="Purchase payment">
             <strong>Purchase Summary</strong>
             <p className="mt-2">Total: <strong>{money(purchaseTotal)}</strong>
               {' · '}Previous Due: <strong>{summary ? money(summary.outstanding) : 'Unavailable'}</strong>
             </p>
-            <p className="mt-1 text-xs text-muted">Choose how this purchase will be paid BEFORE posting it. Only a confirmed payment debits your account.</p>
+
           </section>
           <section className="grid gap-3 rounded-xl border border-line p-3" aria-label="Supplier purchase payment decision">
-            <h3 className="text-sm font-bold">Supplier & Payment Decision *</h3>
-            <p className="text-sm text-muted">Supplier: <strong>{selectedSupplierName || 'Choose supplier above'}</strong></p>
-            <label className="grid gap-1 text-sm font-semibold">Are you paying the supplier now?
+            <h3 className="text-sm font-bold">Payment</h3>
+            <label className="cg-supplier-purchase-field grid gap-1 text-sm font-semibold">Payment option
               <select className={field} value={purchaseIntent.mode}
                 onChange={(event) => setPurchaseIntent(previous => ({
                   ...previous, mode: event.target.value, amount: '',
@@ -920,7 +914,7 @@ export default function SupplierFinancePage({ section = '' }) {
             {purchaseIntent.mode !== 'Credit' && (
               <div className="grid gap-3 sm:grid-cols-2">
                 {purchaseIntent.mode === 'Partial Paid' && (
-                  <label className="grid gap-1 text-sm font-semibold">Amount to Pay Now (₹) *
+                  <label className="cg-supplier-purchase-field grid gap-1 text-sm font-semibold">Amount to Pay Now (₹) *
                     <input className={field} type="number" min="0.01" max={purchaseTotal}
                       step="0.01" value={purchaseIntent.amount}
                       onChange={(event) => setPurchaseIntent(previous => ({
@@ -928,7 +922,7 @@ export default function SupplierFinancePage({ section = '' }) {
                       }))}/>
                   </label>
                 )}
-                <label className="grid gap-1 text-sm font-semibold">Pay from Account *
+                <label className="cg-supplier-purchase-field grid gap-1 text-sm font-semibold">Pay from Account *
                   <select className={field} required value={purchaseIntent.accountId}
                     onChange={(event) => {
                       const account = accounts.find(item => String(item.id) === event.target.value);
@@ -946,7 +940,7 @@ export default function SupplierFinancePage({ section = '' }) {
                     ))}
                   </select>
                 </label>
-                <label className="grid gap-1 text-sm font-semibold">Payment Reference
+                <label className="cg-supplier-purchase-field grid gap-1 text-sm font-semibold">Payment Reference
                   <input className={field} maxLength={120} value={purchaseIntent.reference}
                     onChange={(event) => setPurchaseIntent(previous => ({
                       ...previous, reference: event.target.value,
@@ -962,9 +956,9 @@ export default function SupplierFinancePage({ section = '' }) {
                 (purchaseIntent.mode === 'Credit' ? 0 :
                 purchaseIntent.mode === 'Full Paid' ? purchaseTotal : num(purchaseIntent.amount))))}</strong></div>
             </div>
-            <p className="text-xs text-muted">Saving as Draft never posts a purchase or payment.
-              Confirm & Post Purchase creates the supplier bill and optional cash/bank debit atomically.</p>
+
           </section>
+          <p className="cg-supplier-purchase-submit-note">Save Draft does not post a purchase. Post Purchase records the payable and any selected payment.</p>
           <div className="grid gap-2 sm:grid-cols-2">
             <button className={secondary} disabled={posting || !selectedSupplier} type="submit" value="draft">
               Save Draft
