@@ -237,11 +237,11 @@ export default function SuppliersPage({ section = 'all' }) {
 
   // Purchase orders and posted supplier bills are distinct records; never sum them as
   // separate outstanding liabilities. Filter each data source independently.
-  const matchesPurchase = (number, rowSupplier, date, state) => {
+  const matchesPurchase = (number, rowSupplier, date, state, postingState = '') => {
     const supplierName = suppliers.find(row => String(row.id) === String(rowSupplier))?.name || '';
     const query = purchaseQuery.trim().toLowerCase();
     if (purchaseSupplier && String(rowSupplier) !== purchaseSupplier) return false;
-    if (purchaseStatus && String(state || '').toLowerCase() !== purchaseStatus) return false;
+    if (purchaseStatus && ![state, postingState].some(value => String(value || '').toLowerCase() === purchaseStatus)) return false;
     if (purchaseFrom && (!date || String(date).slice(0, 10) < purchaseFrom)) return false;
     if (purchaseTo && (!date || String(date).slice(0, 10) > purchaseTo)) return false;
     return !query || [number, supplierName, state].some(value => asText(value).toLowerCase().includes(query));
@@ -250,7 +250,7 @@ export default function SuppliersPage({ section = 'all' }) {
     matchesPurchase(order.purchaseNo || order.number, supplierIdOf(order),
       order.purchaseDate || order.orderDate || order.date || order.createdAt, order.status));
   const filteredPurchaseBills = purchaseBills.filter(bill =>
-    matchesPurchase(bill.invoiceNumber, bill.supplierId, bill.invoiceDate, bill.status));
+    matchesPurchase(bill.invoiceNumber, bill.supplierId, bill.invoiceDate, bill.status, bill.postingStatus));
 
   async function deactivateSupplier() {
     if (!supplier || !canEdit || actionBusy) return;

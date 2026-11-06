@@ -21,7 +21,7 @@ const artifacts = process.env.UI_ARTIFACT_DIR || join(tmpdir(), 'cubegears-ui-sm
 mkdirSync(artifacts, { recursive: true });
 const permissions = [...new Set([
   ...ROLE_PERMISSION_MODULES.flatMap(module => module.actions.map(action => `${module.key}.${action}`)),
-  'billing.view', 'billing.edit', 'company.manage', 'storage.view', 'storage.manage', 'attendance.self',
+  'billing.view', 'billing.edit', 'company.manage', 'storage.view', 'storage.manage', 'attendance.self', 'gstr.view',
 ])];
 const user = {id:'owner',name:'Workshop Owner',email:'owner@example.test',companyId:'company-a',
   company:{id:'company-a',name:'Test Workshop'},role:{name:'Owner',permissions:['*']},effectivePermissions:permissions,isCompanyOwner:true};
@@ -33,6 +33,14 @@ const bundles = [
 ];
 function fixture(path) {
   if(path==='/auth/me') return user;
+  // Zero-value synthetic GSTR preparation fixture; no tax liabilities are inferred.
+  if(path==='/gstr/overview') return {
+    company: { gstin: null },
+    overview: { taxable: '0.00', invoiceCount: 0, outputGST: '0.00',
+      eligibleITC: null, estimatedNetLiability: null, cgst: '0.00',
+      sgst: '0.00', igst: '0.00', purchaseGST: '0.00', verifiedPurchaseTax: null },
+    gstr1: { rows: [] }, gstr2b: { purchases: [] }, hsn: { rows: [] }, issues: [],
+  };
   if(path==='/billing/documents/gst-context') return {registered:false};
   if(path.startsWith('/billing/documents')) {
     const document={id:'INV-0001',number:'INV-0001',kind:'invoice',invoiceType:'regular',

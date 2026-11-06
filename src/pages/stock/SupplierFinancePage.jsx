@@ -130,6 +130,9 @@ export default function SupplierFinancePage({ section = '' }) {
 
   const selectSupplier = async (id) => {
     setSelectedSupplier(id);
+    setPaymentDraft(prev => ({ ...prev, amount: '', reference: '', allocations: {}, lineAllocations: {} }));
+    setPaymentErrors({});
+    requestKey.current = paymentKey();
     setDraft(previous => ({ ...previous, placeOfSupply: '' }));
     setError('');
     setNotice('');
@@ -784,7 +787,7 @@ export default function SupplierFinancePage({ section = '' }) {
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1 text-sm font-semibold">Payment type
               <select value={paymentDraft.kind} className={field} onChange={(event) =>
-                setPaymentDraft({ ...paymentDraft, kind: event.target.value, allocations: {} })}>
+                setPaymentDraft({ ...paymentDraft, kind: event.target.value, allocations: {}, lineAllocations: {} })}>
                 <option value="Payment">Pay Outstanding Bills</option>
                 <option value="Advance">Advance Payment</option>
               </select>
