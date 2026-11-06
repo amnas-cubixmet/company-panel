@@ -7,16 +7,17 @@ const add = readFileSync(new URL('../src/pages/staff-management/StaffAddPage.jsx
 const profile = readFileSync(new URL('../src/pages/staff-management/staff/StaffProfile.jsx', import.meta.url), 'utf8');
 const forgot = readFileSync(new URL('../src/pages/auth/ForgotPassword.jsx', import.meta.url), 'utf8');
 
-test('staff creation forwards actual delivery status to staff profile', () => {
-  assert.match(add, /created\?\.whatsappInviteStatus/);
-  assert.match(profile, /staffInviteDeliveryMessage\(location\.state\?\.whatsappInviteStatus\)/);
+test('staff creation has confirmed green success and no bearer token kept in state', () => {
+  assert.match(add, /Staff Created Successfully/);
+  assert.match(add, /unusedBearerLink/);
+  assert.match(add, /createdStaff\.whatsappInviteStatus/);
 });
 
 test('staff profile resend reports server status instead of claiming a sent email', () => {
-  assert.match(profile, /const result = await staffService\.sendLoginInvite\(staff\.id\)/);
-  assert.match(profile, /result\?\.whatsappInviteStatus/);
-  assert.match(profile, /result\?\.setupLink/);
-  assert.match(profile, /Copy Setup Link/);
+  assert.match(profile, /shareManualStaffInvite\(/);
+  assert.match(profile, /staffService\.sendLoginInvite\(staff\.id\)/);
+  assert.match(profile, /invite\?\.setupLink/);
+  assert.match(profile, /Copy Secure Setup Link/);
   assert.doesNotMatch(profile, /showToast\('Login invite sent by email\.'\)/);
 });
 
@@ -28,7 +29,7 @@ test('WhatsApp provider acceptance is distinct from delivery and failed messages
 });
 
 test('recovery page avoids account enumeration but still shows format errors inline', () => {
-  assert.match(forgot, /If an eligible account exists, password reset instructions will be sent/);
+  assert.match(forgot, /For a staff account, ask your workshop administrator/);
   assert.match(forgot, /mobile: backend\.mobile/);
   assert.match(forgot, /workshop: backend\.workshop/);
   assert.match(forgot, /auth-field-error/);
