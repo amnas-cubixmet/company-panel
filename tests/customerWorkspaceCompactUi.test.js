@@ -43,7 +43,7 @@ test('customer profile retains functional tabs and four supported KPI summaries'
   assert.match(profile, /\{ label: 'Invoices', value: invoicesAvailable \? String\(activeCustomerInvoices\(invoices\)\.length\)/);
   assert.match(profile, /\{ label: 'Outstanding', value: formatINR\(totalOutstanding\)/);
   assert.match(profile, /customerProfileFinancials\(invoices, invoicesAvailable\)/);
-  for (const key of ['overview', 'vehicles', 'jobs', 'service', 'invoices', 'payments', 'notes', 'documents', 'activity']) {
+  for (const key of ['overview', 'vehicles', 'jobs', 'service-history', 'invoices', 'payments', 'notes', 'documents', 'activity']) {
     assert.ok(profile.includes("id: '"+key+"'"), key);
   }
 });
