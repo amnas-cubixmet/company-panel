@@ -51,6 +51,7 @@ const SPECIAL_PATH_PERMISSIONS = [
   ['/payroll/payments', 'payroll.payments.view'],
   ['/staff-management', 'staff.view'],
   ['/payroll', 'payroll.view'],
+  ['/gstr', 'gstr.view'],
   ['/reports', 'reports.view'],
   ['/notifications', 'notifications.view'],
   ['/settings/customer-website', 'company.manage'],
