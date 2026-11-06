@@ -31,7 +31,8 @@ import { knownVehicleMoney, vehicleInvoiceRows, vehicleTotalPaid, latestFirstVeh
 const money = new Intl.NumberFormat('en-IN', {
   style: 'currency',
   currency: 'INR',
-  maximumFractionDigits: 0
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
 });
 
 const OPEN_JOB_STATUSES = new Set([
@@ -59,7 +60,7 @@ const tabs = [
 const Info = ({ label, value }) => (
   <div className="vehicle-info-card">
     <span>{label}</span>
-    <strong>{value || '—'}</strong>
+    <strong>{value === null || value === undefined || value === '' ? '—' : value}</strong>
   </div>
 );
 
@@ -265,7 +266,7 @@ export const VehicleDetails = () => {
               <User size={16}/>
               <div>
                 <strong>{customer?.name || vehicle.customerName || 'Unknown Customer'}</strong>
-                <span>{customer?.phone || 'No contact number'}</span>
+                <span>{customer?.phone || vehicle.customerPhone || 'No contact number'}</span>
               </div>
             </button>
 
@@ -276,8 +277,8 @@ export const VehicleDetails = () => {
               <Info label="Vehicle Status" value={vehicle.status}/>
             </div>
 
-            {customer?.phone ? (
-              <a className="vehicle-contact-button" href={`tel:${customer.phone}`}>
+            {(customer?.phone || vehicle.customerPhone) ? (
+              <a className="vehicle-contact-button" href={`tel:${customer?.phone || vehicle.customerPhone}`}>
                 <Phone size={14}/> Call Customer
               </a>
             ) : null}
