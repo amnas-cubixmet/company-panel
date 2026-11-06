@@ -8,6 +8,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
 import { clearFieldValidation, showFormFieldError, showServerFormErrors } from '../../utils/formValidation';
 import { shareManualStaffInvite } from '../../utils/staffManualInvite';
+import '../../styles/staff-mobile-onboarding.css';
 
 const statuses = ['Active', 'Probation', 'Notice Period', 'Inactive', 'Suspended', 'Resigned', 'Terminated'];
 const consentSources = [
