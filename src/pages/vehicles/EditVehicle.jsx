@@ -150,7 +150,7 @@ export const EditVehicle = () => {
                 placeholder="Search customer by name or phone..."
               />
             </div>
-            <Select label="Vehicle Status" value={formData.status} onChange={(e)=>setFormData({...formData,status:e.target.value})}>
+            <Select label="Vehicle Status" data-vehicle-field="status" error={fieldErrors.status} value={formData.status} onChange={(e)=>setFormData({...formData,status:e.target.value})}>
               <option>Active</option>
               <option>Inactive</option>
             </Select>
@@ -162,32 +162,32 @@ export const EditVehicle = () => {
             </div>
             <Input label="Make / Manufacturer" required data-vehicle-field="make" error={fieldErrors.make} value={formData.make} onChange={(e)=>setFormData({...formData,make:e.target.value})}/>
             <Input label="Model" required data-vehicle-field="model" error={fieldErrors.model} value={formData.model} onChange={(e)=>setFormData({...formData,model:e.target.value})}/>
-            <Input label="Variant / Edition" value={formData.variant} onChange={(e)=>setFormData({...formData,variant:e.target.value})}/>
-            <Input label="Manufacturing Year" value={formData.year} onChange={(e)=>setFormData({...formData,year:e.target.value})}/>
-            <Select label="Fuel Type" value={formData.fuelType} onChange={(e)=>setFormData({...formData,fuelType:e.target.value})}>
+            <Input label="Variant / Edition" data-vehicle-field="variant" error={fieldErrors.variant} value={formData.variant} onChange={(e)=>setFormData({...formData,variant:e.target.value})}/>
+            <Input label="Manufacturing Year" data-vehicle-field="year" error={fieldErrors.year} value={formData.year} onChange={(e)=>setFormData({...formData,year:e.target.value})}/>
+            <Select label="Fuel Type" data-vehicle-field="fuelType" error={fieldErrors.fuelType} value={formData.fuelType} onChange={(e)=>setFormData({...formData,fuelType:e.target.value})}>
               <option>Petrol</option>
               <option>Diesel</option>
               <option>EV / Electric</option>
               <option>CNG / Hybrid</option>
             </Select>
-            <Select label="Transmission" value={formData.transmission} onChange={(e)=>setFormData({...formData,transmission:e.target.value})}>
+            <Select label="Transmission" data-vehicle-field="transmission" error={fieldErrors.transmission} value={formData.transmission} onChange={(e)=>setFormData({...formData,transmission:e.target.value})}>
               <option>Manual</option>
               <option>Automatic</option>
               <option>CVT</option>
               <option>DCT</option>
             </Select>
-            <Input label="Exterior Colour" value={formData.color} onChange={(e)=>setFormData({...formData,color:e.target.value})}/>
-            <Input label="Current Odometer Reading" icon={Gauge} value={formData.odometer} onChange={(e)=>setFormData({...formData,odometer:e.target.value})}/>
-            <Input label="VIN / Chassis Number" value={formData.vin} onChange={(e)=>setFormData({...formData,vin:e.target.value})}/>
-            <Input label="Engine Number" value={formData.engineNo} onChange={(e)=>setFormData({...formData,engineNo:e.target.value})}/>
+            <Input label="Exterior Colour" data-vehicle-field="color" error={fieldErrors.color} value={formData.color} onChange={(e)=>setFormData({...formData,color:e.target.value})}/>
+            <Input label="Current Odometer Reading" data-vehicle-field="odometer" error={fieldErrors.odometer} icon={Gauge} value={formData.odometer} onChange={(e)=>setFormData({...formData,odometer:e.target.value})}/>
+            <Input label="VIN / Chassis Number" data-vehicle-field="vin" error={fieldErrors.vin} value={formData.vin} onChange={(e)=>setFormData({...formData,vin:e.target.value})}/>
+            <Input label="Engine Number" data-vehicle-field="engineNo" error={fieldErrors.engineNo} value={formData.engineNo} onChange={(e)=>setFormData({...formData,engineNo:e.target.value})}/>
           </FormSection>
 
           <FormSection title="Service & Insurance">
-            <Input label="Last Service Date" type="date" icon={Calendar} value={formData.lastServiceDate} onChange={(e)=>setFormData({...formData,lastServiceDate:e.target.value})}/>
-            <Input label="Next Service Due Date" type="date" icon={Calendar} value={formData.nextServiceDue} onChange={(e)=>setFormData({...formData,nextServiceDue:e.target.value})}/>
-            <Input label="Insurance Expiry Date" type="date" icon={ShieldCheck} value={formData.insuranceExpiry} onChange={(e)=>setFormData({...formData,insuranceExpiry:e.target.value})}/>
+            <Input label="Last Service Date" data-vehicle-field="lastServiceDate" error={fieldErrors.lastServiceDate} type="date" icon={Calendar} value={formData.lastServiceDate} onChange={(e)=>setFormData({...formData,lastServiceDate:e.target.value})}/>
+            <Input label="Next Service Due Date" data-vehicle-field="nextServiceDue" error={fieldErrors.nextServiceDue} type="date" icon={Calendar} value={formData.nextServiceDue} onChange={(e)=>setFormData({...formData,nextServiceDue:e.target.value})}/>
+            <Input label="Insurance Expiry Date" data-vehicle-field="insuranceExpiry" error={fieldErrors.insuranceExpiry} type="date" icon={ShieldCheck} value={formData.insuranceExpiry} onChange={(e)=>setFormData({...formData,insuranceExpiry:e.target.value})}/>
             <div className="form-grid-full">
-              <Textarea label="Vehicle Condition & Notes" rows={3} value={formData.notes} onChange={(e)=>setFormData({...formData,notes:e.target.value})}/>
+              <Textarea label="Vehicle Condition & Notes" data-vehicle-field="notes" error={fieldErrors.notes} rows={3} value={formData.notes} onChange={(e)=>setFormData({...formData,notes:e.target.value})}/>
             </div>
           </FormSection>
 
