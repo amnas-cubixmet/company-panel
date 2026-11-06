@@ -339,7 +339,7 @@
   align-items:end;
 }
 .cg-attendance-manager .am-report-filter label {display:grid;gap:5px;min-width:0}
-.cg-attendance-manager .am-report-filter label > span {font-size:13px !important}
+.cg-attendance-manager .am-report-filter label > span {font-size:14px !important}
 .cg-attendance-manager .am-report-count {min-height:44px;display:flex;align-items:center;gap:8px}
 .cg-attendance-manager .am-report-mobile-list {display:none}
 .cg-attendance-manager .am-report-mobile-card {

@@ -4,8 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { appConfirm } from '../../components/common/appDialogs';
 import { attendanceManagerService } from '../../services/attendanceManager.service';
-import { useAuth } from '../../hooks/useAuth';
-import { hasPermission } from '../../utils/permissions';
+import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { DailyWageNav, rupees } from './DailyWagePage';
 import {
   PAYROLL_MONTHS, filterOvertimeApprovals, pendingOvertime,
@@ -25,9 +24,9 @@ const showDate = value => {
 };
 
 export function OvertimeApprovalPage() {
-  const { user } = useAuth();
-  const canViewPayroll = hasPermission(user, 'payroll.view');
-  const canManageAttendance = hasPermission(user, 'attendance.manage');
+  const { can } = useFeatureAccess();
+  const canViewTeam = can('attendance.team.view');
+  const canApproveOvertime = can('attendance.overtime.approve');
   const [params, setParams] = useSearchParams();
   const month = params.get('month') || 'All';
   const year = params.get('year') || 'All';
@@ -47,13 +46,13 @@ export function OvertimeApprovalPage() {
   const [decisionError, setDecisionError] = useState('');
 
   const load = useCallback(async () => {
-    if (!canViewPayroll || !canManageAttendance) return [];
+    if (!canViewTeam) return [];
     const data = await attendanceManagerService.getApprovals();
     return pendingOvertime(Array.isArray(data) ? data : data?.results || []);
-  }, [canViewPayroll, canManageAttendance]);
+  }, [canViewTeam]);
 
   useEffect(() => {
-    if (!canViewPayroll || !canManageAttendance) { setLoading(false); return; }
+    if (!canViewTeam) { setLoading(false); return; }
     let mounted = true;
     setLoading(true);
     setLoadError('');
@@ -63,7 +62,7 @@ export function OvertimeApprovalPage() {
           error?.data?.message || error?.message || 'Unable to load overtime approvals.');
       }).finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
-  }, [load, refresh, canViewPayroll, canManageAttendance]);
+  }, [load, refresh, canViewTeam]);
 
   const rows = useMemo(() => filterOvertimeApprovals(requests, {
     month,year,branch,staff,search:query,
@@ -97,7 +96,7 @@ export function OvertimeApprovalPage() {
   };
 
   const openDecision = (row,action) => {
-    if (row.canReview === false) return;
+    if (!canApproveOvertime || row.canReview === false) return;
     setSelected(row);
     setDecision(action);
     setRate(row.rate > 0 ? String(row.rate) : '');
@@ -116,7 +115,7 @@ export function OvertimeApprovalPage() {
 
   const submitDecision = async event => {
     event.preventDefault();
-    if (!selected || !decision || saving) return;
+    if (!canApproveOvertime || !selected || !decision || saving) return;
     if (selected.canReview === false) {
       setDecisionError(selected.reviewBlockReason || 'Another authorized manager must review this request.');
       return;
@@ -161,7 +160,7 @@ export function OvertimeApprovalPage() {
     }
   };
 
-  if (!canViewPayroll) return <main className="dw-page"><p role="alert">Payroll View permission required.</p></main>;
+  if (!canViewTeam) return <main className="dw-page"><p role="alert">Team Attendance View permission required.</p></main>;
   return (
     <main className="dw-page dashboard-page dw-overtime-page">
       <header className="dw-header dashboard-heading">
@@ -173,9 +172,9 @@ export function OvertimeApprovalPage() {
         </button>
       </header>
       <DailyWageNav selected="overtime"/>
-      {!canManageAttendance ? (
+      {!canViewTeam ? (
         <section className="dw-card dw-overtime-info" role="alert">
-          Attendance Manage permission is required to view or approve overtime requests.
+          Team Attendance View permission is required to see overtime requests.
         </section>
       ) : (
         <>
@@ -240,7 +239,8 @@ export function OvertimeApprovalPage() {
                       <span>{row.rate > 0 ? `Saved rate ${rupees(row.rate)}/hr` : 'Hourly rate required'}</span>
                     </div>
                     <p className="dw-overtime-reason">{row.reason || 'No reason provided.'}</p>
-                    {row.canReview === false ?
+                    {!canApproveOvertime ?
+                      <p className="dw-overtime-blocked" role="status">Overtime Approval permission required to review this request.</p> : row.canReview === false ?
                       <p className="dw-overtime-blocked" role="status">
                         <ShieldCheck size={17}/>{row.reviewBlockReason || 'Another manager must review this request.'}
                       </p> :

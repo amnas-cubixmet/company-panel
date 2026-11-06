@@ -3,8 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CalendarCheck2, CheckCircle2, ClipboardList, History, Pencil, Plus, Wallet, WalletCards } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
-import { useAuth } from '../../hooks/useAuth';
-import { hasPermission } from '../../utils/permissions';
+import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { dailyWageService } from '../../services/dailyWage.service';
 import { DailyWageNav, rupees, todayISO } from './DailyWagePage';
 import './daily-wage.css';
@@ -30,9 +29,18 @@ export const DailyWageAccountPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
-  const canView = hasPermission(user, 'payroll.view');
-  const canEdit = hasPermission(user, 'payroll.edit');
+  const { can } = useFeatureAccess();
+  const canView = can('payroll.view');
+  const actionAccess = {
+    rate: can('payroll.rates.manage'),
+    attendance: can('payroll.wages.finalize'),
+    extra: can('payroll.extras.manage'),
+    adjustment: can('payroll.adjustments.manage'),
+    pay: can('payroll.payments.record'),
+  };
+  const canReviewExtra = can('payroll.extras.approve');
+  const canReversePayment = can('payroll.payments.reverse');
+  const canViewPayments = can('payroll.payments.view');
   const [account, setAccount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -68,7 +76,7 @@ export const DailyWageAccountPage = () => {
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!canEdit || saving || !modal) return;
+    if (!actionAccess[modal] || saving || !modal) return;
     setSaving(true);
     setError('');
     setNotice('');
@@ -107,7 +115,7 @@ export const DailyWageAccountPage = () => {
   };
 
   const review = async (row, status) => {
-    if (!canEdit || saving) return;
+    if (!canReviewExtra || saving) return;
     setSaving(true);
     setError('');
     try {
@@ -120,7 +128,7 @@ export const DailyWageAccountPage = () => {
   };
 
   const reverse = async (row) => {
-    if (!canEdit || saving) return;
+    if (!canReversePayment || saving) return;
     const reason = await appPrompt('Reason for reversing this payment:');
     if (!reason?.trim()) return;
     if (!await appConfirm('Reverse this payment? Its amount will become payable again.')) return;
@@ -156,9 +164,9 @@ export const DailyWageAccountPage = () => {
           <p>{account?.employee?.employeeCode || ''} · {account?.employee?.designation || 'Workshop Staff'} · Daily Wage Ledger</p>
         </div>
         <div className="dw-actions">
-          {canEdit && <button type="button" className="dw-button" onClick={() => open('rate')}><Pencil size={16}/> Edit Wage Rate</button>}
-          {canEdit && <button type="button" className="dw-button" onClick={() => open('attendance')}><CalendarCheck2 size={16}/> Finalize Attendance</button>}
-          {canEdit && <button type="button" className="dw-button is-primary" onClick={() => open('pay')} disabled={Number(account?.currentBalance || 0) <= 0}><Wallet size={16}/> Pay Wage</button>}
+          {actionAccess.rate && <button type="button" className="dw-button" onClick={() => open('rate')}><Pencil size={16}/> Edit Wage Rate</button>}
+          {actionAccess.attendance && <button type="button" className="dw-button" onClick={() => open('attendance')}><CalendarCheck2 size={16}/> Finalize Attendance</button>}
+          {actionAccess.pay && <button type="button" className="dw-button is-primary" onClick={() => open('pay')} disabled={Number(account?.currentBalance || 0) <= 0}><Wallet size={16}/> Pay Wage</button>}
         </div>
       </header>
       <DailyWageNav/>
@@ -182,8 +190,8 @@ export const DailyWageAccountPage = () => {
             )) : <span>No daily wage rate set. Configure one to start posting attendance wages.</span>}
           </div>
           <div className="dw-actions">
-            {canEdit && <button type="button" className="dw-button is-primary" onClick={() => open('extra')}><Plus size={15}/> Add Extra Earning</button>}
-            {canEdit && <button type="button" className="dw-button" onClick={() => open('adjustment')}><Pencil size={15}/> Adjustment</button>}
+            {actionAccess.extra && <button type="button" className="dw-button is-primary" onClick={() => open('extra')}><Plus size={15}/> Add Extra Earning</button>}
+            {actionAccess.adjustment && <button type="button" className="dw-button" onClick={() => open('adjustment')}><Pencil size={15}/> Adjustment</button>}
             <Link to="/payroll/daily-wages/history" className="dw-button"><History size={15}/> All Daily History</Link>
           </div>
         </section>
@@ -192,7 +200,7 @@ export const DailyWageAccountPage = () => {
             <div><h2>Wage Ledger & Activity</h2><p>Posted attendance, approved earnings and permanent payment history.</p></div>
           </div>
           <nav className="dw-subtabs" aria-label="Wage account records">
-            {panels.map(([id, label, Icon]) => (
+            {panels.filter(([id]) => id !== 'payments' || canViewPayments).map(([id, label, Icon]) => (
               <button type="button" key={id} className={section === id ? 'is-active' : ''} onClick={() => { setSection(id); setFilter('All'); }}>
                 <Icon size={15}/>{label}
               </button>
@@ -225,7 +233,7 @@ export const DailyWageAccountPage = () => {
                     <td data-label="Date">{row.date}</td><td data-label="Category">{row.category}</td>
                     <td data-label="Reason">{row.reason}</td><td data-label="Amount"><strong>{rupees(row.amount)}</strong></td>
                     <td data-label="Status"><span className={row.status === 'Approved' ? 'dw-ok' : 'dw-pending'}>{row.status}</span></td>
-                    <td data-label="Action">{row.status === 'Pending' && canEdit ? <div className="dw-actions">
+                    <td data-label="Action">{row.status === 'Pending' && canReviewExtra ? <div className="dw-actions">
                       <button type="button" className="dw-button is-primary" disabled={saving} onClick={() => review(row, 'Approved')}>Approve</button>
                       <button type="button" className="dw-button" disabled={saving} onClick={() => review(row, 'Rejected')}>Reject</button>
                     </div> : '—'}</td>
@@ -234,7 +242,7 @@ export const DailyWageAccountPage = () => {
                     <td data-label="Date">{row.date}</td><td data-label="Amount"><strong>{rupees(row.amount)}</strong></td>
                     <td data-label="Method">{row.method}</td><td data-label="Reference">{row.reference || '—'}</td>
                     <td data-label="Status"><span className={row.reversed ? 'dw-pending' : 'dw-ok'}>{row.reversed ? 'Reversed' : 'Paid'}</span></td>
-                    <td data-label="Action">{!row.reversed && canEdit ? <button type="button" className="dw-button" disabled={saving} onClick={() => reverse(row)}>Reverse</button> : '—'}</td>
+                    <td data-label="Action">{!row.reversed && canReversePayment ? <button type="button" className="dw-button" disabled={saving} onClick={() => reverse(row)}>Reverse</button> : '—'}</td>
                   </tr>)}
                   {section === 'audit' && selectedRows.map((row) => <tr key={row.id}>
                     <td data-label="Date">{row.date || row.createdAt?.slice(0, 10)}</td>

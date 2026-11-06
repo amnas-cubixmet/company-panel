@@ -2,8 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Banknote, CalendarCheck2, CheckCircle2, Clock3, History, Search, Users, Wallet } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { dailyWageService } from '../../services/dailyWage.service';
-import { useAuth } from '../../hooks/useAuth';
-import { hasPermission } from '../../utils/permissions';
+import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import './daily-wage.css';
 import './daily-wage-readable.css';
 import './daily-wage-compact.css';
@@ -60,9 +59,9 @@ const Metric = ({ label, value, Icon, meta }) => (
 const Empty = ({ text }) => <div className="dw-empty">{text}</div>;
 
 export const DailyWagePage = ({ mode = 'overview' }) => {
-  const { user } = useAuth();
+  const { can } = useFeatureAccess();
   const navigate = useNavigate();
-  const canView = hasPermission(user, 'payroll.view');
+  const canView = can(mode === 'payments' ? 'payroll.payments.view' : 'payroll.view');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
