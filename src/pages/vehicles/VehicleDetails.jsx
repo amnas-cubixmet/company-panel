@@ -4,7 +4,6 @@ import { hasPermission } from '../../utils/permissions';
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  AlertTriangle,
   ArrowLeft,
   CalendarClock,
   Car,
@@ -13,7 +12,6 @@ import {
   FileText,
   Gauge,
   IndianRupee,
-  PackageCheck,
   Phone,
   ShieldCheck,
   Trash2,
@@ -27,6 +25,8 @@ import { jobService } from '../../services/job.service';
 import '../../styles/vehicle-management.css';
 import '../../styles/vehicle-polish.css';
 import '../../styles/vehicle-readable.css';
+import '../../styles/vehicle-compact-cleanup.css';
+import { knownVehicleMoney, vehicleInvoiceRows, vehicleTotalPaid, latestFirstVehicleJobs } from './vehicleProfileFinancials';
 
 const money = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -104,7 +104,7 @@ export const VehicleDetails = () => {
         if (alive) {
           setVehicle(nextVehicle);
           setCustomer(nextCustomer);
-          setHistory(Array.isArray(nextHistory) ? nextHistory : []);
+          setHistory(latestFirstVehicleJobs(Array.isArray(nextHistory) ? nextHistory : []));
         }
       } catch (loadError) {
         if (alive) setError(loadError?.message || 'Unable to load this vehicle.');
@@ -135,26 +135,9 @@ export const VehicleDetails = () => {
     [history]
   );
 
-  const invoices = useMemo(
-    () => history
-      .filter((job) => job.billing?.invoiceNumber || job.billing?.invoiceTotal || job.estimates?.length)
-      .map((job) => ({
-        jobId: job.id,
-        jobNumber: job.jobNumber || job.id,
-        invoiceNo: job.billing?.invoiceNumber || 'Not generated',
-        date: job.createdDate,
-        total: Number(job.billing?.invoiceTotal || job.estimates?.at(-1)?.grandTotal || 0),
-        paid: Number(job.billing?.paidAmount || 0),
-        balance: Number(job.billing?.outstandingBalance || 0),
-        status: job.paymentStatus || 'Pending'
-      })),
-    [history]
-  );
-
-  const totalSpend = useMemo(
-    () => invoices.reduce((sum, invoice) => sum + invoice.total, 0),
-    [invoices]
-  );
+  const invoices = useMemo(() => vehicleInvoiceRows(history), [history]);
+  const totalSpend = useMemo(() => vehicleTotalPaid(invoices), [invoices]);
+  const displayMoney = (value) => value === null ? '—' : money.format(value);
 
   const latestJob = history[0] || null;
 
@@ -223,8 +206,8 @@ export const VehicleDetails = () => {
       <div className="vehicle-profile-kpis">
         <div><Gauge size={15}/><span>Odometer</span><strong>{latestJob?.kilometre || vehicle.odometer || '—'}</strong></div>
         <div><Wrench size={15}/><span>Service Visits</span><strong>{history.length}</strong></div>
-        <div><PackageCheck size={15}/><span>Parts Replaced</span><strong>{parts.length}</strong></div>
-        <div><IndianRupee size={15}/><span>Total Spend</span><strong>{money.format(totalSpend)}</strong></div>
+        <div><ClipboardList size={15}/><span>Current Job</span><strong>{openJob ? (openJob.jobNumber || openJob.id) : '—'}</strong></div>
+        <div><IndianRupee size={15}/><span>Total Paid</span><strong>{displayMoney(totalSpend)}</strong></div>
       </div>
 
       <nav className="vehicle-profile-tabs scroll-hidden" aria-label="Vehicle information sections">
@@ -247,7 +230,6 @@ export const VehicleDetails = () => {
             <div className="vehicle-section-header">
               <div>
                 <h2>Vehicle Technical Profile</h2>
-                <p>Registration, engine and workshop reference information.</p>
               </div>
               <Car size={18}/>
             </div>
@@ -270,7 +252,6 @@ export const VehicleDetails = () => {
             <div className="vehicle-section-header">
               <div>
                 <h2>Owner & Service</h2>
-                <p>Customer, service schedule and insurance status.</p>
               </div>
               <User size={18}/>
             </div>
@@ -307,7 +288,6 @@ export const VehicleDetails = () => {
               <div className="vehicle-section-header">
                 <div>
                   <h2>Vehicle Notes</h2>
-                  <p>Condition, preferences and workshop instructions.</p>
                 </div>
               </div>
               <div className="vehicle-note-box">{vehicle.notes}</div>
@@ -325,7 +305,6 @@ export const VehicleDetails = () => {
           <div className="vehicle-section-header">
             <div>
               <h2>Service & Job Card History</h2>
-              <p>Repairs, labour, mileage and completed workshop visits.</p>
             </div>
           </div>
 
@@ -344,7 +323,7 @@ export const VehicleDetails = () => {
                   <span>{(job.complaints || []).length} complaint(s)</span>
                   <span>{(job.labourRecords || job.services || []).length} labour item(s)</span>
                   <span>{(job.partsUsed || []).length} part(s)</span>
-                  <span>{money.format(job.billing?.invoiceTotal || job.estimates?.at(-1)?.grandTotal || 0)}</span>
+                  {job.billing?.invoiceNumber && <span>Invoice: {displayMoney(knownVehicleMoney(job.billing.invoiceTotal))}</span>}
                 </div>
               </button>
             ))}
@@ -358,7 +337,6 @@ export const VehicleDetails = () => {
           <div className="vehicle-section-header">
             <div>
               <h2>Parts Replaced</h2>
-              <p>Workshop stock and outside-purchase parts used on this vehicle.</p>
             </div>
           </div>
 
@@ -370,7 +348,7 @@ export const VehicleDetails = () => {
                   <span>{part.sku || 'No SKU'} · {part.date}</span>
                 </div>
                 <div className="vehicle-part-card__meta">
-                  <span>Job <b>{part.jobNumber}</b></span>
+                  <button type="button" className="vehicle-part-job-link" onClick={() => navigate(`/jobs/${part.jobId}/overview`)}>Job {part.jobNumber}</button>
                   <span>Qty <b>{part.qty || part.quantity || 1}</b></span>
                   <span>Price <b>{money.format(part.total || part.unitPrice || 0)}</b></span>
                 </div>
@@ -386,7 +364,6 @@ export const VehicleDetails = () => {
           <div className="vehicle-section-header">
             <div>
               <h2>Invoices & Payment Ledger</h2>
-              <p>Vehicle-level billing and outstanding balances.</p>
             </div>
             <FileText size={18}/>
           </div>
@@ -398,9 +375,9 @@ export const VehicleDetails = () => {
                   <strong>{invoice.invoiceNo}</strong>
                   <span>{invoice.jobNumber} · {invoice.date}</span>
                 </div>
-                <div><span>Total</span><b>{money.format(invoice.total)}</b></div>
-                <div><span>Paid</span><b>{money.format(invoice.paid)}</b></div>
-                <div><span>Balance</span><b>{money.format(invoice.balance)}</b></div>
+                <div><span>Total</span><b>{displayMoney(invoice.total)}</b></div>
+                <div><span>Paid</span><b>{displayMoney(invoice.paid)}</b></div>
+                <div><span>Balance</span><b>{displayMoney(invoice.balance)}</b></div>
                 <em>{invoice.status}</em>
               </button>
             ))}
@@ -425,18 +402,10 @@ export const VehicleDetails = () => {
             <div>
               <strong>Insurance Expiry</strong>
               <span>{vehicle.insuranceExpiry || 'Not recorded'}</span>
-              <small>Update policy details before expiry.</small>
             </div>
           </article>
 
-          <article className="vehicle-reminder-card">
-            <AlertTriangle size={18}/>
-            <div>
-              <strong>Registration / Documents</strong>
-              <span>Check RC and vehicle documents</span>
-              <small>Documents can also be stored in the Customer profile.</small>
-            </div>
-          </article>
+
         </div>
       ) : null}
 
