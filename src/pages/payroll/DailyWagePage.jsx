@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Banknote, CalendarCheck2, CheckCircle2, Clock3, History, Search, Users, Wallet } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { dailyWageService } from '../../services/dailyWage.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import './daily-wage.css';
 import './daily-wage-readable.css';
+import './daily-wage-compact.css';
 
 export const rupees = (value) => new Intl.NumberFormat('en-IN', {
   style: 'currency', currency: 'INR', maximumFractionDigits: 2,
@@ -25,10 +26,17 @@ const sections = [
 export function DailyWageNav({ selected = 'overview' }) {
   const { search } = useLocation();
   const { can } = useFeatureAccess();
+  const navRef = useRef(null);
+  useEffect(() => {
+    const nav = navRef.current;
+    const active = nav?.querySelector('[aria-current="page"]');
+    if (!nav || !active) return;
+    nav.scrollLeft = Math.max(0, active.offsetLeft - nav.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2);
+  }, [selected]);
   // Moving between the payroll views must retain the user's selected
   // month, year, branch and staff query parameters.
   return (
-    <nav className="dw-nav" aria-label="Daily Wage Navigation">
+    <nav ref={navRef} className="dw-nav" aria-label="Payroll navigation">
       {sections.filter(([id]) => id === 'overtime' ? can('attendance.team.view') : id === 'payments' ? can('payroll.payments.view') : can('payroll.view')).map(([id, title, href, Icon]) => (
         <Link key={id} to={`${href}${search}`} aria-current={selected === id ? 'page' : undefined} className={selected === id ? 'is-active' : ''}>
           <Icon size={16} aria-hidden="true"/>{title}
@@ -45,7 +53,7 @@ const Metric = ({ label, value, Icon, meta }) => (
       <span className="dw-metric-icon"><Icon size={18} aria-hidden="true"/></span>
     </div>
     <strong>{value}</strong>
-    <small>{meta}</small>
+    {meta && <small>{meta}</small>}
   </article>
 );
 
@@ -107,14 +115,16 @@ export const DailyWagePage = ({ mode = 'overview' }) => {
     <main className="dw-page dashboard-page">
       <header className="dw-header dashboard-heading">
         <div className="dashboard-heading-copy">
-          <h1>{mode === 'overview' ? 'Daily Wage Payroll' : mode === 'history' ? 'Daily Wage History' : 'Wage Payments'}</h1>
-          <p>Attendance-based daily earnings · No monthly salary or automatic commission</p>
+          <h1>{mode === 'overview' ? 'Daily Wages' : mode === 'history' ? 'Daily Wage History' : 'Wage Payments'}</h1>
         </div>
         <button className="dw-button" type="button" onClick={() => setRefreshToken((v) => v + 1)}>
           <Clock3 size={16}/> Refresh
         </button>
       </header>
       <DailyWageNav selected={mode}/>
+      {mode === 'overview' && <details className="dw-payroll-help"><summary>About daily wages</summary>
+        <p>Daily wage earnings are attendance-based. Only finalized attendance contributes to daily totals; monthly salary and automatic commission are not included.</p>
+      </details>}
       {mode === 'overview' && data && (
         <div className="dw-metrics">
           <Metric label="Workers" value={data.totalWorkers || 0} Icon={Users} meta="Company / branch employees"/>
@@ -135,9 +145,9 @@ export const DailyWagePage = ({ mode = 'overview' }) => {
         <div className="dw-card-head">
           <div>
             <h2 id="dw-records-heading">{mode === 'overview' ? 'Employee Wage Accounts' : mode === 'history' ? 'Posted Daily Earnings' : 'Wage Payment Transactions'}</h2>
-            <p>{mode === 'overview' ? 'Select a worker to approve days, add earnings or settle unpaid wages.' : 'Permanent transaction history for the selected company.'}</p>
+
           </div>
-          <span>{items.length} records</span>
+          <span>{loading || error ? '—' : items.length} records</span>
         </div>
         <div className="dw-toolbar">
           <label className="dw-search"><Search size={17}/>
@@ -149,12 +159,12 @@ export const DailyWagePage = ({ mode = 'overview' }) => {
           </select>
           {mode === 'history' && (
             <>
-              <label>From <input type="date" value={from} onChange={(event) => setFrom(event.target.value)}/></label>
+              <label>From <input type="date" max={to || undefined} value={from} onChange={(event) => setFrom(event.target.value)}/></label>
               <label>To <input type="date" min={from || undefined} value={to} onChange={(event) => setTo(event.target.value)}/></label>
             </>
           )}
         </div>
-        {loading ? <Empty text="Loading wage records…"/> : !items.length ? (
+        {loading ? <Empty text="Loading wage records…"/> : error ? <Empty text="Unable to display wage records."/> : !items.length ? (
           <Empty text="No wage entries match the selected filters."/>
         ) : (
           <div className="dw-table-scroll">
