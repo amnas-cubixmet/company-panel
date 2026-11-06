@@ -10,7 +10,8 @@ const smoke = read('scripts/ui-smoke.mjs');
 test('Add Workshop Customer modal uses a scoped form layout, not global field changes', () => {
   assert.match(page,/title=\{editingCustomerId \? "Edit Customer Details" : "Add Workshop Customer"\}/);
   assert.match(page,/import '..\/..\/styles\/customer-workshop-form\.css'/);
-  assert.match(page,/<form className="customer-directory-form" onSubmit=\{handleFormSubmit\}>/);
+  assert.match(page,/<form ref=\{customerFormRef\} className="customer-directory-form" onSubmit=\{handleFormSubmit\}/);
+  assert.match(page,/onInvalid=\{\(event\) =>/);
   assert.match(page,/customer-directory-form-grid/);
   assert.match(page,/customer-directory-location-grid/);
   assert.match(page,/customer-directory-form-actions/);
