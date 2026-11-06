@@ -20,6 +20,7 @@ export default function SupplierFinancePage({ section = '' }) {
   const access = useFeatureAccess();
   const canPay = access.can('payments.create');
   const canPost = canPay && access.can('stock.edit');
+  const canCreateBill = canPay && access.can('stock.create');
   const canCreateSupplier = access.can('stock.create');
   const paymentFormRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -98,6 +99,15 @@ export default function SupplierFinancePage({ section = '' }) {
       setLedger(null);
     }
   }, [selectedSupplier]);
+
+  useEffect(() => {
+    if (!Object.keys(paymentErrors).length) return;
+    const first = paymentFormRef.current?.querySelector('[aria-invalid="true"]');
+    if (first) {
+      first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      first.focus({ preventScroll: true });
+    }
+  }, [paymentErrors]);
 
   useEffect(() => {
     let valid = true;
@@ -221,7 +231,7 @@ export default function SupplierFinancePage({ section = '' }) {
 
   const createBill = (event) => {
     event.preventDefault();
-    if (!canPost) return;
+    if (!canCreateBill) return;
     const postNow = event.nativeEvent.submitter?.value === 'post';
     if (!draft.placeOfSupply) {
       setError('Select the legal Place of Supply before saving this purchase.');
@@ -390,7 +400,7 @@ export default function SupplierFinancePage({ section = '' }) {
           <Link to={supplierSection ? '/suppliers' : '/stock'} className="text-sm font-semibold text-primary">
             {supplierSection ? 'Suppliers' : 'Inventory Management'}
           </Link>
-          <h1 className="mt-1 text-2xl font-bold text-content">
+          <h1 className="mt-1 text-[23px] font-semibold text-content">
             {section === 'credits' ? 'Credit Management' : section === 'payments' ? 'Supplier Payments' : 'Supplier Credit & Payments'}
           </h1>
           {!supplierSection && <p className="mt-1 text-sm text-muted">Purchases, payables and recorded cash / bank entries.</p>}
@@ -405,7 +415,7 @@ export default function SupplierFinancePage({ section = '' }) {
       {section === 'credits' && (
         <div className="flex flex-wrap gap-2">
           <Link to="/suppliers/payments" className={secondary}>Pay Supplier</Link>
-          <Link to="/stock/suppliers?tab=bill" className={secondary}>+ New Purchase</Link>
+          {canCreateBill && <Link to="/stock/suppliers?tab=bill" className={secondary}>+ New Purchase</Link>}
         </div>
       )}
       {section === 'payments' && (
@@ -480,8 +490,8 @@ export default function SupplierFinancePage({ section = '' }) {
           <section className={box}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg font-bold">Purchase Bills — {selectedSupplierName}</h2>
-              {supplierSection ? <Link to="/stock/suppliers?tab=bill" className={secondary}>+ New Purchase</Link>
-                : <button className={secondary} type="button" onClick={() => setActiveTab('bill')}>+ New Purchase</button>}
+              {supplierSection ? (canCreateBill && <Link to="/stock/suppliers?tab=bill" className={secondary}>+ New Purchase</Link>)
+                : (canCreateBill && <button className={secondary} type="button" onClick={() => setActiveTab('bill')}>+ New Purchase</button>)}
             </div>
             <div className="mt-3 grid gap-2">
               {supplierBills.map((bill) => (
@@ -548,7 +558,7 @@ export default function SupplierFinancePage({ section = '' }) {
         </div>
       )}
 
-      {activeTab === 'bill' && canPost && (
+      {activeTab === 'bill' && canCreateBill && (
         <form className={box + ' grid gap-4'} onSubmit={createBill}>
           <h2 className="text-lg font-semibold">New Supplier Purchase — Draft</h2>
           <div className="grid gap-3 sm:grid-cols-3">
