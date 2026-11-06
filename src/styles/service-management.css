@@ -1185,6 +1185,15 @@
   border-radius:9px;
   font-size:9.5px;
 }
+.cg-services .service-dashboard-header .service-primary-button.is-secondary{
+  border-color:var(--service-border);
+  background:var(--service-surface);
+  color:var(--text-primary);
+}
+.cg-services .service-dashboard-header .service-primary-button:focus-visible{
+  outline:2px solid var(--primary);
+  outline-offset:2px;
+}
 
 .cg-services .service-dashboard-stats{
   display:grid;
@@ -1409,6 +1418,12 @@
     width:100%;
     display:grid;
     grid-template-columns:1fr 1fr;
+  }
+  .cg-services .service-dashboard-header-badge{display:none}
+  .cg-services .service-dashboard-header .service-primary-button{
+    min-height:44px;
+    height:44px;
+    font-size:13px;
   }
   .cg-services .service-dashboard-header-badge,
   .cg-services .service-dashboard-header .service-primary-button{
