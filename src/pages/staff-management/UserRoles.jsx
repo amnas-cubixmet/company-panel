@@ -13,6 +13,7 @@ import {
 import { roleService } from '../../services/role.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { appConfirm } from '../../components/common/appDialogs';
+import { showFormFieldError, showServerFormErrors } from '../../utils/formValidation';
 
 const createInitialForm = () => ({
   name: '',
@@ -69,12 +70,14 @@ export const UserRoles = () => {
     if (!isCompanyOwner) return;
     setEditingRole(null);
     setFormData(createInitialForm());
+    setError('');
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (role) => {
     if (!isCompanyOwner) return;
     setEditingRole(role);
+    setError('');
     setFormData({
       name: role.name || '',
       code: role.code,
@@ -117,6 +120,7 @@ export const UserRoles = () => {
     if (!isCompanyOwner || saving || editingRole?.isProtected) return;
 
     if (!formData.name.trim()) {
+      showFormFieldError(event.currentTarget, 'name', 'Role Name is required.');
       setError('Role Name is required.');
       return;
     }
@@ -143,6 +147,7 @@ export const UserRoles = () => {
 
       window.setTimeout(() => setToastMsg(''), 3000);
     } catch (err) {
+      showServerFormErrors(event.currentTarget, err, { name: 'name', status: 'status' });
       setError(err?.message || 'Unable to save role.');
     } finally {
       setSaving(false);
@@ -257,6 +262,7 @@ export const UserRoles = () => {
           setFormData={setFormData}
           modules={availableModules}
           saving={saving}
+          error={error}
           onSubmit={handleSaveRole}
           onCancel={() => {
             setIsModalOpen(false);

@@ -49,7 +49,7 @@ export const ForgotPassword = () => {
         : await authRecoveryService.requestPasswordReset({ mobile: mobile.trim(), workshop: workshop.trim() });
       setMessage(isLegacyEmail
         ? 'If an eligible account exists, a sign-in link will be sent.'
-        : 'If an eligible account exists, password reset instructions will be sent through the registered workshop WhatsApp.');
+        : 'For a staff account, ask your workshop administrator to share a secure reset link manually.');
       setIsError(false);
       if (result?.previewUrl) setPreviewUrl(result.previewUrl);
     } catch (error) {
@@ -82,13 +82,13 @@ export const ForgotPassword = () => {
           <p className="login-description">
             {mode === 'magic'
               ? 'Existing email-based accounts may request a secure sign-in link.'
-              : 'Enter your registered mobile number and workshop code. Password reset is delivered through your workshop WhatsApp Business account when enabled.'}
+              : 'Use your registered mobile and workshop code. Your administrator prepares and shares a secure reset link manually.'}
           </p>
 
           <div className="auth-mode-tabs">
             <button type="button" className={mode === 'reset' ? 'active' : ''}
               onClick={() => { setMode('reset'); clearMessages(); }}>
-              <RotateCcw size={14}/>WhatsApp Reset
+              <RotateCcw size={14}/>Staff Reset Help
             </button>
             <button type="button" className={mode === 'magic' ? 'active' : ''}
               onClick={() => { setMode('magic'); clearMessages(); }}>
@@ -98,7 +98,7 @@ export const ForgotPassword = () => {
           {message && <div className={'auth-message ' + (isError ? 'is-error' : 'is-success')} role="status">{message}</div>}
           <p className="auth-recovery-privacy-note">
             For staff, use the same mobile number and workshop code used to sign in.
-            If WhatsApp is unavailable, ask your workshop administrator to resend your link.
+            Your workshop administrator can manually resend a password setup or reset link.
           </p>
 
           <form className="login-form" onSubmit={submit} noValidate>

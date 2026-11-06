@@ -1,0 +1,65 @@
+/**
+ * One-use staff setup URLs are bearer credentials. Never persist them in
+ * sessionStorage, localStorage, route query params or app-wide state.
+ * Share only on an explicit authorized administrator gesture.
+ */
+export const buildStaffWhatsAppUrl = ({ phone, workshopName, staffName, setupLink }) => {
+  const raw = String(phone || '').trim();
+  const compact = raw.replace(/[\s().-]/g, '');
+  if (!/^\+[1-9]\d{7,14}$/.test(compact)) {
+    throw new Error('A valid international staff mobile number is required.');
+  }
+  let link;
+  try {
+    link = new URL(String(setupLink || ''));
+  } catch {
+    throw new Error('A valid password setup link is not available.');
+  }
+  if (!['https:', 'http:'].includes(link.protocol)
+      || (link.protocol !== 'https:' && !['localhost', '127.0.0.1'].includes(link.hostname))
+      || !/^\/set-password\/[^/]+$/.test(link.pathname)) {
+    throw new Error('A secure password setup link is required.');
+  }
+  const message = [
+    'Welcome to CubeGears!',
+    '',
+    'Your staff account has been created.',
+    '',
+    `Workshop: ${String(workshopName || 'Your workshop').trim()}`,
+    `Name: ${String(staffName || 'Staff member').trim()}`,
+    `Login Mobile: ${compact}`,
+    '',
+    'Please set your password using this secure link:',
+    link.toString(),
+    '',
+    'The link is valid for 24 hours and can be used only once.',
+    'After creating your password, log in using your mobile number and password.',
+  ].join('\n');
+  return `https://wa.me/${compact.slice(1)}?text=${encodeURIComponent(message)}`;
+};
+
+/**
+ * Preopen a tab in the actual click event before awaiting the backend; this
+ * avoids popup blocking. Returns the invitation metadata, not the raw URL.
+ * Opening WhatsApp is NOT a delivery confirmation.
+ */
+export const shareManualStaffInvite = async (getInvitation, details) => {
+  const popup = typeof window !== 'undefined' ? window.open('about:blank', '_blank') : null;
+  try {
+    const invitation = await getInvitation();
+    if (!invitation || invitation.whatsappInviteStatus !== 'manual') {
+      throw new Error('Manual invitation is not ready. Try again.');
+    }
+    const url = buildStaffWhatsAppUrl({ ...details, setupLink: invitation.setupLink });
+    if (popup && !popup.closed) {
+      popup.opener = null;
+      popup.location.replace(url);
+    } else if (typeof window !== 'undefined') {
+      window.location.assign(url);
+    }
+    return { expiresAt: invitation.expiresAt, status: 'manual_prepared' };
+  } catch (error) {
+    if (popup && !popup.closed) popup.close();
+    throw error;
+  }
+};

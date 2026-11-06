@@ -86,5 +86,7 @@ test('Add Staff supports mobile login without email and restricts owner roles', 
   assert.match(addStaff, /showFormFieldError\(formRef\.current, 'phone'/);
   assert.match(addStaff, /showFormFieldError\(formRef\.current, 'role'/);
   assert.match(addStaff, /name="role"/);
-  assert.match(addStaff, /Secure setup invitation is queued automatically when official workshop WhatsApp is available and consented/);
+  assert.match(addStaff, /Manual WhatsApp Consent/);
+  assert.match(addStaff, /Share on WhatsApp/);
+  assert.doesNotMatch(addStaff, /queued automatically/);
 });

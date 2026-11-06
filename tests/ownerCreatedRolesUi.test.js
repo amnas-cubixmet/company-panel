@@ -46,8 +46,8 @@ test('role editor removes fabricated branch scope and fake descriptions', () => 
 });
 
 test('staff creation dropdown shows owner-created roles, not predefined professions', () => {
-  assert.match(staffAdd, /designation: ''/);
+  assert.doesNotMatch(staffAdd, /designation: ''|name="designation"/);
   assert.match(staffAdd, /Choose role/);
-  assert.match(staffAdd, /No assignable company role exists/);
+  assert.match(staffAdd, /No roles available/);
   assert.doesNotMatch(staffAdd, /designation: 'Mechanic'/);
 });

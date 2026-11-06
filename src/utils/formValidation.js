@@ -109,7 +109,7 @@ export const showFormFieldError = (form, name, message) => {
 export const showServerFormErrors = (form, error, aliases = {}) => {
   const data = error?.response?.data || error?.data;
   if (!data || Array.isArray(data) || typeof data !== 'object') return false;
-  let first = null;
+  const invalidFields = [];
   for (const [key, raw] of Object.entries(data)) {
     if (['detail', 'message', 'error', 'non_field_errors'].includes(key)) continue;
     const field = findFormField(form, aliases[key] || key);
@@ -117,8 +117,11 @@ export const showServerFormErrors = (form, error, aliases = {}) => {
     const message = Array.isArray(raw) ? raw.join(' ') : typeof raw === 'string' ? raw : '';
     if (!message) continue;
     setFieldValidation(field, message, false);
-    first ||= field;
+    invalidFields.push(field);
   }
-  if (first) focusField(first);
-  return Boolean(first);
+  // DRF response field order need not equal the visual form order.
+  const visualFields = [...form.querySelectorAll(FIELD_SELECTOR)];
+  invalidFields.sort((left, right) => visualFields.indexOf(left) - visualFields.indexOf(right));
+  if (invalidFields[0]) focusField(invalidFields[0]);
+  return invalidFields.length > 0;
 };

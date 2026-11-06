@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Save } from 'lucide-react';
 import { ResponsiveModalSheet } from '../common/ResponsiveModalSheet';
+import { clearFieldValidation, showFormFieldError, showServerFormErrors } from '../../utils/formValidation';
 
 export const StaffProfileEditSheet = ({
   open,
@@ -14,16 +15,17 @@ export const StaffProfileEditSheet = ({
   canAssignRole = false,
 }) => {
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const formRef = useRef(null);
   const [form, setForm] = useState({});
   const [skillIds, setSkillIds] = useState([]);
 
   useEffect(() => {
     if (!open || !staff) return;
+    setError('');
     setForm({
       name: staff.name || '',
       phone: staff.phone || '',
-      email: staff.email || '',
-      designation: staff.designation || '',
       role: staff.role || '',
       roleId: staff.roleId || (roles.filter(role => role.name === staff.role).length === 1 ? roles.find(role => role.name === staff.role).id : ''),
       teamId: staff.teamId || '',
@@ -57,7 +59,12 @@ export const StaffProfileEditSheet = ({
   const submit = async (event) => {
     event.preventDefault();
     if (saving) return;
+    if (!form.name.trim()) {
+      showFormFieldError(formRef.current, 'name', 'Full name is required.');
+      return;
+    }
     setSaving(true);
+    setError('');
     try {
       await onSave({
         ...Object.fromEntries(Object.entries(form).filter(([key]) => canAssignRole || !['role', 'roleId'].includes(key))),
@@ -71,6 +78,12 @@ export const StaffProfileEditSheet = ({
           .map((skill) => skill.name),
       });
       onClose();
+    } catch (cause) {
+      showServerFormErrors(formRef.current, cause, {
+        roleId: 'role', role: 'role', phone: 'phone', name: 'name',
+        employmentStatus: 'employmentStatus',
+      });
+      setError(cause?.message || 'Unable to update staff.');
     } finally {
       setSaving(false);
     }
@@ -83,16 +96,16 @@ export const StaffProfileEditSheet = ({
       title="Edit Staff Profile"
       maxWidth="680px"
     >
-      <form className="staff-profile-edit-form" onSubmit={submit}>
+      <form ref={formRef} className="staff-profile-edit-form" noValidate onSubmit={submit}
+        onChange={event => clearFieldValidation(event.target)}>
+        {error && <div className="staff-directory-message is-error" role="alert">{error}</div>}
         <div className="staff-profile-edit-grid">
-          <label>Full Name<input required value={form.name || ''} onChange={(e) => set('name', e.target.value)} /></label>
-          <label>Phone<input value={form.phone || ''} onChange={(e) => set('phone', e.target.value)} /></label>
-          <label>Email<input type="email" value={form.email || ''} onChange={(e) => set('email', e.target.value)} /></label>
-          <label>Designation<input value={form.designation || ''} onChange={(e) => set('designation', e.target.value)} /></label>
-
+          <label>Full Name *<input name="name" required value={form.name || ''} onChange={(e) => set('name', e.target.value)} /></label>
+          <label>Mobile Number<input name="phone" type="tel" value={form.phone || ''} onChange={(e) => set('phone', e.target.value)} /></label>
           <label>
-            Role
-            <select disabled={!canAssignRole} value={form.roleId || ''} onChange={(e) => { const role = roles.find(item => String(item.id) === e.target.value); setForm(current => ({...current,roleId:role?.id || '',role:role?.name || ''})); }}>
+            Company Role
+            <select name="role" disabled={!canAssignRole} value={form.roleId || ''} onChange={(e) => { const role = roles.find(item => String(item.id) === e.target.value); setForm(current => ({...current,roleId:role?.id || '',role:role?.name || ''})); }}>
+              <option value="">Choose role</option>
               {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
             </select>
           </label>
@@ -115,7 +128,7 @@ export const StaffProfileEditSheet = ({
 
           <label>
             Status
-            <select value={form.employmentStatus || 'Active'} onChange={(e) => set('employmentStatus', e.target.value)}>
+            <select name="employmentStatus" value={form.employmentStatus || 'Active'} onChange={(e) => set('employmentStatus', e.target.value)}>
               {['Active','Probation','Notice Period','Suspended','Resigned','Terminated','Inactive'].map((status) => <option key={status}>{status}</option>)}
             </select>
           </label>

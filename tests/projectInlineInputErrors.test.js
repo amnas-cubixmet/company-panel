@@ -33,7 +33,7 @@ test('field-level validation helper focuses a matching input and announces its e
   assert.match(validation, /messageElement\.setAttribute\('role', 'alert'\)/);
   assert.match(validation, /field\.setAttribute\('aria-invalid', 'true'\)/);
   assert.match(validation, /'aria-describedby'/);
-  assert.match(validation, /focusField\(first\)/);
+  assert.match(validation, /focusField\(invalidFields\[0\]\)/);
   assert.match(global, /document\.addEventListener\('invalid', onInvalid, true\)/);
   assert.match(global, /document\.addEventListener\('input', onEdit, true\)/);
   assert.match(global, /clearFieldValidation\(field\)/);

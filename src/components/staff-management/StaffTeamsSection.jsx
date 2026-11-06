@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Building2, Plus, Save, UserPlus, UsersRound } from 'lucide-react';
 import { ResponsiveModalSheet } from '../common/ResponsiveModalSheet';
 import { BranchCreateSheet } from './BranchCreateSheet';
@@ -7,6 +7,7 @@ import { staffManagementService } from '../../services/staffManagement.service';
 import { staffService } from '../../services/staff.service';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
+import { clearFieldValidation, showFormFieldError, showServerFormErrors } from '../../utils/formValidation';
 
 export const StaffTeamsSection = ({ staff = [], teams = [], setTeams, setStaff }) => {
   const { user } = useAuth();
@@ -15,6 +16,9 @@ export const StaffTeamsSection = ({ staff = [], teams = [], setTeams, setStaff }
   const [teamFormOpen, setTeamFormOpen] = useState(false);
   const [branchFormOpen, setBranchFormOpen] = useState(false);
   const [savingTeam, setSavingTeam] = useState(false);
+  const [teamError, setTeamError] = useState('');
+  const [teamSuccess, setTeamSuccess] = useState('');
+  const teamFormRef = useRef(null);
   const [teamStaffTarget, setTeamStaffTarget] = useState(null);
   const [teamStaffSelection, setTeamStaffSelection] = useState([]);
   const [savingTeamStaff, setSavingTeamStaff] = useState(false);
@@ -52,9 +56,15 @@ export const StaffTeamsSection = ({ staff = [], teams = [], setTeams, setStaff }
 
   const createTeam = async (event) => {
     event.preventDefault();
-    if (!teamForm.name.trim() || savingTeam) return;
+    if (savingTeam) return;
+    if (!teamForm.name.trim()) {
+      showFormFieldError(teamFormRef.current, 'name', 'Team name is required.');
+      return;
+    }
 
     setSavingTeam(true);
+    setTeamError('');
+    setTeamSuccess('');
     try {
       const branch = branches.find(
         (item) => String(item.id) === String(teamForm.branchId),
@@ -75,6 +85,12 @@ export const StaffTeamsSection = ({ staff = [], teams = [], setTeams, setStaff }
         description: '',
       });
       setTeamFormOpen(false);
+      setTeamSuccess('Team saved successfully.');
+    } catch (cause) {
+      showServerFormErrors(teamFormRef.current, cause, {
+        name: 'name', branchId: 'branchId', leadUserId: 'leadUserId',
+      });
+      setTeamError(cause?.message || 'Unable to save team.');
     } finally {
       setSavingTeam(false);
     }
@@ -147,6 +163,7 @@ export const StaffTeamsSection = ({ staff = [], teams = [], setTeams, setStaff }
         </div>
       </section>
 
+      {teamSuccess && <div className="staff-action-success" role="status">{teamSuccess}</div>}
       <section className="staff-subpage-kpis">
         <article><UsersRound size={15}/><span>Total Teams</span><strong>{teams.length}</strong></article>
         <article><UserPlus size={15}/><span>Assigned Staff</span><strong>{assignedCount}</strong></article>
@@ -184,7 +201,7 @@ export const StaffTeamsSection = ({ staff = [], teams = [], setTeams, setStaff }
                     )}
                     <div>
                       <strong>{member.name}</strong>
-                      <span>{member.designation}</span>
+                      <span>{member.role || 'No role'}</span>
                     </div>
                   </div>
                 )) : (
@@ -214,10 +231,13 @@ export const StaffTeamsSection = ({ staff = [], teams = [], setTeams, setStaff }
         title="Add Workshop Team"
         maxWidth="620px"
       >
-        <form className="staff-crud-form" onSubmit={createTeam}>
+        <form ref={teamFormRef} className="staff-crud-form" noValidate onSubmit={createTeam}
+          onChange={event => clearFieldValidation(event.target)}>
+          {teamError && <div className="staff-directory-message is-error" role="alert">{teamError}</div>}
           <label>
             Team / Department Name *
             <input
+              name="name"
               required
               value={teamForm.name}
               onChange={(e) =>
@@ -230,7 +250,7 @@ export const StaffTeamsSection = ({ staff = [], teams = [], setTeams, setStaff }
           <div className="staff-crud-form__grid">
             <label>
               Team Lead
-              <select
+              <select name="leadUserId"
                 value={teamForm.leadUserId}
                 onChange={(e) => {
                   const person = activeStaff.find(
@@ -248,7 +268,7 @@ export const StaffTeamsSection = ({ staff = [], teams = [], setTeams, setStaff }
                   .filter((person) => person.user)
                   .map((person) => (
                     <option key={person.id} value={person.user}>
-                      {person.name} · {person.designation}
+                      {person.name} · {person.role || 'No role'}
                     </option>
                   ))}
               </select>
@@ -257,7 +277,7 @@ export const StaffTeamsSection = ({ staff = [], teams = [], setTeams, setStaff }
             <label>
               Branch
               <div className="staff-branch-select-row">
-                <select
+                <select name="branchId"
                   value={teamForm.branchId}
                   onChange={(e) =>
                     setTeamForm((old) => ({
@@ -349,7 +369,7 @@ export const StaffTeamsSection = ({ staff = [], teams = [], setTeams, setStaff }
                     />
                     <span>
                       <strong>{person.name}</strong>
-                      <small>{person.designation} · {person.branch || 'No branch'}</small>
+                      <small>{person.role || 'No role'} · {person.branch || 'No branch'}</small>
                     </span>
                   </label>
                 ))}

@@ -32,7 +32,7 @@ export const StaffDirectoryCard = ({
         <StaffAvatar staff={staff} size="md" />
         <div>
           <strong>{staff.name}</strong>
-          <span>{getEmployeeLabel(staff, index)} · {staff.designation || 'Staff'}</span>
+          <span>{getEmployeeLabel(staff, index)} · {staff.role || 'No role'}</span>
         </div>
       </div>
 
@@ -52,8 +52,8 @@ export const StaffDirectoryCard = ({
       <div className="staff-directory-fact">
         <UserRound size={18} aria-hidden="true" />
         <div className="staff-directory-fact__copy">
-          <small>Department / Role</small>
-          <span>{staff.department || 'Workshop'} · {staff.role || 'No role'}</span>
+          <small>Company Role</small>
+          <span>{staff.role || 'No role'}</span>
         </div>
       </div>
       <div className="staff-directory-fact">
@@ -66,8 +66,8 @@ export const StaffDirectoryCard = ({
       <div className="staff-directory-fact">
         <CalendarDays size={18} aria-hidden="true" />
         <div className="staff-directory-fact__copy">
-          <small>Joined</small>
-          <span>{staff.joiningDate || '—'}</span>
+          <small>Mobile / Login</small>
+          <span>{staff.phone || '—'} · {staff.loginStatus || 'Not Invited'}</span>
         </div>
       </div>
       {canViewPay && (
