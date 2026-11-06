@@ -10,6 +10,7 @@ const primary = 'min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-semibold 
 const box = 'rounded-2xl border border-line bg-surface p-4';
 const today = () => new Date().toLocaleDateString('en-CA');
 const money = (value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(value || 0));
+const num = value => { const amount = Number(value); return Number.isFinite(amount) ? amount : 0; };
 const line = () => ({ itemId: '', description: '', quantity: '1', purchaseRate: '', gstRate: '0', gstTreatment: '' });
 const paymentKey = () => globalThis.crypto?.randomUUID?.() || ('PAY-' + Date.now() + '-' + Math.random().toString(36).slice(2));
 
