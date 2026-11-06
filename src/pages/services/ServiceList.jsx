@@ -1,4 +1,5 @@
 import { appConfirm } from '../../components/common/appDialogs';
+import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Activity, Clock3, Edit3, IndianRupee, Layers3, Trash2 } from "lucide-react";
@@ -34,6 +35,13 @@ const emptyService = {
   description: '',
   checklistText: '',
   hsnSac: '', taxRate: '18', taxTreatment: 'taxable', unit: 'Job'
+};
+
+const emptyCategory = {
+  name: '',
+  description: '',
+  parentId: '',
+  status: 'active',
 };
 
 const durationLabel = (minutes) => {
@@ -236,6 +244,10 @@ export const ServiceList = () => {
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [form, setForm] = useState(emptyService);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [categoryForm, setCategoryForm] = useState(emptyCategory);
+  const [categoryError, setCategoryError] = useState('');
+  const [categorySaving, setCategorySaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -337,6 +349,34 @@ export const ServiceList = () => {
       }
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const closeCategoryDialog = () => {
+    if (categorySaving) return;
+    setCategoryDialogOpen(false);
+    setCategoryForm(emptyCategory);
+    setCategoryError('');
+  };
+
+  const saveCategory = async (event) => {
+    event.preventDefault();
+    if (categorySaving) return;
+    setCategoryError('');
+    setCategorySaving(true);
+    try {
+      await serviceService.createServiceCategory({
+        ...categoryForm,
+        name: categoryForm.name.trim(),
+        parentId: categoryForm.parentId || '',
+      });
+      setCategories(await serviceService.getServiceCategories());
+      setCategoryDialogOpen(false);
+      setCategoryForm(emptyCategory);
+    } catch (error) {
+      setCategoryError(error?.message || 'Unable to add category.');
+    } finally {
+      setCategorySaving(false);
     }
   };
 
@@ -449,7 +489,14 @@ export const ServiceList = () => {
 
   return (
     <div className="service-management-page cg-services service-dashboard">
-      <ServicesHeader onAdd={()=>navigate('/services/new')} />
+      <ServicesHeader
+        onAdd={()=>navigate('/services/new')}
+        onAddCategory={()=>{
+          setCategoryForm(emptyCategory);
+          setCategoryError('');
+          setCategoryDialogOpen(true);
+        }}
+      />
 
       <ServiceOverviewStats
         metrics={metrics}
@@ -475,7 +522,61 @@ export const ServiceList = () => {
         onDelete={deleteService}
       />
 
-
+      <ResponsiveModalSheet
+        isOpen={categoryDialogOpen}
+        onClose={closeCategoryDialog}
+        title="Add Category"
+        maxWidth="560px"
+      >
+        <form className="service-category-form" onSubmit={saveCategory}>
+          {categoryError && <div className="service-form-error" role="alert">{categoryError}</div>}
+          <Field label="Category Name">
+            <input
+              required
+              maxLength={150}
+              value={categoryForm.name}
+              onChange={event=>setCategoryForm({...categoryForm,name:event.target.value})}
+              placeholder="e.g. Engine Services"
+            />
+          </Field>
+          <Field label="Parent Category">
+            <select
+              value={categoryForm.parentId}
+              onChange={event=>setCategoryForm({...categoryForm,parentId:event.target.value})}
+            >
+              <option value="">Main Category (root)</option>
+              {categoryTree.map(category => (
+                <option key={category.id} value={category.id}>
+                  {'— '.repeat(Math.min(category.depth || 0, 10)) + category.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Description">
+            <textarea
+              rows={3}
+              value={categoryForm.description}
+              onChange={event=>setCategoryForm({...categoryForm,description:event.target.value})}
+              placeholder="Optional"
+            />
+          </Field>
+          <Field label="Status">
+            <select
+              value={categoryForm.status}
+              onChange={event=>setCategoryForm({...categoryForm,status:event.target.value})}
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </Field>
+          <div className="service-form-actions">
+            <button type="button" onClick={closeCategoryDialog} disabled={categorySaving}>Cancel</button>
+            <button type="submit" className="is-primary" disabled={categorySaving || !categoryForm.name.trim()}>
+              {categorySaving ? 'Saving...' : 'Save Category'}
+            </button>
+          </div>
+        </form>
+      </ResponsiveModalSheet>
     </div>
   );
 };
