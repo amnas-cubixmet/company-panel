@@ -30,7 +30,7 @@ export default function SupplierFinancePage({ section = '' }) {
   const [payments, setPayments] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [gstOptions, setGSTOptions] = useState({ states: [], rates: [] });
-  const [selectedSupplier, setSelectedSupplier] = useState('');
+  const [selectedSupplier, setSelectedSupplier] = useState(() => searchParams.get('supplier') || '');
   const [summary, setSummary] = useState(null);
   const [ledger, setLedger] = useState(null);
   const [busy, setBusy] = useState('');
