@@ -173,3 +173,32 @@
   .cg-supplier-purchase-filters { grid-template-columns: 1fr; }
   .cg-supplier-purchase-filters label:first-child { grid-column: auto; }
 }
+
+/* Unified Supplier directory and Purchase History polish (Suppliers pages only). */
+.cg-suppliers-page{min-width:0}
+.cg-suppliers-page .cg-suppliers-head{min-width:0;gap:12px}
+.cg-suppliers-page .cg-suppliers-head>div{min-width:0;flex:1}
+.cg-suppliers-page .cg-suppliers-head h1{min-width:0;max-width:100%;font-weight:650;letter-spacing:-.025em;overflow-wrap:anywhere;line-height:1.35;font-size:clamp(20px,2vw,24px)}
+.cg-suppliers-page .cg-supplier-list-item,.cg-suppliers-page .cg-supplier-record{min-width:0}
+.cg-suppliers-page .cg-supplier-summary{flex:1;min-width:0}
+.cg-suppliers-page .cg-supplier-summary strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;line-height:1.4}
+.cg-suppliers-page .cg-supplier-summary small{max-width:100%;overflow-wrap:anywhere}
+.cg-suppliers-page .cg-supplier-profile{min-width:0;border-radius:14px}
+.cg-suppliers-page .cg-supplier-profile-head{display:flex;align-items:center;gap:9px;min-width:0}
+.cg-suppliers-page .cg-supplier-profile-head h2{font-size:16px;font-weight:650;line-height:1.3;min-width:0}
+.cg-suppliers-page .cg-supplier-record{align-items:flex-start;gap:10px}
+.cg-suppliers-page .cg-supplier-record>div{flex:1;min-width:0}
+.cg-suppliers-page .cg-supplier-record strong{overflow-wrap:anywhere}
+.cg-suppliers-page .cg-supplier-record small{overflow-wrap:anywhere;line-height:1.45}
+.cg-suppliers-page .cg-supplier-record b{font-variant-numeric:tabular-nums;text-align:right}
+.cg-suppliers-page .cg-supplier-purchase-history{min-width:0;gap:12px}
+.cg-suppliers-page .cg-supplier-toolbar{min-width:0;gap:10px}
+.cg-suppliers-page .cg-supplier-toolbar input{font-size:16px}
+.cg-suppliers-page :is(input,select,textarea):focus-visible{outline:2px solid var(--primary,#2563eb);outline-offset:1px}
+.cg-suppliers-page :is(input,select,textarea)[aria-invalid=true]{border-color:var(--danger,#b42318)}
+@media(max-width:620px){
+ .cg-suppliers-page .cg-supplier-list-item{align-items:flex-start;gap:10px}
+ .cg-suppliers-page .cg-supplier-record{flex-wrap:wrap}
+ .cg-suppliers-page .cg-supplier-record b{width:100%;text-align:left}
+ .cg-suppliers-page .cg-supplier-profile-head{flex-wrap:wrap}
+}
