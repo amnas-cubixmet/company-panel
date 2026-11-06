@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BarChart3, Calendar, CheckCircle2, CircleDollarSign, Edit3, FileText, IndianRupee, Layers3, Receipt, Trash2, Link2, WalletCards } from "lucide-react";
 import { expenseService } from '../../services/expense.service';
+import { financeService } from '../../services/finance.service';
 import { localDate } from '../../services/expense.mapper';
 import {
   ExpenseListView,
@@ -24,6 +25,16 @@ const money = new Intl.NumberFormat('en-IN', {
 });
 
 const expenseCategories = [
+  'Staff Salary',
+  'Daily Wages',
+  'Overtime',
+  'Workshop Rent',
+  'Electricity',
+  'Water',
+  'Internet',
+  'Spare Parts',
+  'Supplier Payments',
+  'Fuel',
   'Stock Purchase',
   'Utilities',
   'Equipment Maintenance',
@@ -53,7 +64,9 @@ const emptyForm = {
   taxAmount: '',
   status: 'approved',
   notes: '',
-  receiptUrl: ''
+  receiptUrl: '',
+  accountId: '',
+  requestKey: globalThis.crypto?.randomUUID?.() || `expense-${Date.now()}-${Math.random()}`
 };
 
 const Metric = ({ label, value, icon: Icon, tone = 'primary', note }) => (
@@ -81,7 +94,8 @@ const ExpenseForm = ({
   onSubmit,
   onCancel,
   submitting,
-  error
+  error,
+  accounts = []
 }) => (
   <div className="expense-form-page cg-expenses">
     <header className="expense-form-header">
@@ -155,6 +169,20 @@ const ExpenseForm = ({
             </select>
           </Field>
 
+          <Field label="Pay from Bank / Cash Account">
+            <select value={values.accountId || ''} required={values.status === 'paid'}
+              onChange={(e) => setValues({ ...values, accountId: e.target.value })}
+              disabled={submitting}>
+              <option value="">Select account {values.status === 'paid' ? '*' : '(optional until paid)'}</option>
+              {accounts.filter((account) => account.isActive).map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name} ({account.kind}) — {money.format(Number(account.currentBalance || 0))}
+                </option>
+              ))}
+            </select>
+            <small>Unpaid or approved expenses will not debit this account.</small>
+          </Field>
+
           <Field label="Reference / Bill Number">
             <input value={values.referenceNo} onChange={(e)=>setValues({...values,referenceNo:e.target.value})} placeholder="INV / UTR / Cheque reference"/>
           </Field>
@@ -213,6 +241,11 @@ export const ExpenseList = () => {
   const isDetail = Boolean(id && !isEdit && location.pathname !== '/expenses');
 
   const [expenses, setExpenses] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [settlement, setSettlement] = useState({
+    amount: '', account: '', method: 'Cash', reference: '',
+    idempotencyKey: globalThis.crypto?.randomUUID?.() || `settlement-${Date.now()}-${Math.random()}`,
+  });
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [actionError, setActionError] = useState('');
@@ -242,6 +275,13 @@ export const ExpenseList = () => {
   }, []);
 
   useEffect(() => {
+    if (!canEdit) return;
+    financeService.listAccounts()
+      .then((list) => setAccounts(Array.isArray(list) ? list : []))
+      .catch(() => setAccounts([]));
+  }, [canEdit]);
+
+  useEffect(() => {
     if (!isEdit || !id || !expenses.length) return;
     const expense = expenses.find((item)=>String(item.id)===String(id));
     if (!expense) return;
@@ -256,7 +296,9 @@ export const ExpenseList = () => {
       taxAmount: expense.taxAmount || '',
       status: expense.status || 'approved',
       notes: expense.notes || '',
-      receiptUrl: expense.receiptUrl || ''
+      receiptUrl: expense.receiptUrl || '',
+      accountId: expense.accountId || '',
+      requestKey: ''
     });
   }, [isEdit, id, expenses]);
 
@@ -335,6 +377,25 @@ export const ExpenseList = () => {
     }
   };
 
+  const settleExpense = async (event) => {
+    event.preventDefault();
+    if (!canEdit || !selectedExpense || submitting) return;
+    setSubmitting(true);
+    setActionError('');
+    try {
+      await expenseService.settleExpense(selectedExpense.id, settlement);
+      await load();
+      setSettlement({
+        amount: '', account: '', method: 'Cash', reference: '',
+        idempotencyKey: globalThis.crypto?.randomUUID?.() || `settlement-${Date.now()}-${Math.random()}`,
+      });
+    } catch (error) {
+      setActionError(error?.message || 'Unable to settle expense.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const removeExpense = async (expense) => {
     if (!canDelete || !await appConfirm(`Delete expense ${expense.id}?`)) return;
     setActionError('');
@@ -365,6 +426,7 @@ export const ExpenseList = () => {
         onCancel={()=>navigate('/expenses')}
         submitting={submitting}
         error={actionError}
+        accounts={accounts}
       />
     );
   }
@@ -380,6 +442,7 @@ export const ExpenseList = () => {
         onCancel={()=>navigate(`/expenses/${id}`)}
         submitting={submitting}
         error={actionError}
+        accounts={accounts}
       />
     );
   }
@@ -409,6 +472,59 @@ export const ExpenseList = () => {
           <div><Calendar size={16}/><span>Date</span><strong>{selectedExpense.expenseDate}</strong></div>
           <div><CheckCircle2 size={16}/><span>Status</span><strong>{selectedExpense.status}</strong></div>
         </div>
+
+        <section className="expense-panel">
+          <div className="expense-section-header">
+            <div>
+              <h2>Account Settlement</h2>
+              <p>Posted settlements debit your internal Cash/Bank ledger; unpaid expenses do not.</p>
+            </div>
+          </div>
+          <div className="expense-detail-kpis">
+            <div><span>Paid through ledger</span><strong>{money.format(selectedExpense.paidAmount || 0)}</strong></div>
+            <div><span>Outstanding</span><strong>{money.format(selectedExpense.balanceDue ?? selectedExpense.amount)}</strong></div>
+          </div>
+          {selectedExpense.status === 'paid' && !selectedExpense.paidAmount && (
+            <p className="expense-alert">Historical paid expense: reconcile its existing payment before posting a new debit.</p>
+          )}
+          {canEdit && Number(selectedExpense.balanceDue) > 0 &&
+            !['draft', 'rejected', 'cancelled', 'pending approval', 'paid'].includes(selectedExpense.status) && (
+            <form className="expense-form" onSubmit={settleExpense}>
+              <div className="expense-form-grid">
+                <Field label="Settlement Amount (₹)">
+                  <input type="number" step="0.01" min="0.01" required
+                    max={selectedExpense.balanceDue} value={settlement.amount}
+                    disabled={submitting}
+                    onChange={(event) => setSettlement((prev) => ({ ...prev, amount: event.target.value }))} />
+                </Field>
+                <Field label="Debit Account">
+                  <select required value={settlement.account} disabled={submitting}
+                    onChange={(event) => setSettlement((prev) => ({ ...prev, account: event.target.value }))}>
+                    <option value="">Choose account</option>
+                    {accounts.filter((item) => item.isActive).map((item) => (
+                      <option value={item.id} key={item.id}>{item.name} — {money.format(Number(item.currentBalance || 0))}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Payment Method">
+                  <select value={settlement.method} disabled={submitting}
+                    onChange={(event) => setSettlement((prev) => ({ ...prev, method: event.target.value }))}>
+                    {paymentMethods.map((method) => <option key={method}>{method}</option>)}
+                  </select>
+                </Field>
+                <Field label="Reference">
+                  <input value={settlement.reference} maxLength={120} disabled={submitting}
+                    onChange={(event) => setSettlement((prev) => ({ ...prev, reference: event.target.value }))} />
+                </Field>
+              </div>
+              <div className="expense-form-actions">
+                <button className="finance-primary-btn" type="submit" disabled={submitting}>
+                  {submitting ? 'Posting…' : 'Pay Expense & Debit Account'}
+                </button>
+              </div>
+            </form>
+          )}
+        </section>
 
         <div className="expense-two-column">
           <section className="expense-panel">
