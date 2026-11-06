@@ -7,6 +7,7 @@ import { buildStaffWhatsAppUrl, shareManualStaffInvite } from '../src/utils/staf
 const read = name => readFileSync(new URL('../' + name, import.meta.url), 'utf8');
 const add = read('src/pages/staff-management/StaffAddPage.jsx');
 const profile = read('src/pages/staff-management/staff/StaffProfile.jsx');
+const profileEdit = read('src/components/staff-management/StaffProfileEditSheet.jsx');
 const service = read('src/services/staff.service.js');
 const setup = read('src/pages/auth/StaffSetPasswordPage.jsx');
 const login = read('src/pages/auth/Login.jsx');
@@ -103,29 +104,26 @@ test('only an explicit click opens WhatsApp; opening is not delivery confirmatio
   }
 });
 
-test('profile manual resend and on-demand copy use permission checks, never display password tokens', () => {
+test('profile manual resend retains permission checks without a visible setup panel', () => {
   assert.match(profile, /canManageLogin/);
   assert.match(profile, /staff\.whatsappConsent/);
   assert.match(profile, /shareManualStaffInvite\(/);
   assert.match(profile, /Resend via WhatsApp/);
-  assert.match(profile, /Copy Secure Setup Link/);
-  assert.match(profile, /navigator\.clipboard\.writeText\(invite\.setupLink\)/);
+  assert.doesNotMatch(profile, /Copy Secure Setup Link|staff-setup-link-panel|Mobile \+ Password Login/);
   assert.doesNotMatch(profile, /staffManualWhatsAppUrl|setSetupLink\(|staff-setup-url/);
   assert.match(staffInviteDeliveryMessage('manual'), /No message was sent automatically/);
 });
 
-test('Staff Profile can securely record missing consent and then unlock manual WhatsApp share', () => {
+test('WhatsApp consent remains editable without the removed information panel', () => {
   assert.match(service, /'whatsappConsent'/);
   assert.match(service, /'whatsappConsentSource'/);
-  assert.match(profile, /handleRecordWhatsAppConsent/);
-  assert.match(profile, /staffService\.updateStaff\(staff\.id, \{/);
-  assert.match(profile, /whatsappConsent: true/);
-  assert.match(profile, /whatsappConsentSource: consentSource/);
-  assert.match(profile, /consentConfirmed/);
-  assert.match(profile, /Save WhatsApp Consent/);
-  assert.match(profile, /Record staff WhatsApp consent before sharing/);
-  assert.match(profile, /staff\.whatsappConsent && staff\.loginStatus !== 'Disabled'/);
+  assert.match(profileEdit, /WhatsApp Consent/);
+  assert.match(profileEdit, /Consent Source \*/);
+  assert.match(profileEdit, /whatsappConsentSource: staff\.whatsappConsentSource/);
+  assert.match(profileEdit, /showFormFieldError\(formRef\.current, 'whatsappConsentSource'/);
+  assert.match(profile, /staff\.whatsappConsent/);
   assert.match(profile, /staffService\.sendLoginInvite\(staff\.id\)/);
+  assert.doesNotMatch(profile, /staff-setup-link-panel|handleRecordWhatsAppConsent|Copy Secure Setup Link/);
   assert.doesNotMatch(profile, /queue_staff_whatsapp_invitation|send_template_message/);
 });
 
