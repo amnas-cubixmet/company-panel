@@ -625,3 +625,28 @@ label.cg-easy-floating:is(:focus-within,:has(input:not(:placeholder-shown)),.is-
 @media (prefers-reduced-motion: reduce) {
   .cg-easy-stock .cg-easy-form label.cg-easy-floating > span { transition: none; }
 }
+
+/* Persisted rack suggestions: one consistent field, accessible 44px actions. */
+.cg-rack-combobox { position: relative; min-width: 0; z-index: 5; }
+.cg-rack-combobox > label { display: block; font-size: 14px; margin-bottom: 6px; }
+.cg-rack-combobox > input {
+  box-sizing: border-box; width: 100%; min-height: 46px; padding: 10px 12px;
+  font-size: 16px; background: var(--surface, #fff); color: var(--text-primary, var(--text, #111827));
+  border: 1px solid var(--border); border-radius: 10px;
+}
+.cg-rack-combobox > input:focus-visible { outline: 2px solid var(--primary, #2563eb); outline-offset: 1px; }
+.cg-rack-options {
+  position: absolute; left: 0; right: 0; top: 100%; z-index: 70;
+  max-height: 210px; overflow-y: auto; overscroll-behavior: contain;
+  border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface); box-shadow: 0 8px 24px rgba(0,0,0,.14);
+}
+.cg-rack-options > button {
+  display: block; width: 100%; min-height: 44px; padding: 10px 12px;
+  border: 0; border-bottom: 1px solid var(--border); border-radius: 0;
+  text-align: left; font-size: 16px; color: var(--text-primary, var(--text, #111827)); background: var(--surface, #fff);
+}
+.cg-rack-options > button:hover, .cg-rack-options > button.is-active {
+  background: var(--surface-hover, rgba(127,127,127,.1));
+}
+.cg-easy-stock [aria-invalid="true"] { border-color: #dc2626 !important; }

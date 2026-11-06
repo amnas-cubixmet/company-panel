@@ -11,6 +11,7 @@ const number = (value) => Number(value) || 0;
 const toPart = (item) => ({
   ...item,
   partName: item.partName || item.name || '',
+  partNumber: item.partNumber ?? item.part_number ?? '',
   onHand: number(item.onHand),
   reserved: number(item.reserved),
   available: number(item.available ?? (number(item.onHand) - number(item.reserved))),
@@ -45,7 +46,8 @@ const resolveSupplierId = async (value) => {
 const productPayload = async (payload, { creating = false } = {}) => {
   const part = {
     partName: payload.partName || payload.name || '',
-    sku: payload.sku || '',
+    sku: payload.sku?.trim() || '',
+    partNumber: payload.partNumber?.trim() || '',
     barcode: payload.barcode || '',
     brand: payload.brand || '',
     category: await resolveCategoryId(payload.category),
@@ -72,8 +74,8 @@ const productPayload = async (payload, { creating = false } = {}) => {
 };
 
 export const stockCatalogService = {
-  getItems: async () => {
-    const items = await stockService.getStockItems();
+  getItems: async (search = '') => {
+    const items = await stockService.getStockItems(search ? { search } : {});
     return rows(items).map(toPart);
   },
   getItem: async (id) => {
@@ -82,16 +84,23 @@ export const stockCatalogService = {
   },
   createItem: async (payload) => {
     if (USE_MOCK_API) {
-      if (!payload.partName?.trim() || !payload.sku?.trim()) {
-        throw new Error('Part Name and SKU are required.');
+      if (!payload.partName?.trim()) {
+        throw new Error('Part Name is required.');
       }
-      if (stockMockItems.some((item) => item.sku?.toLowerCase() === payload.sku.trim().toLowerCase())) {
+      let sku = payload.sku?.trim() || '';
+      if (!sku) {
+        let next = 1;
+        do { sku = 'CG-PRT-' + String(next++).padStart(6, '0'); }
+        while (stockMockItems.some((item) => item.sku?.toLowerCase() === sku.toLowerCase()));
+      }
+      if (stockMockItems.some((item) => item.sku?.toLowerCase() === sku.toLowerCase())) {
         throw new Error('A part with this SKU already exists.');
       }
       const item = {
         id: 'STK-' + Date.now(),
         partName: payload.partName.trim(),
-        sku: payload.sku.trim(),
+        sku,
+        partNumber: payload.partNumber?.trim() || '',
         brand: payload.brand || '',
         supplier: payload.supplier || null,
         category: payload.category || '',
@@ -131,6 +140,13 @@ export const stockCatalogService = {
       return;
     }
     return apiClient.delete('/stock/' + id);
+  },
+  getRackLocations: async (search = '') => {
+    if (USE_MOCK_API) {
+      return [...new Set(stockMockItems.map((item) => (item.location || item.rack || '').trim())
+        .filter(Boolean))].filter((rack) => rack.toLowerCase().includes(search.toLowerCase()));
+    }
+    return rows(await apiClient.get('/stock/items/rack-locations', { params: { q: search } }));
   },
   getCategories: async () => USE_MOCK_API ? mockCategories() : rows(await apiClient.get('/stock/categories')),
   getSuppliers: async () => USE_MOCK_API ? [...stockSuppliersMock] : rows(await apiClient.get('/stock/suppliers')),

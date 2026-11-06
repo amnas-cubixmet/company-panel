@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
 import { USE_MOCK_API } from '../../api/apiConfig';
@@ -21,7 +21,7 @@ const validGstRate = (value) =>
   /^\d{1,3}(?:\.\d{1,2})?$/.test(String(value)) &&
   Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 100;
 const list = (result) => Array.isArray(result) ? result : (result?.results || []);
-const initialPart = { partName: '', sku: '', supplier: '', brand: '', category: '', unit: 'Piece',
+const initialPart = { partName: '', partNumber: '', sku: '', supplier: '', brand: '', category: '', unit: 'Piece',
   costPrice: '', sellingPrice: '', tax: '0', hsnCode: '', stockQuantity: '',
   minimumStock: '5', location: '' };
 const initialSupplier = { name: '', phone: '', gstNo: '', address: '' };
@@ -39,6 +39,43 @@ function OutlinedSelect({ label, children, ...props }) {
     <span>{label}</span>
   </label>;
 }
+function RackCombobox({ value, onChange, suggestions }) {
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const id = useId();
+  const options = useMemo(() => suggestions.filter((name) =>
+    name.toLowerCase().includes(value.trim().toLowerCase())).slice(0, 12),
+    [suggestions, value]);
+  const newLocation = value.trim() &&
+    !suggestions.some((name) => name.toLowerCase() === value.trim().toLowerCase());
+  const entries = [...options, ...(newLocation ? [value.trim()] : [])];
+  const select = (name) => { onChange(name); setActive(-1); setOpen(false); };
+  return <div className="cg-rack-combobox">
+    <label htmlFor={id}>Rack / Storage Location</label>
+    <input id={id} role="combobox" aria-expanded={open} aria-controls={id + '-options'}
+      aria-autocomplete="list" aria-activedescendant={open && active >= 0 ? id + '-option-' + active : undefined}
+      placeholder="Search or enter location" value={value} maxLength={80}
+      onChange={e => { onChange(e.target.value); setActive(-1); setOpen(true); }}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+      onKeyDown={e => {
+        if (e.key === 'Escape') { setOpen(false); setActive(-1); }
+        if (e.key === 'ArrowDown' && entries.length) { e.preventDefault(); setOpen(true); setActive(i => (i + 1) % entries.length); }
+        if (e.key === 'ArrowUp' && entries.length) { e.preventDefault(); setOpen(true); setActive(i => (i - 1 + entries.length) % entries.length); }
+        if (e.key === 'Enter' && open && active >= 0 && entries[active]) { e.preventDefault(); select(entries[active]); }
+      }} />
+    {open && entries.length > 0 && <div role="listbox" id={id + '-options'} className="cg-rack-options">
+      {entries.map((name, index) => <button type="button" role="option" aria-selected={active === index}
+        id={id + '-option-' + index} key={name.toLowerCase()}
+        className={active === index ? 'is-active' : ''}
+        onPointerDown={event => event.preventDefault()}
+        onClick={() => select(name)}>
+        {newLocation && index === entries.length - 1 ? '+ Use new location: ' : ''}{name}
+      </button>)}
+    </div>}
+  </div>;
+}
+
 const initialMove = { mode: 'in', itemId: '', quantity: '1', invoiceNo: '', notes: '', costPrice: '', sellingPrice: '', priceMode: '' };
 
 function stockState(item) {
@@ -79,6 +116,10 @@ export default function StockEasyPage() {
     return () => { alive = false; };
   }, [supplierId]);
   const [items, setItems] = useState([]);
+  const [remoteMatches, setRemoteMatches] = useState(null);
+  const [rackLocations, setRackLocations] = useState([]);
+  const [partErrors, setPartErrors] = useState({});
+  const partFormRef = useRef(null);
   const [ledger, setLedger] = useState([]);
   const [categories, setCategories] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
@@ -126,12 +167,35 @@ export default function StockEasyPage() {
 
   useEffect(() => { reload(); }, []);
 
-  const filtered = useMemo(() => items.filter((item) => {
-    const search = [item.partName, item.name, item.sku, item.barcode, item.brand]
+  // Query the persisted backend catalogue rather than only the currently loaded page.
+  useEffect(() => {
+    if (!query.trim()) { setRemoteMatches(null); return undefined; }
+    let alive = true;
+    const timer = setTimeout(() => {
+      stockCatalogService.getItems(query.trim())
+        .then(rows => { if (alive) setRemoteMatches(list(rows)); })
+        .catch(() => { if (alive) setRemoteMatches(null); });
+    }, 200);
+    return () => { alive = false; clearTimeout(timer); };
+  }, [query]);
+
+  useEffect(() => {
+    if (!partOpen || partMode !== 'new') return undefined;
+    let alive = true;
+    const timer = setTimeout(() => {
+      stockCatalogService.getRackLocations(part.location.trim())
+        .then(values => { if (alive) setRackLocations(list(values).filter(v => typeof v === 'string')); })
+        .catch(() => { if (alive) setRackLocations([]); });
+    }, 180);
+    return () => { alive = false; clearTimeout(timer); };
+  }, [partOpen, partMode, part.location]);
+
+  const filtered = useMemo(() => (remoteMatches ?? items).filter((item) => {
+    const search = [item.partName, item.name, item.partNumber, item.sku, item.barcode, item.brand, item.rack, item.location, item.supplierName, item.categoryName]
       .join(' ').toLowerCase().includes(query.trim().toLowerCase());
     const matchingSupplier = !supplierId || String(item.supplier?.id || item.supplier || '') === String(supplierId);
     return search && matchingSupplier && (filter === 'all' || stockState(item).tone === filter);
-  }), [items, query, filter, supplierId]);
+  }), [items, remoteMatches, query, filter, supplierId]);
 
   const lowCount = items.filter((item) => stockState(item).tone === 'low').length;
   const outCount = items.filter((item) => stockState(item).tone === 'out').length;
@@ -141,10 +205,10 @@ export default function StockEasyPage() {
   const selected = items.find((item) => String(item.id) === String(move.itemId));
   const selectedAvailable = selected ? number(selected.available ?? (number(selected.onHand) - number(selected.reserved))) : 0;
   const matchingParts = useMemo(() => items.filter((item) =>
-    [item.partName, item.sku, item.barcode, item.brand].join(' ').toLowerCase().includes(partLookup.trim().toLowerCase())
+    [item.partName, item.partNumber, item.sku, item.barcode, item.brand].join(' ').toLowerCase().includes(partLookup.trim().toLowerCase())
   ).slice(0, 8), [items, partLookup]);
   const receiptMatches = useMemo(() => items.filter((item) =>
-    [item.partName, item.sku, item.barcode, item.brand].join(' ').toLowerCase().includes(moveLookup.trim().toLowerCase())
+    [item.partName, item.partNumber, item.sku, item.barcode, item.brand].join(' ').toLowerCase().includes(moveLookup.trim().toLowerCase())
   ).slice(0, 12), [items, moveLookup]);
   const receiptPricesDiffer = selected && move.mode === 'in' &&
     (Number(move.costPrice) !== number(selected.costPrice) || Number(move.sellingPrice) !== number(selected.sellingPrice));
@@ -157,6 +221,7 @@ export default function StockEasyPage() {
   const openPartDialog = (lookup = '') => {
     setError('');
     setPart({ ...initialPart, supplier: supplierId });
+    setPartErrors({});
     setQuickSupplierOpen(false);
     setQuickSupplierError('');
     setPartMode('find'); setPartLookup(lookup); setPartOpen(true);
@@ -199,11 +264,17 @@ export default function StockEasyPage() {
   const savePart = async (event) => {
     event.preventDefault();
     if (saving) return;
-    if (!part.partName.trim() || !part.sku.trim() ||
+    if (!part.partName.trim() ||
         part.costPrice === '' || part.sellingPrice === '' ||
         !Number.isFinite(Number(part.costPrice)) || Number(part.costPrice) < 0 ||
         !Number.isFinite(Number(part.sellingPrice)) || Number(part.sellingPrice) < 0) {
-      setError('Enter a part name, SKU, valid purchase cost and selling price.'); return;
+      setError('Enter a part name, valid purchase cost and selling price.');
+      partFormRef.current?.querySelector('input[required]')?.focus(); return;
+    }
+    if (part.partNumber.trim() && !/^[A-Za-z0-9][A-Za-z0-9._/+#() -]*$/.test(part.partNumber.trim())) {
+      setPartErrors({ partNumber: 'Enter a valid manufacturer part number.' });
+      partFormRef.current?.querySelector('[data-field="partNumber"]')?.focus();
+      return;
     }
     if (!validGstRate(part.tax)) {
       setError('Choose a valid GST rate between 0% and 100% (up to two decimals).'); return;
@@ -213,8 +284,8 @@ export default function StockEasyPage() {
         !/^\\d+(?:\\.\\d{1,2})?$/.test(String(part.stockQuantity || '0'))) {
       setError('Opening stock quantity must be nonnegative with up to two decimal places.'); return;
     }
-    if (items.some(item => String(item.sku || '').trim().toLowerCase() === part.sku.trim().toLowerCase())) {
-      setError('This SKU / Part Number is already in Inventory. Select the existing product.'); return;
+    if (part.sku.trim() && items.some(item => String(item.sku || '').trim().toLowerCase() === part.sku.trim().toLowerCase())) {
+      setError('This SKU already exists. Choose another SKU or use automatic generation.'); return;
     }
     setSaving(true);
     setError('');
@@ -236,6 +307,16 @@ export default function StockEasyPage() {
       await reload();
       if (!openingQuantity && created?.id) beginMove('in', created.id, created);
     } catch (exception) {
+      const details = exception?.response?.data || exception?.data || {};
+      if (typeof details === 'object' && details && !Array.isArray(details)) {
+        const next = {};
+        for (const [name, value] of Object.entries(details)) {
+          next[name] = Array.isArray(value) ? value[0] : String(value);
+        }
+        setPartErrors(next);
+        const key = Object.keys(next)[0];
+        if (key) requestAnimationFrame(() => partFormRef.current?.querySelector('[data-field="' + key + '"]')?.focus());
+      }
       setError(exception?.message || 'Unable to add part.');
     } finally { setSaving(false); }
   };
@@ -341,7 +422,7 @@ export default function StockEasyPage() {
           <div><h2>Parts & Products</h2><p>Choose a part to receive stock. For vehicle jobs, issue parts from the Job Card.</p></div>
         </div>
         <div className="cg-easy-filters">
-          <label className="cg-easy-search"><Search size={18}/><input aria-label="Search stock" placeholder="Search part name, SKU, barcode or brand" value={query} onChange={(e) => setQuery(e.target.value)}/></label>
+          <label className="cg-easy-search"><Search size={18}/><input aria-label="Search stock" placeholder="Search part name, Part Number, SKU, supplier or rack" value={query} onChange={(e) => setQuery(e.target.value)}/></label>
           <div className="cg-easy-filter-buttons" aria-label="Stock status filter">
             {[['all', 'All'], ['low', 'Low Stock'], ['out', 'Out of Stock']].map(([value, label]) => (
               <button key={value} className={filter === value ? 'is-active' : ''} type="button" onClick={() => setFilter(value)} aria-pressed={filter === value}>{label}</button>
@@ -353,11 +434,12 @@ export default function StockEasyPage() {
           : (
             <div className="cg-easy-table-wrap">
               <table className="cg-easy-table">
-                <thead><tr><th>Part</th><th>Available</th><th>Cost</th><th>Selling</th><th>Status</th><th>Action</th></tr></thead>
+                <thead><tr><th>Part</th><th>Rack</th><th>Available</th><th>Cost</th><th>Selling</th><th>Status</th><th>Action</th></tr></thead>
                 <tbody>{filtered.map((item) => {
                   const state = stockState(item);
                   return <tr key={item.id}>
-                    <td data-label="Part"><strong>{item.partName || item.name}</strong><small>{item.sku}{item.brand ? ' · ' + item.brand : ''}</small></td>
+                    <td data-label="Part"><strong>{item.partName || item.name}</strong><small>{item.partNumber ? item.partNumber + ' · ' : ''}{item.sku}{item.brand ? ' · ' + item.brand : ''}</small></td>
+                    <td data-label="Rack">{item.location || item.rack || '—'}</td>
                     <td data-label="Available">{number(item.available ?? (number(item.onHand) - number(item.reserved)))} {item.unit || 'PCS'}</td>
                     <td data-label="Cost">{cash(item.costPrice)}</td>
                     <td data-label="Selling">{cash(item.sellingPrice)}</td>
@@ -382,7 +464,7 @@ export default function StockEasyPage() {
         {partMode === 'find' ? (
           <div className="cg-easy-form">
             
-            <label>Search part name / SKU / barcode
+            <label>Search part name / Part Number / SKU / barcode
               <div className="cg-easy-picker-search"><Search size={17}/><input autoFocus placeholder="Search existing products..." value={partLookup} onChange={(event) => setPartLookup(event.target.value)} /></div>
             </label>
             <div className="cg-easy-pick-list">
@@ -402,12 +484,17 @@ export default function StockEasyPage() {
             {error && <p className="cg-easy-alert" role="alert">{error}</p>}
           </div>
         ) : (
-          <form className="cg-easy-form" onSubmit={savePart}>
+          <form className="cg-easy-form" ref={partFormRef} onSubmit={savePart}>
             <button type="button" className="cg-easy-back-picker" onClick={() => { setPartMode('find'); setError(''); }}>← Search Existing Products</button>
             {error && <p className="cg-easy-alert" role="alert">{error}</p>}
             <div className="cg-easy-fields">
               <OutlinedInput label="Part Name *" required maxLength={180} value={part.partName} onChange={(e) => setPart({ ...part, partName: e.target.value })}/>
-              <OutlinedInput label="SKU / Part Number *" required maxLength={80} value={part.sku} onChange={(e) => setPart({ ...part, sku: e.target.value })}/>
+              <OutlinedInput label="Part Number" data-field="partNumber" aria-invalid={Boolean(partErrors.partNumber)}
+                maxLength={100} value={part.partNumber} onChange={(e) => { setPart({ ...part, partNumber: e.target.value }); setPartErrors({ ...partErrors, partNumber: '' }); }}/>
+              <OutlinedInput label="SKU (leave empty to auto-generate)" data-field="sku" maxLength={80}
+                value={part.sku} onChange={(e) => setPart({ ...part, sku: e.target.value })}/>
+              {partErrors.partNumber && <p className="cg-easy-alert" role="alert">{partErrors.partNumber}</p>}
+              {partErrors.sku && <p className="cg-easy-alert" role="alert">{partErrors.sku}</p>}
             </div>
             <div className="cg-easy-supplier-field">
               <OutlinedSelect label="Supplier" value={part.supplier} onChange={(e) => setPart({ ...part, supplier: e.target.value })}>
@@ -464,7 +551,8 @@ export default function StockEasyPage() {
             </div>
             <div className="cg-easy-fields">
               <OutlinedInput label="Minimum Stock" type="number" min="0" step="0.01" value={part.minimumStock} onChange={e => setPart({ ...part, minimumStock: e.target.value })}/>
-              <OutlinedInput label="Rack / Location" value={part.location} onChange={e => setPart({ ...part, location: e.target.value })}/>
+              <RackCombobox value={part.location} suggestions={rackLocations}
+                onChange={location => setPart(previous => ({ ...previous, location }))}/>
             </div>
             <p className="cg-easy-hint">Opening stock records quantity only. Supplier credit and payment require a confirmed purchase bill.</p>
             <div className="cg-easy-form-actions"><button type="button" onClick={() => setPartOpen(false)}>Cancel</button><button type="submit" disabled={saving}>{saving ? 'Saving...' : (number(part.stockQuantity) > 0 ? 'Save Part & Add Opening Stock' : 'Save Part')}</button></div>
