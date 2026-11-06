@@ -348,9 +348,9 @@ export const VehicleDetails = () => {
                   <span>{part.sku || 'No SKU'} · {part.date}</span>
                 </div>
                 <div className="vehicle-part-card__meta">
-                  <button type="button" className="vehicle-part-job-link" onClick={() => navigate(`/jobs/${part.jobId}/overview`)}>Job {part.jobNumber}</button>
-                  <span>Qty <b>{part.qty || part.quantity || 1}</b></span>
-                  <span>Price <b>{money.format(part.total || part.unitPrice || 0)}</b></span>
+                  {hasPermission(user, 'jobs.view') ? <button type="button" className="vehicle-part-job-link" onClick={() => navigate(`/jobs/${part.jobId}/overview`)}>Job {part.jobNumber}</button> : <span>Job {part.jobNumber}</span>}
+                  <span>Qty <b>{part.qty ?? part.quantity ?? '—'}</b></span>
+                  <span>Price <b>{displayMoney(knownVehicleMoney(part.total ?? part.unitPrice))}</b></span>
                 </div>
               </article>
             ))}
