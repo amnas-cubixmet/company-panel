@@ -8,6 +8,7 @@ import { stockCatalogService } from '../../services/stockCatalog.service';
 import { supplierService } from '../../services/supplier.service';
 import '../../styles/stock-easy.css';
 import '../../styles/stock-form-polish.css';
+import '../../styles/stock-list-polish.css';
 
 const cash = (value) => new Intl.NumberFormat('en-IN', {
   style: 'currency', currency: 'INR', maximumFractionDigits: 2,
@@ -429,7 +430,7 @@ export default function StockEasyPage() {
           <div><h2>Parts & Products</h2><p>Choose a part to receive stock. For vehicle jobs, issue parts from the Job Card.</p></div>
         </div>
         <div className="cg-easy-filters">
-          <label className="cg-easy-search"><Search size={18}/><input aria-label="Search stock" placeholder="Search part name, Part Number, SKU, supplier or rack" value={query} onChange={(e) => setQuery(e.target.value)}/></label>
+          <label className="cg-easy-search"><Search size={18} aria-hidden="true"/><input type="search" aria-label="Search stock" placeholder="Search part name, Part Number, SKU, supplier or rack" value={query} onChange={(e) => setQuery(e.target.value)}/></label>
           <div className="cg-easy-filter-buttons" aria-label="Stock status filter">
             {[['all', 'All'], ['low', 'Low Stock'], ['out', 'Out of Stock']].map(([value, label]) => (
               <button key={value} className={filter === value ? 'is-active' : ''} type="button" onClick={() => setFilter(value)} aria-pressed={filter === value}>{label}</button>
@@ -441,23 +442,23 @@ export default function StockEasyPage() {
           : (
             <div className="cg-easy-table-wrap">
               <table className="cg-easy-table">
-                <thead><tr><th>Part</th><th>Rack</th><th>Available</th><th>Cost</th><th>Selling</th><th>Status</th><th>Action</th></tr></thead>
+                <thead><tr><th scope="col">Part</th><th scope="col">Rack</th><th scope="col">Available</th><th scope="col">Cost</th><th scope="col">Selling</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead>
                 <tbody>{filtered.map((item) => {
                   const state = stockState(item);
                   return <tr key={item.id}>
-                    <td data-label="Part"><strong>{item.partName || item.name}</strong><small>{item.partNumber ? item.partNumber + ' · ' : ''}{item.sku}{item.brand ? ' · ' + item.brand : ''}</small></td>
-                    <td data-label="Rack">{item.location || item.rack || '—'}</td>
+                    <td data-label="Part"><strong title={item.partName || item.name}>{item.partName || item.name}</strong><small>{item.partNumber ? item.partNumber + ' · ' : ''}{item.sku}{item.brand ? ' · ' + item.brand : ''}</small></td>
+                    <td data-label="Rack" title={item.location || item.rack || '—'}>{item.location || item.rack || '—'}</td>
                     <td data-label="Available">{number(item.available ?? (number(item.onHand) - number(item.reserved)))} {item.unit || 'PCS'}</td>
                     <td data-label="Cost">{cash(item.costPrice)}</td>
                     <td data-label="Selling">{cash(item.sellingPrice)}</td>
                     <td data-label="Status"><span className={'cg-easy-status is-' + state.tone}>{state.label}</span></td>
-                    <td data-label="Action"><button type="button" onClick={() => beginMove('in', item.id)}>Receive</button></td>
+                    <td data-label="Action"><button type="button" aria-label={`Receive stock for ${item.partName || item.name}`} onClick={() => beginMove('in', item.id)}>Receive</button></td>
                   </tr>;
                 })}</tbody>
               </table>
             </div>
           )}
-        <footer className="cg-easy-footer"><span>{filtered.length} parts shown</span></footer>
+        <footer className="cg-easy-footer"><span aria-live="polite">{loading || error ? '—' : filtered.length} parts shown</span></footer>
       </section>
 
       <section className="cg-easy-bottom" id="stock-history">
