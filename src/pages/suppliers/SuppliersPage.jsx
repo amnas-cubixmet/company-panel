@@ -150,6 +150,11 @@ export default function SuppliersPage({ section = 'all' }) {
   const [creditBalances, setCreditBalances] = useState(null);
   const [purchaseBills, setPurchaseBills] = useState([]);
   const [purchaseHistory, setPurchaseHistory] = useState([]);
+  const [purchaseQuery, setPurchaseQuery] = useState('');
+  const [purchaseSupplier, setPurchaseSupplier] = useState('');
+  const [purchaseStatus, setPurchaseStatus] = useState('');
+  const [purchaseFrom, setPurchaseFrom] = useState('');
+  const [purchaseTo, setPurchaseTo] = useState('');
   const [purchaseHistoryLoading, setPurchaseHistoryLoading] = useState(false);
   const [purchaseHistoryError, setPurchaseHistoryError] = useState('');
   const [supplier, setSupplier] = useState(null);
@@ -228,6 +233,23 @@ export default function SuppliersPage({ section = 'all' }) {
         .some(value=>asText(value).toLowerCase().includes(needle))
     );
   },[search,suppliers,statusFilter]);
+
+  // Purchase orders and posted supplier bills are distinct records; never sum them as
+  // separate outstanding liabilities. Filter each data source independently.
+  const matchesPurchase = (number, rowSupplier, date, state) => {
+    const supplierName = suppliers.find(row => String(row.id) === String(rowSupplier))?.name || '';
+    const query = purchaseQuery.trim().toLowerCase();
+    if (purchaseSupplier && String(rowSupplier) !== purchaseSupplier) return false;
+    if (purchaseStatus && String(state || '').toLowerCase() !== purchaseStatus) return false;
+    if (purchaseFrom && (!date || String(date).slice(0, 10) < purchaseFrom)) return false;
+    if (purchaseTo && (!date || String(date).slice(0, 10) > purchaseTo)) return false;
+    return !query || [number, supplierName, state].some(value => asText(value).toLowerCase().includes(query));
+  };
+  const filteredPurchaseHistory = purchaseHistory.filter(order =>
+    matchesPurchase(order.purchaseNo || order.number, supplierIdOf(order),
+      order.purchaseDate || order.orderDate || order.date || order.createdAt, order.status));
+  const filteredPurchaseBills = purchaseBills.filter(bill =>
+    matchesPurchase(bill.invoiceNumber, bill.supplierId, bill.invoiceDate, bill.status));
 
   async function deactivateSupplier() {
     if (!supplier || !canEdit || actionBusy) return;
@@ -315,13 +337,42 @@ export default function SuppliersPage({ section = 'all' }) {
 
     {!id&&purchaseView&&(
       <section className="cg-supplier-purchase-history" aria-label="Supplier purchase history">
+        <div className="cg-supplier-purchase-filters">
+          <label>Search purchases
+            <input aria-label="Search purchases" placeholder="Purchase number, invoice or supplier"
+              value={purchaseQuery} onChange={event => setPurchaseQuery(event.target.value)} />
+          </label>
+          <label>Supplier
+            <select aria-label="Purchase supplier" value={purchaseSupplier}
+              onChange={event => setPurchaseSupplier(event.target.value)}>
+              <option value="">All suppliers</option>
+              {suppliers.map(row => <option key={row.id} value={String(row.id)}>{row.name}</option>)}
+            </select>
+          </label>
+          <label>Status
+            <select aria-label="Purchase status" value={purchaseStatus}
+              onChange={event => setPurchaseStatus(event.target.value)}>
+              <option value="">All statuses</option>
+              {['Draft', 'Received', 'Completed', 'Posted', 'Unpaid', 'Partially Paid', 'Paid'].map(value =>
+                <option key={value} value={value.toLowerCase()}>{value}</option>)}
+            </select>
+          </label>
+          <label className="cg-supplier-filter-date">From date
+            <input aria-label="Purchase from date" type="date" value={purchaseFrom}
+              max={purchaseTo || undefined} onChange={event => setPurchaseFrom(event.target.value)} />
+          </label>
+          <label className="cg-supplier-filter-date">To date
+            <input aria-label="Purchase to date" type="date" value={purchaseTo}
+              min={purchaseFrom || undefined} onChange={event => setPurchaseTo(event.target.value)} />
+          </label>
+        </div>
         {purchaseHistoryError && <p role="alert" className="cg-supplier-error">{purchaseHistoryError}</p>}
         {purchaseHistoryLoading ? <p role="status" className="cg-supplier-empty">Loading purchase history…</p> : (
           <div className="cg-supplier-profile">
             <div className="cg-supplier-profile-head">
-              <ShoppingBag size={20}/><h2>Purchase Orders</h2><span>{purchaseHistory.length} records</span>
+              <ShoppingBag size={20}/><h2>Purchase Orders</h2><span>{filteredPurchaseHistory.length} records</span>
             </div>
-            {purchaseHistory.map(order => (
+            {filteredPurchaseHistory.map(order => (
               <div className="cg-supplier-record" key={'po-'+order.id}>
                 <div>
                   <strong>{order.purchaseNo || order.number || 'Purchase Order'}</strong>
@@ -330,24 +381,24 @@ export default function SuppliersPage({ section = 'all' }) {
                 <b>{money(order.total)}</b>
               </div>
             ))}
-            {!purchaseHistory.length && <p className="cg-supplier-empty">No purchase orders found.</p>}
+            {!filteredPurchaseHistory.length && <p className="cg-supplier-empty">No matching purchase orders found.</p>}
           </div>
         )}
         {canViewFinance && (
           <div className="cg-supplier-profile">
             <div className="cg-supplier-profile-head">
-              <Package size={20}/><h2>Supplier Purchase Bills</h2><span>{purchaseBills.length} records</span>
+              <Package size={20}/><h2>Supplier Purchase Bills</h2><span>{filteredPurchaseBills.length} records</span>
             </div>
-            {purchaseBills.map(bill => (
+            {filteredPurchaseBills.map(bill => (
               <div className="cg-supplier-record" key={'bill-'+bill.id}>
                 <div>
                   <strong>{bill.invoiceNumber}</strong>
-                  <small>{suppliers.find(row => String(row.id) === String(bill.supplierId))?.name || 'Supplier'} · {bill.status} · {bill.invoiceDate}</small>
+                  <small>{suppliers.find(row => String(row.id) === String(bill.supplierId))?.name || 'Supplier'} · {bill.status} · {bill.invoiceDate} · {bill.postingStatus === 'Posted' ? 'Posted liability' : 'Draft — not payable'}</small>
                 </div>
-                <b>{money(bill.total)}</b>
+                <b>{bill.postingStatus === 'Posted' ? 'Due ' + money(bill.outstanding) : 'Draft ' + money(bill.total)}</b>
               </div>
             ))}
-            {!purchaseBills.length && <p className="cg-supplier-empty">No supplier bills recorded.</p>}
+            {!filteredPurchaseBills.length && <p className="cg-supplier-empty">No matching supplier bills found.</p>}
           </div>
         )}
       </section>
