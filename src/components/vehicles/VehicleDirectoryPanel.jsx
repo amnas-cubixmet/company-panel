@@ -24,7 +24,6 @@ export const VehicleDirectoryPanel = ({
       <header className="vehicle-dashboard-section-title">
         <div>
           <h2>Vehicle Directory</h2>
-          <p>Open profiles, review active jobs or create a new Job Card.</p>
         </div>
         <span>{vehicles.length} vehicle{vehicles.length === 1 ? '' : 's'}</span>
       </header>
@@ -33,21 +32,20 @@ export const VehicleDirectoryPanel = ({
         <table className="vehicle-table">
           <thead>
             <tr>
-              <th>Vehicle</th>
-              <th>Owner</th>
-              <th>Service</th>
-              <th>Open Job</th>
-              <th>Status</th>
-              <th aria-label="Open" />
+              <th scope="col">Registration</th>
+              <th scope="col">Make / Model</th>
+              <th scope="col">Customer</th>
+              <th scope="col">Last Service</th>
+              <th scope="col">Next Service</th>
+              <th scope="col">Open Job</th>
+              <th scope="col">Status</th>
+              <th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody>
             {vehicles.map((vehicle) => {
               const status = getVehicleStatus(vehicle);
-              const lastService =
-                vehicle.latestJob?.createdDate ||
-                vehicle.lastServiceDate ||
-                '—';
+              const lastService = vehicle.lastServiceDate || '—';
 
               return (
                 <tr
@@ -61,21 +59,14 @@ export const VehicleDirectoryPanel = ({
                   tabIndex={0}
                   aria-label={`Open vehicle ${vehicle.registration || 'profile'}`}
                 >
-                  <td>
-                    <strong>{vehicle.registration || 'No Registration'}</strong>
-                    <span>
-                      {vehicle.make} {vehicle.model}
-                      {vehicle.variant ? ` · ${vehicle.variant}` : ''}
-                    </span>
-                  </td>
+                  <td><strong>{vehicle.registration || 'No Registration'}</strong></td>
+                  <td><strong>{vehicle.make} {vehicle.model}</strong>{vehicle.variant && <span>{vehicle.variant}</span>}</td>
                   <td>
                     <strong>{vehicle.customerName}</strong>
-                    <span>{vehicle.customerPhone || 'No contact'}</span>
+                    <span>{vehicle.customerPhone || '—'}</span>
                   </td>
-                  <td>
-                    <strong>{lastService}</strong>
-                    <span>Next: {vehicle.nextServiceDue || 'Not set'}</span>
-                  </td>
+                  <td>{lastService}</td>
+                  <td>{vehicle.nextServiceDue || '—'}</td>
                   <td>
                     {vehicle.openJob ? (
                       <button
@@ -98,7 +89,17 @@ export const VehicleDirectoryPanel = ({
                       {status.label}
                     </span>
                   </td>
-                  <td><ChevronRight size={15} /></td>
+                  <td className="vehicle-directory-actions">
+                    <button type="button" aria-label={`View ${vehicle.registration || 'vehicle'}`}
+                      onClick={(event) => { event.stopPropagation(); onNavigate(`/vehicles/${vehicle.id}`); }}>
+                      View <ChevronRight size={14} aria-hidden="true"/>
+                    </button>
+                    {canCreateJob && <button type="button"
+                      aria-label={`New Job Card for ${vehicle.registration || 'vehicle'}`}
+                      onClick={(event) => { event.stopPropagation(); onNavigate(`/jobs/new?customerId=${vehicle.customerId || ''}&vehicle=${encodeURIComponent(vehicle.registration || '')}`); }}>
+                      New Job
+                    </button>}
+                  </td>
                 </tr>
               );
             })}
@@ -109,15 +110,7 @@ export const VehicleDirectoryPanel = ({
       <div className="vehicle-mobile-grid">
         {vehicles.map((vehicle) => {
           const status = getVehicleStatus(vehicle);
-          const lastService =
-            vehicle.latestJob?.createdDate ||
-            vehicle.lastServiceDate ||
-            '—';
-          const odometer =
-            vehicle.latestJob?.kilometre ||
-            vehicle.odometer ||
-            '—';
-
+          const lastService = vehicle.lastServiceDate || '—';
           return (
             <article key={vehicle.id} className="vehicle-mobile-card">
               <div className="vehicle-mobile-card-head">
@@ -139,10 +132,9 @@ export const VehicleDirectoryPanel = ({
               </div>
 
               <div className="vehicle-mobile-meta">
-                <div><span>Odometer</span><strong>{odometer}</strong></div>
                 <div><span>Last Service</span><strong>{lastService}</strong></div>
                 <div><span>Next Service</span><strong>{vehicle.nextServiceDue || 'Not set'}</strong></div>
-                <div><span>Insurance</span><strong>{vehicle.insuranceExpiry || 'Not set'}</strong></div>
+
               </div>
 
               {vehicle.openJob && (
@@ -187,7 +179,7 @@ export const VehicleDirectoryPanel = ({
       </div>
 
       {!vehicles.length && (
-        <div className="vehicle-dashboard-empty">No vehicles matched your search.</div>
+        <div className="vehicle-dashboard-empty">No vehicles found.</div>
       )}
     </section>
   );

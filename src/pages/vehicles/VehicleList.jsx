@@ -13,6 +13,7 @@ import { vehicleService } from '../../services/vehicle.service';
 import '../../styles/vehicle-management.css';
 import '../../styles/vehicle-polish.css';
 import '../../styles/vehicle-readable.css';
+import '../../styles/vehicle-compact-cleanup.css';
 
 export const VehicleList = () => {
   const navigate = useNavigate();
@@ -108,6 +109,10 @@ export const VehicleList = () => {
   }, [vehicles, query]);
 
   const metrics = useMemo(() => {
+    const openJobIds = new Set(vehicles.flatMap((vehicle) =>
+      (vehicle.history || []).filter((job) => OPEN_JOB_STATUSES.has(job.status))
+        .map((job) => String(job.id)),
+    ));
     const serviceDue = vehicles.filter((vehicle) => {
       const days = dateDiff(vehicle.nextServiceDue);
       return days !== null && days <= 30;
@@ -121,7 +126,7 @@ export const VehicleList = () => {
     return {
       total: vehicles.length,
       active: vehicles.filter((vehicle) => vehicle.status !== 'Inactive').length,
-      openJobs: vehicles.filter((vehicle) => vehicle.openJob).length,
+      openJobs: openJobIds.size,
       serviceDue,
       insuranceDue,
     };
