@@ -8,7 +8,9 @@ test('Payments page loads live finance, audited account ledger and period filter
   const page = read('src/pages/payments/PaymentList.jsx');
   const financeApi = read('src/services/finance.service.js');
   assert.match(page, /financeService\.getDashboard\(\{ period: financePeriod \}\)/);
-  assert.match(page, /financeService\.getLedger\(\{ page_size: 20 \}\)/);
+  assert.match(page, /financeService\.getLedger\(\{/);
+  assert.match(page, /financePeriod === 'today'/);
+  assert.match(page, /dateLocal\(\)\.slice\(0, 8\) \+ '01'/);
   assert.match(page, /<PaymentFinanceOverview/);
   assert.match(page, /onPeriodChange=\{setFinancePeriod\}/);
   assert.match(page, /canManage=\{canManageAccounts\}/);
