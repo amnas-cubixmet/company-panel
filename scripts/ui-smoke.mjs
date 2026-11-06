@@ -513,10 +513,11 @@ try {
             });
             if(results.border>0||results.innerBorder>0||results.height<48||results.innerFont<16)
               throw Error('Services directory search style mismatch: '+JSON.stringify(results));
-            await page.getByRole('button',{name:'Categories',exact:true}).click();
-            await page.getByRole('button',{name:'Add Category'}).click();
+            // Service Categories are now a single compact modal, not a
+            // separate Categories tab. Exercise the actual Add Category button.
+            await page.getByRole('button',{name:'Add Category',exact:true}).click();
             await checkFields('.service-category-form',3);
-            await page.getByRole('dialog',{name:'Add Service Category'})
+            await page.getByRole('dialog',{name:'Add Category'})
               .getByRole('button',{name:'Close dialog'}).click();
           }
         }
