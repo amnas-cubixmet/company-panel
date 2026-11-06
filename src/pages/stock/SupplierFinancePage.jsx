@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, CreditCard, Plus, RefreshCw, Wallet } from 'lucide-react';
 import { supplierFinanceService as finance } from '../../services/supplierFinance.service';
+import { SupplierSectionTabs } from '../../components/suppliers/SupplierSectionTabs';
 
 const field = 'w-full min-w-0 min-h-12 rounded-xl border border-line bg-surface px-3 py-2 text-base text-content outline-none focus:border-primary';
 const secondary = 'min-h-11 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-content disabled:opacity-50';
@@ -12,7 +13,8 @@ const money = (value) => new Intl.NumberFormat('en-IN', { style: 'currency', cur
 const line = () => ({ itemId: '', description: '', quantity: '1', purchaseRate: '', gstRate: '0', gstTreatment: '' });
 const paymentKey = () => globalThis.crypto?.randomUUID?.() || ('PAY-' + Date.now() + '-' + Math.random().toString(36).slice(2));
 
-export default function SupplierFinancePage() {
+export default function SupplierFinancePage({ section = '' }) {
+  const supplierSection = section === 'credits' || section === 'payments';
   const [searchParams, setSearchParams] = useSearchParams();
   const [suppliers, setSuppliers] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -42,9 +44,17 @@ export default function SupplierFinancePage() {
   });
   const [applyDraft, setApplyDraft] = useState({ paymentId: '', billId: '', amount: '' });
   const [activeTab, setActiveTab] = useState(() => {
+    if (section === 'payments') return 'payment';
+    if (section === 'credits') return 'overview';
     const requested = searchParams.get('tab');
     return ['overview', 'bill', 'payment', 'accounts'].includes(requested) ? requested : 'overview';
   });
+  // React Router can retain a mounted page while its supplier section changes.
+  useEffect(() => {
+    if (section === 'credits') setActiveTab('overview');
+    if (section === 'payments') setActiveTab('payment');
+  }, [section]);
+
   const requestKey = useRef(paymentKey());
   const purchaseRequestKey = useRef(paymentKey());
   const inFlight = useRef(false);
@@ -286,15 +296,35 @@ export default function SupplierFinancePage() {
     <main className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 p-3 pb-24 text-content md:p-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <Link to="/stock" className="text-sm font-semibold text-primary">Inventory Management</Link>
-          <h1 className="mt-1 text-2xl font-bold text-content">Supplier Credit & Payments</h1>
-          <p className="mt-1 text-sm text-muted">Purchases, payables and recorded cash / bank entries.</p>
+          <Link to={supplierSection ? '/suppliers' : '/stock'} className="text-sm font-semibold text-primary">
+            {supplierSection ? 'Suppliers' : 'Inventory Management'}
+          </Link>
+          <h1 className="mt-1 text-2xl font-bold text-content">
+            {section === 'credits' ? 'Credit Management' : section === 'payments' ? 'Supplier Payments' : 'Supplier Credit & Payments'}
+          </h1>
+          {!supplierSection && <p className="mt-1 text-sm text-muted">Purchases, payables and recorded cash / bank entries.</p>}
         </div>
         <button type="button" className={secondary} disabled={posting || loading}
           onClick={() => run('refresh', () => refresh(), 'Supplier records refreshed.')}>
           <span className="inline-flex items-center gap-2"><RefreshCw size={16}/> Refresh</span>
         </button>
       </header>
+
+      {supplierSection && <SupplierSectionTabs />}
+      {section === 'credits' && (
+        <div className="flex flex-wrap gap-2">
+          <Link to="/suppliers/payments" className={secondary}>Pay Supplier</Link>
+          <Link to="/stock/suppliers?tab=bill" className={secondary}>+ New Purchase</Link>
+        </div>
+      )}
+      {section === 'payments' && (
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className={secondary}
+            onClick={() => setActiveTab(current => current === 'accounts' ? 'payment' : 'accounts')}>
+            {activeTab === 'accounts' ? 'Back to Supplier Payments' : 'Manage Cash / Bank Accounts'}
+          </button>
+        </div>
+      )}
 
       {loading && <p role="status" className={box}>Loading supplier records…</p>}
       {error && <div role="alert" className="rounded-xl border border-red-500/30 p-3 text-sm text-red-600">{error}</div>}
@@ -341,7 +371,7 @@ export default function SupplierFinancePage() {
         </div>
       )}
 
-      <nav className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Supplier accounting sections">
+      {!supplierSection && <nav className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Supplier accounting sections">
         {[
           ['overview', 'Bills & Ledger'], ['bill', 'New Purchase'],
           ['payment', 'Pay Supplier'], ['accounts', 'Cash / Bank'],
@@ -352,14 +382,15 @@ export default function SupplierFinancePage() {
             {label}
           </button>
         ))}
-      </nav>
+      </nav>}
 
       {activeTab === 'overview' && (
         <div className="grid gap-4">
           <section className={box}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-lg font-bold">Purchase Bills — {selectedSupplierName}</h2>
-              <button className={secondary} type="button" onClick={() => setActiveTab('bill')}>+ New Purchase</button>
+              {supplierSection ? <Link to="/stock/suppliers?tab=bill" className={secondary}>+ New Purchase</Link>
+                : <button className={secondary} type="button" onClick={() => setActiveTab('bill')}>+ New Purchase</button>}
             </div>
             <div className="mt-3 grid gap-2">
               {supplierBills.map((bill) => (
