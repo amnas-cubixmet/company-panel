@@ -237,20 +237,14 @@ try {
         if(path==='/suppliers' && (profile.width===390 || profile.width===1440)) {
           await page.getByRole('heading',{name:'Suppliers',exact:true}).waitFor({state:'visible'});
           await page.getByText('Fixture Auto Parts').first().waitFor({state:'visible'});
-          const tabNav=page.getByRole('navigation',{name:'Supplier sections'});
-          await tabNav.waitFor({state:'visible'});
-          for(const [label,target] of [
-            ['All Suppliers','/suppliers'],
-            ['Credit Management','/suppliers/credits'],
-            ['Purchase History','/suppliers/purchases'],
-            ['Supplier Payments','/suppliers/payments'],
-          ]) {
-            const tab=tabNav.getByRole('link',{name:label,exact:true});
-            await tab.waitFor({state:'visible'});
-            if(await tab.getAttribute('href')!==target) throw Error('Incorrect supplier tab URL: '+label);
+          // Supplier actions are now on /suppliers/:id, not separate tabs.
+          if (await page.getByRole('navigation',{name:'Supplier sections'}).count()) {
+            throw Error('Obsolete supplier finance tabs should be removed');
           }
-          const tabOverflow=await tabNav.evaluate(el=>el.scrollWidth>el.clientWidth+1);
-          if(tabOverflow) throw Error('Supplier tabs must wrap into the grid rather than slide horizontally');
+          const supplierProfile = page.getByRole('link',{name:/Fixture Auto Parts/}).first();
+          await supplierProfile.waitFor({state:'visible'});
+          const target = await supplierProfile.getAttribute('href');
+          if (!target?.startsWith('/suppliers/')) throw Error('Supplier must link to its detail profile');
           const drawerMode=profile.width<1024;
           if(drawerMode) await page.getByRole('button',{name:'Open all authorized pages'}).click();
           const sidebar=page.locator(drawerMode ? '.mobile-drawer' : '.app-sidebar');
@@ -774,8 +768,8 @@ try {
           }
         }
         if(path==='/stock' && [390,1440].includes(profile.width)) {
-          // Use real browser computed styles for Stock modal search,
-          // Add New Product, and Receive Stock. No POSTs are made.
+          // Use real browser computed styles for Stock Add New Product
+          // and verify the new Supplier receiving route. No POSTs are made.
           await page.getByRole('button',{name:'Add New Part'}).first().click();
           const addDialog=page.getByRole('dialog',{name:'Add New Part'});
           await addDialog.waitFor();
@@ -821,25 +815,14 @@ try {
             throw Error('Stock Add Product form UI mismatch: '+JSON.stringify({width:profile.width,...partStyles}));
           }
           await addDialog.getByRole('button',{name:'Close dialog'}).click();
-          await page.getByRole('button',{name:'Receive Stock'}).first().click();
-          const receiveDialog=page.getByRole('dialog',{name:'Receive Stock'});
-          await receiveDialog.waitFor();
-          const receiveStyles=await receiveDialog.locator('form.cg-easy-form').evaluate(form=>{
-            const input=form.querySelector('input[type=number]');
-            const picker=form.querySelector('.cg-easy-picker-search input');
-            const action=form.querySelector('.cg-easy-form-actions button[type=submit]');
-            return {
-              quantityHeight:input?Math.round(input.getBoundingClientRect().height):0,
-              quantityFont:input?parseFloat(getComputedStyle(input).fontSize):0,
-              pickerFont:picker?parseFloat(getComputedStyle(picker).fontSize):0,
-              buttonHeight:action?Math.round(action.getBoundingClientRect().height):0,
-            };
-          });
-          if(receiveStyles.quantityHeight<48||receiveStyles.quantityFont<16||
-              receiveStyles.pickerFont<16||receiveStyles.buttonHeight<48) {
-            throw Error('Stock Receive form UI mismatch: '+JSON.stringify(receiveStyles));
+          const supplierReceiving=page.getByRole('link',{name:'Buy / Receive from Supplier'});
+          await supplierReceiving.waitFor({state:'visible'});
+          if (await supplierReceiving.getAttribute('href') !== '/suppliers') {
+            throw Error('Purchased stock must route to Supplier details workflow');
           }
-          await receiveDialog.getByRole('button',{name:'Close dialog'}).click();
+          if(await page.getByRole('button',{name:'Receive Stock',exact:true}).count()) {
+            throw Error('Obsolete unlinked Receive Stock button must not reappear');
+          }
         }
         if(path==='/login'){
           // Regression for double red outline: the outer div owns the border,
