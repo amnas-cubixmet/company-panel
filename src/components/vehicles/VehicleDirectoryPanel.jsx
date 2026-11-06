@@ -45,10 +45,7 @@ export const VehicleDirectoryPanel = ({
           <tbody>
             {vehicles.map((vehicle) => {
               const status = getVehicleStatus(vehicle);
-              const lastService =
-                vehicle.latestJob?.createdDate ||
-                vehicle.lastServiceDate ||
-                '—';
+              const lastService = vehicle.lastServiceDate || '—';
 
               return (
                 <tr
@@ -113,10 +110,7 @@ export const VehicleDirectoryPanel = ({
       <div className="vehicle-mobile-grid">
         {vehicles.map((vehicle) => {
           const status = getVehicleStatus(vehicle);
-          const lastService =
-            vehicle.latestJob?.createdDate ||
-            vehicle.lastServiceDate ||
-            '—';
+          const lastService = vehicle.lastServiceDate || '—';
           return (
             <article key={vehicle.id} className="vehicle-mobile-card">
               <div className="vehicle-mobile-card-head">
