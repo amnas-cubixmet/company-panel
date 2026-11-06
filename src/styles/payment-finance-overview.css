@@ -35,3 +35,11 @@
 .cg-pay-finance-log .is-credit{color:var(--success,#15803d);font-weight:600}.cg-pay-finance-log .is-debit{color:var(--danger,#b45309);font-weight:600}
 @media(max-width:1050px){.cg-pay-finance-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.cg-pay-finance-accounts{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.cg-pay-finance-cards,.cg-pay-finance-accounts,.cg-pay-finance-fields{grid-template-columns:minmax(0,1fr)}.cg-pay-finance-cards{gap:8px}.cg-pay-finance-accounts{gap:8px}.cg-pay-finance-head,.cg-pay-finance-subhead{align-items:flex-start}.cg-pay-finance-buttons button{flex:1 1 auto}}
+
+.cg-pay-finance-ledger-controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap;min-width:0}
+.cg-pay-finance-ledger-controls>label{display:grid;gap:6px;flex:1 1 180px;min-width:140px;font-size:13px;font-weight:600}
+.cg-pay-finance-ledger-controls :is(input,select){width:100%;min-width:0;min-height:46px;padding:9px 12px;font-size:16px;color:var(--text-primary,inherit);background:var(--surface,var(--bg-card,#fff));border:1px solid var(--border,var(--border-color,#dce2ea));border-radius:9px}
+.cg-pay-finance-ledger-controls :is(input,select):focus-visible{outline:2px solid var(--primary,#2870dc);outline-offset:2px}
+.cg-pay-finance-ledger-pagination{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-top:6px;font-size:13px;color:var(--text-secondary,var(--muted,#64748b))}
+.cg-pay-finance-ledger-pagination button:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:600px){.cg-pay-finance-ledger-controls>label{flex:1 1 100%}.cg-pay-finance-ledger-controls .cg-pay-finance-buttons{width:100%}}
