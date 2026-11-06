@@ -1,5 +1,5 @@
 import { appConfirm } from '../../components/common/appDialogs';
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search } from '../../components/common/Search';
 import { Input } from '../../components/common/Input';
@@ -7,6 +7,7 @@ import { Select } from '../../components/common/Select';
 import { Textarea } from '../../components/common/Textarea';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import '../../styles/customer-workshop-form.css';
+import '../../styles/customer-workspace-compact.css';
 import { customerService } from '../../services/customer.service';
 import { customerInvoiceMoney, customerStatusLabel, formatCustomerMoney } from './customerDirectoryMoney';
 import { CustomerContactActions } from '../../components/customers/CustomerContactActions';
@@ -54,6 +55,8 @@ export const CustomerList = () => {
   const [formBusy, setFormBusy] = useState(false);
   const [duplicateChecking, setDuplicateChecking] = useState(false);
   const [formError, setFormError] = useState('');
+  const [formFieldErrors, setFormFieldErrors] = useState({});
+  const customerFormRef = useRef(null);
   const [editingCustomerId, setEditingCustomerId] = useState(null);
 
   // Form Fields
@@ -135,8 +138,8 @@ export const CustomerList = () => {
           ...customer,
           status: customerStatusLabel(customer.status),
           customerType: customer.customerType || customer.customer_type || 'Individual',
-          vehicleCount: vehicles.length,
-          jobsCount: jobs.length,
+          vehicleCount: vehicleResult.status === 'fulfilled' ? vehicles.length : null,
+          jobsCount: jobResult.status === 'fulfilled' ? jobs.length : null,
           ...money,
           __vehicles: vehicles,
           __jobs: jobs,
@@ -202,12 +205,14 @@ export const CustomerList = () => {
   const openAddModal = () => {
     setEditingCustomerId(null);
     setFormError('');
+    setFormFieldErrors({});
     resetForm();
     setIsAddCustomerOpen(true);
   };
 
   const openEditModal = (c) => {
     setFormError('');
+    setFormFieldErrors({});
     setEditingCustomerId(c.id);
     setName(c.name || '');
     setPhone(c.phone || '');
@@ -287,6 +292,7 @@ export const CustomerList = () => {
     if (formBusy) return;
     setFormBusy(true);
     setFormError('');
+    setFormFieldErrors({});
     try {
       if (editingCustomerId) {
         await customerService.updateCustomer(editingCustomerId, payload);
@@ -300,7 +306,25 @@ export const CustomerList = () => {
       resetForm();
       await fetchCustomers();
     } catch (error) {
-      setFormError(error?.message || 'Unable to save customer. Review the form and retry.');
+      const data = error?.response?.data || error?.data;
+      const next = {};
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        const fields = ['name', 'phone', 'whatsapp', 'email', 'customerType',
+          'branch', 'companyName', 'gstNo', 'address', 'city', 'state', 'pincode'];
+        const aliases = { customer_type: 'customerType', company_name: 'companyName', gstin: 'gstNo' };
+        for (const [key, value] of Object.entries(data)) {
+          const field = aliases[key] || key;
+          if (fields.includes(field)) next[field] = Array.isArray(value) ? String(value[0]) : String(value);
+        }
+      }
+      setFormFieldErrors(next);
+      setFormError(error?.message || 'Unable to save customer. Check the highlighted fields.');
+      requestAnimationFrame(() => {
+        const first = Object.keys(next)[0];
+        const input = first && customerFormRef.current?.querySelector(`[data-customer-field="${first}"]`);
+        input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        input?.focus();
+      });
     } finally {
       setFormBusy(false);
     }
@@ -329,12 +353,11 @@ export const CustomerList = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h1 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Customers</h1>
-          <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>Manage workshop customers, vehicles and service history.</p>
         </div>
         <button
           onClick={openAddModal}
           style={{
-            height: '42px',
+            height: '44px',
             padding: '0 18px',
             borderRadius: '11px',
             backgroundColor: 'var(--primary)',
@@ -358,7 +381,7 @@ export const CustomerList = () => {
       {loadError && <div role="alert" className="customer-directory-error">{loadError} <button type="button" onClick={fetchCustomers}>Retry</button></div>}
 
       {/* SEARCH + FILTERS TOOLBAR */}
-      <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div className="customer-directory-toolbar" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <Search
@@ -387,6 +410,14 @@ export const CustomerList = () => {
               <option value="All">All Types</option>
               {availableTypes.map((value) => <option key={value} value={value}>{value}</option>)}
             </Select>
+            <Select aria-label="Branch filter"
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              containerStyle={{ width: '145px', marginBottom: 0 }}>
+              <option value="All">All Branches</option>
+              {availableBranches.map((value) => <option key={value} value={value}>{value}</option>)}
+            </Select>
+            <button type="button" className="customer-directory-reset" onClick={resetFilters}>Reset Filters</button>
           </div>
 
           {/* Mobile Filter Button */}
@@ -402,16 +433,15 @@ export const CustomerList = () => {
 
       {/* CUSTOMER LIST: DESKTOP TABLE & MOBILE CARDS */}
       <div className="customer-directory-list-heading">
-        <div><h2>All Customers</h2><p>{visibleCustomers.length} of {customers.length} customers shown</p></div>
-        <button type="button" onClick={resetFilters} aria-label="Reset customer filters">Reset Filters</button>
+        <div><h2>All Customers</h2><span className="customer-directory-count">{loading || (loadError && !customers.length) ? '—' : `${visibleCustomers.length} / ${customers.length}`}</span></div>
+        <span className="customer-directory-heading-spacer" aria-hidden="true" />
       </div>
       {loading ? (
         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading customers directory...</div>
-      ) : visibleCustomers.length === 0 ? (
+      ) : loadError && customers.length === 0 ? null : visibleCustomers.length === 0 ? (
         <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '40px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
           <Users size={36} style={{ color: 'var(--text-muted)' }} />
-          <strong style={{ fontSize: '15px', color: 'var(--text-primary)' }}>No matching customers found.</strong>
-          <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', margin: 0 }}>Try clearing filters or add a new customer.</p>
+          <strong style={{ fontSize: '15px', color: 'var(--text-primary)' }}>No customers found.</strong>
           <button onClick={openAddModal} style={{ padding: '8px 16px', borderRadius: '10px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none', fontWeight: '700', fontSize: '12.5px', cursor: 'pointer', marginTop: '6px' }}>
             + Add First Customer
           </button>
@@ -427,7 +457,7 @@ export const CustomerList = () => {
                   <th style={{ padding: '12px 14px' }}>Phone / WhatsApp</th>
                   <th style={{ padding: '12px 14px' }}>Customer Type</th>
                   <th style={{ padding: '12px 14px' }}>Vehicles</th>
-                  <th style={{ padding: '12px 14px' }}>Last Visit</th>
+                  <th style={{ padding: '12px 14px' }}>Job Cards</th>
                   <th style={{ padding: '12px 14px' }}>Outstanding</th>
                   <th style={{ padding: '12px 14px' }}>Status</th>
                   <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>
@@ -448,8 +478,8 @@ export const CustomerList = () => {
                       <CustomerContactActions customer={c} compact />
                     </td>
                     <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>{c.customerType || 'Individual'}</td>
-                    <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>{c.vehicleCount || 0} Vehicles</td>
-                    <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>{c.lastVisit || '—'}</td>
+                    <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>{c.vehicleCount ?? '—'}</td>
+                    <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>{c.jobsCount ?? '—'}</td>
                     <td title={!c.moneyAvailable ? 'Invoice balance unavailable' : undefined}
                       style={{ padding: '12px 14px', fontWeight: '700', color: c.outstanding === null ? 'var(--text-muted)' : c.outstanding > 0 ? 'var(--warning)' : 'var(--success)' }}>
                       {formatCustomerMoney(c.outstanding)}
@@ -497,8 +527,8 @@ export const CustomerList = () => {
                   </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', backgroundColor: 'var(--surface-2)', padding: '10px', borderRadius: '10px', fontSize: '12px' }}>
-                  <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px' }}>Vehicles & Jobs</span><strong>{c.vehicleCount || 0} Vehicles • {c.jobsCount || 0} Jobs</strong></div>
+                <div className="customer-directory-card__summary" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', backgroundColor: 'var(--surface-2)', padding: '10px', borderRadius: '10px', fontSize: '12px' }}>
+                  <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px' }}>Vehicles & Jobs</span><strong>{c.vehicleCount ?? '—'} Vehicles • {c.jobsCount ?? '—'} Jobs</strong></div>
                   <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px' }}>Last Visit</span><strong>{c.lastVisit || '—'}</strong></div>
                   <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px' }}>Customer Type</span><strong>{c.customerType || 'Individual'}</strong></div>
                   <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px' }}>Outstanding</span><strong title={!c.moneyAvailable ? 'Invoice balance unavailable' : undefined}
@@ -533,11 +563,17 @@ export const CustomerList = () => {
         title={editingCustomerId ? "Edit Customer Details" : "Add Workshop Customer"}
         maxWidth="540px"
       >
-        <form className="customer-directory-form" onSubmit={handleFormSubmit}>
+        <form ref={customerFormRef} className="customer-directory-form" onSubmit={handleFormSubmit}
+          onInvalid={(event) => {
+            event.target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            event.target?.focus();
+          }}>
           {formError && <p className="customer-directory-error" role="alert">{formError}</p>}
           
           <Input
             label="Customer Name"
+            data-customer-field="name"
+            error={formFieldErrors.name}
             required
             icon={Users}
             value={name}
@@ -548,6 +584,8 @@ export const CustomerList = () => {
           <div className="customer-directory-form-grid">
             <Input
               label="Phone Number"
+              data-customer-field="phone"
+              error={formFieldErrors.phone}
               type="tel"
               inputMode="tel"
               required
@@ -558,6 +596,8 @@ export const CustomerList = () => {
             />
             <Input
               label="WhatsApp Number"
+              data-customer-field="whatsapp"
+              error={formFieldErrors.whatsapp}
               type="tel"
               inputMode="tel"
               icon={MessageSquare}
@@ -569,6 +609,8 @@ export const CustomerList = () => {
 
           <Input
             label="Email Address"
+            data-customer-field="email"
+            error={formFieldErrors.email}
             type="email"
             icon={Mail}
             value={email}
@@ -580,6 +622,8 @@ export const CustomerList = () => {
           <div className="customer-directory-form-grid">
             <Select
               label="Customer Type"
+              data-customer-field="customerType"
+              error={formFieldErrors.customerType}
               value={customerType}
               onChange={(e) => setCustomerType(e.target.value)}
             >
@@ -589,6 +633,8 @@ export const CustomerList = () => {
 
             <Select
               label="Assigned Branch"
+              data-customer-field="branch"
+              error={formFieldErrors.branch}
               value={branch}
               onChange={(e) => setBranch(e.target.value)}
             >
@@ -601,12 +647,16 @@ export const CustomerList = () => {
             <div className="customer-directory-form-grid">
               <Input
                 label="Company Name"
+                data-customer-field="companyName"
+                error={formFieldErrors.companyName}
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 placeholder="e.g. Apex Logistics Ltd"
               />
               <Input
                 label="GST Number"
+                data-customer-field="gstNo"
+                error={formFieldErrors.gstNo}
                 value={gstNo}
                 onChange={(e) => setGstNo(e.target.value)}
                 placeholder="32AAAAA0000A1Z5"
@@ -623,9 +673,9 @@ export const CustomerList = () => {
           />
 
           <div className="customer-directory-location-grid">
-            <Input label="City" value={city} onChange={(e) => setCity(e.target.value)} />
-            <Input label="State" value={state} onChange={(e) => setState(e.target.value)} />
-            <Input label="PIN Code" value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="682031" />
+            <Input label="City" data-customer-field="city" error={formFieldErrors.city} value={city} onChange={(e) => setCity(e.target.value)} />
+            <Input label="State" data-customer-field="state" error={formFieldErrors.state} value={state} onChange={(e) => setState(e.target.value)} />
+            <Input label="PIN Code" data-customer-field="pincode" error={formFieldErrors.pincode} value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="682031" />
           </div>
 
           <Textarea

@@ -8,6 +8,7 @@ import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/customer-tracking-link.css';
 import { paymentService } from '../../services/payment.service';
 import '../../styles/customer-profile-polished.css';
+import '../../styles/customer-workspace-compact.css';
 import {
   customerProfileFinancials, activeCustomerInvoices, customerInvoiceLabel,
   customerInvoiceTotal, customerInvoiceBalance, customerVisitLabel,
@@ -47,6 +48,10 @@ export const CustomerDetails = () => {
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
   const [isEditCustomerOpen, setIsEditCustomerOpen] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editFormError, setEditFormError] = useState('');
+  const [editFieldErrors, setEditFieldErrors] = useState({});
+  const editFormRef = useRef(null);
   const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
 
   // New Vehicle form state
@@ -247,6 +252,11 @@ export const CustomerDetails = () => {
 
   const handleEditCustomerSubmit = async (e) => {
     e.preventDefault();
+    if (editSaving) return;
+    setEditSaving(true);
+    setEditFormError('');
+    setEditFieldErrors({});
+    try {
     const updated = await customerService.updateCustomer(customer.id, {
       name: editName,
       phone: editPhone,
@@ -263,6 +273,28 @@ export const CustomerDetails = () => {
     setCustomer(updated);
     showToast('Customer profile updated.');
     setIsEditCustomerOpen(false);
+    } catch (error) {
+      const data = error?.response?.data || error?.data;
+      const fields = ['name', 'phone', 'whatsapp', 'email', 'customerType', 'companyName', 'gstNo'];
+      const aliases = { customer_type: 'customerType', company_name: 'companyName', gstin: 'gstNo' };
+      const next = {};
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        for (const [key, value] of Object.entries(data)) {
+          const field = aliases[key] || key;
+          if (fields.includes(field)) next[field] = Array.isArray(value) ? String(value[0]) : String(value);
+        }
+      }
+      setEditFieldErrors(next);
+      setEditFormError(error?.message || 'Unable to save customer. Check the highlighted fields.');
+      requestAnimationFrame(() => {
+        const first = Object.keys(next)[0];
+        const input = first && editFormRef.current?.querySelector(`[data-customer-field="${first}"]`);
+        input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        input?.focus();
+      });
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   const handleAddNoteSubmit = async (e) => {
@@ -355,7 +387,8 @@ export const CustomerDetails = () => {
     customerProfileFinancials(invoices, invoicesAvailable);
   const lastVisitDate = customerVisitLabel(customer, jobs);
   const contact = customerContactLinks({ customerPhone: customer.phone, customerWhatsapp: customer.whatsapp });
-  const archived = String(customer.status || '').toLowerCase() === 'archived';
+  const statusLabel = String(customer.status || '').trim() || '—';
+  const archived = statusLabel.toLowerCase() === 'archived';
   const payableInvoices = activeCustomerInvoices(invoices).filter(
     (inv) => Number(inv.balance ?? inv.balanceDue ?? 0) > 0
   );
@@ -385,18 +418,6 @@ export const CustomerDetails = () => {
 
       {loadError && <div className="customer-profile-partial-error" role="status">{loadError} <button type="button" onClick={loadCustomerData}>Retry</button></div>}
 
-      <CustomerTrackingLinkPanel
-        key={customer.id}
-        customerId={customer.id}
-        whatsapp={customer.whatsapp || customer.phone}
-        canManage={featureAccess.can('customers.edit')}
-      />
-
-      <CustomerWhatsAppConsent
-        customerId={customer.id}
-        canManage={featureAccess.can('customers.edit')}
-      />
-
       {/* Clean customer identity header — never show a raw internal UUID. */}
       <header className="customer-profile-header customer-profile-hero">
         <div className="customer-profile-hero__main">
@@ -406,11 +427,10 @@ export const CustomerDetails = () => {
                 .map((name) => name.charAt(0).toUpperCase()).join('')}
             </div>
             <div className="customer-profile-identity__text">
-              <span className="customer-profile-eyebrow">CUSTOMER PROFILE</span>
               <div className="customer-profile-name-row">
                 <h1>{customer.name || 'Customer'}</h1>
-                <span className={'customer-profile-status ' + (archived ? 'is-archived' : 'is-active')}>
-                  <span aria-hidden="true"/> {archived ? 'Archived' : 'Active'}
+                <span className={'customer-profile-status ' + (statusLabel.toLowerCase() === 'active' ? 'is-active' : 'is-archived')}>
+                  <span aria-hidden="true"/> {statusLabel}
                 </span>
               </div>
               <p>
@@ -495,10 +515,8 @@ export const CustomerDetails = () => {
             icon: Car, tone: 'neutral' },
           { label: 'Job Cards', value: jobsAvailable ? String(jobs.length) : '—',
             icon: ClipboardCheck, tone: 'neutral' },
-          { label: 'Total Billed', value: formatINR(totalBilled),
+          { label: 'Invoices', value: invoicesAvailable ? String(activeCustomerInvoices(invoices).length) : '—',
             icon: FileText, tone: 'blue' },
-          { label: 'Amount Paid', value: formatINR(totalPaid),
-            icon: CheckCircle2, tone: 'green' },
           { label: 'Outstanding', value: formatINR(totalOutstanding),
             icon: Wallet, tone: totalOutstanding > 0 ? 'danger' : 'neutral' },
         ].map((item) => {
@@ -541,6 +559,15 @@ export const CustomerDetails = () => {
         {/* 4. OVERVIEW TAB */}
         {activeTab === 'overview' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <CustomerTrackingLinkPanel
+              key={customer.id}
+              customerId={customer.id}
+              canManage={featureAccess.can('customers.edit')}
+            />
+            <CustomerWhatsAppConsent
+              customerId={customer.id}
+              canManage={featureAccess.can('customers.edit')}
+            />
             
             {/* Detailed Profile Information */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '14px' }} className="overview-details-grid">
@@ -572,7 +599,7 @@ export const CustomerDetails = () => {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Email</span>
-                    <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{customer.email || 'N/A'}</span>
+                    <span style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{customer.email || '—'}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Customer Type</span>
@@ -605,7 +632,7 @@ export const CustomerDetails = () => {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Status</span>
-                    <span style={{ color: 'var(--success)', fontWeight: '700' }}>{archived ? 'Archived' : 'Active'}</span>
+                    <span style={{ color: archived ? 'var(--text-secondary)' : 'var(--text-primary)', fontWeight: '600' }}>{statusLabel}</span>
                   </div>
                 </div>
               </div>
@@ -648,8 +675,7 @@ export const CustomerDetails = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Linked Vehicles</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>All vehicles registered under this customer account</p>
-              </div>
+                    </div>
               <button
                 onClick={() => setIsAddVehicleOpen(true)}
                 style={{ height: '38px', padding: '0 14px', borderRadius: '10px', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
@@ -704,7 +730,7 @@ export const CustomerDetails = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Job Card History</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>All repair & service jobs executed for this customer</p>
+                
               </div>
               <button
                 onClick={() => navigate(`/jobs/new?customerId=${customer.id}`)}
@@ -764,7 +790,7 @@ export const CustomerDetails = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Chronological Service History</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>Complete history of services, replaced parts, and costs across all vehicles</p>
+                
               </div>
 
               {/* Filters Toolbar */}
@@ -835,7 +861,7 @@ export const CustomerDetails = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Customer Invoices</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>Calculated from actual unpaid & paid invoice balances</p>
+                
               </div>
               <button
                 onClick={() => navigate(`/invoices/create?customerId=${customer.id}`)}
@@ -891,7 +917,7 @@ export const CustomerDetails = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Payment Records</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>All transactions recorded against customer invoices</p>
+                
               </div>
               <button
                 onClick={() => { setPaymentError(''); setIsRecordPaymentOpen(true); }}
@@ -928,7 +954,7 @@ export const CustomerDetails = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Staff Internal Notes</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>Special preferences & observations maintained by workshop staff</p>
+                
               </div>
               <button
                 onClick={() => setIsAddNoteOpen(true)}
@@ -957,7 +983,7 @@ export const CustomerDetails = () => {
             <div className="customer-profile-documents__head">
               <div>
                 <h3>Customer & Vehicle Documents</h3>
-                <p>Vehicle RC, insurance, company documents and attachments.</p>
+                
               </div>
               <button onClick={() => setIsAddDocumentOpen(true)}>
                 <Plus size={15}/> Add Document
@@ -1000,7 +1026,7 @@ export const CustomerDetails = () => {
           <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Full Audit & Activity Timeline</h3>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>System events logged for this customer account</p>
+              
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative', paddingLeft: '22px' }}>
@@ -1145,18 +1171,25 @@ export const CustomerDetails = () => {
         title="Edit Customer Profile"
         maxWidth="520px"
       >
-        <form onSubmit={handleEditCustomerSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <Input label="Customer Name" required value={editName} onChange={(e) => setEditName(e.target.value)} />
+        <form ref={editFormRef} onSubmit={handleEditCustomerSubmit}
+          onInvalid={(event) => {
+            event.target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            event.target?.focus();
+          }}
+          className="customer-profile-edit-form"
+          style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {editFormError && <p className="customer-profile-form-error" role="alert">{editFormError}</p>}
+          <Input label="Customer Name" required data-customer-field="name" error={editFieldErrors.name} value={editName} onChange={(e) => setEditName(e.target.value)} />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <Input label="Phone Number" required value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
-            <Input label="WhatsApp Number" value={editWhatsapp} onChange={(e) => setEditWhatsapp(e.target.value)} />
+            <Input label="Phone Number" required data-customer-field="phone" error={editFieldErrors.phone} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+            <Input label="WhatsApp Number" data-customer-field="whatsapp" error={editFieldErrors.whatsapp} value={editWhatsapp} onChange={(e) => setEditWhatsapp(e.target.value)} />
           </div>
 
-          <Input label="Email Address" type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+          <Input label="Email Address" type="email" data-customer-field="email" error={editFieldErrors.email} value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <Select label="Customer Type" value={editType} onChange={(e) => setEditType(e.target.value)}>
+            <Select label="Customer Type" data-customer-field="customerType" error={editFieldErrors.customerType} value={editType} onChange={(e) => setEditType(e.target.value)}>
               <option value="Individual">Individual</option>
               <option value="Business">Business</option>
             </Select>
@@ -1166,8 +1199,8 @@ export const CustomerDetails = () => {
 
           {editType === 'Business' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <Input label="Company Name" value={editCompany} onChange={(e) => setEditCompany(e.target.value)} />
-              <Input label="GST Number" value={editGst} onChange={(e) => setEditGst(e.target.value)} />
+              <Input label="Company Name" data-customer-field="companyName" error={editFieldErrors.companyName} value={editCompany} onChange={(e) => setEditCompany(e.target.value)} />
+              <Input label="GST Number" data-customer-field="gstNo" error={editFieldErrors.gstNo} value={editGst} onChange={(e) => setEditGst(e.target.value)} />
             </div>
           )}
 
@@ -1179,8 +1212,8 @@ export const CustomerDetails = () => {
             <Input label="PIN Code" value={editPincode} onChange={(e) => setEditPincode(e.target.value)} />
           </div>
 
-          <button type="submit" style={{ height: '44px', borderRadius: '11px', border: 'none', backgroundColor: 'var(--primary)', color: '#ffffff', fontWeight: '700', marginTop: '6px', cursor: 'pointer' }}>
-            Save Profile Changes
+          <button type="submit" disabled={editSaving} style={{ height: '44px', borderRadius: '11px', border: 'none', backgroundColor: 'var(--primary)', color: '#ffffff', fontWeight: '700', marginTop: '6px', cursor: 'pointer' }}>
+            {editSaving ? 'Saving…' : 'Save Profile Changes'}
           </button>
         </form>
       </ResponsiveModalSheet>
