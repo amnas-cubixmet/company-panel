@@ -386,7 +386,6 @@ export default function SuppliersPage({ section = 'all' }) {
         </h1>
       </div>
       {id ? canEdit && supplier && <button type="button" className="cg-supplier-button" onClick={()=>setEditor(supplier)}>Edit Supplier</button>
-        : purchaseView ? (canCreatePurchase && <Link className="cg-supplier-button primary" to="/stock/suppliers?tab=bill"><Plus size={17}/> New Purchase</Link>)
         : canCreate && <button type="button" className="cg-supplier-button primary" onClick={()=>setEditor({create:true})}><Plus size={17}/> Add Supplier</button>}
     </div>
 
