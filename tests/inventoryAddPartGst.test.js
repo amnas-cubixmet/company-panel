@@ -6,9 +6,11 @@ const read = (file) => readFileSync(new URL('../' + file, import.meta.url), 'utf
 
 test('Add New Part form offers a total GST rate dropdown and custom rate', () => {
   const page = read('src/pages/stock/StockEasyPage.jsx');
-  assert.match(page, /label="GST Rate"/);
-  assert.match(page, /GST_RATE_PRESETS = \['0', '3', '5', '12', '18', '28', '40'\]/);
-  assert.match(page, /<OutlinedSelect label="GST Rate"/);
+  assert.match(page, /label="GST Component \\/ Rate \\*"/);
+  assert.match(page, /STOCK_GST_CHOICES = invoiceLineTaxChoices\\('unknown'\\)/);
+  assert.doesNotMatch(page, /GST_RATE_PRESETS/);
+  assert.match(page, /invoiceTotalRateFromChoice/);
+  assert.match(page, /<OutlinedSelect label="GST Component \\/ Rate \\*"/);
   assert.match(page, /Other rate \(custom %\)/);
   assert.match(page, /Custom GST Rate \(%\)/);
   assert.match(page, /max="100" step="0\.01" required/);

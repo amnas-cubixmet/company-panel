@@ -1,11 +1,12 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
 import { USE_MOCK_API } from '../../api/apiConfig';
 import { AlertTriangle, Boxes, History, PackageMinus, PackagePlus, Plus, RefreshCw, Search, ShoppingCart, Wrench } from 'lucide-react';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { stockCatalogService } from '../../services/stockCatalog.service';
 import { supplierService } from '../../services/supplier.service';
+import { invoiceLineTaxChoices, invoiceTotalRateFromChoice } from '../../utils/invoiceTaxUi';
 import '../../styles/stock-easy.css';
 import '../../styles/stock-form-polish.css';
 import '../../styles/stock-list-polish.css';
@@ -14,10 +15,9 @@ const cash = (value) => new Intl.NumberFormat('en-IN', {
   style: 'currency', currency: 'INR', maximumFractionDigits: 2,
 }).format(Number(value) || 0);
 const number = (value) => Number(value) || 0;
-// Presets are convenience choices, not a substitute for the HSN-specific
-// tax rate. The item catalogue stores the total GST percentage, not a
-// separate CGST/SGST/IGST breakdown.
-const GST_RATE_PRESETS = ['0', '3', '5', '12', '18', '28', '40'];
+// Inventory uses the same CGST / SGST / IGST component options as invoices.
+// StockItem.tax remains the TOTAL GST rate, never an independent CGST debit.
+const STOCK_GST_CHOICES = invoiceLineTaxChoices('unknown');
 // A 0% rate alone does not distinguish legal categories. Preserve that
 // distinction with the item; jurisdiction is determined at invoice time.
 const ZERO_GST_CLASSIFICATIONS = [
@@ -95,6 +95,7 @@ function stockState(item) {
 }
 
 export default function StockEasyPage() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const query = (searchParams.get('search') || '').slice(0, 120);
   const filterValue = searchParams.get('filter') || 'all';
@@ -143,6 +144,7 @@ export default function StockEasyPage() {
   const [success, setSuccess] = useState('');
   const [partOpen, setPartOpen] = useState(false);
   const [part, setPart] = useState(initialPart);
+  const [partGstChoice, setPartGstChoice] = useState('none');
   const [partLookup, setPartLookup] = useState('');
   const [partMode, setPartMode] = useState('find');
   const [moveLookup, setMoveLookup] = useState('');
@@ -230,6 +232,7 @@ export default function StockEasyPage() {
   const openPartDialog = (lookup = '') => {
     setError('');
     setPart({ ...initialPart, supplier: supplierId });
+    setPartGstChoice('none');
     setPartErrors({});
     setQuickSupplierOpen(false);
     setQuickSupplierError('');
@@ -310,6 +313,9 @@ export default function StockEasyPage() {
       });
       return;
     }
+    // A new supplier purchase must create stock and payable together through
+    // SupplierBill posting, never via an unlinked opening-stock adjustment.
+    const isSupplierPurchase = Boolean(part.supplier) && openingQuantity > 0;
     setSaving(true);
     setError('');
     try {
@@ -319,15 +325,29 @@ export default function StockEasyPage() {
         tax: Number(part.tax), zeroTaxClassification: Number(part.tax) === 0 ? part.zeroTaxClassification : '',
         hsnCode: part.hsnCode.trim(),
         minimumStock: number(part.minimumStock),
-        stockQuantity: openingQuantity,
+        stockQuantity: isSupplierPurchase ? 0 : openingQuantity,
       });
       setPartOpen(false);
       setPart(initialPart);
       setPartLookup('');
       setPartMode('find');
-      setSuccess(openingQuantity > 0
-        ? 'Part created with opening stock. No supplier bill or payment was posted.'
-        : 'Part created. Use Receive Stock when goods arrive.');
+      setSuccess(isSupplierPurchase
+        ? 'Part catalog saved; confirm the supplier purchase and choose Pay Now / Partial / Credit.'
+        : openingQuantity > 0
+          ? 'Historical opening stock added. No supplier payment or credit was posted.'
+          : 'Part catalog saved. Record purchases under Supplier Purchase.');
+      if (isSupplierPurchase && created?.id) {
+        navigate('/stock/suppliers?tab=bill&supplier=' + encodeURIComponent(part.supplier), {
+          state: {
+            purchasePrefill: {
+              itemId: String(created.id), quantity: String(openingQuantity),
+              purchaseRate: String(part.costPrice),
+              supplierId: String(part.supplier),
+            },
+          },
+        });
+        return;
+      }
       await reload();
       if (!openingQuantity && created?.id) beginMove('in', created.id, created);
     } catch (exception) {
@@ -397,6 +417,7 @@ export default function StockEasyPage() {
         </div>
         <div className="cg-easy-actions">
           <button type="button" className="cg-easy-secondary" onClick={reload} disabled={loading}><RefreshCw size={16}/> Refresh</button>
+          <Link className="cg-easy-primary" to="/stock/suppliers?tab=bill"><ShoppingCart size={16}/> Buy Spare Parts</Link>
           <button type="button" className="cg-easy-primary" onClick={() => openPartDialog()}><Plus size={16}/> Add New Part</button>
         </div>
       </header>
@@ -439,7 +460,7 @@ export default function StockEasyPage() {
         <button type="button" onClick={() => beginMove('out')}><PackageMinus size={19}/><span>Internal Use</span></button>
         <Link to="/jobs"><Wrench size={19}/><span>Job Card Parts</span></Link>
         <a href="#stock-history"><History size={19}/><span>Stock History</span></a>
-        <Link to="/stock/suppliers"><ShoppingCart size={19}/><span>Supplier Bills & Payments</span></Link>
+        <Link to="/stock/suppliers?tab=bill"><ShoppingCart size={19}/><span>Supplier Purchase (Pay / Credit)</span></Link>
       </section>
 
       <section className="cg-easy-panel">
@@ -557,14 +578,20 @@ export default function StockEasyPage() {
               <OutlinedInput label="HSN / SAC Code" maxLength={20} value={part.hsnCode} onChange={(e) => setPart({ ...part, hsnCode: e.target.value })}/>
             </div>
             <div className="cg-easy-fields">
-              <OutlinedSelect label="GST Rate" value={GST_RATE_PRESETS.includes(String(part.tax)) ? String(part.tax) : 'custom'}
+              <OutlinedSelect label="GST Component / Rate *" value={partGstChoice}
                 onChange={e => {
-                  const tax = e.target.value === 'custom' ? '' : e.target.value;
+                  const choice = e.target.value;
+                  const tax = choice === 'none' ? '0' :
+                    choice === 'custom' ? '' : invoiceTotalRateFromChoice(choice);
+                  setPartGstChoice(choice);
                   setPart({ ...part, tax, zeroTaxClassification: tax === '0' ? part.zeroTaxClassification : '' });
                   setPartErrors(previous => ({ ...previous, zeroTaxClassification: '' }));
                 }}>
-                {GST_RATE_PRESETS.map(rate => <option key={rate} value={rate}>{rate}% GST</option>)}
-                <option value="custom">Other rate (custom %)</option>
+                <option value="none">0% — Select Tax Classification</option>
+                {STOCK_GST_CHOICES.map(option => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+                <option value="custom">Saved/Other HSN-Specific Rate (custom %)</option>
               </OutlinedSelect>
               <OutlinedInput label="Opening Stock Quantity" type="number" min="0" step="0.01"
                 inputMode="decimal" data-field="stockQuantity" aria-invalid={Boolean(partErrors.stockQuantity)}
@@ -581,7 +608,7 @@ export default function StockEasyPage() {
                 }}/>
               {partErrors.stockQuantity && <p className="cg-easy-alert" role="alert">{partErrors.stockQuantity}</p>}
             </div>
-            {!GST_RATE_PRESETS.includes(String(part.tax)) &&
+            {partGstChoice === 'custom' &&
               <OutlinedInput label="Custom GST Rate (%)" type="number" min="0" max="100" step="0.01" required
                 value={part.tax} onChange={e => {
                   setPart({ ...part, tax: e.target.value, zeroTaxClassification: '' });
@@ -605,14 +632,18 @@ export default function StockEasyPage() {
                   <p className="cg-easy-alert" role="alert">{partErrors.zeroTaxClassification}</p>}
               </div>
             )}
-            {['5', '18'].includes(String(part.tax)) && (
+            {Number(part.tax) > 0 && validGstRate(part.tax) && (
               <div className="cg-easy-gst-preview" role="note">
-                <strong>{part.tax}% GST</strong>
+                <strong>Total {part.tax}% GST</strong>
                 <span>Intra-state: {Number(part.tax) / 2}% CGST + {Number(part.tax) / 2}% SGST/UTGST</span>
                 <span>Inter-state: {part.tax}% IGST</span>
               </div>
             )}
-            <p className="cg-easy-gst-disclaimer">Final GST type is determined from the workshop's registration and invoice place of supply.</p>
+            <p className="cg-easy-gst-disclaimer">
+              Selecting CGST/SGST denotes the paired intra-state total (e.g. 9% + 9% = 18%);
+              IGST is the whole inter-state rate. Verify HSN/SAC eligibility.
+              Final GST type is determined from the workshop's registration and invoice place of supply.
+            </p>
             <div className="cg-easy-fields">
               <OutlinedInput label="Purchase Price (₹) *" required type="number" min="0" step="0.01" value={part.costPrice} onChange={e => setPart({ ...part, costPrice: e.target.value })}/>
               <OutlinedInput label="Selling Price (₹) *" required type="number" min="0" step="0.01" value={part.sellingPrice} onChange={e => setPart({ ...part, sellingPrice: e.target.value })}/>
@@ -622,7 +653,11 @@ export default function StockEasyPage() {
               <RackCombobox value={part.location} suggestions={rackLocations}
                 onChange={location => setPart(previous => ({ ...previous, location }))}/>
             </div>
-            <p className="cg-easy-hint">Opening stock records quantity only. Supplier credit and payment require a confirmed purchase bill.</p>
+            <p className="cg-easy-hint">
+              When a Supplier and Stock Quantity are selected, saving the part redirects to
+              a supplier purchase for Pay Now / Partial / Credit. The stock quantity is added
+              only after that bill is posted. Without a Supplier, quantity is historical opening stock only.
+            </p>
             <div className="cg-easy-form-actions"><button type="button" onClick={() => setPartOpen(false)}>Cancel</button><button type="submit" disabled={saving}>{saving ? 'Saving...' : (number(part.stockQuantity) > 0 ? 'Save Part & Add Opening Stock' : 'Save Part')}</button></div>
           </form>
         )}

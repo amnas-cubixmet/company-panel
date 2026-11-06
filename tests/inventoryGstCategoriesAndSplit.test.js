@@ -8,7 +8,9 @@ const service = read('src/services/stockCatalog.service.js');
 const css = read('src/styles/stock-form-polish.css');
 
 test('original GST rate dropdown presets and custom choice remain available', () => {
-  assert.match(page, /GST_RATE_PRESETS = \['0', '3', '5', '12', '18', '28', '40'\]/);
+  assert.match(page, /STOCK_GST_CHOICES = invoiceLineTaxChoices\\('unknown'\\)/);
+  assert.doesNotMatch(page, /GST_RATE_PRESETS/);
+  assert.match(page, /invoiceTotalRateFromChoice/);
   assert.match(page, /Other rate \(custom %\)/);
   assert.match(page, /Custom GST Rate \(%\)/);
   assert.match(page, /validGstRate\(part\.tax\)/);

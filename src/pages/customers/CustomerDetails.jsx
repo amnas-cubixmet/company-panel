@@ -7,6 +7,7 @@ import { CustomerWhatsAppConsent } from '../../components/customers/CustomerWhat
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/customer-tracking-link.css';
 import { paymentService } from '../../services/payment.service';
+import { financeService } from '../../services/finance.service';
 import '../../styles/customer-profile-polished.css';
 import '../../styles/customer-workspace-compact.css';
 import {
@@ -75,6 +76,20 @@ export const CustomerDetails = () => {
   const [payMethod, setPayMethod] = useState('UPI');
   const [payRef, setPayRef] = useState('');
   const [payNotes, setPayNotes] = useState('');
+  const [payAccountId, setPayAccountId] = useState('');
+  const [payAccounts, setPayAccounts] = useState([]);
+  const [payRequestKey, setPayRequestKey] = useState(() => globalThis.crypto?.randomUUID?.() || `customer-payment-${Date.now()}`);
+
+  useEffect(() => {
+    if (!isRecordPaymentOpen) return undefined;
+    let active = true;
+    financeService.listAccounts().then(rows => {
+      if (active) setPayAccounts(Array.isArray(rows) ? rows.filter(a => a.isActive) : []);
+    }).catch(error => {
+      if (active) setPaymentError(error?.message || 'Unable to load Cash / Bank accounts.');
+    });
+    return () => { active = false; };
+  }, [isRecordPaymentOpen]);
 
   // Edit Customer form state
   const [editName, setEditName] = useState('');
@@ -219,6 +234,9 @@ export const CustomerDetails = () => {
     const amount = Number(payAmount);
     const balance = Number(selectedInvoice?.balance ?? selectedInvoice?.balanceDue);
     if (!selectedInvoice) return setPaymentError('Select an existing customer invoice.');
+    if (!payAccountId || !payAccounts.some(a => String(a.id) === String(payAccountId))) {
+      return setPaymentError('Select an active Bank / Cash / UPI account for this collection.');
+    }
     if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(balance) || amount > balance) {
       return setPaymentError('Enter a payment amount greater than zero and not exceeding the invoice balance.');
     }
@@ -234,13 +252,18 @@ export const CustomerDetails = () => {
         reference: payRef.trim(),
         notes: payNotes.trim(),
         status: 'Completed',
+        direction: 'IN',
+        account: payAccountId,
+        idempotency_key: payRequestKey,
       });
       setIsRecordPaymentOpen(false);
       setPayAmount('');
       setPayInvoiceNo('');
       setPayRef('');
       setPayNotes('');
-      showToast('Payment saved successfully.');
+      setPayAccountId('');
+      setPayRequestKey(globalThis.crypto?.randomUUID?.() || `customer-payment-${Date.now()}`);
+      showToast('Customer receipt linked to invoice and account ledger.');
       await loadCustomerData();
     } catch (err) {
       setPaymentError(err?.response?.data?.message || err?.response?.data?.amount?.[0]
@@ -1067,6 +1090,18 @@ export const CustomerDetails = () => {
             <p className="customer-profile-form-info">No outstanding finalized invoices to pay.</p>
           )}
 
+          <Select label="Receive Into Account *" value={payAccountId}
+            onChange={event => { setPayAccountId(event.target.value); setPaymentError(''); }}>
+            <option value="">Select Cash / Bank / UPI account</option>
+            {payAccounts.map(account => (
+              <option key={account.id} value={account.id}>
+                {account.name} ({account.kind}) — ₹{Number(account.currentBalance || 0).toLocaleString('en-IN')}
+              </option>
+            ))}
+          </Select>
+          {!payAccounts.length && <p className="customer-profile-form-info">
+            No active account available. Create an account under Finance → Bank & Cash Accounts.
+          </p>}
           <AmountInput
             label="Payment Amount"
             required
@@ -1104,7 +1139,7 @@ export const CustomerDetails = () => {
             placeholder="Received advance payment..."
           />
 
-          <button type="submit" disabled={paymentSaving || payableInvoices.length === 0}
+          <button type="submit" disabled={paymentSaving || payableInvoices.length === 0 || !payAccountId}
             className="customer-profile-primary-action">
             {paymentSaving ? 'Saving Payment…' : 'Confirm & Save Payment'}
           </button>
