@@ -241,9 +241,9 @@ export function JobCardWorkspace() {
       }
 
       setDeliveryForm({
-        finalKm: data?.delivery?.finalKm || data?.kilometre || '',
+        finalKm: data?.delivery?.finalKm ?? data?.kilometre ?? '',
         customerSignature: data?.delivery?.acknowledgedBy || '',
-        warrantyNotes: data?.delivery?.notes || ''
+        warrantyNotes: data?.delivery?.warrantyNotes || data?.delivery?.notes || ''
       });
       setPaymentForm((old) => ({
         ...old,
@@ -435,9 +435,9 @@ export function JobCardWorkspace() {
     return flow;
   };
 
-  const completeStage = async (stage) => {
+  const completeStage = async (stage, extraOptions = {}) => {
     if (!workflow || saving) return;
-    const options = {};
+    const options = { ...extraOptions };
     if (stage === 'estimate') {
       if (!await appConfirm('Confirm that the customer approved the latest estimate?')) return;
       options.approveEstimate = true;
@@ -477,7 +477,7 @@ export function JobCardWorkspace() {
       }
     } catch (e) {
       const details = e?.response?.data;
-      setError(details?.complaints || details?.stage || details?.message || e?.message || 'Unable to complete this stage.');
+      setError(details?.delivery || details?.finalKm || details?.acknowledgedBy || details?.warrantyNotes || details?.complaints || details?.stage || details?.message || e?.message || 'Unable to complete this stage.');
     } finally {
       setSaving(false);
     }
@@ -863,7 +863,30 @@ export function JobCardWorkspace() {
 
   const saveDelivery = async () => {
     if (!USE_MOCK_API) {
-      await completeStage('invoice');
+      if (!isInvoiceFinalized) {
+        setError('Finalize the linked invoice before completing delivery.');
+        return;
+      }
+      const finalKm = String(deliveryForm.finalKm ?? '').trim();
+      const acknowledgedBy = String(deliveryForm.customerSignature ?? '').trim();
+      const warrantyNotes = String(deliveryForm.warrantyNotes ?? '').trim();
+      if (!/^\\d+$/.test(finalKm) || Number(finalKm) > 2147483647 ||
+          Number(finalKm) < Number(job.kilometre || 0)) {
+        setError('Enter a valid final odometer reading, not less than check-in kilometres.');
+        return;
+      }
+      if (!acknowledgedBy || acknowledgedBy.length > 160) {
+        setError('Enter the customer acknowledging vehicle delivery (maximum 160 characters).');
+        return;
+      }
+      if (warrantyNotes.length > 1500) {
+        setError('Keep warranty notes within 1500 characters.');
+        return;
+      }
+      if (!await appConfirm('Confirm the vehicle has been handed over to the customer?')) return;
+      await completeStage('invoice', {
+        delivery: { finalKm, acknowledgedBy, warrantyNotes }
+      });
       return;
     }
     const nextDelivery = {
@@ -1760,23 +1783,20 @@ export function JobCardWorkspace() {
                   <p>Confirm final handover details.</p>
                 </div>
               </div>
-              {!USE_MOCK_API && (
-                <p className="job-invoice-inline-message">The backend currently supports delivery status, but not storing the KM, acknowledgement and warranty fields shown below.</p>
-              )}
               <div className="job-invoice-delivery-fields">
                 <label>
                   Final KM
-                  <input disabled={!USE_MOCK_API} value={deliveryForm.finalKm} onChange={(e) => setDeliveryForm({ ...deliveryForm, finalKm: e.target.value })} placeholder="Vehicle odometer" />
+                  <input required inputMode="numeric" type="number" min={Number(job.kilometre || 0)} step="1" max="2147483647" disabled={normalizeJobStatus(job.status) === 'Delivered'} value={deliveryForm.finalKm} onChange={(e) => setDeliveryForm({ ...deliveryForm, finalKm: e.target.value })} placeholder="Vehicle odometer" />
                 </label>
                 <label>
                   Customer acknowledgement
-                  <input disabled={!USE_MOCK_API} value={deliveryForm.customerSignature} onChange={(e) => setDeliveryForm({ ...deliveryForm, customerSignature: e.target.value })} placeholder="Customer name" />
+                  <input required maxLength={160} disabled={normalizeJobStatus(job.status) === 'Delivered'} value={deliveryForm.customerSignature} onChange={(e) => setDeliveryForm({ ...deliveryForm, customerSignature: e.target.value })} placeholder="Customer name" />
                 </label>
                 <label>
                   Warranty / service notes
-                  <textarea disabled={!USE_MOCK_API} rows={3} value={deliveryForm.warrantyNotes} onChange={(e) => setDeliveryForm({ ...deliveryForm, warrantyNotes: e.target.value })} placeholder="Handover notes" />
+                  <textarea rows={3} maxLength={1500} disabled={normalizeJobStatus(job.status) === 'Delivered'} value={deliveryForm.warrantyNotes} onChange={(e) => setDeliveryForm({ ...deliveryForm, warrantyNotes: e.target.value })} placeholder="Handover notes" />
                 </label>
-                <button type="button" disabled={saving || normalizeJobStatus(job.status) === 'Delivered' || (!USE_MOCK_API && !isInvoiceFinalized)} onClick={saveDelivery} className="job-invoice-deliver-button">
+                <button type="button" disabled={saving || !can('jobs.edit') || normalizeJobStatus(job.status) === 'Delivered' || (!USE_MOCK_API && !isInvoiceFinalized)} onClick={saveDelivery} className="job-invoice-deliver-button">
                   <CheckCircle2 size={16} aria-hidden="true" />
                   {normalizeJobStatus(job.status) === 'Delivered' ? 'Vehicle Delivered' : 'Complete Delivery'}
                 </button>
