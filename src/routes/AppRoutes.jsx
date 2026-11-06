@@ -49,6 +49,7 @@ const EWayBillPage = lazyPage(() => import('../pages/invoices/EWayBillPage'), 'E
 const PaymentList = lazyPage(() => import('../pages/payments/PaymentList'), 'PaymentList');
 const ExpenseList = lazyPage(() => import('../pages/expenses/ExpenseList'), 'ExpenseList');
 const Reports = lazyPage(() => import('../pages/reports/Reports'), 'Reports');
+const GSTRDashboard = lazyPage(() => import('../pages/gstr/GSTRDashboard'), 'default');
 const Notifications = lazyPage(() => import('../pages/notifications/Notifications'), 'Notifications');
 const Settings = lazyPage(() => import('../pages/settings/Settings'), 'Settings');
 const WhatsAppSettingsPage = lazyPage(() => import('../pages/settings/WhatsAppSettingsPage'), 'default');
@@ -231,6 +232,7 @@ export const AppRoutes = () => (
       <Route path="/expenses/:id/edit" element={<ExpenseList />} />
       <Route path="/expenses/:id/delete" element={<ExpenseList />} />
 
+      <Route path="/gstr" element={<GSTRDashboard />} />
       <Route path="/reports" element={<Reports />} />
       <Route path="/reports/new" element={<Reports />} />
       <Route path="/reports/:id" element={<Reports />} />
