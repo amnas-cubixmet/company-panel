@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from 'react-router-dom';
-import { routeConfig, ROUTE_SECTIONS, supplierSubmenu } from '../../routes/routeConfig';
-import { ChevronLeft, ChevronRight, ChevronDown, Laptop, LogOut, Moon, Sun } from 'lucide-react';
+import { routeConfig, ROUTE_SECTIONS } from '../../routes/routeConfig';
+import { ChevronLeft, ChevronRight, Laptop, LogOut, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
 import { resourceConfigs } from '../../pages/operations/resourceConfigs';
@@ -15,7 +15,6 @@ export const Sidebar = () => {
   const featureAccess = useFeatureAccess();
   const { themeMode, setThemeMode } = useTheme();
   const [collapsed, setCollapsed] = useState(false);
-  const [supplierExpanded, setSupplierExpanded] = useState(location.pathname.startsWith('/suppliers'));
   const [notificationCount, setNotificationCount] = useState(0);
   const roleLabel = getUserRoleLabel(user);
   // An empty image src reloads the current page in some browsers.
@@ -51,10 +50,6 @@ export const Sidebar = () => {
       window.removeEventListener('storage', onStorage);
       window.removeEventListener('cubixgear:notifications-changed', loadNotificationCount);
     };
-  }, [location.pathname]);
-
-  useEffect(() => {
-    if (location.pathname.startsWith('/suppliers')) setSupplierExpanded(true);
   }, [location.pathname]);
 
   const sections = Object.values(ROUTE_SECTIONS);
@@ -104,45 +99,7 @@ export const Sidebar = () => {
                     const Icon = route.icon;
                     const active = isRouteActive(route);
 
-                    if (route.id === 'suppliers') {
-                      const children = supplierSubmenu.filter(item => featureAccess.can(item.permission));
-                      if (!children.length) return null;
-                      return (
-                        <div key={route.id}>
-                          {collapsed ? (
-                            <NavLink to="/suppliers" title="Suppliers" aria-label="Suppliers"
-                              ref={active ? activeItemRef : null}
-                              className={`sidebar-nav-item is-icon-only ${active ? 'is-active' : ''}`}>
-                              <span className="sidebar-nav-icon"><Icon size={15} /></span>
-                            </NavLink>
-                          ) : (
-                            <button type="button" aria-expanded={supplierExpanded}
-                              aria-controls="supplier-desktop-submenu"
-                              onClick={() => setSupplierExpanded(value => !value)}
-                              className={`sidebar-nav-item ${active ? 'is-active' : ''}`}
-                              style={{ width: '100%', border: 0, background: active ? 'var(--primary-soft)' : 'transparent', cursor: 'pointer', textAlign: 'left' }}>
-                              <span className="sidebar-nav-icon"><Icon size={15} /></span>
-                              <span className="sidebar-nav-label">Suppliers</span>
-                              <ChevronDown size={14} aria-hidden="true"
-                                style={{ transform: supplierExpanded ? 'rotate(180deg)' : 'none' }} />
-                            </button>
-                          )}
-                          {!collapsed && supplierExpanded && (
-                            <div id="supplier-desktop-submenu" className="sidebar-items" style={{ paddingLeft: 22 }}>
-                              {children.map(item => (
-                                <NavLink key={item.id} to={item.path} end
-                                  ref={location.pathname === item.path ? activeItemRef : null}
-                                  className={({ isActive }) => `sidebar-nav-item ${isActive ? 'is-active' : ''}`}
-                                  style={{ minHeight: 34, paddingInline: 9 }}>
-                                  <span className="sidebar-nav-label">{item.label}</span>
-                                </NavLink>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-
+                    // All sections, including Suppliers, navigate from one parent link.
                     return (
                       <NavLink
                         key={route.id}
