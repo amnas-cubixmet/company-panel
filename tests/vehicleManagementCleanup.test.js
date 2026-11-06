@@ -101,7 +101,11 @@ test('only finalized invoice numbers yield invoice rows; money never falls back 
 });
 
 test('vehicle forms never fabricate owners, registration, mileage, dates or customer records', () => {
-  assert.doesNotMatch(add, /CUS-0001|Rahul Kumar|Pearl White|Innova 2\.5V|1,24,500 km'|2027-03-14/);
+  assert.doesNotMatch(add, /CUS-0001|Rahul Kumar/);
+  // Examples in placeholders are allowed, but saved initial form values must be empty.
+  for (const key of ['regNo','make','model','variant','year','color','odometer','vin','engineNo','lastServiceDate','nextServiceDue','insuranceExpiry']) {
+    assert.ok(add.includes(key+": ''"), key);
+  }
   assert.match(add, /customerId: preselectedCustId,/);
   assert.match(add, /options=\{customerOptions\}/);
   assert.match(add, /customerService\.getCustomers\(\)/);
