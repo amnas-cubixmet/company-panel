@@ -34,7 +34,7 @@ export const staffInviteDeliveryMessage = (status) => {
     case 'read':
       return 'WhatsApp confirmed the invitation was read.';
     case 'manual':
-      return 'Automatic delivery is unavailable or consent is missing. Share a new secure link directly with the staff member when authorized.';
+      return 'Manual invitation ready. No message was sent automatically; an authorized admin must open WhatsApp and press Send.';
     case 'failed':
       return 'Invitation delivery failed or could not be confirmed. Do not create the staff again; use Resend Setup Link.';
     case 'pending':
