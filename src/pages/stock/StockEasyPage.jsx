@@ -21,7 +21,7 @@ const validGstRate = (value) =>
   /^\d{1,3}(?:\.\d{1,2})?$/.test(String(value)) &&
   Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 100;
 const list = (result) => Array.isArray(result) ? result : (result?.results || []);
-const initialPart = { partName: '', partNumber: '', sku: '', supplier: '', brand: '', category: '', unit: 'Piece',
+const initialPart = { partName: '', partNumber: '', supplier: '', brand: '', category: '', unit: 'Piece',
   costPrice: '', sellingPrice: '', tax: '0', hsnCode: '', stockQuantity: '',
   minimumStock: '5', location: '' };
 const initialSupplier = { name: '', phone: '', gstNo: '', address: '' };
@@ -279,13 +279,19 @@ export default function StockEasyPage() {
     if (!validGstRate(part.tax)) {
       setError('Choose a valid GST rate between 0% and 100% (up to two decimals).'); return;
     }
-    const openingQuantity = part.stockQuantity === '' ? 0 : Number(part.stockQuantity);
-    if (!Number.isFinite(openingQuantity) || openingQuantity < 0 ||
-        !/^\\d+(?:\\.\\d{1,2})?$/.test(String(part.stockQuantity || '0'))) {
-      setError('Opening stock quantity must be nonnegative with up to two decimal places.'); return;
-    }
-    if (part.sku.trim() && items.some(item => String(item.sku || '').trim().toLowerCase() === part.sku.trim().toLowerCase())) {
-      setError('This SKU already exists. Choose another SKU or use automatic generation.'); return;
+    const openingText = String(part.stockQuantity ?? '').trim();
+    const openingQuantity = openingText === '' ? 0 : Number(openingText);
+    if (!/^\d+(?:\.\d{1,2})?$/.test(openingText || '0') ||
+        !Number.isFinite(openingQuantity) || openingQuantity < 0) {
+      const message = 'Opening stock quantity must be nonnegative with up to two decimal places.';
+      setPartErrors(previous => ({ ...previous, stockQuantity: message }));
+      setError(message);
+      requestAnimationFrame(() => {
+        const input = partFormRef.current?.querySelector('[data-field="stockQuantity"]');
+        input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        input?.focus();
+      });
+      return;
     }
     setSaving(true);
     setError('');
@@ -311,7 +317,8 @@ export default function StockEasyPage() {
       if (typeof details === 'object' && details && !Array.isArray(details)) {
         const next = {};
         for (const [name, value] of Object.entries(details)) {
-          next[name] = Array.isArray(value) ? value[0] : String(value);
+          const fieldName = name === 'onHand' || name === 'on_hand' ? 'stockQuantity' : name;
+          next[fieldName] = Array.isArray(value) ? value[0] : String(value);
         }
         setPartErrors(next);
         const key = Object.keys(next)[0];
@@ -491,10 +498,7 @@ export default function StockEasyPage() {
               <OutlinedInput label="Part Name *" required maxLength={180} value={part.partName} onChange={(e) => setPart({ ...part, partName: e.target.value })}/>
               <OutlinedInput label="Part Number" data-field="partNumber" aria-invalid={Boolean(partErrors.partNumber)}
                 maxLength={100} value={part.partNumber} onChange={(e) => { setPart({ ...part, partNumber: e.target.value }); setPartErrors({ ...partErrors, partNumber: '' }); }}/>
-              <OutlinedInput label="SKU (leave empty to auto-generate)" data-field="sku" maxLength={80}
-                value={part.sku} onChange={(e) => setPart({ ...part, sku: e.target.value })}/>
               {partErrors.partNumber && <p className="cg-easy-alert" role="alert">{partErrors.partNumber}</p>}
-              {partErrors.sku && <p className="cg-easy-alert" role="alert">{partErrors.sku}</p>}
             </div>
             <div className="cg-easy-supplier-field">
               <OutlinedSelect label="Supplier" value={part.supplier} onChange={(e) => setPart({ ...part, supplier: e.target.value })}>
@@ -540,7 +544,20 @@ export default function StockEasyPage() {
                 {GST_RATE_PRESETS.map(rate => <option key={rate} value={rate}>{rate}% GST</option>)}
                 <option value="custom">Other rate (custom %)</option>
               </OutlinedSelect>
-              <OutlinedInput label="Opening Stock Quantity" type="number" min="0" step="0.01" value={part.stockQuantity} onChange={e => setPart({ ...part, stockQuantity: e.target.value })}/>
+              <OutlinedInput label="Opening Stock Quantity" type="number" min="0" step="0.01"
+                inputMode="decimal" data-field="stockQuantity" aria-invalid={Boolean(partErrors.stockQuantity)}
+                value={part.stockQuantity} onChange={e => {
+                  setPart({ ...part, stockQuantity: e.target.value });
+                  setPartErrors(previous => ({ ...previous, stockQuantity: '' }));
+                }} onInvalid={event => {
+                  event.preventDefault();
+                  const message = 'Opening stock quantity must be nonnegative with up to two decimal places.';
+                  setPartErrors(previous => ({ ...previous, stockQuantity: message }));
+                  setError(message);
+                  event.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  event.currentTarget.focus();
+                }}/>
+              {partErrors.stockQuantity && <p className="cg-easy-alert" role="alert">{partErrors.stockQuantity}</p>}
             </div>
             {!GST_RATE_PRESETS.includes(String(part.tax)) &&
               <OutlinedInput label="Custom GST Rate (%)" type="number" min="0" max="100" step="0.01" required

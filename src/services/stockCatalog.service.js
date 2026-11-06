@@ -46,7 +46,7 @@ const resolveSupplierId = async (value) => {
 const productPayload = async (payload, { creating = false } = {}) => {
   const part = {
     partName: payload.partName || payload.name || '',
-    sku: payload.sku?.trim() || '',
+    ...(payload.sku?.trim() ? { sku: payload.sku.trim() } : {}),
     partNumber: payload.partNumber?.trim() || '',
     barcode: payload.barcode || '',
     brand: payload.brand || '',
