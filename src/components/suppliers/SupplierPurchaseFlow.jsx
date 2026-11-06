@@ -184,6 +184,13 @@ export default function SupplierPurchaseFlow({
     if (parts.some(row => row.itemId === part.itemId && row.itemId !== '__new__')) {
       setError('This part is already in the purchase. Edit the quantity in the list instead.'); return;
     }
+    if (part.itemId === '__new__' && stock.some(item =>
+      String(item.partName || item.name || '').trim().toLowerCase() === part.description.trim().toLowerCase() &&
+      (!item.supplier || String(item.supplier?.id || item.supplier) === String(supplier.id))
+    )) {
+      setError('A product with this name already exists. Search and select it instead of creating a duplicate.');
+      return;
+    }
     setSavingPart(true);
     try {
       let itemId = part.itemId;
@@ -223,7 +230,10 @@ export default function SupplierPurchaseFlow({
       setError('A valid purchase reference and date are required.'); return;
     }
     const positiveGst = parts.some(row => n(row.gstRate) > 0);
-    if (positiveGst && (!placeOfSupply || !String(supplier.gstNo || supplier.gstin || '').trim())) {
+    if (!placeOfSupply) {
+      setError('Choose the workshop / buyer Place of Supply for the purchase GST record.'); return;
+    }
+    if (positiveGst && !String(supplier.gstNo || supplier.gstin || '').trim()) {
       setError('For GST purchases, select Place of Supply and verify the Supplier GSTIN.'); return;
     }
     const supplierState = String(supplier.gstNo || supplier.gstin || '').slice(0, 2);
