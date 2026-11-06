@@ -4,6 +4,7 @@ import { CheckCircle2, CreditCard, Plus, RefreshCw, Wallet } from 'lucide-react'
 import { supplierFinanceService as finance } from '../../services/supplierFinance.service';
 import { SupplierSectionTabs } from '../../components/suppliers/SupplierSectionTabs';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
+import { supplierComponentChoices, previewManualPurchaseTax } from '../../utils/manualGstComponents';
 
 const field = 'w-full min-w-0 min-h-12 rounded-[10px] border border-line bg-surface px-3 py-2 text-base text-content outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60';
 const secondary = 'min-h-11 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-content disabled:opacity-50';
@@ -12,7 +13,7 @@ const box = 'rounded-2xl border border-line bg-surface p-4';
 const today = () => new Date().toLocaleDateString('en-CA');
 const money = (value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(value || 0));
 const num = value => { const amount = Number(value); return Number.isFinite(amount) ? amount : 0; };
-const line = () => ({ itemId: '', description: '', quantity: '1', purchaseRate: '', gstRate: '0', gstTreatment: '' });
+const line = () => ({ itemId: '', description: '', quantity: '1', purchaseRate: '', gstRate: '0', taxComponents: [], gstTreatment: '', zeroRatingBasis: '' });
 const paymentKey = () => globalThis.crypto?.randomUUID?.() || ('PAY-' + Date.now() + '-' + Math.random().toString(36).slice(2));
 
 export default function SupplierFinancePage({ section = '' }) {
@@ -201,16 +202,10 @@ export default function SupplierFinancePage({ section = '' }) {
       supplierGSTIN.slice(0, 2) === draft.placeOfSupply ? 'cgst_sgst' : 'igst';
   const stateTaxLabel = ['04', '26', '31', '35', '38'].includes(draft.placeOfSupply) ? 'UTGST' : 'SGST';
   const posting = Boolean(busy);
-  // Preview only. Backend Decimal snapshots are authoritative and can differ by paise.
-  const purchaseTaxLines = useMemo(() => draft.lines.map((row) => {
-    const round = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
-    const subtotal = round((Number(row.quantity) || 0) * (Number(row.purchaseRate) || 0));
-    const rate = Number(row.gstRate) || 0;
-    const half = purchaseTaxMode === 'cgst_sgst' ? round(subtotal * rate / 200) : 0;
-    const igst = purchaseTaxMode === 'igst' ? round(subtotal * rate / 100) : 0;
-    const tax = purchaseTaxMode === 'unselected' ? round(subtotal * rate / 100) : 2 * half + igst;
-    return { subtotal, cgst: half, stateTax: half, igst, total: round(subtotal + tax) };
-  }), [draft.lines, purchaseTaxMode]);
+  // Preview only explicitly selected components; server validates before posting.
+  const purchaseTaxLines = useMemo(() => draft.lines.map((row) =>
+    previewManualPurchaseTax(row, purchaseTaxMode, stateTaxLabel)
+  ), [draft.lines, purchaseTaxMode, stateTaxLabel]);
   const purchaseLines = purchaseTaxLines.map((item) => item.total);
   const purchaseTotal = purchaseLines.reduce((sum, amount) => sum + amount, 0);
   const purchaseCGST = purchaseTaxLines.reduce((sum, item) => sum + item.cgst, 0);
@@ -253,13 +248,13 @@ export default function SupplierFinancePage({ section = '' }) {
       setError('Verify the supplier GSTIN before applying GST.');
       return;
     }
-    if (draft.lines.some(row => Number(row.gstRate) === 0 && purchaseTaxMode !== 'unregistered' && !row.gstTreatment)) {
-      setError('Classify each 0% GST item as Exempt, Nil-rated, Zero-rated or Non-GST.');
-      return;
-    }
-    if (draft.lines.some(row => Number(row.gstRate) > 0 && purchaseTaxMode === 'unregistered')) {
-      setError('An unregistered supplier cannot charge GST.');
-      return;
+    if (postNow) {
+      const invalidLine = purchaseTaxLines.findIndex(result => result.status !== 'valid');
+      if (invalidLine >= 0) {
+        setError('Line ' + (invalidLine + 1) + ': ' +
+          (purchaseTaxLines[invalidLine].message || 'Correct the GST selection before posting.'));
+        return;
+      }
     }
     if (postNow && (!Number.isFinite(paidNow) || paidNow < 0 ||
         paidNow > purchaseTotal + 0.001 || (purchasePayment.mode === 'Partial Paid' && paidNow <= 0))) {
@@ -642,7 +637,7 @@ export default function SupplierFinancePage({ section = '' }) {
                     updateLine(index, {
                       itemId: event.target.value, description: item?.partName || item?.name || row.description,
                       purchaseRate: item?.costPrice || item?.cost || row.purchaseRate,
-                      gstRate: item?.tax ?? row.gstRate, gstTreatment: '',
+                      gstRate: item?.tax ?? row.gstRate, taxComponents: [], gstTreatment: '', zeroRatingBasis: '',
                     });
                   }}>
                   <option value="">Custom / direct purchase</option>
@@ -661,35 +656,78 @@ export default function SupplierFinancePage({ section = '' }) {
                 <input className={field} type="number" required min="0" step="0.01" value={row.purchaseRate}
                   onChange={(event) => updateLine(index, { purchaseRate: event.target.value })}/>
               </label>
-              <label className="grid gap-1 text-sm">Total GST Rate (%)
-                <select className={field} value={row.gstRate}
-                  onChange={event => updateLine(index, { gstRate: event.target.value, gstTreatment: '' })}>
-                  {[...new Set(['0', '5', '18', '3', '12', '28', '40', String(row.gstRate)])].map(rate =>
-                    <option key={rate} value={rate}>
-                      {rate}% {['0', '5', '18'].includes(rate) ? 'GST' : '(special / historical — verify HSN)'}
-                    </option>)}
-                </select>
-              </label>
-              {Number(row.gstRate) === 0 && purchaseTaxMode !== 'unregistered' && <label className="grid gap-1 text-sm">
-                0% GST Treatment *
-                <select className={field} required value={row.gstTreatment || ''}
-                  onChange={event => updateLine(index, { gstTreatment: event.target.value })}>
-                  <option value="">Select classification</option>
-                  <option value="exempt">Exempt supply</option>
-                  <option value="nil_rated">Nil-rated supply</option>
-                  <option value="zero_rated">Zero-rated (eligible export / SEZ only)</option>
-                  <option value="non_gst">Non-GST supply</option>
-                </select>
-              </label>}
-              <div className="text-xs text-muted lg:col-span-5">
-                {purchaseTaxMode === 'cgst_sgst' ? <>
-                  CGST {Number(row.gstRate) / 2}% {money(purchaseTaxLines[index]?.cgst)}
-                  {' + '}{stateTaxLabel} {Number(row.gstRate) / 2}% {money(purchaseTaxLines[index]?.stateTax)}
-                </> : purchaseTaxMode === 'igst' ? <>
-                  IGST {row.gstRate}% {money(purchaseTaxLines[index]?.igst)}
-                </> : purchaseTaxMode === 'unregistered' ?
-                  'No GST: supplier GSTIN is not recorded' : 'Select Place of Supply to see GST breakdown'}
-                <strong className="ml-2 text-content">Line Total {money(purchaseLines[index])}</strong>
+              <div className="grid gap-2 text-sm lg:col-span-5">
+                <label className="grid gap-1">Manual GST Component *
+                  <select className={field} value=""
+                    onChange={event => {
+                      const choice = event.target.value;
+                      if (!choice) return;
+                      if (choice === 'zero') {
+                        updateLine(index, { taxComponents: ['zero'], gstTreatment: '', zeroRatingBasis: '' });
+                        return;
+                      }
+                      const previous = row.taxComponents.filter(value => value !== 'zero');
+                      if (previous.includes(choice)) return;
+                      if (previous.length >= 2) {
+                        setError('Remove a selected GST component before adding another.');
+                        return;
+                      }
+                      updateLine(index, {
+                        taxComponents: [...previous, choice], gstTreatment: 'taxable', zeroRatingBasis: '',
+                      });
+                      setError('');
+                    }}>
+                    <option value="">Add a GST component manually</option>
+                    {supplierComponentChoices(stateTaxLabel).map(option =>
+                      <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+                <div className="flex flex-wrap gap-2" aria-label="Selected GST components">
+                  {row.taxComponents.length === 0 && <span className="text-muted">No component selected</span>}
+                  {row.taxComponents.map(choice => (
+                    <span key={choice} className="inline-flex items-center gap-2 rounded-lg border border-line px-3 py-2">
+                      {supplierComponentChoices(stateTaxLabel).find(option => option.value === choice)?.label || choice}
+                      <button type="button" className="text-red-600 underline"
+                        aria-label={'Remove ' + choice}
+                        onClick={() => updateLine(index, {
+                          taxComponents: row.taxComponents.filter(value => value !== choice),
+                          gstTreatment: '', zeroRatingBasis: '',
+                        })}>Remove</button>
+                    </span>
+                  ))}
+                </div>
+                {row.taxComponents.includes('zero') && purchaseTaxMode !== 'unregistered' &&
+                  <label className="grid gap-1">0% GST Treatment *
+                    <select className={field} value={row.gstTreatment || ''}
+                      onChange={event => updateLine(index, {
+                        gstTreatment: event.target.value, zeroRatingBasis: '',
+                      })}>
+                      <option value="">Select classification</option>
+                      <option value="exempt">Exempt supply</option>
+                      <option value="nil_rated">Nil-rated supply</option>
+                      <option value="zero_rated">Zero-rated (eligible export / SEZ only)</option>
+                      <option value="non_gst">Non-GST supply</option>
+                    </select>
+                  </label>}
+                {row.taxComponents.includes('zero') && row.gstTreatment === 'zero_rated' &&
+                  <label className="grid gap-1">Zero-rating basis *
+                    <select className={field} value={row.zeroRatingBasis || ''}
+                      onChange={event => updateLine(index, { zeroRatingBasis: event.target.value })}>
+                      <option value="">Select basis</option>
+                      <option value="export">Export</option>
+                      <option value="sez">SEZ</option>
+                    </select>
+                  </label>}
+                <div className="text-xs text-muted" role="status">
+                  CGST {money(purchaseTaxLines[index]?.cgst)}
+                  {' · '}{stateTaxLabel} {money(purchaseTaxLines[index]?.stateTax)}
+                  {' · '}IGST {money(purchaseTaxLines[index]?.igst)}
+                  <strong className="ml-2 text-content">Line Total {money(purchaseLines[index])}</strong>
+                  {purchaseTaxLines[index]?.status !== 'valid' &&
+                    <p className="mt-1 text-red-600">{purchaseTaxLines[index]?.message}
+                      {' '}Draft may be saved, but posting is blocked until corrected.
+                    </p>}
+                </div>
               </div>
               {draft.lines.length > 1 && <button className={secondary} type="button"
                 onClick={() => setDraft({ ...draft, lines: draft.lines.filter((_, i) => i !== index) })}>Remove line</button>}
@@ -706,8 +744,9 @@ export default function SupplierFinancePage({ section = '' }) {
             {purchaseTaxMode === 'igst' && <p className="text-sm">IGST: {money(purchaseIGST)}</p>}
             {purchaseTaxMode === 'unregistered' && <p className="text-sm">GST charged: {money(0)}</p>}
             {purchaseTaxMode === 'unselected' && <p className="text-sm text-muted">Select Place of Supply.</p>}
-            <p className="text-xs text-muted">A preset rate does not establish HSN/SAC classification.
-              Exact backend Decimal calculations are authoritative.</p>
+            <p className="text-xs text-muted">Preview totals use only selected components.
+              CGST-only drafts never add SGST automatically. Valid statutory components
+              and HSN/SAC rate are required before posting. Django Decimal totals are authoritative.</p>
           </section>
           <section className="grid gap-3 rounded-xl border border-line p-3" aria-label="Purchase payment">
             <h3 className="text-sm font-bold">Purchase Payment</h3>
