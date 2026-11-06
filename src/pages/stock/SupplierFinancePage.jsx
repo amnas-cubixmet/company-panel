@@ -5,11 +5,12 @@ import { supplierFinanceService as finance } from '../../services/supplierFinanc
 import { SupplierSectionTabs } from '../../components/suppliers/SupplierSectionTabs';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { supplierComponentChoices, previewManualPurchaseTax } from '../../utils/manualGstComponents';
+import '../../styles/supplier-finance-polish.css';
 
 const field = 'w-full min-w-0 min-h-12 rounded-[10px] border border-line bg-surface px-3 py-2 text-base text-content outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-60';
 const secondary = 'min-h-11 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-content disabled:opacity-50';
 const primary = 'min-h-11 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50';
-const box = 'rounded-2xl border border-line bg-surface p-4';
+const box = 'cg-supplier-finance-card';
 const today = () => new Date().toLocaleDateString('en-CA');
 const money = (value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(value || 0));
 const num = value => { const amount = Number(value); return Number.isFinite(amount) ? amount : 0; };
@@ -454,8 +455,8 @@ export default function SupplierFinancePage({ section = '' }) {
   };
 
   return (
-    <main className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-4 p-3 pb-24 text-content md:p-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+    <main className="cg-supplier-finance mx-auto flex w-full min-w-0 flex-col gap-4 p-3 pb-24 text-content md:p-6">
+      <header className="cg-supplier-finance-header flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link to={supplierSection ? '/suppliers' : '/stock'} className="text-sm font-semibold text-primary">
             {supplierSection ? 'Suppliers' : 'Inventory Management'}
@@ -472,10 +473,9 @@ export default function SupplierFinancePage({ section = '' }) {
       </header>
 
       {supplierSection && <SupplierSectionTabs />}
-      {section === 'credits' && (
+      {section === 'credits' && canPay && (
         <div className="flex flex-wrap gap-2">
-          <Link to="/suppliers/payments" className={secondary}>Pay Supplier</Link>
-          {canCreateBill && <Link to="/stock/suppliers?tab=bill" className={secondary}>+ New Purchase</Link>}
+          <Link to={'/suppliers/payments?supplier=' + encodeURIComponent(selectedSupplier)} className={secondary}>Pay Supplier</Link>
         </div>
       )}
       {section === 'payments' && (
@@ -491,8 +491,8 @@ export default function SupplierFinancePage({ section = '' }) {
       {error && <div role="alert" className="rounded-xl border border-red-500/30 p-3 text-sm text-red-600">{error}</div>}
       {notice && <div role="status" className={box + ' border-green-600/40 text-green-700 dark:text-green-400'}><CheckCircle2 size={16} className="inline"/> {notice}</div>}
 
-      <section className={box}>
-        <div className="flex flex-col gap-3 md:flex-row md:items-end">
+      <section className={box} aria-label="Select supplier">
+        <div className="cg-supplier-finance-selector">
           <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm font-semibold">
             Supplier
             <select value={selectedSupplier} onChange={(event) => selectSupplier(event.target.value)} className={field}>
@@ -518,15 +518,15 @@ export default function SupplierFinancePage({ section = '' }) {
       </section>
 
       {summary && (
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+        <div className="cg-supplier-finance-metrics" aria-label="Supplier financial summary">
           {[
             ['Purchase total', summary.totalPurchases], ['Outstanding', summary.outstanding],
             ['Applied payments', summary.totalPaymentsApplied], ['Available advance', summary.availableAdvance],
             ['Overdue bills', summary.overdue],
           ].map(([name, amount]) => (
-            <div key={name} className={box + ' min-w-0'}>
-              <span className="block text-xs font-medium text-muted">{name}</span>
-              <strong className="mt-1 block break-all text-lg">{money(amount)}</strong>
+            <div key={name} className="cg-supplier-finance-metric">
+              <span>{name}</span>
+              <strong>{amount == null ? 'Unavailable' : money(amount)}</strong>
             </div>
           ))}
         </div>
@@ -546,10 +546,13 @@ export default function SupplierFinancePage({ section = '' }) {
       </nav>}
 
       {activeTab === 'overview' && (
-        <div className="grid gap-4">
+        <div className="grid min-w-0 gap-4">
           <section className={box}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-lg font-bold">Purchase Bills — {selectedSupplierName}</h2>
+            <div className="cg-supplier-finance-heading">
+              <div className="min-w-0">
+                <h2>Purchase Bills</h2>
+                <p className="cg-supplier-finance-selected" title={selectedSupplierName}>{selectedSupplierName}</p>
+              </div>
               {supplierSection ? (canCreateBill && <Link to="/stock/suppliers?tab=bill" className={secondary}>+ New Purchase</Link>)
                 : (canCreateBill && <button className={secondary} type="button" onClick={() => setActiveTab('bill')}>+ New Purchase</button>)}
             </div>
@@ -607,12 +610,11 @@ export default function SupplierFinancePage({ section = '' }) {
                   </button>}
                 </article>
               ))}
-              {!filteredBills.length && <p className="py-5 text-sm text-muted">No matching purchase bills for this supplier.</p>}
+              {!filteredBills.length && <p className="cg-supplier-finance-empty">No matching purchase bills.</p>}
             </div>
           </section>
           <section className={box}>
-            <h2 className="text-lg font-bold">Supplier Ledger</h2>
-            <p className="mt-1 text-xs text-muted">Positive balance = amount payable to supplier. Advances remain separate until applied.</p>
+            <h2 className="text-base font-semibold">Supplier Ledger</h2>
             <div className="mt-3 grid gap-2">
               {(ledger?.entries || []).map((entry, index) => (
                 <div key={entry.sourceId + '-' + index} className="grid grid-cols-2 gap-2 border-b border-line py-2 text-sm md:grid-cols-4">
@@ -622,7 +624,7 @@ export default function SupplierFinancePage({ section = '' }) {
                   <strong>Due {money(entry.runningPayable)}</strong>
                 </div>
               ))}
-              {!ledger?.entries?.length && <p className="py-3 text-sm text-muted">No posted financial transactions.</p>}
+              {!ledger?.entries?.length && <p className="cg-supplier-finance-empty">No posted transactions.</p>}
             </div>
           </section>
           {canPay && !!advances.length && <section className={box}>
@@ -838,9 +840,11 @@ export default function SupplierFinancePage({ section = '' }) {
       )}
 
       {activeTab === 'payment' && canPay && (
-        <form ref={paymentFormRef} noValidate className={box + ' grid gap-4'} onSubmit={paySupplier}>
-          <div><h2 className="text-lg font-semibold">Pay Supplier — {selectedSupplierName}</h2>
-            <p className="text-sm text-muted">Outstanding: {summary ? money(summary.outstanding) : 'Unavailable'} · Advance: {summary ? money(summary.availableAdvance) : 'Unavailable'}</p></div>
+        <form ref={paymentFormRef} noValidate className={box + ' cg-supplier-finance-payment-form grid gap-4'} onSubmit={paySupplier}>
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold">Pay Supplier</h2>
+            <p className="cg-supplier-finance-selected" title={selectedSupplierName}>{selectedSupplierName}</p>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1 text-sm font-semibold">Payment type
               <select value={paymentDraft.kind} className={field} onChange={(event) =>
@@ -921,7 +925,7 @@ export default function SupplierFinancePage({ section = '' }) {
                 </div>
               </details>}
             </div>)}
-            {!outstandingBills.length && <p className="text-sm text-muted">No posted bills remain unpaid. Use Advance Payment if appropriate.</p>}
+            {!outstandingBills.length && <p className="cg-supplier-finance-empty">No unpaid bills. You can select Advance Payment.</p>}
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 text-sm">
               <span>Allocated {money(Object.values(paymentDraft.allocations).reduce((sum, value) => sum + num(value), 0))}</span>
               <strong>Unallocated {money(num(paymentDraft.amount) -
@@ -929,9 +933,9 @@ export default function SupplierFinancePage({ section = '' }) {
             </div>
             {paymentErrors.allocations && <p role="alert" className="text-sm text-red-600">
               {paymentErrors.allocations}</p>}
-            <p className="text-xs text-muted">Allocations must equal the payment amount. The server checks every outstanding bill.</p>
+
           </div>}
-          <p className="text-xs text-muted">This reduces only the selected recorded account ledger. It is not a real-time bank balance.</p>
+          <p className="text-xs text-muted">Account balances are recorded ledger values, not live bank balances.</p>
           <button className={primary} type="submit" disabled={posting || !selectedSupplier || !paymentDraft.accountId ||
             !paymentDraft.amount || (paymentDraft.kind === 'Payment' && !outstandingBills.length)}>
             {busy === 'payment' ? 'Posting payment…' : 'Confirm Supplier Payment'}
@@ -942,7 +946,7 @@ export default function SupplierFinancePage({ section = '' }) {
       {activeTab === 'payment' && (
         <section className={box + ' grid gap-3'} aria-label="Supplier payment history">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold">Payment History — {selectedSupplierName}</h2>
+            <h2 className="text-base font-semibold">Payment History</h2>
             <span className="text-sm text-muted">{supplierPayments.length} records</span>
           </div>
           <div className="grid gap-2 sm:grid-cols-3">
@@ -970,7 +974,7 @@ export default function SupplierFinancePage({ section = '' }) {
                 <strong className="text-sm">{money(row.amount)}</strong>
               </article>
             ))}
-            {!filteredPayments.length && <p className="py-4 text-sm text-muted">No matching supplier payments found.</p>}
+            {!filteredPayments.length && <p className="cg-supplier-finance-empty">No matching payments.</p>}
           </div>
         </section>
       )}
@@ -1107,10 +1111,7 @@ export default function SupplierFinancePage({ section = '' }) {
         </section>
       </div>}
 
-      <footer className="text-xs text-muted">
-        Supplier payments settle liabilities; they are not a second purchase expense.
-        Customer invoice selling rates remain separate from supplier purchase costs.
-      </footer>
+
     </main>
   );
 }
