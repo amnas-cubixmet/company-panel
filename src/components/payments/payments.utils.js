@@ -86,5 +86,5 @@ export const makePaymentPayload = (form, selectedInvoice, outstanding, mockMode 
   return mockMode
     ? { ...base, customer: selectedInvoice.customer?.name || selectedInvoice.customerName || 'Customer',
         invoice: selectedInvoice.number || selectedInvoice.id }
-    : { ...base, direction: 'IN', customer: selectedInvoice.customerId, invoice: selectedInvoice.id };
+    : { ...base, ...(form.direction ? { direction: 'IN' } : {}), customer: selectedInvoice.customerId, invoice: selectedInvoice.id };
 };
