@@ -78,6 +78,8 @@ export default function PaymentFinanceOverview({
   const cards = [
     { label: "Today's Money In", value: summary?.todayReceived, icon: ArrowDownLeft, description: 'Posted account credits, excluding transfers' },
     { label: "Today's Money Out", value: summary?.todayPaid, icon: ArrowUpRight, description: 'Posted account debits, excluding transfers' },
+    { label: "Today's Expenses", value: summary?.todayExpensesRecorded, icon: ArrowUpRight, description: 'Costs recorded today, whether paid or unpaid' },
+    { label: "Today's Supplier Payments", value: summary?.todaySupplierPaid, icon: Wallet, description: 'Parts suppliers paid today from real accounts' },
     { label: 'Bank Balance', value: summary?.bankBalance, icon: Building2, description: 'Internal bank account ledger' },
     { label: 'Cash / UPI / Wallet', value: summary?.cashBalance, icon: Wallet, description: 'Internal cash and digital balances' },
     { label: 'Net Sales Revenue', value: summary?.netSalesRevenue, icon: TrendingUp, description: 'Finalized invoices excluding GST' },
