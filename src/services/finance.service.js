@@ -3,7 +3,7 @@ import apiClient from '../api/apiClient';
 const BASE = '/finance';
 
 export const financeService = {
-  getDashboard: () => apiClient.get(`${BASE}/dashboard`),
+  getDashboard: (params = {}) => apiClient.get(`${BASE}/dashboard`, { params }),
   getPaymentActivity: (params = {}) => apiClient.get(`${BASE}/payment-activity`, { params }),
 
   // Accounts
