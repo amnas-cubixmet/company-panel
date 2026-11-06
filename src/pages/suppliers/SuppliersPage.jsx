@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Building2, Mail, Package, Phone, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
@@ -29,47 +29,106 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
   const canWrite = access.can(supplier ? 'stock.edit' : 'stock.create') && !USE_MOCK_API;
   const [form, setForm] = useState(() => initialForm(supplier));
   const [busy, setBusy] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
   const [error, setError] = useState('');
-  const setField = (key, value) => setForm(prev => ({ ...prev, [key]:value }));
+  const inputRefs = useRef({});
+  const labels = {
+    name: 'Supplier Name *', contact_person: 'Contact Person', phone: 'Mobile Number',
+    email: 'Email', gstNo: 'GSTIN', address: 'Address',
+  };
+
+  useEffect(() => {
+    const first = formFields.find(key => formErrors[key]);
+    const element = first ? inputRefs.current[first] : null;
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element.focus({ preventScroll: true });
+    }
+  }, [formErrors]);
+
+  const setField = (key, value) => {
+    setForm(prev => ({ ...prev, [key]: value }));
+    setFormErrors(prev => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
   const submit = async event => {
     event.preventDefault();
     if (!canWrite || busy) return;
-    if (!form.name.trim()) { setError('Supplier Name is required.'); return; }
-    setBusy(true); setError('');
+    const errors = {};
+    if (!form.name.trim()) errors.name = 'Supplier Name is required.';
+    if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      errors.email = 'Enter a valid email address.';
+    }
+    if (Object.keys(errors).length) {
+      setFormErrors(errors);
+      setError('');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    setFormErrors({});
     try {
-      const payload = { ...form, name:form.name.trim(), email:form.email.trim() };
+      const payload = { ...form, name: form.name.trim(), email: form.email.trim() };
       const saved = supplier
         ? await supplierService.update(supplier.id, payload)
         : await supplierService.create(payload);
       onSaved(saved);
     } catch (cause) {
       const data = cause?.response?.data;
-      setError(asText(data?.name?.[0] || data?.gstNo?.[0] || data?.phone?.[0] || data?.detail || data?.message || cause?.message || 'Unable to save supplier.'));
-    } finally { setBusy(false); }
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        const normalized = {};
+        const aliases = { gstin: 'gstNo', gst_no: 'gstNo', contactPerson: 'contact_person', is_active: 'name' };
+        for (const [key, value] of Object.entries(data)) {
+          const target = aliases[key] || key;
+          const message = Array.isArray(value) ? value.join(' ') : String(value ?? '');
+          if (formFields.includes(target)) normalized[target] = message;
+        }
+        if (Object.keys(normalized).length) {
+          setFormErrors(normalized);
+          setError('');
+        } else {
+          const detail = data.detail || data.message || data.non_field_errors;
+          setError(Array.isArray(detail) ? detail.join(' ') : String(detail || cause?.message || 'Unable to save supplier.'));
+        }
+      } else {
+        setError(cause?.message || 'Unable to save supplier.');
+      }
+    } finally {
+      setBusy(false);
+    }
   };
-  const labels = {
-    name:'Supplier Name *', contact_person:'Contact Person', phone:'Phone',
-    email:'Email', gstNo:'GSTIN', address:'Address',
-  };
-  return <ResponsiveModalSheet isOpen onClose={() => !busy && onClose()} title={supplier ? 'Edit Supplier' : 'Add Supplier'} maxWidth="590px">
-    <form className="cg-supplier-form" onSubmit={submit}>
-      {formFields.map(key => <label key={key} className="cg-supplier-floating">
-        {key === 'address'
-          ? <textarea rows={2} placeholder=" " value={form[key]} onChange={e => setField(key,e.target.value)} />
-          : <input placeholder=" " required={key==='name'} type={key==='email'?'email':key==='phone'?'tel':'text'}
-              maxLength={key==='name'?180:key==='contact_person'?120:key==='phone'?30:key==='gstNo'?20:254}
-              value={form[key]} onChange={e => setField(key,e.target.value)} />}
+
+  return <ResponsiveModalSheet isOpen onClose={() => !busy && onClose()}
+    title={supplier ? 'Edit Supplier' : 'Add Supplier'} maxWidth="590px">
+    <form className="cg-supplier-form" noValidate onSubmit={submit}>
+      {formFields.map(key => <label key={key} className="cg-supplier-field">
         <span>{labels[key]}</span>
+        {key === 'address'
+          ? <textarea ref={node => { inputRefs.current[key] = node; }} rows={2}
+              aria-invalid={Boolean(formErrors[key])} aria-describedby={formErrors[key] ? 'supplier-error-' + key : undefined}
+              value={form[key]} onChange={e => setField(key, e.target.value)} />
+          : <input ref={node => { inputRefs.current[key] = node; }} required={key === 'name'}
+              type={key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}
+              maxLength={key === 'name' ? 180 : key === 'contact_person' ? 120 : key === 'phone' ? 30 : key === 'gstNo' ? 20 : 254}
+              aria-invalid={Boolean(formErrors[key])} aria-describedby={formErrors[key] ? 'supplier-error-' + key : undefined}
+              value={form[key]} onChange={e => setField(key, e.target.value)} />}
+        {formErrors[key] && <small id={'supplier-error-' + key} role="alert"
+          className="cg-supplier-field-error">{formErrors[key]}</small>}
       </label>)}
       {supplier && <label className="cg-supplier-toggle">
-        <input type="checkbox" checked={form.is_active} onChange={e=>setField('is_active',e.target.checked)}/>
+        <input type="checkbox" checked={form.is_active} onChange={e => setField('is_active', e.target.checked)} />
         <span>Active Supplier</span>
       </label>}
       {error && <p role="alert" className="cg-supplier-error">{error}</p>}
       {USE_MOCK_API && <p className="cg-supplier-note">Saving requires the Django backend.</p>}
       <div className="cg-supplier-modal-actions">
         <button type="button" onClick={onClose} disabled={busy}>Cancel</button>
-        <button type="submit" className="primary" disabled={!canWrite||busy}>
+        <button type="submit" className="primary" disabled={!canWrite || busy}>
           {busy ? 'Saving…' : 'Save Supplier'}
         </button>
       </div>
@@ -99,6 +158,7 @@ export default function SuppliersPage({ section = 'all' }) {
   const [loading, setLoading] = useState(true);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [editor, setEditor] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -196,6 +256,7 @@ export default function SuppliersPage({ section = 'all' }) {
 
   function onSaved(saved) {
     setEditor(null);
+    setNotice(supplier ? 'Supplier updated successfully.' : 'Supplier saved successfully.');
     setSuppliers(rows => {
       const exists=rows.some(row=>String(row.id)===String(saved.id));
       return exists ? rows.map(row=>String(row.id)===String(saved.id)?saved:row) : [saved,...rows];
@@ -218,6 +279,7 @@ export default function SuppliersPage({ section = 'all' }) {
     <SupplierSectionTabs />
 
     {error&&<div className="cg-supplier-error" role="alert">{error} <button type="button" onClick={()=>window.location.reload()}>Retry</button></div>}
+    {notice&&<p className="cg-supplier-success" role="status">{notice}</p>}
 
     {!id&&!purchaseView&&<>
       <div className="cg-supplier-toolbar">
