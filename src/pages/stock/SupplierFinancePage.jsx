@@ -51,6 +51,8 @@ export default function SupplierFinancePage({ section = '' }) {
   const [purchasePayment, setPurchasePayment] = useState({
     mode: 'Credit', amount: '', accountId: '', method: 'Cash', reference: '', lineAmounts: {},
   });
+  const [paymentPopupBill, setPaymentPopupBill] = useState(null);
+  const [paymentPopupError, setPaymentPopupError] = useState('');
   const [paymentDraft, setPaymentDraft] = useState({
     kind: 'Payment', accountId: '', method: 'Bank Transfer', amount: '',
     paidOn: today(), reference: '', allocations: {}, lineAllocations: {},
@@ -211,9 +213,10 @@ export default function SupplierFinancePage({ section = '' }) {
   const purchaseCGST = purchaseTaxLines.reduce((sum, item) => sum + item.cgst, 0);
   const purchaseStateTax = purchaseTaxLines.reduce((sum, item) => sum + item.stateTax, 0);
   const purchaseIGST = purchaseTaxLines.reduce((sum, item) => sum + item.igst, 0);
+  const paymentBaseTotal = num(paymentPopupBill?.outstanding ?? purchaseTotal);
   const paidNow = purchasePayment.mode === 'Credit' ? 0
-    : purchasePayment.mode === 'Full Paid' ? purchaseTotal : num(purchasePayment.amount);
-  const newCredit = Math.max(0, purchaseTotal - paidNow);
+    : purchasePayment.mode === 'Full Paid' ? paymentBaseTotal : num(purchasePayment.amount);
+  const newCredit = Math.max(0, paymentBaseTotal - paidNow);
 
   const createSupplier = (event) => {
     event.preventDefault();
@@ -256,51 +259,101 @@ export default function SupplierFinancePage({ section = '' }) {
         return;
       }
     }
-    if (postNow && (!Number.isFinite(paidNow) || paidNow < 0 ||
-        paidNow > purchaseTotal + 0.001 || (purchasePayment.mode === 'Partial Paid' && paidNow <= 0))) {
-      setError('Paid Now must be positive and cannot exceed the Purchase Total.');
-      return;
-    }
-    if (postNow && purchasePayment.mode !== 'Credit' && !purchasePayment.accountId) {
-      setError('Choose an authorized Cash / Bank / UPI account.');
-      return;
-    }
-    const itemAllocations = Object.entries(purchasePayment.lineAmounts)
-      .filter(([, amount]) => Number(amount) > 0)
-      .map(([lineIndex, amount]) => ({ lineIndex: Number(lineIndex), amount }));
-    if (postNow && itemAllocations.length &&
-        Math.abs(itemAllocations.reduce((sum, row) => sum + num(row.amount), 0) - paidNow) > 0.001) {
-      setError('Item-wise Paid amounts must equal Paid Now.');
-      return;
-    }
     run('bill', async () => {
-      const payment = postNow && purchasePayment.mode !== 'Credit' ? {
-        supplierId: selectedSupplier, accountId: purchasePayment.accountId,
-        kind: 'Payment', method: purchasePayment.method,
-        amount: paidNow.toFixed(2), paidOn: today(),
-        reference: purchasePayment.reference.trim(), idempotencyKey: purchaseRequestKey.current,
-        ...(itemAllocations.length ? { allocations: [{ amount: paidNow.toFixed(2), lineAllocations: itemAllocations }] } : {}),
-      } : undefined;
-      // In an atomic post, line allocation targets the newly created bill.
-      // The backend fills billId when only the current purchase is being paid.
-      await finance.createBill({
+      const previousOutstanding = num(summary?.outstanding);
+      const confirmedBill = await finance.createBill({
         supplierId: selectedSupplier, invoiceNumber: draft.invoiceNumber.trim(),
         invoiceDate: draft.invoiceDate, dueDate: draft.dueDate || null,
         placeOfSupply: draft.placeOfSupply,
         receiveIntoStock: draft.receiveIntoStock, postNow,
-        ...(payment ? { payment } : {}),
         items: draft.lines.map((row) => ({
           ...row, itemId: row.itemId || null,
           description: row.description.trim(),
         })),
       });
-      purchaseRequestKey.current = paymentKey();
+      if (postNow) {
+        setPaymentPopupBill({
+          ...confirmedBill, supplierId: selectedSupplier, supplierName: selectedSupplierName,
+          previousOutstanding,
+        });
+        setPaymentPopupError('');
+        purchaseRequestKey.current = paymentKey();
+      }
       setPurchasePayment((prev) => ({ ...prev, mode: 'Credit', amount: '', reference: '', lineAmounts: {} }));
       setDraft({ invoiceNumber: '', invoiceDate: today(), dueDate: '', placeOfSupply: draft.placeOfSupply, receiveIntoStock: false, lines: [line()] });
       setActiveTab('overview');
     }, postNow
-      ? 'Purchase posted: inventory, payable and any payment were committed together.'
+      ? 'Purchase posted and payable recorded. Choose Full / Partial / Credit in the payment popup.'
       : 'Supplier bill saved as Draft. Posting is required to create liability and receive stock.');
+  };
+
+  const settlePurchasePopup = async () => {
+    if (!paymentPopupBill || inFlight.current) return;
+    if (purchasePayment.mode === 'Credit') {
+      setPaymentPopupBill(null);
+      setPaymentPopupError('');
+      setNotice('Purchase retained as Full Credit. Supplier balance remains outstanding.');
+      return;
+    }
+    const amount = paidNow;
+    const available = num(paymentPopupBill.outstanding);
+    const chosenAccount = accounts.find(row => String(row.id) === String(purchasePayment.accountId));
+    if (!Number.isFinite(amount) || amount <= 0 || amount > available + 0.001 ||
+        (purchasePayment.mode === 'Partial Paid' &&
+          !/^\d+(?:\.\d{1,2})?$/.test(String(purchasePayment.amount)))) {
+      setPaymentPopupError('Paid Now must be positive, at most two decimals and not exceed this bill balance.');
+      return;
+    }
+    if (!chosenAccount?.isActive ||
+        ({ Cash: 'Cash', UPI: 'UPI', 'Bank Transfer': 'Bank' }[purchasePayment.method] !== chosenAccount.kind)) {
+      setPaymentPopupError('Select a matching active Cash, Bank or UPI account.');
+      return;
+    }
+    const lineAllocations = Object.entries(purchasePayment.lineAmounts)
+      .filter(([, value]) => num(value) > 0)
+      .map(([lineIndex, value]) => ({
+        lineIndex: Number(lineIndex), amount: Number(value).toFixed(2),
+      }));
+    if (lineAllocations.length &&
+        (Math.abs(lineAllocations.reduce((sum, row) => sum + num(row.amount), 0) - amount) > 0.001 ||
+          lineAllocations.some(row => row.lineIndex < 0 ||
+            row.lineIndex >= paymentPopupBill.items.length ||
+            num(row.amount) > num(paymentPopupBill.items[row.lineIndex]?.lineOutstanding)))) {
+      setPaymentPopupError('Item allocations must sum to Paid Now and remain within line balances.');
+      return;
+    }
+    inFlight.current = true;
+    setBusy('popup-payment');
+    setPaymentPopupError('');
+    try {
+      await finance.recordPayment({
+        supplierId: paymentPopupBill.supplierId,
+        accountId: purchasePayment.accountId, method: purchasePayment.method,
+        kind: 'Payment', amount: amount.toFixed(2), paidOn: today(),
+        reference: purchasePayment.reference.trim(),
+        idempotencyKey: purchaseRequestKey.current,
+        allocations: [{
+          billId: paymentPopupBill.id, amount: amount.toFixed(2),
+          ...(lineAllocations.length ? { lineAllocations } : {}),
+        }],
+      });
+      purchaseRequestKey.current = paymentKey();
+      setPaymentPopupBill(null);
+      setNotice('Supplier payment recorded once in the selected ledger. Outstanding updated.');
+      try {
+        await refresh(selectedSupplier);
+      } catch (exception) {
+        setError('Payment recorded, but summary refresh failed. Refresh to view the latest balance.');
+      }
+    } catch (exception) {
+      // Keep the same idempotency key after network errors; never auto-retry
+      // with a new key and risk charging the cash/bank ledger twice.
+      setPaymentPopupError(exception?.message ||
+        'Payment was not confirmed. Check supplier history before retrying.');
+    } finally {
+      inFlight.current = false;
+      setBusy('');
+    }
   };
 
   const paySupplier = (event) => {
@@ -536,7 +589,20 @@ export default function SupplierFinancePage({ section = '' }) {
                   </div>
                   {canPost && bill.postingStatus === 'Draft' && <button type="button" disabled={posting}
                     className={primary}
-                    onClick={() => run('post', () => finance.postBill(bill.id), 'Purchase bill posted. Supplier liability and inventory receipt (if selected) recorded exactly once.')}>
+                    onClick={() => run('post', async () => {
+                      const confirmedBill = await finance.postBill(bill.id);
+                      setPaymentPopupBill({
+                        ...confirmedBill, supplierId: selectedSupplier,
+                        supplierName: selectedSupplierName,
+                        previousOutstanding: num(summary?.outstanding),
+                      });
+                      setPurchasePayment(prev => ({
+                        ...prev, mode: 'Credit', amount: '', reference: '', lineAmounts: {},
+                      }));
+                      setPaymentPopupError('');
+                      purchaseRequestKey.current = paymentKey();
+                      return selectedSupplier;
+                    }, 'Purchase posted. Select a payment in the popup; closing retains the credit.')}>
                     {busy === 'post' ? 'Posting…' : 'Confirm & Post Bill'}
                   </button>}
                 </article>
@@ -748,65 +814,14 @@ export default function SupplierFinancePage({ section = '' }) {
               CGST-only drafts never add SGST automatically. Valid statutory components
               and HSN/SAC rate are required before posting. Django Decimal totals are authoritative.</p>
           </section>
-          <section className="grid gap-3 rounded-xl border border-line p-3" aria-label="Purchase payment">
-            <h3 className="text-sm font-bold">Purchase Payment</h3>
-            <label className="grid gap-1 text-sm">Payment Mode
-              <select className={field} value={purchasePayment.mode}
-                onChange={event => setPurchasePayment(prev => ({ ...prev, mode: event.target.value, lineAmounts: {} }))}>
-                <option value="Credit">Full Credit</option>
-                <option value="Partial Paid">Partial Paid</option>
-                <option value="Full Paid">Full Paid</option>
-              </select>
-            </label>
-            {purchasePayment.mode !== 'Credit' && <div className="grid gap-3 sm:grid-cols-2">
-              {purchasePayment.mode === 'Partial Paid' && <label className="grid gap-1 text-sm">
-                Paid Now (₹)
-                <input className={field} required type="number" min="0.01" step="0.01"
-                  max={purchaseTotal || undefined} value={purchasePayment.amount}
-                  onChange={event => setPurchasePayment(prev => ({ ...prev, amount: event.target.value }))}/>
-              </label>}
-              <label className="grid gap-1 text-sm">Cash / Bank / UPI Account
-                <select className={field} value={purchasePayment.accountId}
-                  onChange={event => {
-                    const selected = accounts.find(a => a.id === event.target.value);
-                    setPurchasePayment(prev => ({ ...prev, accountId: event.target.value,
-                      method: selected?.kind === 'Cash' ? 'Cash' : selected?.kind === 'UPI' ? 'UPI' : 'Bank Transfer' }));
-                  }}>
-                  <option value="">Select account</option>
-                  {accounts.filter(a => a.isActive).map(a =>
-                    <option key={a.id} value={a.id}>{a.name} ({a.kind}) · {money(a.recordedBalance)}</option>)}
-                </select>
-              </label>
-              <label className="grid gap-1 text-sm">Reference
-                <input className={field} value={purchasePayment.reference} maxLength={120}
-                  onChange={event => setPurchasePayment(prev => ({ ...prev, reference: event.target.value }))}/>
-              </label>
-            </div>}
-            {purchasePayment.mode !== 'Credit' && <details>
-              <summary className="cursor-pointer text-sm font-semibold">Optional Item-wise Payment Allocation</summary>
-              <div className="mt-2 grid gap-2">
-                {draft.lines.map((row, index) => <label key={index} className="grid gap-1 text-sm">
-                  {row.description || 'Purchase Line ' + (index + 1)} · {money(purchaseLines[index])}
-                  <input className={field} type="number" min="0" step="0.01"
-                    max={purchaseLines[index]} placeholder="Paid against this item"
-                    value={purchasePayment.lineAmounts[index] || ''}
-                    onChange={event => setPurchasePayment(prev => ({ ...prev,
-                      lineAmounts: { ...prev.lineAmounts, [index]: event.target.value } }))}/>
-                </label>)}
-              </div>
-            </details>}
-            <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-              {[
-                ['Purchase Total', purchaseTotal],
-                ['Paid Now', paidNow],
-                ['New Credit', newCredit],
-                ['Previous Due', summary?.outstanding],
-                ['Total Outstanding', num(summary?.outstanding) + newCredit],
-              ].map(([label, amount]) => <div key={label} className="rounded-lg border border-line p-2">
-                <span className="block text-xs text-muted">{label}</span>
-                <strong>{money(amount)}</strong>
-              </div>)}
-            </div>
+          <section className="rounded-xl border border-line p-3 text-sm" aria-label="Purchase payment">
+            <strong>Payment after purchase</strong>
+            <p className="text-muted">Confirming the purchase posts the inventory receipt and supplier payable.
+              A payment popup then lets you choose Full Paid, Partial Paid or Full Credit.
+              Closing without payment keeps the bill outstanding.</p>
+            <p className="mt-2">Purchase Total: <strong>{money(purchaseTotal)}</strong>
+              {' · '}Previous Supplier Due: <strong>{summary ? money(summary.outstanding) : 'Unavailable'}</strong>
+            </p>
           </section>
           <div className="grid gap-2 sm:grid-cols-2">
             <button className={secondary} disabled={posting || !selectedSupplier} type="submit" value="draft">
@@ -989,6 +1004,105 @@ export default function SupplierFinancePage({ section = '' }) {
           <p className="text-xs text-muted sm:col-span-3">Opening balances are recorded snapshots; never label them as synced live bank balances.</p>
         </form>}
       </div>}
+
+      {paymentPopupBill && <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-3 sm:p-5">
+        <section role="dialog" aria-modal="true" aria-labelledby="purchase-payment-popup-title"
+          className="flex w-full max-w-2xl flex-col gap-4 overflow-y-auto rounded-2xl border border-line bg-surface p-4 text-content shadow-xl sm:p-6"
+          style={{ maxHeight: 'calc(100dvh - 32px)' }}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 id="purchase-payment-popup-title" className="text-lg font-semibold">Supplier Payment — {paymentPopupBill.supplierName}</h2>
+              <p className="text-sm text-muted">Bill {paymentPopupBill.invoiceNumber} · Confirmed stock purchase</p>
+            </div>
+            <button type="button" className={secondary} disabled={posting}
+              onClick={() => { setPaymentPopupBill(null); setPaymentPopupError(''); }}>
+              Close
+            </button>
+          </div>
+          <p className="text-xs text-muted">Closing without payment does not cancel the posted bill
+            or erase its supplier liability. No account is debited until payment is confirmed.</p>
+          <label className="grid gap-1 text-sm">Payment Mode
+            <select className={field} value={purchasePayment.mode}
+              onChange={event => {
+                setPaymentPopupError('');
+                setPurchasePayment(prev => ({ ...prev, mode: event.target.value, lineAmounts: {} }));
+              }}>
+              <option value="Full Paid">Full Paid</option>
+              <option value="Partial Paid">Partial Paid</option>
+              <option value="Credit">Full Credit</option>
+            </select>
+          </label>
+          {purchasePayment.mode !== 'Credit' && <div className="grid gap-3 sm:grid-cols-2">
+            {purchasePayment.mode === 'Partial Paid' && <label className="grid gap-1 text-sm">
+              Paid Now (₹)
+              <input className={field} type="number" min="0.01" step="0.01" max={paymentBaseTotal}
+                value={purchasePayment.amount}
+                onChange={event => setPurchasePayment(prev => ({ ...prev, amount: event.target.value }))}/>
+            </label>}
+            <label className="grid gap-1 text-sm">Cash / Bank / UPI Account
+              <select className={field} value={purchasePayment.accountId}
+                onChange={event => {
+                  const account = accounts.find(record => record.id === event.target.value);
+                  setPurchasePayment(prev => ({
+                    ...prev, accountId: event.target.value,
+                    method: account?.kind === 'Cash' ? 'Cash' : account?.kind === 'UPI' ? 'UPI' : 'Bank Transfer',
+                  }));
+                }}>
+                <option value="">Select account</option>
+                {accounts.filter(account => account.isActive).map(account =>
+                  <option key={account.id} value={account.id}>
+                    {account.name} ({account.kind}) · Recorded {money(account.recordedBalance)}
+                  </option>)}
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm">Payment Reference
+              <input className={field} value={purchasePayment.reference} maxLength={120}
+                onChange={event => setPurchasePayment(prev => ({ ...prev, reference: event.target.value }))}/>
+            </label>
+          </div>}
+          {purchasePayment.mode !== 'Credit' && <details>
+            <summary className="cursor-pointer text-sm font-semibold">Optional Item-wise Payment Allocation</summary>
+            <div className="mt-2 grid gap-2">
+              {paymentPopupBill.items.map((item, index) =>
+                <label key={index} className="grid gap-1 text-sm">
+                  {item.description} · Remaining {money(item.lineOutstanding)}
+                  <input className={field} type="number" min="0" step="0.01"
+                    max={item.lineOutstanding} value={purchasePayment.lineAmounts[index] || ''}
+                    onChange={event => setPurchasePayment(prev => ({
+                      ...prev, lineAmounts: { ...prev.lineAmounts, [index]: event.target.value },
+                    }))}/>
+                </label>)}
+            </div>
+          </details>}
+          <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+            {[
+              ['Purchase Amount', num(paymentPopupBill.subtotal)],
+              ['GST Amount', num(paymentPopupBill.tax)],
+              ['Total Purchase', num(paymentPopupBill.total)],
+              ['Previous Due', num(paymentPopupBill.previousOutstanding)],
+              ['Paid Now', paidNow],
+              ['New Credit', newCredit],
+              ['Total Supplier Outstanding', num(paymentPopupBill.previousOutstanding) + newCredit],
+            ].map(([label, value]) =>
+              <div key={label} className="rounded-lg border border-line p-2">
+                <span className="block text-xs text-muted">{label}</span>
+                <strong>{money(value)}</strong>
+              </div>)}
+          </div>
+          {paymentPopupError && <p className="text-sm text-red-600" role="alert">{paymentPopupError}</p>}
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button type="button" className={secondary} disabled={posting}
+              onClick={() => { setPaymentPopupBill(null); setPaymentPopupError(''); }}>
+              Close Without Payment
+            </button>
+            <button type="button" className={primary} disabled={posting}
+              onClick={settlePurchasePopup}>
+              {busy === 'popup-payment' ? 'Recording…' :
+                purchasePayment.mode === 'Credit' ? 'Confirm Full Credit' : 'Record Supplier Payment'}
+            </button>
+          </div>
+        </section>
+      </>}
 
       <footer className="text-xs text-muted">
         Supplier payments settle liabilities; they are not a second purchase expense.
