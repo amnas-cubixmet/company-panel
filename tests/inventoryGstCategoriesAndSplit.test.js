@@ -37,7 +37,7 @@ test('inventory item catalogue sends and receives classification with mock suppo
   assert.match(service, /zeroTaxClassification: item\.zeroTaxClassification \|\| item\.gst_zero_classification \|\| ''/);
   assert.match(service, /zeroTaxClassification: number\(payload\.tax\) === 0 \? \(payload\.zeroTaxClassification \|\| ''\) : ''/);
   assert.match(service, /apiClient\.post\('\/stock'/);
-  assert.match(service, /apiClient\.patch\('\/stock\/']/);
+  assert.ok(service.includes("apiClient.patch('/stock/' + id,"));
 });
 
 test('zero classification and rate preview are styled inside the inventory modal only', () => {
