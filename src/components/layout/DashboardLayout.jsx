@@ -23,12 +23,15 @@ export const DashboardLayout = ({ children }) => {
     location.pathname.startsWith('/invoices/') ||
     location.pathname.startsWith('/quotations/');
   const isDashboard = location.pathname === '/dashboard';
+  // Overtime approval has its own four-tab navigation: give it the full workspace
+  // width without the desktop left sidebar. Other routes keep the normal shell.
+  const isOvertimeApprovals = /^\/payroll\/daily-wages\/overtime-approvals\/?$/.test(location.pathname);
   const isJobsWorkspace = /^\/jobs(?:\/|$)/.test(location.pathname);
   const useDashboardSpacing = isDashboard || isJobsWorkspace;
 
   return (
-    <div className="app-shell">
-      <Sidebar />
+    <div className={`app-shell${isOvertimeApprovals ? ' is-overtime-full-width' : ''}`}>
+      {!isOvertimeApprovals && <Sidebar />}
       <div className="app-main-column">
         <Header />
 
