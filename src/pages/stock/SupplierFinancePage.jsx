@@ -26,15 +26,18 @@ export default function SupplierFinancePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [supplierDraft, setSupplierDraft] = useState({ name: '', phone: '', gstNo: '' });
+  const [supplierDraft, setSupplierDraft] = useState({ name: '', phone: '', gstNo: '', address: '' });
   const [accountDraft, setAccountDraft] = useState({ name: '', kind: 'Cash', openingBalance: '0' });
   const [draft, setDraft] = useState({
     invoiceNumber: '', invoiceDate: today(), dueDate: '', receiveIntoStock: false,
     lines: [line()],
   });
+  const [purchasePayment, setPurchasePayment] = useState({
+    mode: 'Credit', amount: '', accountId: '', method: 'Cash', reference: '', lineAmounts: {},
+  });
   const [paymentDraft, setPaymentDraft] = useState({
     kind: 'Payment', accountId: '', method: 'Bank Transfer', amount: '',
-    paidOn: today(), reference: '', allocations: {},
+    paidOn: today(), reference: '', allocations: {}, lineAllocations: {},
   });
   const [applyDraft, setApplyDraft] = useState({ paymentId: '', billId: '', amount: '' });
   const [activeTab, setActiveTab] = useState(() => {
@@ -42,6 +45,7 @@ export default function SupplierFinancePage() {
     return ['overview', 'bill', 'payment', 'accounts'].includes(requested) ? requested : 'overview';
   });
   const requestKey = useRef(paymentKey());
+  const purchaseRequestKey = useRef(paymentKey());
   const inFlight = useRef(false);
 
   const refresh = useCallback(async (supplierId = selectedSupplier) => {
@@ -57,6 +61,10 @@ export default function SupplierFinancePage() {
     const target = supplierId || supplierData[0]?.id || '';
     setSelectedSupplier(target);
     setPaymentDraft((old) => ({ ...old, accountId: old.accountId || accountData[0]?.id || '' }));
+    setPurchasePayment((old) => ({
+      ...old, accountId: old.accountId || accountData[0]?.id || '',
+      method: old.accountId ? old.method : (accountData[0]?.kind === 'Cash' ? 'Cash' : accountData[0]?.kind === 'UPI' ? 'UPI' : 'Bank Transfer'),
+    }));
     if (target) {
       const [details, activity] = await Promise.all([
         finance.getSupplierSummary(target), finance.getSupplierLedger(target),
@@ -121,12 +129,21 @@ export default function SupplierFinancePage() {
   const account = accounts.find((a) => a.id === paymentDraft.accountId);
   const selectedSupplierName = suppliers.find((s) => s.id === selectedSupplier)?.name || 'Supplier';
   const posting = Boolean(busy);
+  const purchaseLines = useMemo(() => draft.lines.map((row) => {
+    const subtotal = Math.round((Number(row.quantity) || 0) * (Number(row.purchaseRate) || 0) * 100) / 100;
+    const gst = Math.round(subtotal * (Number(row.gstRate) || 0)) / 100;
+    return Math.round((subtotal + gst) * 100) / 100;
+  }), [draft.lines]);
+  const purchaseTotal = purchaseLines.reduce((sum, amount) => sum + amount, 0);
+  const paidNow = purchasePayment.mode === 'Credit' ? 0
+    : purchasePayment.mode === 'Full Paid' ? purchaseTotal : num(purchasePayment.amount);
+  const newCredit = Math.max(0, purchaseTotal - paidNow);
 
   const createSupplier = (event) => {
     event.preventDefault();
     run('supplier', async () => {
       const created = await finance.addSupplier(supplierDraft);
-      setSupplierDraft({ name: '', phone: '', gstNo: '' });
+      setSupplierDraft({ name: '', phone: '', gstNo: '', address: '' });
       return created.id;
     }, 'Supplier saved.');
   };
@@ -143,26 +160,66 @@ export default function SupplierFinancePage() {
 
   const createBill = (event) => {
     event.preventDefault();
+    const postNow = event.nativeEvent.submitter?.value === 'post';
+    if (postNow && (!Number.isFinite(paidNow) || paidNow < 0 ||
+        paidNow > purchaseTotal + 0.001 || (purchasePayment.mode === 'Partial Paid' && paidNow <= 0))) {
+      setError('Paid Now must be positive and cannot exceed the Purchase Total.');
+      return;
+    }
+    if (postNow && purchasePayment.mode !== 'Credit' && !purchasePayment.accountId) {
+      setError('Choose an authorized Cash / Bank / UPI account.');
+      return;
+    }
+    const itemAllocations = Object.entries(purchasePayment.lineAmounts)
+      .filter(([, amount]) => Number(amount) > 0)
+      .map(([lineIndex, amount]) => ({ lineIndex: Number(lineIndex), amount }));
+    if (postNow && itemAllocations.length &&
+        Math.abs(itemAllocations.reduce((sum, row) => sum + num(row.amount), 0) - paidNow) > 0.001) {
+      setError('Item-wise Paid amounts must equal Paid Now.');
+      return;
+    }
     run('bill', async () => {
+      const payment = postNow && purchasePayment.mode !== 'Credit' ? {
+        supplierId: selectedSupplier, accountId: purchasePayment.accountId,
+        kind: 'Payment', method: purchasePayment.method,
+        amount: paidNow.toFixed(2), paidOn: today(),
+        reference: purchasePayment.reference.trim(), idempotencyKey: purchaseRequestKey.current,
+        ...(itemAllocations.length ? { allocations: [{ amount: paidNow.toFixed(2), lineAllocations: itemAllocations }] } : {}),
+      } : undefined;
+      // In an atomic post, line allocation targets the newly created bill.
+      // The backend fills billId when only the current purchase is being paid.
       await finance.createBill({
         supplierId: selectedSupplier, invoiceNumber: draft.invoiceNumber.trim(),
         invoiceDate: draft.invoiceDate, dueDate: draft.dueDate || null,
-        receiveIntoStock: draft.receiveIntoStock,
+        receiveIntoStock: draft.receiveIntoStock, postNow,
+        ...(payment ? { payment } : {}),
         items: draft.lines.map((row) => ({
           ...row, itemId: row.itemId || null,
           description: row.description.trim(),
         })),
       });
+      purchaseRequestKey.current = paymentKey();
+      setPurchasePayment((prev) => ({ ...prev, mode: 'Credit', amount: '', reference: '', lineAmounts: {} }));
       setDraft({ invoiceNumber: '', invoiceDate: today(), dueDate: '', receiveIntoStock: false, lines: [line()] });
       setActiveTab('overview');
-    }, 'Supplier bill saved as Draft. Posting is required to create liability and receive stock.');
+    }, postNow
+      ? 'Purchase posted: inventory, payable and any payment were committed together.'
+      : 'Supplier bill saved as Draft. Posting is required to create liability and receive stock.');
   };
 
   const paySupplier = (event) => {
     event.preventDefault();
     const allocations = paymentDraft.kind === 'Advance' ? [] : outstandingBills
       .filter((bill) => Number(paymentDraft.allocations[bill.id] || 0) > 0)
-      .map((bill) => ({ billId: bill.id, amount: paymentDraft.allocations[bill.id] }));
+      .map((bill) => {
+        const rows = Object.entries(paymentDraft.lineAllocations[bill.id] || {})
+          .filter(([, value]) => num(value) > 0)
+          .map(([lineIndex, amount]) => ({ lineIndex: Number(lineIndex), amount }));
+        return {
+          billId: bill.id, amount: paymentDraft.allocations[bill.id],
+          ...(rows.length ? { lineAllocations: rows } : {}),
+        };
+      });
     run('payment', async () => {
       await finance.recordPayment({
         supplierId: selectedSupplier, accountId: paymentDraft.accountId,
@@ -171,7 +228,7 @@ export default function SupplierFinancePage() {
         idempotencyKey: requestKey.current, allocations,
       });
       requestKey.current = paymentKey();
-      setPaymentDraft((old) => ({ ...old, amount: '', reference: '', allocations: {} }));
+      setPaymentDraft((old) => ({ ...old, amount: '', reference: '', allocations: {}, lineAllocations: {} }));
     }, 'Supplier payment recorded in the selected account ledger.');
   };
 
@@ -199,7 +256,7 @@ export default function SupplierFinancePage() {
 
       {loading && <p role="status" className={box}>Loading supplier records…</p>}
       {error && <div role="alert" className="rounded-xl border border-red-500/30 p-3 text-sm text-red-600">{error}</div>}
-      {notice && <div role="status" className={box}><CheckCircle2 size={16} className="inline text-primary"/> {notice}</div>}
+      {notice && <div role="status" className={box + ' border-green-600/40 text-green-700 dark:text-green-400'}><CheckCircle2 size={16} className="inline"/> {notice}</div>}
 
       <section className={box}>
         <div className="flex flex-col gap-3 md:flex-row md:items-end">
@@ -219,6 +276,8 @@ export default function SupplierFinancePage() {
                 value={supplierDraft.phone} onChange={(event) => setSupplierDraft({ ...supplierDraft, phone: event.target.value })}/>
               <input className={field} placeholder="GSTIN (optional)" aria-label="New supplier GSTIN"
                 value={supplierDraft.gstNo} onChange={(event) => setSupplierDraft({ ...supplierDraft, gstNo: event.target.value })}/>
+              <input className={field} placeholder="Address (optional)" aria-label="Supplier address"
+                value={supplierDraft.address} onChange={(event) => setSupplierDraft({ ...supplierDraft, address: event.target.value })}/>
               <button type="submit" disabled={posting} className={primary}>Save Supplier</button>
             </form>
           </details>
@@ -230,6 +289,7 @@ export default function SupplierFinancePage() {
           {[
             ['Purchase total', summary.totalPurchases], ['Outstanding', summary.outstanding],
             ['Applied payments', summary.totalPaymentsApplied], ['Available advance', summary.availableAdvance],
+            ['Overdue bills', summary.overdue],
           ].map(([name, amount]) => (
             <div key={name} className={box + ' min-w-0'}>
               <span className="block text-xs font-medium text-muted">{name}</span>
@@ -381,10 +441,74 @@ export default function SupplierFinancePage() {
           <button type="button" className={secondary} onClick={() => setDraft({ ...draft, lines: [...draft.lines, line()] })}>
             <span className="inline-flex items-center gap-2"><Plus size={16}/> Add Product Line</span>
           </button>
-          <p className="text-xs text-muted">Totals are calculated on the server. A Draft does not create stock or supplier debt. Confirm posting after review.</p>
-          <button className={primary} disabled={posting || !selectedSupplier} type="submit">
-            {busy === 'bill' ? 'Saving…' : 'Save Draft Purchase Bill'}
-          </button>
+          <section className="grid gap-3 rounded-xl border border-line p-3" aria-label="Purchase payment">
+            <h3 className="text-sm font-bold">Purchase Payment</h3>
+            <label className="grid gap-1 text-sm">Payment Mode
+              <select className={field} value={purchasePayment.mode}
+                onChange={event => setPurchasePayment(prev => ({ ...prev, mode: event.target.value, lineAmounts: {} }))}>
+                <option value="Credit">Full Credit</option>
+                <option value="Partial Paid">Partial Paid</option>
+                <option value="Full Paid">Full Paid</option>
+              </select>
+            </label>
+            {purchasePayment.mode !== 'Credit' && <div className="grid gap-3 sm:grid-cols-2">
+              {purchasePayment.mode === 'Partial Paid' && <label className="grid gap-1 text-sm">
+                Paid Now (₹)
+                <input className={field} required type="number" min="0.01" step="0.01"
+                  max={purchaseTotal || undefined} value={purchasePayment.amount}
+                  onChange={event => setPurchasePayment(prev => ({ ...prev, amount: event.target.value }))}/>
+              </label>}
+              <label className="grid gap-1 text-sm">Cash / Bank / UPI Account
+                <select className={field} value={purchasePayment.accountId}
+                  onChange={event => {
+                    const selected = accounts.find(a => a.id === event.target.value);
+                    setPurchasePayment(prev => ({ ...prev, accountId: event.target.value,
+                      method: selected?.kind === 'Cash' ? 'Cash' : selected?.kind === 'UPI' ? 'UPI' : 'Bank Transfer' }));
+                  }}>
+                  <option value="">Select account</option>
+                  {accounts.filter(a => a.isActive).map(a =>
+                    <option key={a.id} value={a.id}>{a.name} ({a.kind}) · {money(a.recordedBalance)}</option>)}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm">Reference
+                <input className={field} value={purchasePayment.reference} maxLength={120}
+                  onChange={event => setPurchasePayment(prev => ({ ...prev, reference: event.target.value }))}/>
+              </label>
+            </div>}
+            {purchasePayment.mode !== 'Credit' && <details>
+              <summary className="cursor-pointer text-sm font-semibold">Optional Item-wise Payment Allocation</summary>
+              <div className="mt-2 grid gap-2">
+                {draft.lines.map((row, index) => <label key={index} className="grid gap-1 text-sm">
+                  {row.description || 'Purchase Line ' + (index + 1)} · {money(purchaseLines[index])}
+                  <input className={field} type="number" min="0" step="0.01"
+                    max={purchaseLines[index]} placeholder="Paid against this item"
+                    value={purchasePayment.lineAmounts[index] || ''}
+                    onChange={event => setPurchasePayment(prev => ({ ...prev,
+                      lineAmounts: { ...prev.lineAmounts, [index]: event.target.value } }))}/>
+                </label>)}
+              </div>
+            </details>}
+            <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
+              {[
+                ['Purchase Total', purchaseTotal],
+                ['Paid Now', paidNow],
+                ['New Credit', newCredit],
+                ['Previous Due', summary?.outstanding],
+                ['Total Outstanding', num(summary?.outstanding) + newCredit],
+              ].map(([label, amount]) => <div key={label} className="rounded-lg border border-line p-2">
+                <span className="block text-xs text-muted">{label}</span>
+                <strong>{money(amount)}</strong>
+              </div>)}
+            </div>
+          </section>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button className={secondary} disabled={posting || !selectedSupplier} type="submit" value="draft">
+              Save Draft
+            </button>
+            <button className={primary} disabled={posting || !selectedSupplier || purchaseTotal <= 0}
+              type="submit" value="post">{busy === 'bill' ? 'Posting…' : 'Confirm & Post Purchase'}</button>
+          </div>
+          <p className="text-xs text-muted">Backend-posted totals are authoritative. Existing purchase orders are not automatically converted into supplier liabilities.</p>
         </form>
       )}
 
@@ -433,15 +557,35 @@ export default function SupplierFinancePage() {
           </div>
           {paymentDraft.kind === 'Payment' && <div className="grid gap-2">
             <strong className="text-sm">Allocate payment across posted bills</strong>
-            {outstandingBills.map((bill) => <label key={bill.id} className="grid gap-2 rounded-xl border border-line p-3 sm:grid-cols-2 sm:items-center">
-              <span className="text-sm">{bill.invoiceNumber} · Due {money(bill.outstanding)}</span>
-              <input className={field} type="number" min="0" max={bill.outstanding} step="0.01"
-                value={paymentDraft.allocations[bill.id] || ''}
-                placeholder="Allocate amount (₹)"
-                onChange={(event) => setPaymentDraft((prev) => ({
-                  ...prev, allocations: { ...prev.allocations, [bill.id]: event.target.value },
-                }))}/>
-            </label>)}
+            {outstandingBills.map((bill) => <div key={bill.id}
+              className="grid gap-2 rounded-xl border border-line p-3">
+              <label className="grid gap-1 text-sm">
+                {bill.invoiceNumber} · Due {money(bill.outstanding)}
+                <input className={field} type="number" min="0" max={bill.outstanding} step="0.01"
+                  value={paymentDraft.allocations[bill.id] || ''}
+                  placeholder="Allocate amount (₹)"
+                  onChange={(event) => setPaymentDraft((prev) => ({
+                    ...prev, allocations: { ...prev.allocations, [bill.id]: event.target.value },
+                  }))}/>
+              </label>
+              {!!num(paymentDraft.allocations[bill.id]) && <details className="text-sm">
+                <summary className="cursor-pointer">Allocate to specific purchase items (optional)</summary>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {bill.items.map((item, index) => <label key={item.lineId || index} className="grid gap-1">
+                    {item.description} · Remaining item allocation {money(item.lineOutstanding)}
+                    <input className={field} type="number" min="0" step="0.01"
+                      max={item.lineOutstanding} placeholder="Item payment"
+                      value={paymentDraft.lineAllocations[bill.id]?.[index] || ''}
+                      onChange={event => setPaymentDraft(prev => ({
+                        ...prev, lineAllocations: {
+                          ...prev.lineAllocations,
+                          [bill.id]: { ...(prev.lineAllocations[bill.id] || {}), [index]: event.target.value },
+                        },
+                      }))}/>
+                  </label>)}
+                </div>
+              </details>}
+            </div>)}
             {!outstandingBills.length && <p className="text-sm text-muted">No posted bills remain unpaid. Use Advance Payment if appropriate.</p>}
             <p className="text-xs text-muted">Allocations must equal the payment amount. The server checks every outstanding bill.</p>
           </div>}
