@@ -493,13 +493,34 @@ export default function SupplierFinancePage({ section = '' }) {
               {supplierSection ? (canCreateBill && <Link to="/stock/suppliers?tab=bill" className={secondary}>+ New Purchase</Link>)
                 : (canCreateBill && <button className={secondary} type="button" onClick={() => setActiveTab('bill')}>+ New Purchase</button>)}
             </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1 text-sm">Search bills
+                <input className={field} aria-label="Search supplier bills" placeholder="Invoice number, date or status"
+                  value={creditSearch} onChange={event => setCreditSearch(event.target.value)}/>
+              </label>
+              <label className="grid gap-1 text-sm">Payment status
+                <select className={field} aria-label="Filter bill status" value={creditStatus}
+                  onChange={event => setCreditStatus(event.target.value)}>
+                  <option value="">All statuses</option>
+                  {['Draft', 'Unpaid', 'Partially Paid', 'Paid', 'Overdue'].map(status =>
+                    <option key={status} value={status}>{status}</option>)}
+                </select>
+              </label>
+            </div>
             <div className="mt-3 grid gap-2">
-              {supplierBills.map((bill) => (
+              {filteredBills.map((bill) => (
                 <article key={bill.id} className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-3 md:flex-row md:items-center md:justify-between">
                   <div className="min-w-0">
                     <strong>{bill.invoiceNumber}</strong>
-                    <p className="text-sm text-muted">{bill.status} · {bill.invoiceDate} · {bill.receiveIntoStock ? 'Inventory receipt' : 'Direct purchase'}</p>
-                    <p className="text-sm">Total {money(bill.total)} · Due {money(bill.outstanding)}</p>
+                    <p className="text-sm text-muted">
+                      {bill.postingStatus === 'Posted' && num(bill.outstanding) > 0 && bill.dueDate && bill.dueDate < today()
+                        ? 'Overdue' : bill.status}
+                      {' · '}{bill.invoiceDate} · Due date {bill.dueDate || '—'}
+                      {' · '}{bill.receiveIntoStock ? 'Inventory receipt' : 'Direct purchase'}
+                    </p>
+                    <p className="text-sm">Total {money(bill.total)} · Paid {money(bill.paid)}
+                      {' · '}<strong>Outstanding {bill.postingStatus === 'Posted' ? money(bill.outstanding) : 'Not posted'}</strong>
+                    </p>
                     {bill.taxComponentsVerified && <p className="text-xs text-muted">
                       {bill.taxMode === 'igst' ? 'IGST ' + money(bill.igst) :
                         'CGST ' + money(bill.cgst) + ' · ' +
@@ -513,7 +534,7 @@ export default function SupplierFinancePage({ section = '' }) {
                   </button>}
                 </article>
               ))}
-              {!supplierBills.length && <p className="py-5 text-sm text-muted">No purchase bills recorded for this supplier.</p>}
+              {!filteredBills.length && <p className="py-5 text-sm text-muted">No matching purchase bills for this supplier.</p>}
             </div>
           </section>
           <section className={box}>
@@ -749,8 +770,8 @@ export default function SupplierFinancePage({ section = '' }) {
 
       {activeTab === 'payment' && canPay && (
         <form ref={paymentFormRef} className={box + ' grid gap-4'} onSubmit={paySupplier}>
-          <div><h2 className="text-lg font-bold">Pay Supplier — {selectedSupplierName}</h2>
-            <p className="text-sm text-muted">Outstanding: {money(summary?.outstanding)} · Advance: {money(summary?.availableAdvance)}</p></div>
+          <div><h2 className="text-lg font-semibold">Pay Supplier — {selectedSupplierName}</h2>
+            <p className="text-sm text-muted">Outstanding: {summary ? money(summary.outstanding) : 'Unavailable'} · Advance: {summary ? money(summary.availableAdvance) : 'Unavailable'}</p></div>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1 text-sm font-semibold">Payment type
               <select value={paymentDraft.kind} className={field} onChange={(event) =>
@@ -847,6 +868,42 @@ export default function SupplierFinancePage({ section = '' }) {
             {busy === 'payment' ? 'Posting payment…' : 'Confirm Supplier Payment'}
           </button>
         </form>
+      )}
+
+      {activeTab === 'payment' && (
+        <section className={box + ' grid gap-3'} aria-label="Supplier payment history">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-semibold">Payment History — {selectedSupplierName}</h2>
+            <span className="text-sm text-muted">{supplierPayments.length} records</span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {[
+              ['Total recorded payments', paidTotal],
+              ['Allocated to bills', appliedTotal],
+              ['Unallocated advances', supplierPayments.reduce((sum, row) => sum + (row.kind === 'Advance' ? num(row.unapplied) : 0), 0)],
+            ].map(([label, value]) => <div className="rounded-xl border border-line p-3" key={label}>
+              <span className="block text-xs text-muted">{label}</span>
+              <strong className="block text-base">{money(value)}</strong>
+            </div>)}
+          </div>
+          <label className="grid gap-1 text-sm">Search payments
+            <input className={field} aria-label="Search supplier payments" placeholder="Reference, method, type or date"
+              value={paymentSearch} onChange={event => setPaymentSearch(event.target.value)}/>
+          </label>
+          <div className="grid gap-2">
+            {filteredPayments.map(row => (
+              <article key={row.id} className="flex min-w-0 flex-wrap items-start justify-between gap-3 rounded-xl border border-line p-3">
+                <div className="min-w-0">
+                  <strong className="text-sm">{row.kind} · {row.method}</strong>
+                  <p className="text-xs text-muted">{row.paidOn} · {row.reference || 'No reference'}</p>
+                  <p className="text-xs text-muted">Allocated {money(row.applied)} · Unallocated {money(row.unapplied)}</p>
+                </div>
+                <strong className="text-sm">{money(row.amount)}</strong>
+              </article>
+            ))}
+            {!filteredPayments.length && <p className="py-4 text-sm text-muted">No matching supplier payments found.</p>}
+          </div>
+        </section>
       )}
 
       {activeTab === 'accounts' && <div className="grid gap-4">
