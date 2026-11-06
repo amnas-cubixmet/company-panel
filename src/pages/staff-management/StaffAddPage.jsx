@@ -50,8 +50,9 @@ export const StaffAddPage = () => {
         setBranches(availableBranches);
         setForm(current => ({
           ...current,
-          roleId: current.roleId || availableRoles[0]?.id || '',
-          role: current.role || availableRoles[0]?.name || '',
+          // Require explicit role selection; never silently grant the first role.
+          roleId: current.roleId || '',
+          role: current.role || '',
           branchId: current.branchId || availableBranches[0]?.id || '',
         }));
       })
@@ -173,11 +174,11 @@ export const StaffAddPage = () => {
           </section>
 
           <section className="staff-form-panel">
-            <div className="staff-form-panel__title">Mobile Login &amp; WhatsApp</div>
+            <div className="staff-form-panel__title">Staff Login Access</div>
             <label className="staff-login-invite-hint" style={{ display: 'flex', gap: 10, alignItems: 'center', minHeight: 44 }}>
               <input type="checkbox" checked={form.loginAccessEnabled} disabled={!canManageLogins}
                 onChange={event => set('loginAccessEnabled', event.target.checked)}/>
-              Enable mobile number + password login
+              Enable Mobile Number + Password Login
             </label>
             {form.loginAccessEnabled && (
               <div className="staff-form-grid">
@@ -200,23 +201,14 @@ export const StaffAddPage = () => {
                 </label>}
               </div>
             )}
-            <p className="staff-login-invite-hint">
-              A one-use link is sent via the workshop WhatsApp Business account when available and consented.
-              Otherwise, use secure manual sharing from Staff Details.
-            </p>
+            {form.loginAccessEnabled && (
+              <p className="staff-login-invite-hint">
+                Secure setup invitation is queued automatically when official workshop WhatsApp is available and consented.
+              </p>
+            )}
           </section>
         </div>
-        <aside className="staff-add-summary">
-          <div className="staff-add-summary__avatar">{form.name?.slice(0, 1).toUpperCase() || 'S'}</div>
-          <h3>{form.name || 'New Staff Member'}</h3>
-          <p>{form.designation || 'Workshop Staff'}</p>
-          <div className="staff-add-summary__rows">
-            <div><span>Role</span><strong>{form.role || 'Not selected'}</strong></div>
-            <div><span>Branch</span><strong>{branches.find(x => String(x.id) === String(form.branchId))?.name || 'Unassigned'}</strong></div>
-            <div><span>Employment</span><strong>{form.employmentStatus}</strong></div>
-            <div><span>Mobile Login</span><strong>{form.loginAccessEnabled ? 'Pending Password Setup' : 'Disabled'}</strong></div>
-          </div>
-        </aside>
+
       </div>
     </form>
   );
