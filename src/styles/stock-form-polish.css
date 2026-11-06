@@ -631,7 +631,7 @@ label.cg-easy-floating:is(:focus-within,:has(input:not(:placeholder-shown)),.is-
 .cg-rack-combobox > label { display: block; font-size: 14px; margin-bottom: 6px; }
 .cg-rack-combobox > input {
   box-sizing: border-box; width: 100%; min-height: 46px; padding: 10px 12px;
-  font-size: 16px; background: var(--surface); color: var(--text);
+  font-size: 16px; background: var(--surface, #fff); color: var(--text-primary, var(--text, #111827));
   border: 1px solid var(--border); border-radius: 10px;
 }
 .cg-rack-combobox > input:focus-visible { outline: 2px solid var(--primary, #2563eb); outline-offset: 1px; }
@@ -644,7 +644,7 @@ label.cg-easy-floating:is(:focus-within,:has(input:not(:placeholder-shown)),.is-
 .cg-rack-options > button {
   display: block; width: 100%; min-height: 44px; padding: 10px 12px;
   border: 0; border-bottom: 1px solid var(--border); border-radius: 0;
-  text-align: left; font-size: 16px; color: var(--text); background: var(--surface);
+  text-align: left; font-size: 16px; color: var(--text-primary, var(--text, #111827)); background: var(--surface, #fff);
 }
 .cg-rack-options > button:hover, .cg-rack-options > button.is-active {
   background: var(--surface-hover, rgba(127,127,127,.1));
