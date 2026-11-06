@@ -1102,7 +1102,7 @@ export default function SupplierFinancePage({ section = '' }) {
             </button>
           </div>
         </section>
-      </>}
+      </div>}
 
       <footer className="text-xs text-muted">
         Supplier payments settle liabilities; they are not a second purchase expense.
