@@ -108,6 +108,21 @@ test('profile manual resend and on-demand copy use permission checks, never disp
   assert.match(staffInviteDeliveryMessage('manual'), /No message was sent automatically/);
 });
 
+test('Staff Profile can securely record missing consent and then unlock manual WhatsApp share', () => {
+  assert.match(service, /'whatsappConsent'/);
+  assert.match(service, /'whatsappConsentSource'/);
+  assert.match(profile, /handleRecordWhatsAppConsent/);
+  assert.match(profile, /staffService\.updateStaff\(staff\.id, \{/);
+  assert.match(profile, /whatsappConsent: true/);
+  assert.match(profile, /whatsappConsentSource: consentSource/);
+  assert.match(profile, /consentConfirmed/);
+  assert.match(profile, /Save WhatsApp Consent/);
+  assert.match(profile, /Record staff WhatsApp consent before sharing/);
+  assert.match(profile, /staff\.whatsappConsent && staff\.loginStatus !== 'Disabled'/);
+  assert.match(profile, /staffService\.sendLoginInvite\(staff\.id\)/);
+  assert.doesNotMatch(profile, /queue_staff_whatsapp_invitation|send_template_message/);
+});
+
 test('login and recovery remain staff mobile-first without OTP and automatic reset claims', () => {
   assert.match(setup, /confirmPassword: confirm/);
   assert.match(setup, /Set Password/);
