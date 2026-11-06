@@ -32,7 +32,7 @@ import {
 import { getEmployeeLabel } from '../../../components/staff-management/staffDisplay';
 import { useAuth } from '../../../hooks/useAuth';
 import { useFeatureAccess } from '../../../context/FeatureAccessContext';
-import { staffInviteDeliveryMessage, staffInviteErrorMessage, staffInviteStatusLabel } from '../../../utils/staffInviteDelivery';
+import { staffInviteDeliveryMessage, staffInviteErrorMessage, staffInviteStatusLabel, staffLoginStatusLabel } from '../../../utils/staffInviteDelivery';
 import { attendanceManagerService } from '../../../services/attendanceManager.service';
 import { jobService } from '../../../services/job.service';
 import { roleService } from '../../../services/role.service';
@@ -566,10 +566,15 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
       {canManageLogin && (
         <section className="staff-setup-link-panel" aria-label="Staff mobile login invitation">
           <h3>Mobile + Password Login</h3>
-          <p><strong>Login:</strong> {staff.loginStatus || 'Not Invited'}</p>
+          <p><strong>Login:</strong> {staffLoginStatusLabel(staff.loginStatus)}</p>
           <p><strong>WhatsApp:</strong> {staffInviteStatusLabel(staff.whatsappInviteStatus)}</p>
           <p role="status">{staffInviteDeliveryMessage(staff.whatsappInviteStatus)}</p>
           {staff.whatsappInviteFailure && <p role="status">{staff.whatsappInviteFailure}</p>}
+          {staff.whatsappConsent && staff.whatsappConsentSource && (
+            <p className="staff-login-invite-hint">
+              WhatsApp consent recorded: {staff.whatsappConsentSource}
+            </p>
+          )}
           {setupLink && ['manual', 'failed'].includes(inviteStatus) && <>
             <label htmlFor="staff-setup-url">Latest one-time setup URL (valid for 24 hours)</label>
             <input id="staff-setup-url" type="text" readOnly value={setupLink}
