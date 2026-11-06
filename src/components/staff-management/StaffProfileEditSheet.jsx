@@ -31,6 +31,8 @@ export const StaffProfileEditSheet = ({
       teamId: staff.teamId || '',
       shiftId: staff.shiftId || '',
       employmentStatus: staff.employmentStatus || 'Active',
+      whatsappConsent: Boolean(staff.whatsappConsent),
+      whatsappConsentSource: staff.whatsappConsentSource || '',
       emergencyContact: staff.emergencyContact || '',
       address: staff.address || '',
       notes: staff.notes || '',
@@ -63,11 +65,15 @@ export const StaffProfileEditSheet = ({
       showFormFieldError(formRef.current, 'name', 'Full name is required.');
       return;
     }
+    if (canAssignRole && form.whatsappConsent && !form.whatsappConsentSource?.trim()) {
+      showFormFieldError(formRef.current, 'whatsappConsentSource', 'Select how WhatsApp consent was recorded.');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
       await onSave({
-        ...Object.fromEntries(Object.entries(form).filter(([key]) => canAssignRole || !['role', 'roleId'].includes(key))),
+        ...Object.fromEntries(Object.entries(form).filter(([key]) => canAssignRole || !['role', 'roleId', 'whatsappConsent', 'whatsappConsentSource'].includes(key))),
         teamId: form.teamId || null,
         shiftId: form.shiftId || null,
         skillIds: skills
@@ -82,6 +88,7 @@ export const StaffProfileEditSheet = ({
       showServerFormErrors(formRef.current, cause, {
         roleId: 'role', role: 'role', phone: 'phone', name: 'name',
         employmentStatus: 'employmentStatus',
+        whatsappConsentSource: 'whatsappConsentSource',
       });
       setError(cause?.message || 'Unable to update staff.');
     } finally {
@@ -138,6 +145,27 @@ export const StaffProfileEditSheet = ({
           <label className="is-wide">Address<textarea rows={3} value={form.address || ''} onChange={(e) => set('address', e.target.value)} /></label>
           <label className="is-wide">Notes<textarea rows={3} value={form.notes || ''} onChange={(e) => set('notes', e.target.value)} /></label>
         </div>
+
+        {canAssignRole && (
+          <div className="staff-profile-edit-grid" style={{ marginTop: 12 }}>
+            <label className="is-wide" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input type="checkbox" checked={Boolean(form.whatsappConsent)}
+                onChange={(event) => set('whatsappConsent', event.target.checked)} />
+              WhatsApp Consent
+            </label>
+            {form.whatsappConsent && (
+              <label className="is-wide">Consent Source *
+                <select name="whatsappConsentSource" value={form.whatsappConsentSource || ''}
+                  onChange={(event) => set('whatsappConsentSource', event.target.value)}>
+                  <option value="">Choose source</option>
+                  <option value="Staff consented in person during onboarding">In person</option>
+                  <option value="Signed staff WhatsApp consent form">Signed consent form</option>
+                  <option value="Staff consented through approved digital form">Approved digital form</option>
+                </select>
+              </label>
+            )}
+          </div>
+        )}
 
         <p className="staff-profile-edit-pay-note">
           Pay type and rates are managed in the staff profile's Payroll tab.
