@@ -650,3 +650,36 @@ label.cg-easy-floating:is(:focus-within,:has(input:not(:placeholder-shown)),.is-
   background: var(--surface-hover, rgba(127,127,127,.1));
 }
 .cg-easy-stock [aria-invalid="true"] { border-color: #dc2626 !important; }
+
+
+/* Simplified inventory GST: 0% category selector and 5%/18% split preview.
+ * This remains catalogue metadata; invoice state-of-supply determines tax mode. */
+.cg-easy-stock .cg-easy-form .cg-easy-zero-gst {
+  display:grid;
+  gap:7px;
+  min-width:0;
+  padding:6px 0 2px;
+}
+.cg-easy-stock .cg-easy-form .cg-easy-gst-preview {
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:5px;
+  padding:11px 13px;
+  border:1px solid var(--border,#dce3ea);
+  border-radius:10px;
+  background:var(--surface-2,#f8fafc);
+  color:var(--text-secondary,#64748b);
+  font-size:14px;
+  line-height:1.45;
+}
+.cg-easy-stock .cg-easy-form .cg-easy-gst-preview strong {
+  font-size:14px;
+  font-weight:650;
+  color:var(--text-primary,#142037);
+}
+.cg-easy-stock .cg-easy-form .cg-easy-gst-disclaimer {
+  margin:0;
+  font-size:12px;
+  line-height:1.45;
+  color:var(--text-secondary,#64748b);
+}
