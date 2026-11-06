@@ -122,6 +122,9 @@ export const DailyWagePage = ({ mode = 'overview' }) => {
         </button>
       </header>
       <DailyWageNav selected={mode}/>
+      {mode === 'overview' && <details className="dw-payroll-help"><summary>About daily wages</summary>
+        <p>Daily wage earnings are attendance-based. Only finalized attendance contributes to the daily totals; monthly salary and automatic commission are not included.</p>
+      </details>}
       {mode === 'overview' && data && (
         <div className="dw-metrics">
           <Metric label="Workers" value={data.totalWorkers || 0} Icon={Users} meta="Company / branch employees"/>
@@ -156,7 +159,7 @@ export const DailyWagePage = ({ mode = 'overview' }) => {
           </select>
           {mode === 'history' && (
             <>
-              <label>From <input type="date" value={from} onChange={(event) => setFrom(event.target.value)}/></label>
+              <label>From <input type="date" max={to || undefined} value={from} onChange={(event) => setFrom(event.target.value)}/></label>
               <label>To <input type="date" min={from || undefined} value={to} onChange={(event) => setTo(event.target.value)}/></label>
             </>
           )}
