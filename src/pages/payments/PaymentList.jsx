@@ -7,6 +7,7 @@ import { USE_MOCK_API } from '../../api/apiConfig';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { appConfirm, appPrompt } from '../../components/common/appDialogs';
 import apiClient from '../../api/apiClient';
+import { financeService } from '../../services/finance.service';
 import {
   PaymentFilterToolbar, PaymentOverviewStats, PaymentRecordsPanel, PaymentsHeader
 } from '../../components/payments';
@@ -28,7 +29,9 @@ const dateLocal = () => {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 };
 const freshPayment = () => ({
-  date: dateLocal(), invoiceId: '', method: 'Cash', amount: '', reference: ''
+  date: dateLocal(), invoiceId: '', method: 'Cash', amount: '', reference: '',
+  direction: 'IN', accountId: '', category: 'Other', notes: '',
+  requestKey: globalThis.crypto?.randomUUID?.() || `receipt-${Date.now()}-${Math.random()}`
 });
 const friendlyError = (error, fallback) => {
   const details = error?.response?.data || error?.data;
@@ -56,6 +59,7 @@ export function PaymentList() {
 
   const [payments, setPayments] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [methodFilter, setMethodFilter] = useState('All');
@@ -84,6 +88,13 @@ export function PaymentList() {
   }, [isNew, canCreate, canViewInvoices, canViewPayments]);
 
   useEffect(() => { load(); }, [load, refreshKey]);
+
+  useEffect(() => {
+    if (!isNew || !canCreate || USE_MOCK_API) return;
+    financeService.listAccounts()
+      .then((rows) => setAccounts(Array.isArray(rows) ? rows : []))
+      .catch((err) => setError(err?.message || 'Unable to load financial accounts.'));
+  }, [isNew, canCreate]);
 
   const statuses = useMemo(
     () => [...new Set(payments.map((row) => row.status).filter(Boolean))].sort(),
@@ -167,9 +178,9 @@ export function PaymentList() {
       <div className="payments-page payments-entry-page">
         <header className="payments-head">
           <div>
-            <span className="payments-kicker">CUSTOMER COLLECTIONS</span>
+            <span className="payments-kicker">FINANCIAL PAYMENTS</span>
             <h1>Record Payment</h1>
-            <p>Choose an outstanding invoice. Customer and balance are filled automatically.</p>
+            <p>Record a customer receipt or make an outgoing payment against a real cash/bank account.</p>
           </div>
           <button type="button" className="payments-secondary-btn" onClick={() => navigate('/payments')}>
             <ArrowLeft size={16} aria-hidden="true" /> Back to Payments
@@ -182,12 +193,21 @@ export function PaymentList() {
           <form className="payment-form-card" onSubmit={save}>
             <div className="payment-form-intro">
               <h2>Payment Details</h2>
-              <p>Payments are linked to finalized invoices and marked Completed when saved.</p>
+              <p>Invoice receipts update outstanding balances. Outgoing payments debit the selected internal account.</p>
             </div>
             <div className="payment-form-grid">
               <label className="payment-wide">
+                <span>Payment Direction *</span>
+                <select value={form.direction} disabled={saving} onChange={(e) => setForm({
+                  ...form, direction: e.target.value, invoiceId: '', amount: ''
+                })}>
+                  <option value="IN">Receive Customer Payment</option>
+                  {!USE_MOCK_API && <option value="OUT">Make Outgoing Payment</option>}
+                </select>
+              </label>
+              <label className="payment-wide" style={{ display: form.direction === 'OUT' ? 'none' : undefined }}>
                 <span>Invoice with Outstanding Balance *</span>
-                <select required value={form.invoiceId} onChange={(e) => changeInvoice(e.target.value)} disabled={saving}>
+                <select required={form.direction !== "OUT"} value={form.invoiceId} onChange={(e) => changeInvoice(e.target.value)} disabled={saving}>
                   <option value="">Select invoice</option>
                   {eligibleInvoices.map((invoice) => (
                     <option key={invoice.id} value={invoice.id}>
@@ -198,11 +218,11 @@ export function PaymentList() {
                 {eligibleInvoices.length === 0 && <small>No unpaid finalized invoices found.</small>}
               </label>
 
-              <label>
+              <label style={{ display: form.direction === 'OUT' ? 'none' : undefined }}>
                 <span>Customer</span>
                 <input value={invoiceCustomer(selectedInvoice)} readOnly placeholder="Select invoice" />
               </label>
-              <label>
+              <label style={{ display: form.direction === 'OUT' ? 'none' : undefined }}>
                 <span>Outstanding Balance</span>
                 <input value={selectedInvoice ? money.format(outstanding) : '—'} readOnly />
               </label>
@@ -212,8 +232,8 @@ export function PaymentList() {
               </label>
               <label>
                 <span>Payment Amount (₹) *</span>
-                <input type="number" required min="0.01" max={selectedInvoice ? outstanding : undefined} step="0.01"
-                  inputMode="decimal" value={form.amount} disabled={!selectedInvoice || saving}
+                <input type="number" required min="0.01" max={form.direction === "IN" && selectedInvoice ? outstanding : undefined} step="0.01"
+                  inputMode="decimal" value={form.amount} disabled={saving || (form.direction === "IN" && !selectedInvoice)}
                   onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0.00" />
               </label>
               <label>
@@ -222,6 +242,29 @@ export function PaymentList() {
                   {['Cash', 'UPI', 'Card', 'Bank Transfer', 'Cheque'].map((method) => <option key={method}>{method}</option>)}
                 </select>
               </label>
+              <label className="payment-wide">
+                <span>Bank / Cash Account {!USE_MOCK_API && '*'}</span>
+                <select value={form.accountId} disabled={saving || USE_MOCK_API}
+                  required={!USE_MOCK_API} onChange={(e) => setForm({ ...form, accountId: e.target.value })}>
+                  <option value="">Select account</option>
+                  {accounts.filter((account) => account.isActive).map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name} ({account.kind}) — {money.format(Number(account.currentBalance || 0))}
+                    </option>
+                  ))}
+                </select>
+                {!USE_MOCK_API && accounts.length === 0 && <small>Create an account in Finance → Accounts first.</small>}
+              </label>
+              {form.direction === 'OUT' && (
+                <>
+                  <label><span>Payment Category *</span>
+                    <input required value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+                  </label>
+                  <label><span>Payee / Payment Details</span>
+                    <input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Supplier, staff or other payee" />
+                  </label>
+                </>
+              )}
               <label>
                 <span>Transaction Reference</span>
                 <input value={form.reference} disabled={saving} maxLength={120}
@@ -230,12 +273,12 @@ export function PaymentList() {
               </label>
               <div className="payment-form-confirmation payment-wide">
                 <ShieldCheck size={17} aria-hidden="true" />
-                <span>Payment status: <strong>Completed</strong>. This receipt is linked to the selected invoice; posted payments must be corrected through an authorized accounting workflow.</span>
+                <span>Payment status: <strong>Completed</strong>. {form.direction === "OUT" ? "The chosen account will be debited." : "The invoice and selected account will be credited."} Posted payments must be reversed through the authorized workflow.</span>
               </div>
             </div>
             <div className="payment-form-actions">
               <button type="button" className="payments-secondary-btn" onClick={() => navigate('/payments')} disabled={saving}>Cancel</button>
-              <button type="submit" className="payments-primary-btn" disabled={saving || !selectedInvoice}>
+              <button type="submit" className="payments-primary-btn" disabled={saving || (form.direction === "IN" && !selectedInvoice) || (!USE_MOCK_API && !form.accountId)}>
                 <CheckCircle2 size={16} aria-hidden="true" /> {saving ? 'Saving…' : 'Record Payment'}
               </button>
             </div>
