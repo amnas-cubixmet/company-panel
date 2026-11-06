@@ -57,6 +57,6 @@ test('Customer detail has one global navigation breadcrumb, without duplicate Ba
 
 test('Vehicle profile continues to display registration prominently and no customer ID as contact', () => {
   assert.match(vehiclePage, /<h1>\{vehicle\.registration\}<\/h1>/);
-  assert.match(vehiclePage, /\{customer\?\.phone \|\| 'No contact number'\}/);
+  assert.match(vehiclePage, /\{customer\?\.phone \|\| vehicle\.customerPhone \|\| 'No contact number'\}/);
   assert.doesNotMatch(vehiclePage, /customer\?\.phone \|\| vehicle\.customerId/);
 });
