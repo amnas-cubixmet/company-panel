@@ -22,3 +22,12 @@
 .staff-consent-source{display:grid;gap:6px;font-size:14px}
 .staff-consent-source select{min-height:48px}
 @media(max-width:620px){.staff-manual-invite-actions>button{width:100%}.staff-manual-invite-details>div{align-items:start}}
+
+/* Manual consent is a real saved profile field, not an automatic message toggle. */
+form.staff-setup-link-actions{display:grid;align-items:stretch;gap:10px;width:min(100%,420px);min-width:0}
+form.staff-setup-link-actions label{min-width:0}
+form.staff-setup-link-actions input[type="checkbox"]{width:18px;height:18px;min-width:18px;accent-color:var(--primary,#2463eb)}
+form.staff-setup-link-actions select{width:100%;min-width:0;min-height:46px;box-sizing:border-box;padding:10px 12px;border-radius:10px;border:1px solid var(--border,#dbe1e7);background:var(--surface-2,#f7fafc);color:var(--text-primary,#142436);font-size:16px}
+form.staff-setup-link-actions select:focus-visible{outline:2px solid var(--primary,#2463eb);outline-offset:2px}
+form.staff-setup-link-actions button{width:fit-content;max-width:100%}
+@media(max-width:600px){form.staff-setup-link-actions button{width:100%}}
