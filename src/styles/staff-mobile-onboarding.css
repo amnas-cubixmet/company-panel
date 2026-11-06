@@ -8,3 +8,17 @@
 .staff-setup-link-actions button,.staff-setup-link-actions a{min-height:44px;padding:10px 14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;border:1px solid var(--border, #dbe1e7);background:var(--surface-2, #f7fafc);color:var(--text-primary, #142436);font-size:14px;font-weight:700;text-decoration:none;cursor:pointer}
 .staff-setup-link-actions button:focus-visible,.staff-setup-link-actions a:focus-visible{outline:2px solid var(--primary, #2463eb);outline-offset:3px}
 @media(max-width:600px){.staff-setup-link-panel{padding:13px}.staff-setup-link-actions>*{flex:1 1 180px}}
+
+
+/* Staff create confirmation and manual WhatsApp handoff. */
+.staff-manual-invite-details{display:grid;gap:10px;margin:16px 0}
+.staff-manual-invite-details>div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--border,#dbe1e7);padding-bottom:8px}
+.staff-manual-invite-details dt{font-size:13px;color:var(--text-secondary)}
+.staff-manual-invite-details dd{font-size:14px;color:var(--text-primary);margin:0;text-align:right;overflow-wrap:anywhere}
+.staff-manual-invite-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.staff-manual-invite-actions>*{min-height:44px}
+.staff-consent-line{display:flex;gap:10px;align-items:center;min-height:44px;font-size:14px}
+.staff-consent-line input{width:18px;height:18px;flex:0 0 18px}
+.staff-consent-source{display:grid;gap:6px;font-size:14px}
+.staff-consent-source select{min-height:48px}
+@media(max-width:620px){.staff-manual-invite-actions>button{width:100%}.staff-manual-invite-details>div{align-items:start}}
