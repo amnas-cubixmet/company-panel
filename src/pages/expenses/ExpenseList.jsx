@@ -32,10 +32,7 @@ const expenseCategories = [
   'Electricity',
   'Water',
   'Internet',
-  'Spare Parts',
-  'Supplier Payments',
   'Fuel',
-  'Stock Purchase',
   'Utilities',
   'Equipment Maintenance',
   'Consumables & Tools',
@@ -101,12 +98,18 @@ const ExpenseForm = ({
     <header className="expense-form-header">
       <div>
         <h1>{title}</h1>
-        <p>Record workshop operational costs, vendor bills, payment method, reference and receipt link.</p>
+        <p>Record real operational expenses. Spare Parts Purchases and Supplier Settlements are managed through the linked Supplier Bill workflow to prevent double counting.</p>
       </div>
     </header>
 
     <form className="expense-form" onSubmit={onSubmit}>
       {error ? <div className="expense-alert" role="alert">{error}</div> : null}
+      <div className="expense-alert" role="note">
+        Bought spare parts or paying a supplier? Use
+        <a href="/stock/suppliers?tab=bill"> Supplier Purchase </a>
+        or <a href="/suppliers/payments"> Supplier Payments </a>
+        instead. A supplier bill must never be recorded again as an operational expense.
+      </div>
       <section className="expense-form-section">
         <div className="expense-section-header">
           <div>
