@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Building2, CreditCard, Mail, Package, Phone, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
+import { ArrowLeft, Building2, ChevronRight, CreditCard, Mail, Package, Phone, Plus, Search, ShoppingBag, Truck } from 'lucide-react';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { supplierService } from '../../services/supplier.service';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
@@ -353,15 +353,36 @@ export default function SuppliersPage({ section = 'all' }) {
       </div>
       {loading?<p role="status" className="cg-supplier-empty">Loading suppliers…</p>:
         error ? null : matches.length?<div className="cg-suppliers-list">
-          {matches.map(row=><Link className="cg-supplier-list-item" to={'/suppliers/'+encodeURIComponent(row.id)} key={row.id}>
-            <span className="cg-supplier-avatar"><Truck size={21}/></span>
-            <span className="cg-supplier-summary">
-              <strong title={row.name}>{row.name}</strong>
-              <small>{[row.contact_person||row.contactPerson,row.phone].filter(Boolean).join(' · ')||'Contact details not added'}</small>
-              {canViewFinance && <small>Credit outstanding: {creditBalances ? money(creditBalances.get(String(row.id)) || 0) : 'Unavailable'}</small>}
-            </span>
-            <span className={row.is_active===false?'cg-supplier-status inactive':'cg-supplier-status'}>{status(row)}</span>
-          </Link>)}
+          {matches.map(row => {
+            const supplierName = asText(row.name) || 'Unnamed Supplier';
+            const contactPerson = asText(row.contact_person || row.contactPerson);
+            const phone = asText(row.phone);
+            const gstin = asText(row.gstNo || row.gstin);
+            const outstanding = creditBalances?.get(String(row.id));
+            return <Link className="cg-supplier-list-item" to={'/suppliers/' + encodeURIComponent(row.id)}
+              key={row.id} aria-label={'View supplier ' + supplierName}>
+              <span className="cg-supplier-avatar" aria-hidden="true"><Building2 size={21}/></span>
+              <span className="cg-supplier-summary">
+                <span className="cg-supplier-card-header">
+                  <strong className="cg-supplier-card-name" title={supplierName}>{supplierName}</strong>
+                  <span className={row.is_active === false ? 'cg-supplier-status inactive' : 'cg-supplier-status'}>{status(row)}</span>
+                </span>
+                <span className="cg-supplier-card-meta">
+                  {contactPerson && <span className="cg-supplier-card-contact" title={contactPerson}>{contactPerson}</span>}
+                  {phone && <span className="cg-supplier-card-phone"><Phone size={14} aria-hidden="true"/>{phone}</span>}
+                  {!contactPerson && !phone && <span>Contact details not added</span>}
+                </span>
+                {(canViewFinance || gstin) && <span className="cg-supplier-card-footer">
+                  {canViewFinance && <span className="cg-supplier-card-credit">
+                    <span>Credit outstanding</span>
+                    <b>{creditBalances ? money(outstanding ?? 0) : 'Unavailable'}</b>
+                  </span>}
+                  {gstin && <span className="cg-supplier-card-gstin" title={gstin}>GSTIN: {gstin}</span>}
+                </span>}
+              </span>
+              <span className="cg-supplier-card-arrow" aria-hidden="true"><ChevronRight size={19}/></span>
+            </Link>;
+          })}
         </div>:<p className="cg-supplier-empty">{search?'No suppliers match your search.':'No suppliers added yet.'}</p>}
     </>}
 
