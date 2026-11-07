@@ -139,9 +139,9 @@ export function WhatsAppSettingsPage() {
   };
 
   const save = () => action(async () => {
+    const reminderEvents = { ...events, estimate_reminder_hours: estimateReminderHours };
     await apiClient.patch('/whatsapp/settings', {
-      messagingMode: mode, notificationsEnabled: enabled,
-      events: { ...events, estimate_reminder_hours: estimateReminderHours },
+      messagingMode: mode, notificationsEnabled: enabled, events: reminderEvents,
     });
     setSuccess(mode === 'manual' ? 'Manual mode saved. Staff will send WhatsApp drafts themselves.' : 'Automatic mode preferences saved. Sending requires a connected approved Meta account.');
   });
