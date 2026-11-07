@@ -371,6 +371,17 @@ export const CustomerDetails = () => {
     showToast('Customer document removed.');
   };
 
+  const handleRestoreCustomer = async () => {
+    if (!customer || !await appConfirm(`Restore customer ${customer.name} to active status?`)) return;
+    try {
+      await customerService.restoreCustomer(customer.id);
+      showToast('Customer restored.');
+      await loadCustomerData();
+    } catch (cause) {
+      showToast(cause?.message || 'Unable to restore customer.');
+    }
+  };
+
   const handleArchiveCustomer = async () => {
     if (await appConfirm(`Are you sure you want to archive ${customer.name}? This will preserve historical records.`)) {
       await customerService.archiveCustomer(customer.id);
@@ -465,15 +476,22 @@ export const CustomerDetails = () => {
           </div>
 
           <div className="customer-profile-actions">
+            {archived && (
+              <button type="button" className="customer-profile-action is-secondary" onClick={handleRestoreCustomer}>
+                Restore Customer
+              </button>
+            )}
             <button type="button" className="customer-profile-action is-secondary"
               onClick={() => setIsEditCustomerOpen(true)}>
               <Pencil size={16} aria-hidden="true"/> Edit Profile
             </button>
             <button type="button" className="customer-profile-action is-secondary"
+              disabled={archived}
               onClick={() => setIsAddVehicleOpen(true)}>
               <Car size={16} aria-hidden="true"/> Add Vehicle
             </button>
             <button type="button" className="customer-profile-action is-primary"
+              disabled={archived}
               onClick={() => {
                 const targetVehicle = vehicles[0]?.regNo || '';
                 navigate('/jobs/new?customerId=' + customer.id +
