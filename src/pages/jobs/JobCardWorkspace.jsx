@@ -1557,6 +1557,10 @@ export function JobCardWorkspace() {
           findings={findings}
           canEdit={can('jobs.edit') && currentStage === 'estimate' && !activeTabLocked}
           onSaved={() => refreshJobWorkflow()}
+          onShare={async (estimateId, action) => {
+            await jobService.shareJobEstimate(job.id, estimateId, action);
+            await refreshJobWorkflow();
+          }}
           onApprove={(estimateId, estimateVersion) => {
             // The Job Card display labels versions "Estimate V2"; the
             // backend compares the actual immutable integer version.
