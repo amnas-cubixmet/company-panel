@@ -1557,7 +1557,16 @@ export function JobCardWorkspace() {
           findings={findings}
           canEdit={can('jobs.edit') && currentStage === 'estimate' && !activeTabLocked}
           onSaved={() => refreshJobWorkflow()}
-          onApprove={(estimateId, estimateVersion) => completeStage('estimate', { estimateId, estimateVersion })}
+          onApprove={(estimateId, estimateVersion) => {
+            // The Job Card display labels versions "Estimate V2"; the
+            // backend compares the actual immutable integer version.
+            const numericVersion = Number(String(estimateVersion ?? '').replace(/^Estimate V/i, ''));
+            return completeStage('estimate', {
+              estimateId,
+              ...(Number.isInteger(numericVersion) && numericVersion > 0
+                ? { estimateVersion: numericVersion } : {}),
+            });
+          }}
           onSkip={skipEstimate}
           onReject={(estimateId) => setEstimateApproval(estimateId, 'Rejected')}
           onDownloadApproved={(approvedEstimate) => openApprovedPdfShare(job, approvedEstimate)}
