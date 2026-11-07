@@ -144,7 +144,7 @@ export function Notifications() {
 
   return (
     <div className="notifications-page">
-      <NotificationsHeader unread={unread} onMarkAll={markAllRead} onRefresh={load} loading={loading} />
+      <NotificationsHeader unread={unread} onMarkAll={markAllRead} onRefresh={() => load()} loading={loading} />
 
       <NotificationStats
         unread={unread}
