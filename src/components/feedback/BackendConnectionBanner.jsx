@@ -8,6 +8,7 @@ const HEALTH_TIMEOUT_MS = 8000;
 // Non-blocking status: a failed network check must not destroy a session.
 export function BackendConnectionBanner() {
   const [status, setStatus] = useState('checking');
+  const [issue, setIssue] = useState('network');
   const requestRef = useRef(null);
 
   const checkConnection = useCallback(async () => {
@@ -25,9 +26,15 @@ export function BackendConnectionBanner() {
 
     try {
       await checkBackendConnection(controller.signal);
-      if (requestRef.current === controller) setStatus('online');
-    } catch {
-      if (requestRef.current === controller) setStatus('offline');
+      if (requestRef.current === controller) {
+        setIssue('network');
+        setStatus('online');
+      }
+    } catch (error) {
+      if (requestRef.current === controller) {
+        setIssue(error?.code === 'BACKEND_NOT_READY' ? 'dependencies' : 'network');
+        setStatus('offline');
+      }
     } finally {
       clearTimeout(timeout);
       if (requestRef.current === controller) requestRef.current = null;
@@ -64,8 +71,8 @@ export function BackendConnectionBanner() {
     <aside className="backend-connection-banner" role="status" aria-live="polite">
       <WifiOff size={19} aria-hidden="true" className="backend-connection-symbol" />
       <div className="backend-connection-copy">
-        <strong>{retrying ? 'Reconnecting to CubeGears…' : 'Backend connection unavailable'}</strong>
-        <span>Changes cannot be saved until the Django API is available.</span>
+        <strong>{retrying ? 'Reconnecting to CubeGears…' : issue === 'dependencies' ? 'Database or service temporarily unavailable' : 'Backend connection unavailable'}</strong>
+        <span>Changes cannot be saved until CubeGears is ready. Your session stays signed in.</span>
       </div>
       <button type="button" onClick={() => checkConnection()} disabled={retrying}>
         <RefreshCw size={16} aria-hidden="true" />
