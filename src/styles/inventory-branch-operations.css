@@ -32,3 +32,9 @@
   .cg-branch-heading button { width: 100%; justify-content: center; }
   .cg-branch-tabs button { flex: 1 1 30%; }
 }
+
+.cg-category-tree { display: grid; gap: 10px; }
+.cg-category-tree > p { color: var(--text-secondary, #56657a); margin: 0; }
+.cg-category-group { display: flex; flex-direction: column; gap: 5px; border: 1px solid var(--border, #d8dee7); border-radius: 10px; padding: 10px 14px; }
+.cg-category-group > strong { font-weight: 650; font-size: 14px; }
+.cg-category-group > span { font-size: 13px; color: var(--text-secondary, #56657a); padding-left: 10px; }
