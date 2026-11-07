@@ -727,9 +727,9 @@ export function InvoiceRoutePage() {
 
   if (mode === 'delete') return (
     <div className="billing-page">
-      <header className="billing-page-head"><div><span className="billing-kicker">DELETE DOCUMENT</span><h1>{form.number || id}</h1><p>Document ID: {id}</p></div></header>
+      <header className="billing-page-head"><div><span className="billing-kicker">DOCUMENT HISTORY</span><h1>{form.number || id}</h1><p>Document ID: {id}</p></div></header>
       {error && <div className="billing-error">{error}</div>}
-      {loading ? <div className="billing-empty">Loading…</div> : <section className="billing-card"><h3>Delete this document?</h3><p>Only Draft or Cancelled documents can be permanently deleted. Finalized invoices must be cancelled first.</p><div className="billing-head-actions"><button className="bill-btn danger" disabled={saving} onClick={deleteDocument}><Trash2 size={16}/>{saving ? 'Deleting…' : 'Delete'}</button></div></section>}
+      {loading ? <div className="billing-empty">Loading…</div> : <section className="billing-card"><h3>Keep invoice audit history</h3><p>Invoice numbers, payment references and issued PDFs must remain available. Draft documents can be cancelled, but never permanently deleted.</p><div className="billing-head-actions"><button type="button" className="bill-btn secondary" onClick={() => navigate(`/invoices/${id}`)}>Back to document</button></div></section>}
     </div>
   );
 
@@ -782,9 +782,11 @@ export function InvoiceRoutePage() {
             </button>
           )}
 
-          <button className="bill-btn danger" onClick={() => navigate(`/invoices/${id}/delete`)}>
-            <Trash2 size={16}/>Delete
-          </button>
+          {form.kind === 'invoice' && form.status !== 'Cancelled' && form.status !== 'Draft' && (
+            <button type="button" className="bill-btn" onClick={() => navigate(`/payments/new?invoiceId=${encodeURIComponent(form.id || id)}`)}>
+              <ReceiptText size={16}/>Record Payment
+            </button>
+          )}
         </div>
       </div>
 
@@ -1127,9 +1129,9 @@ export function InvoiceRoutePage() {
                   <option>Cash</option><option>UPI</option><option>Card</option><option>Bank Transfer</option><option>Cheque</option>
                 </select>
               </label>
-              <label>Received ₹
-                <input data-invoice-field="paid" className="plain-number-input" inputMode="decimal" aria-invalid={Boolean(fieldErrors['paid'])} value={inputNumber(form.paid)} onChange={(e) => update('paid', parseDecimal(e.target.value))} placeholder="0.00"/>
-                {fieldErrors['paid'] && <small className="invoice-input-error" role="alert">{fieldErrors['paid']}</small>}
+              <label>Received ₹ (posted payments only)
+                <input data-invoice-field="paid" className="plain-number-input" value={inputNumber(form.paid) || '0'} readOnly aria-label="Recorded payments" title="Record receipts in Customer Payments after finalizing the invoice."/>
+                <small>Payments must be recorded in Customer Payments and linked to an invoice and cash/bank account. Drafts do not receive funds.</small>
               </label>
               <label>Adjustment ₹
                 <input data-invoice-field="adjustment" className="plain-number-input" inputMode="decimal" aria-invalid={Boolean(fieldErrors['adjustment'])} value={form.adjustment ?? ''} onChange={(e) => update('adjustment', e.target.value === '' ? '' : parseDecimal(e.target.value))} placeholder="Auto"/>
