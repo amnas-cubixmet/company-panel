@@ -128,6 +128,7 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
       ...finding,
       title: finding.description.trim(),
       description: finding.description.trim(),
+      estimatedCost: finding.estimatedCost === '' ? null : Number(finding.estimatedCost),
       estimatedPartCharge: Number(finding.estimatedCost) || 0
     }));
     if (saved) setFinding(newFinding());
