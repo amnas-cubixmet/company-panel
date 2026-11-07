@@ -6,6 +6,7 @@ import { CompanyProvider } from './context/CompanyContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { PayrollPeriodProvider } from './context/PayrollPeriodContext';
 import { AppErrorBoundary } from './components/feedback/AppErrorBoundary';
+import { BackendConnectionBanner } from './components/feedback/BackendConnectionBanner';
 import { GlobalFormValidation } from './components/common/GlobalFormValidation';
 import { AppDialogHost } from './components/common/AppDialogHost';
 import './api/registerSaasEndpoints';
@@ -55,11 +56,13 @@ import './styles/form-errors-unified.css';
 import './styles/desktop-typography.css';
 // Shared accessible outlined floating labels for standard form controls.
 import './styles/floating-fields.css';
+import './styles/backend-connection.css';
 
 export function App() {
   return (
     <AppErrorBoundary>
       <BrowserRouter>
+        <BackendConnectionBanner />
         <GlobalFormValidation />
         <ThemeProvider>
           <AppDialogHost />
