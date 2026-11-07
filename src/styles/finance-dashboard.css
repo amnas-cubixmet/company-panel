@@ -455,3 +455,15 @@
 [data-theme="dark"] .finance-stat-red     { border-top-color: #f87171; }
 [data-theme="dark"] .finance-stat-purple  { border-top-color: #c084fc; }
 
+
+/* Safeguard the finance overview at narrow (320px) phone widths. */
+.finance-dashboard, .finance-dash-header, .finance-quick-actions,
+.finance-accounts-section, .finance-recent-section, .finance-stats-grid {
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 480px) {
+  .finance-quick-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .finance-action-btn { min-width: 0; padding-inline: 6px; white-space: normal; }
+  .finance-action-btn span { min-width: 0; overflow-wrap: anywhere; white-space: normal; }
+}
