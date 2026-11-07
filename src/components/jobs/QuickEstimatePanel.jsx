@@ -55,7 +55,7 @@ const inspectSuggestions = (findings) => findings.flatMap((item) => {
 
 export function QuickEstimatePanel({
   job, estimates = [], findings = [], canEdit, onSaved, onApprove, onSkip,
-  onReject, onEditInspection, onGoToWork, onDownloadApproved
+  onReject, onShare, onEditInspection, onGoToWork, onDownloadApproved
 }) {
   const latest = estimates.at(-1) || null;
   const approvedEstimate = latestApprovedEstimate(estimates);
@@ -198,64 +198,97 @@ export function QuickEstimatePanel({
     setChanged(true);
     setFeedback('');
   };
-  const approve = async () => {
-    if (!canEdit || busy) return;
-    if (validation) {
-      setShowValidation(true);
-      setFeedback('');
-      requestAnimationFrame(() => {
-        const field = formRef.current?.querySelector('[aria-invalid="true"]');
-        field?.focus();
-        field?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      });
-      return;
+  const validateBeforeDecision = () => {
+    if (!validation) return true;
+    setShowValidation(true);
+    setFeedback('');
+    requestAnimationFrame(() => {
+      const field = formRef.current?.querySelector('[aria-invalid="true"]');
+      field?.focus();
+      field?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    return false;
+  };
+
+  const saveDraftForDecision = async () => {
+    if (!latest || changed || stale || ['Rejected', 'Customer Rejected'].includes(latest.status)) {
+      const preparedLines = lines.map(line => legalizeLineGst(line, taxMode));
+      if (registered && preparedLines.some(line => !String(line.taxRate ?? '').trim())) {
+        setShowValidation(true);
+        throw new Error('Choose an applicable GST rate for each item before proceeding.');
+      }
+      const draftId = latest?.status === 'Draft' && !stale ? latest.id : null;
+      const payload = {
+        lines: preparedLines.map(({ description, type, quantity, unitPrice, catalogId, taxRate, taxChoice, taxTreatment, taxTreatmentConfirmed, hsnSac }) => ({
+          description: description.trim(), type, quantity, unitPrice,
+          taxRate: taxRate || '0', taxChoice: taxChoice || '', hsnSac: hsnSac || '',
+          ...(taxChoice === 'none' ? { taxTreatment, taxTreatmentConfirmed } : {}),
+          ...(catalogId ? { catalogId } : {}),
+        })),
+        taxPercent: '0', discount,
+        gst: { mode: registered ? 'gst' : 'non_gst', placeOfSupply },
+      };
+      const fingerprint = JSON.stringify(payload);
+      if (!pendingSaveRef.current || pendingSaveRef.current.fingerprint !== fingerprint) {
+        pendingSaveRef.current = { id: crypto.randomUUID(), fingerprint };
+      }
+      payload.requestId = pendingSaveRef.current.id;
+      const saved = await jobService.saveQuickJobEstimate(job.id, payload, draftId);
+      savedEstimateRef.current = { id: saved.id, version: saved.version };
+      setChanged(false);
+      setShowValidation(false);
+      try {
+        await onSaved?.();
+      } catch {
+        setFeedback('Estimate saved. Refresh the Job Card to see the latest quote.');
+      }
     }
+    const target = savedEstimateRef.current || latest;
+    if (!target?.id) throw new Error('Save a valid estimate before proceeding.');
+    return target;
+  };
+
+  const approve = async () => {
+    if (!canEdit || busy || latest?.status === 'Awaiting Customer') return;
+    if (!validateBeforeDecision()) return;
     setBusy(true);
     setFeedback('');
     try {
-      // One primary action: save a fresh estimate when necessary, then
-      // request the existing server-side customer approval/workflow transition.
-      if (!latest || changed || stale || latest.status === 'Rejected') {
-        const preparedLines = lines.map(line => legalizeLineGst(line, taxMode));
-        if (registered && preparedLines.some(line => !String(line.taxRate ?? '').trim())) {
-          setShowValidation(true);
-          setFeedback('Choose an applicable GST rate for each item before approval.');
-          return;
-        }
-        const draftId = latest?.status === 'Draft' && !stale
-          ? latest.id : (!stale ? savedEstimateRef.current?.id || null : null);
-        const payload = {
-          lines: preparedLines.map(({ description, type, quantity, unitPrice, catalogId, taxRate, taxChoice, taxTreatment, taxTreatmentConfirmed, hsnSac }) => ({
-            description: description.trim(), type, quantity, unitPrice,
-            taxRate: taxRate || '0', taxChoice: taxChoice || '', hsnSac: hsnSac || '',
-            ...(taxChoice === 'none' ? { taxTreatment, taxTreatmentConfirmed } : {}),
-            ...(catalogId ? { catalogId } : {}),
-          })),
-          taxPercent: '0', discount,
-          gst: { mode: registered ? 'gst' : 'non_gst', placeOfSupply },
-        };
-        const fingerprint = JSON.stringify(payload);
-        if (!pendingSaveRef.current || pendingSaveRef.current.fingerprint !== fingerprint) {
-          pendingSaveRef.current = { id: crypto.randomUUID(), fingerprint };
-        }
-        payload.requestId = pendingSaveRef.current.id;
-        const saved = await jobService.saveQuickJobEstimate(job.id, payload, draftId);
-        // Save the identity before the refresh. If the refresh fails, a
-        // subsequent click must NOT create a second estimate version.
-        savedEstimateRef.current = { id: saved.id, version: saved.version };
-        setChanged(false);
-        setShowValidation(false);
-        try {
-          await onSaved?.();
-        } catch {
-          setFeedback('Estimate saved. Job Card refresh is unavailable; the saved version can still be approved.');
-        }
-      }
-      const target = savedEstimateRef.current || latest;
-      if (!target?.id) throw new Error('A saved estimate reference is required before approval.');
+      const target = await saveDraftForDecision();
       await onApprove?.(target.id, target.version);
     } catch (err) {
-      setFeedback(err?.message || 'Unable to save and approve estimate.');
+      setFeedback(err?.message || 'Estimate could not be finalized.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const shareForReview = async () => {
+    if (!canEdit || busy || !onShare) return;
+    if (!validateBeforeDecision()) return;
+    setBusy(true);
+    setFeedback('');
+    try {
+      const target = await saveDraftForDecision();
+      await onShare(target.id, 'share');
+      setFeedback('Estimate shared to the customer portal. Await their response.');
+    } catch (err) {
+      setFeedback(err?.message || 'Could not share the estimate with the customer.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const withdrawReview = async () => {
+    if (!canEdit || busy || latest?.status !== 'Awaiting Customer' || !onShare) return;
+    setBusy(true);
+    setFeedback('');
+    try {
+      await onShare(latest.id, 'withdraw');
+      savedEstimateRef.current = null;
+      setFeedback('Estimate withdrawn from customer review. You may edit and re-share it.');
+    } catch (err) {
+      setFeedback(err?.message || 'Could not withdraw the estimate.');
     } finally {
       setBusy(false);
     }
@@ -477,6 +510,12 @@ export function QuickEstimatePanel({
           <span className="job-quick-eyebrow">Job Card / Estimate</span>
           <h2><ReceiptText size={19} aria-hidden="true"/> Quick Estimate</h2>
           <p>Add work or spare parts, review the total and ask for customer approval.</p>
+          {latest?.status === 'Awaiting Customer' &&
+            <p role="status">Shared with customer. The amount is locked until they respond or you withdraw it.</p>}
+          {latest?.status === 'Customer Approved' &&
+            <p role="status">Customer accepted Estimate V{latest.version} in the secure portal. Confirm to advance the Job Card.</p>}
+          {latest?.status === 'Customer Rejected' &&
+            <p role="status">Customer declined this quote. Save and share a revised estimate before continuing.</p>}
         </div>
         <button type="button" className="job-quick-outline" onClick={onEditInspection} disabled={!canEdit}>
           <Pencil size={15} aria-hidden="true"/> Edit Inspection
@@ -585,11 +624,29 @@ export function QuickEstimatePanel({
                   disabled={busy || skipBusy} onClick={() => { setSkipError(''); setShowSkipModal(true); }}>
                   <SkipForward size={16} aria-hidden="true"/> Skip Estimate
                 </button>
-              <button type="button" className="job-quick-approve"
-                disabled={busy || skipBusy} onClick={approve}>
-                <CheckCircle2 size={16} aria-hidden="true"/>
-                {busy ? 'Please wait…' : 'Approve & Continue'}
-              </button>
+              {latest?.status === 'Awaiting Customer' ? (
+                <button type="button" className="job-quick-outline"
+                  disabled={busy || skipBusy} onClick={withdrawReview}>
+                  {busy ? 'Please wait…' : 'Withdraw from customer review'}
+                </button>
+              ) : (
+                <>
+                  {latest?.status !== 'Customer Approved' && onShare && (
+                    <button type="button" className="job-quick-outline"
+                      disabled={busy || skipBusy} onClick={shareForReview}>
+                      {busy ? 'Please wait…' : 'Save & Share with Customer'}
+                    </button>
+                  )}
+                  {latest?.status !== 'Customer Rejected' && (
+                    <button type="button" className="job-quick-approve"
+                      disabled={busy || skipBusy} onClick={approve}>
+                      <CheckCircle2 size={16} aria-hidden="true"/>
+                      {busy ? 'Please wait…' : latest?.status === 'Customer Approved'
+                        ? 'Confirm Customer Acceptance & Continue' : 'Approve & Continue'}
+                    </button>
+                  )}
+                </>
+              )}
               </div>
             </div>
           ) : (
