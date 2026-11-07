@@ -6,6 +6,7 @@ import { AlertTriangle, Boxes, History, PackageMinus, PackagePlus, Plus, Refresh
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { stockCatalogService } from '../../services/stockCatalog.service';
 import InventoryBranchOperations from '../../components/stock/InventoryBranchOperations';
+import InventoryCategories from '../../components/stock/InventoryCategories';
 import { supplierService } from '../../services/supplier.service';
 import { invoiceLineTaxChoices, invoiceTotalRateFromChoice } from '../../utils/invoiceTaxUi';
 import '../../styles/stock-easy.css';
@@ -479,6 +480,7 @@ export default function StockEasyPage() {
       </section>
 
       <InventoryBranchOperations onChanged={reload}/>
+      <InventoryCategories onChanged={reload}/>
 
       <section className="cg-easy-panel">
         <div className="cg-easy-panel-header">
@@ -590,7 +592,8 @@ export default function StockEasyPage() {
             <div className="cg-easy-fields">
               <OutlinedSelect label="Category" value={part.category} onChange={e => setPart({ ...part, category: e.target.value })}>
                 <option value="">Uncategorized</option>
-                {categories.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+                {categories.filter(x => x.is_active !== false).map(x =>
+                  <option key={x.id} value={x.id}>{x.parentName ? x.parentName + ' / ' : ''}{x.name}</option>)}
               </OutlinedSelect>
               <OutlinedInput label="HSN / SAC Code" maxLength={20} value={part.hsnCode} onChange={(e) => setPart({ ...part, hsnCode: e.target.value })}/>
             </div>
