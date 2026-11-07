@@ -212,6 +212,12 @@ export function QuickEstimatePanel({
 
   const saveDraftForDecision = async () => {
     if (!latest || changed || stale || ['Rejected', 'Customer Rejected'].includes(latest.status)) {
+      // A declined estimate needs a NEW operation identity even if the
+      // customer requests the same amount again; never replay a rejected ID.
+      if (latest && ['Rejected', 'Customer Rejected'].includes(latest.status)) {
+        pendingSaveRef.current = null;
+        savedEstimateRef.current = null;
+      }
       const preparedLines = lines.map(line => legalizeLineGst(line, taxMode));
       if (registered && preparedLines.some(line => !String(line.taxRate ?? '').trim())) {
         setShowValidation(true);
