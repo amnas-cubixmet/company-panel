@@ -188,7 +188,7 @@ export function BillingWorkspace() {
             {form.kind === 'estimate' && form.id && <button className="bill-btn secondary" onClick={convertToInvoice}><CopyPlus size={16}/> Convert to Invoice</button>}
             <button className="bill-btn" onClick={finalize}><CheckCircle2 size={16}/> {form.kind === 'estimate' ? 'Issue Estimate' : 'Finalize Invoice'}</button>
             <button className="bill-btn secondary" onClick={() => window.print()}><Printer size={16}/> Print / PDF</button>
-            {form.id && form.status !== 'Cancelled' && <button className="bill-btn danger" onClick={cancel}><XCircle size={16}/> Cancel</button>}
+            {form.id && form.status === 'Draft' && <button className="bill-btn danger" onClick={cancel}><XCircle size={16}/> Cancel Draft</button>}
           </div>
         </div>
 
