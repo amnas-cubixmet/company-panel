@@ -51,6 +51,7 @@ export function FinanceDashboard() {
     { label: 'Add Account', icon: Plus, path: '/finance/accounts/new' },
     { label: 'Transfer Money', icon: ArrowLeftRight, path: '/finance/transfers/new' },
     { label: 'View Ledger', icon: List, path: '/finance/transactions' },
+    { label: 'Accounting & Reports', icon: List, path: '/finance/accounting' },
   ];
 
   return (
