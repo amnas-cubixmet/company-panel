@@ -461,7 +461,10 @@ export function CreditWorkspace({ section = 'overview' }) {
             <div className="cg-bundle-feature-list">
               <small>Included existing features</small>
               <div className="cg-bundle-features">
-                {(bundle.features || []).filter(item => !freeKeys.includes(item.key)).map(item => <span key={item.key}>{item.label}</span>)}
+                {(bundle.includedModules?.length
+                      ? bundle.includedModules
+                      : (bundle.features || []).filter(item => !freeKeys.includes(item.key)).map(item => item.label)
+                    ).map(label => <span key={label}>{label}</span>)}
               </div>
             </div>
             {bundle.active && <small>{bundle.validUntil ? `Available until ${when(bundle.validUntil)}` : 'Permanent entitlement'}</small>}
