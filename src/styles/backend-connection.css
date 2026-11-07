@@ -1,6 +1,8 @@
 .backend-connection-banner {
   position: fixed;
   z-index: 12000;
+  /* Only Retry accepts pointer input; never obstruct the app or mobile login. */
+  pointer-events: none;
   bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
@@ -30,6 +32,7 @@
 .backend-connection-copy strong { font-size: 14px; font-weight: 650; }
 .backend-connection-copy span { color: #dbe5f1; }
 .backend-connection-banner button {
+  pointer-events: auto;
   flex: none;
   display: inline-flex;
   justify-content: center;
