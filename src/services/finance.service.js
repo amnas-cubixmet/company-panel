@@ -55,6 +55,19 @@ export const financeService = {
     }
   },
 
+  // Part 14: audited accounting projection (no direct bank-balance edits).
+  getChart: () => apiClient.get(`${BASE}/chart`),
+  getJournals: () => apiClient.get(`${BASE}/journals`),
+  postJournal: (payload) => apiClient.post(`${BASE}/journals`, payload),
+  getStatement: (report, params = {}) => apiClient.get(
+    `${BASE}/statements/${encodeURIComponent(report)}`, { params },
+  ),
+  getReconciliations: () => apiClient.get(`${BASE}/bank-reconciliations`),
+  getReconciliationCandidates: (params = {}) => apiClient.get(
+    `${BASE}/bank-reconciliations/candidates`, { params },
+  ),
+  reconcileBank: (payload) => apiClient.post(`${BASE}/bank-reconciliations`, payload),
+
   // Reports
   getReports: (params = {}) => apiClient.get(`${BASE}/reports`, { params }),
 };
