@@ -60,8 +60,8 @@ test('vehicle profile has exactly five tabs, true job and photo actions, concise
   }
   assert.match(profile, /<VehiclePhotoGallery vehicleId=\{vehicle\.id\} canEdit=\{canEdit\}/);
   // Delete is now non-destructive archive; restoring is an explicit owner action.
-  assert.match(profile, /vehicleService\\.archiveVehicle\\(vehicle\\.id\\)/);
-  assert.match(profile, /vehicleService\\.restoreVehicle\\(vehicle\\.id\\)/);
+  assert.match(profile, /vehicleService\.archiveVehicle\(vehicle\.id\)/);
+  assert.match(profile, /vehicleService\.restoreVehicle\(vehicle\.id\)/);
   assert.match(profile, /Service and invoice records will be preserved/);
   assert.match(profile, /hasPermission\(user, 'vehicles.delete'\)/);
   assert.match(profile, /hasPermission\(user, 'jobs.create'\)/);
