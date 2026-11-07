@@ -101,6 +101,18 @@ export const updateVehicle = async (id, data) => {
   return normalizeVehicle(result);
 };
 
+export const restoreVehicle = async (id) => {
+  if (USE_MOCK_API) {
+    await delay();
+    return normalizeVehicle(updateMockVehicle(id, { status: 'Active' }));
+  }
+  return normalizeVehicle(await apiClient.post(`${API_ENDPOINTS.VEHICLES}/${id}/restore`, {}));
+};
+
+// DELETE is explicitly soft-archive on Django; keep the legacy method name
+// for callers while preserving historic jobs, invoices and inspection photos.
+export const archiveVehicle = async (id) => deleteVehicle(id);
+
 export const deleteVehicle = async (id) => {
   if (USE_MOCK_API) {
     await delay();
@@ -115,6 +127,8 @@ export const vehicleService = {
   createVehicle,
   updateVehicle,
   deleteVehicle,
+  archiveVehicle,
+  restoreVehicle,
   getAll: getVehicles,
   getById: getVehicleById,
   create: createVehicle,
