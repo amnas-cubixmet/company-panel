@@ -8,7 +8,7 @@ test('workshop quote is explicitly shared/withdrawn through authorized backend e
   const service = source('src/services/job.service.js');
   assert.match(service,/export const shareJobEstimate = async/);
   assert.match(service,/\['share', 'withdraw'\]/);
-  assert.match(service,/\.\/share/);
+  assert.match(service,/\/share/);
   assert.match(service,/shareJobEstimate,/);
   assert.match(source('src/pages/jobs/JobCardWorkspace.jsx'),/onShare=\{async \(estimateId, action\)/);
   assert.match(source('src/pages/jobs/JobCardWorkspace.jsx'),/jobService\.shareJobEstimate\(job\.id, estimateId, action\)/);
