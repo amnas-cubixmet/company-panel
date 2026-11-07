@@ -194,7 +194,7 @@ export const VehicleDetails = () => {
 
         <div className="vehicle-profile-actions">
           {canEdit ? <button type="button" onClick={() => navigate(`/vehicles/${vehicle.id}/edit`)}><Edit3 size={16}/> Edit</button> : null}
-          {canCreateJob && !archived ? (
+          {canCreateJob && !archived && String(customer?.status || vehicle.customerStatus || '').toLowerCase() !== 'archived' ? (
             <button
               type="button"
               className="is-primary"
