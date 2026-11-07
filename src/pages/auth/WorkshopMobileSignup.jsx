@@ -43,8 +43,15 @@ export default function WorkshopMobileSignup() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const details = Object.values(data || {}).flat().map(String).join(' ');
-        throw new Error(details || 'Unable to register your workshop.');
+        const details = Object.entries(data || {})
+          .filter(([field]) => field !== 'status' && field !== 'code')
+          .flatMap(([, value]) => Array.isArray(value) ? value : [value])
+          .filter((value) => typeof value === 'string')
+          .join(' ');
+        const retry = response.headers.get('Retry-After');
+        throw new Error(response.status === 429
+          ? `Too many registration attempts. Try again later${retry ? ` (retry after ${retry} seconds)` : ''}.`
+          : details || 'Unable to register your workshop.');
       }
       change('password', '');
       change('confirmPassword', '');
@@ -69,7 +76,9 @@ export default function WorkshopMobileSignup() {
           <p className="login-description">Workshop code: <strong>{registered.workshop?.slug}</strong>. Keep this code for logging in when your mobile belongs to multiple workshops.</p>
           {registered.setupDelivery === 'password_created' ?
             <p className="login-description">Your password is ready. Sign in with your mobile number and password; no OTP is required.</p> :
-            <p className="login-description">The secure password setup link will be sent through the selected configured delivery channel.</p>}
+            <p className="login-description">{registered.setupDelivery === 'platform_whatsapp_pending'
+              ? 'Your password invitation is pending official WhatsApp delivery. The registration confirmation does not mean the message was delivered.'
+              : 'Check the registered contact method for your secure setup link. Contact support if it does not arrive.'}</p>}
           <Link className="login-submit" to="/login">Go to Login</Link>
         </> : <>
           <h1 className="login-title">Create a workshop</h1>
