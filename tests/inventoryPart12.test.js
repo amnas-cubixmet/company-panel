@@ -44,3 +44,14 @@ test('Part 12 transfer and physical count forms are responsive and stay accessib
   assert.match(css, /overflow: auto/);
   assert.match(css, /height: 44px/);
 });
+
+test('Category management uses the real main/subcategory API and product picker', () => {
+  const tree = source('src/components/stock/InventoryCategories.jsx');
+  const page = source('src/pages/stock/StockEasyPage.jsx');
+  assert.match(tree, /apiClient\.post\('\/stock\/categories'/);
+  assert.match(tree, /Add Main Category/);
+  assert.match(tree, /Add Subcategory/);
+  assert.match(tree, /parent: parent \|\| null/);
+  assert.match(page, /<InventoryCategories onChanged=\{reload\}/);
+  assert.match(page, /x\.parentName/);
+});
