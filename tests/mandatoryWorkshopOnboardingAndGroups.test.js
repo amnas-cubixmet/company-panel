@@ -12,7 +12,7 @@ test('new signup is locked into sole fullscreen onboarding until completed', () 
   assert.match(route, /location\.pathname === '\/onboarding'\s*\? <Outlet \/>/);
   assert.match(route, /<Navigate to="\/onboarding" replace \/>/);
   const wizard = source('src/pages/saas/OwnerOnboarding.jsx');
-  assert.match(wizard, /\{state\.completed && <Link[^>]*Return to account/);
+  assert.match(wizard, /\{state\.completed && <Link[^>]*>Return to account/);
   assert.doesNotMatch(wizard, /Finish later/);
   assert.match(wizard, /<main className="cg-setup">/);
   assert.match(wizard, /<form onSubmit=\{submit\}>/);
@@ -22,7 +22,7 @@ test('mandatory account details and wallet credit balance are server sourced', (
   const wizard = source('src/pages/saas/OwnerOnboarding.jsx');
   assert.match(wizard, /state\.account\?\.companyName/);
   assert.match(wizard, /state\.account\?\.ownerName/);
-  assert.match(wizard, /state\.account\?\.walletBalanceCredits/);
+  assert.match(wizard, /state\.account\.walletBalanceCredits/);
   assert.match(wizard, /Read-only balance from CubeGears billing/);
   assert.match(wizard, /window\.location\.replace\('\/account'\)/);
 });
