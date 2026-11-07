@@ -29,3 +29,12 @@ test('signup never claims that an unconfirmed WhatsApp message was delivered', (
   assert.match(signup, /response\.status === 429/);
   assert.doesNotMatch(signup, /setupLink: data/);
 });
+
+test('invalid credentials are shown once, without duplicate field errors', () => {
+  const login = read('src/pages/auth/Login.jsx');
+  assert.match(login, /setFormError\(error\?\.status === 429/);
+  assert.match(login, /backendFields\.identifier \? \{ identifier: backendFields\.identifier \}/);
+  assert.match(login, /backendFields\.password \? \{ password: backendFields\.password \}/);
+  assert.doesNotMatch(login, /identifier: credentialError, password: credentialError/);
+  assert.match(login, /generic invalid[\s\S]*credentials only once/);
+});

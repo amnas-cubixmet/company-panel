@@ -65,12 +65,12 @@ export const Login = () => {
       const needsSelection = Boolean(backendFields.workshop);
       setNeedsWorkshop(needsSelection || needsWorkshop);
       const hasFieldError = Boolean(backendFields.identifier || backendFields.password || backendFields.workshop);
+      // Show explicit field validation inline, but show generic invalid
+      // credentials only once in the form banner (not in three places).
       setFieldErrors({
         ...(backendFields.identifier ? { identifier: backendFields.identifier } : {}),
         ...(backendFields.workshop ? { workshop: backendFields.workshop } : {}),
         ...(backendFields.password ? { password: backendFields.password } : {}),
-        ...(!hasFieldError && [400, 401].includes(error?.status)
-          ? { identifier: credentialError, password: credentialError } : {}),
       });
       setFormError(error?.status === 429
         ? `Too many sign-in attempts. Try again${error?.retryAfterSeconds ? ` in ${error.retryAfterSeconds} seconds` : ' later'}.`
