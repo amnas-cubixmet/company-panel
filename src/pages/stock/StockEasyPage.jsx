@@ -5,6 +5,7 @@ import { USE_MOCK_API } from '../../api/apiConfig';
 import { AlertTriangle, Boxes, History, PackageMinus, PackagePlus, Plus, RefreshCw, Search, ShoppingCart, Wrench } from 'lucide-react';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { stockCatalogService } from '../../services/stockCatalog.service';
+import InventoryBranchOperations from '../../components/stock/InventoryBranchOperations';
 import { supplierService } from '../../services/supplier.service';
 import { invoiceLineTaxChoices, invoiceTotalRateFromChoice } from '../../utils/invoiceTaxUi';
 import '../../styles/stock-easy.css';
@@ -85,7 +86,8 @@ function RackCombobox({ value, onChange, suggestions }) {
   </div>;
 }
 
-const initialMove = { mode: 'in', itemId: '', quantity: '1', invoiceNo: '', notes: '', costPrice: '', sellingPrice: '', priceMode: '' };
+const inventoryRequestKey = () => globalThis.crypto?.randomUUID?.() || `stock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const initialMove = { mode: 'in', itemId: '', quantity: '1', invoiceNo: '', notes: '', costPrice: '', sellingPrice: '', priceMode: '', requestKey: '' };
 
 function stockState(item) {
   const available = number(item.available ?? (number(item.onHand) - number(item.reserved)));
@@ -214,7 +216,7 @@ export default function StockEasyPage() {
     (total, item) => total + number(item.onHand) * number(item.costPrice), 0
   );
   const selected = items.find((item) => String(item.id) === String(move.itemId));
-  const selectedAvailable = selected ? number(selected.available ?? (number(selected.onHand) - number(selected.reserved))) : 0;
+  const selectedAvailable = selected ? number(selected.branchAvailable ?? selected.available ?? (number(selected.onHand) - number(selected.reserved))) : 0;
   const matchingParts = useMemo(() => items.filter((item) =>
     [item.partName, item.partNumber, item.sku, item.barcode, item.brand].join(' ').toLowerCase().includes(partLookup.trim().toLowerCase())
   ).slice(0, 8), [items, partLookup]);
@@ -280,7 +282,7 @@ export default function StockEasyPage() {
       });
       return;
     }
-    setMove({ ...initialMove, mode, itemId: String(itemId || ''),
+    setMove({ ...initialMove, mode, requestKey: inventoryRequestKey(), itemId: String(itemId || ''),
       costPrice: item ? String(item.costPrice ?? 0) : '',
       sellingPrice: item ? String(item.sellingPrice ?? 0) : '' });
     setMoveLookup(item?.partName || item?.name || '');
@@ -405,7 +407,7 @@ export default function StockEasyPage() {
     setError('');
     try {
       const payload = {
-        itemId: selected.id, quantity: move.quantity,
+        itemId: selected.id, quantity: move.quantity, requestKey: move.requestKey,
         notes: move.notes.trim(),
         ...(move.mode === 'in' ? { invoiceNo: move.invoiceNo.trim(),
           costPrice: move.costPrice, sellingPrice: move.sellingPrice,
@@ -475,6 +477,8 @@ export default function StockEasyPage() {
         <a href="#stock-history"><History size={19}/><span>Stock History</span></a>
         <Link to="/suppliers"><ShoppingCart size={19}/><span>Suppliers</span></Link>
       </section>
+
+      <InventoryBranchOperations onChanged={reload}/>
 
       <section className="cg-easy-panel">
         <div className="cg-easy-panel-header">
