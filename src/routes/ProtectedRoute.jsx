@@ -55,6 +55,21 @@ export const ProtectedRoute = () => {
     return <Navigate to={`/login?next=${next}`} replace />;
   }
 
+  // New workshop owners cannot visit any other page until Django confirms
+  // that all mandatory setup fields were saved. Render only the setup page:
+  // no workspace shell, sidebar, header or bottom navigation.
+  if (user?.onboardingRequired === true && user?.isCompanyOwner === true) {
+    return location.pathname === '/onboarding'
+      ? <Outlet />
+      : <Navigate to="/onboarding" replace />;
+  }
+
+  // Even on completed accounts the wizard is a focused full-screen page.
+  // Preserve owner-only access and avoid mounting the DashboardLayout.
+  if (location.pathname === '/onboarding' && user?.isCompanyOwner === true) {
+    return <Outlet />;
+  }
+
   if (featureAccess.loading) {
     return <div role="status" aria-live="polite" style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center' }}>Checking feature access…</div>;
   }
