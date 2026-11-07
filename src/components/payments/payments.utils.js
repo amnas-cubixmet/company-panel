@@ -45,7 +45,7 @@ export const invoiceOutstanding = (invoice, calculateTotals) => {
 
 export const payableInvoices = (invoices = [], calculateTotals) => invoices.filter(
   (row) => row.kind === 'invoice' &&
-    ['finalized', 'issued'].includes(String(row.status || '').toLowerCase()) &&
+    ['finalized', 'issued', 'partially paid', 'overdue'].includes(String(row.status || '').toLowerCase()) &&
     invoiceOutstanding(row, calculateTotals) > 0
 );
 
@@ -77,11 +77,27 @@ export const makePaymentPayload = (form, selectedInvoice, outstanding, mockMode 
       notes: String(form.notes || '').trim(),
     };
   }
+  if (form.receiptKind === 'advance') {
+    if (mockMode) throw new Error('Customer advances require the live backend API.');
+    if (!form.customerId) throw new Error('Select an existing customer for the advance.');
+    if (!form.accountId) throw new Error('Choose the receiving cash/UPI/bank account.');
+    if (!form.requestKey) throw new Error('The advance request must have a unique receipt key.');
+    return {
+      ...base,
+      direction: 'IN',
+      customer: form.customerId,
+      invoice: null,
+      category: 'Customer Advance',
+      notes: String(form.notes || '').trim(),
+    };
+  }
   if (!selectedInvoice) throw new Error('Select an invoice with an outstanding balance.');
   if (amount > outstanding + 0.000001)
     throw new Error('Amount exceeds the outstanding invoice balance.');
   if (!mockMode && !selectedInvoice.customerId)
     throw new Error('Invoice has no linked customer ID. Check its customer record.');
+  if (!mockMode && !form.accountId)
+    throw new Error('Choose the receiving cash/UPI/bank account.');
 
   return mockMode
     ? { ...base, customer: selectedInvoice.customer?.name || selectedInvoice.customerName || 'Customer',

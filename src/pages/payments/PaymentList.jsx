@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, CheckCircle2, ShieldCheck } from "lucide-react";
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { resourceConfigs } from '../operations/resourceConfigs';
 import { billingService, calculateDocumentTotals } from '../../services/billing.service';
+import { customerService } from '../../services/customer.service';
 import { USE_MOCK_API } from '../../api/apiConfig';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { appConfirm, appPrompt } from '../../components/common/appDialogs';
@@ -30,7 +31,8 @@ const dateLocal = () => {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 };
 const freshPayment = () => ({
-  date: dateLocal(), invoiceId: '', method: 'Cash', amount: '', reference: '',
+  date: dateLocal(), invoiceId: '', customerId: '', receiptKind: 'invoice',
+  method: 'Cash', amount: '', reference: '',
   direction: 'IN', accountId: '', category: 'Other', notes: '',
   requestKey: globalThis.crypto?.randomUUID?.() || `receipt-${Date.now()}-${Math.random()}`
 });
@@ -56,6 +58,7 @@ export function PaymentList() {
   const canCreate = can('payments.create');
   const canReverse = can('payments.reverse') && !USE_MOCK_API;
   const canViewInvoices = can('invoices.view');
+  const canViewCustomers = can('customers.view');
   const canViewPayments = can('payments.view');
   const canManageAccounts = can('payments.edit') && !USE_MOCK_API;
 
@@ -72,6 +75,9 @@ export function PaymentList() {
   const [financeLoading, setFinanceLoading] = useState(false);
   const [financeError, setFinanceError] = useState('');
   const [invoices, setInvoices] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const prefilledCustomerQuery = useRef('');
+  const prefilledInvoiceQuery = useRef('');
   const [accounts, setAccounts] = useState([]);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -88,21 +94,25 @@ export function PaymentList() {
     try {
       // Reading payment history does not imply permission to read invoices.
       const useUnified = canViewPayments && !USE_MOCK_API && !isNew && !isView;
-      const [paymentRows, invoiceRows] = await Promise.all([
+      const [paymentRows, invoiceRows, customerRows] = await Promise.all([
         !canViewPayments ? Promise.resolve([]) :
           useUnified ? financeService.getPaymentActivity({ page_size: 1000 }) : paymentService.list(),
         isNew && canCreate && canViewInvoices ? billingService.list() : Promise.resolve([]),
+        isNew && canCreate && canViewCustomers && !USE_MOCK_API
+          ? customerService.getCustomers({ status: 'active' }).catch(() => [])
+          : Promise.resolve([]),
       ]);
       const history = useUnified ? paymentRows?.results : paymentRows;
       setPayments((Array.isArray(history) ? history : []).map(normalizePaymentRow));
       setSupplierSummary(useUnified ? paymentRows : null);
       setInvoices(Array.isArray(invoiceRows) ? invoiceRows : invoiceRows?.results || []);
+      setCustomers(Array.isArray(customerRows) ? customerRows : customerRows?.results || []);
     } catch (e) {
       setError(friendlyError(e, 'Unable to load payments.'));
     } finally {
       setLoading(false);
     }
-  }, [isNew, canCreate, canViewInvoices, canViewPayments]);
+  }, [isNew, canCreate, canViewInvoices, canViewCustomers, canViewPayments]);
 
   useEffect(() => { load(); }, [load, refreshKey]);
 
@@ -178,15 +188,29 @@ export function PaymentList() {
   useEffect(() => {
     if (!isNew || loading || !canCreate || !canViewInvoices) return;
     const requestedId = new URLSearchParams(location.search).get('invoiceId');
-    if (!requestedId || String(form.invoiceId) === requestedId) return;
+    if (!requestedId || prefilledInvoiceQuery.current === requestedId) return;
     const linked = eligibleInvoices.find((row) => String(row.id) === requestedId);
     if (linked) {
+      prefilledInvoiceQuery.current = requestedId;
       setForm((previous) => ({
-        ...previous, invoiceId: requestedId,
+        ...previous, receiptKind: 'invoice', customerId: '',
+        invoiceId: requestedId,
         amount: invoiceOutstanding(linked, calculateDocumentTotals).toFixed(2),
       }));
     }
-  }, [isNew, loading, canCreate, canViewInvoices, location.search, eligibleInvoices, form.invoiceId]);
+  }, [isNew, loading, canCreate, canViewInvoices, location.search, eligibleInvoices]);
+
+  useEffect(() => {
+    if (!isNew || loading || !canCreate || !canViewCustomers || USE_MOCK_API) return;
+    const requestedId = new URLSearchParams(location.search).get('customerId');
+    if (!requestedId || prefilledCustomerQuery.current === requestedId) return;
+    if (!customers.some((row) => String(row.id) === requestedId)) return;
+    prefilledCustomerQuery.current = requestedId;
+    setForm((previous) => ({
+      ...previous, receiptKind: 'advance', customerId: requestedId,
+      invoiceId: '', amount: '',
+    }));
+  }, [isNew, loading, canCreate, canViewCustomers, location.search, customers]);
 
   const selectedInvoice = eligibleInvoices.find((row) => String(row.id) === form.invoiceId);
   const outstanding = selectedInvoice ? invoiceOutstanding(selectedInvoice, calculateDocumentTotals) : 0;
@@ -250,8 +274,8 @@ export function PaymentList() {
         <header className="payments-head">
           <div>
             <span className="payments-kicker">FINANCIAL PAYMENTS</span>
-            <h1>Record Payment</h1>
-            <p>Receive customer invoice payments into an account; choose the correct linked module for supplier, expense and payroll payouts.</p>
+            <h1>Record Customer Payment</h1>
+            <p>Receive a partial invoice payment or a customer advance into a real Cash, UPI or Bank account. Adjust unused advances on the customer's ledger.</p>
             <div className="payment-form-actions">
               <button type="button" className="payments-secondary-btn" onClick={() => navigate('/expenses')}>
                 Pay Workshop Expense
@@ -272,21 +296,54 @@ export function PaymentList() {
           <form className="payment-form-card" onSubmit={save}>
             <div className="payment-form-intro">
               <h2>Payment Details</h2>
-              <p>Invoice receipts update outstanding balances. Outgoing payments debit the selected internal account.</p>
+              <p>Invoice receipts reduce the unpaid balance. Advances remain customer credit until explicitly applied or refunded. Outgoing payments debit the selected account.</p>
             </div>
             <div className="payment-form-grid">
               <label className="payment-wide">
                 <span>Payment Direction *</span>
                 <select value={form.direction} disabled={saving} onChange={(e) => setForm({
-                  ...form, direction: e.target.value, invoiceId: '', amount: ''
+                  ...form, direction: e.target.value, receiptKind: 'invoice',
+                  customerId: '', invoiceId: '', amount: ''
                 })}>
                   <option value="IN">Receive Customer Payment</option>
                   {!USE_MOCK_API && <option value="OUT">Make Outgoing Payment</option>}
                 </select>
               </label>
-              <label className="payment-wide" style={{ display: form.direction === 'OUT' ? 'none' : undefined }}>
+              {form.direction === 'IN' && !USE_MOCK_API && (
+                <label className="payment-wide">
+                  <span>Customer Receipt Type *</span>
+                  <select value={form.receiptKind} disabled={saving}
+                    onChange={(event) => setForm((old) => ({
+                      ...old, receiptKind: event.target.value, invoiceId: '',
+                      customerId: '', amount: '',
+                    }))}>
+                    <option value="invoice">Invoice Payment / Partial Settlement</option>
+                    <option value="advance">Customer Advance / Unapplied Credit</option>
+                  </select>
+                </label>
+              )}
+              {form.direction === 'IN' && form.receiptKind === 'advance' && (
+                <label className="payment-wide">
+                  <span>Advance Customer *</span>
+                  <select required value={form.customerId} disabled={saving}
+                    onChange={(event) => setForm((old) => ({
+                      ...old, customerId: event.target.value, amount: '',
+                    }))}>
+                    <option value="">Select customer</option>
+                    {customers.map((customer) => (
+                      <option key={customer.id} value={customer.id}>
+                        {customer.name} · {customer.phone || 'No phone'}
+                      </option>
+                    ))}
+                  </select>
+                  {!canViewCustomers && <small>Customer view permission is required to select an advance customer.</small>}
+                  {canViewCustomers && customers.length === 0 && <small>No active customers found. Add a customer before recording an advance.</small>}
+                </label>
+              )}
+              <label className="payment-wide" style={{ display: form.direction === 'IN' && form.receiptKind === 'invoice' ? undefined : 'none' }}>
                 <span>Invoice with Outstanding Balance *</span>
-                <select required={form.direction !== "OUT"} value={form.invoiceId} onChange={(e) => changeInvoice(e.target.value)} disabled={saving}>
+                <select required={form.direction === 'IN' && form.receiptKind === 'invoice'} value={form.invoiceId}
+                  onChange={(e) => changeInvoice(e.target.value)} disabled={saving || form.receiptKind !== 'invoice'}>
                   <option value="">Select invoice</option>
                   {eligibleInvoices.map((invoice) => (
                     <option key={invoice.id} value={invoice.id}>
@@ -297,11 +354,11 @@ export function PaymentList() {
                 {eligibleInvoices.length === 0 && <small>No unpaid finalized invoices found.</small>}
               </label>
 
-              <label style={{ display: form.direction === 'OUT' ? 'none' : undefined }}>
+              <label style={{ display: form.direction === 'IN' && form.receiptKind === 'invoice' ? undefined : 'none' }}>
                 <span>Customer</span>
                 <input value={invoiceCustomer(selectedInvoice)} readOnly placeholder="Select invoice" />
               </label>
-              <label style={{ display: form.direction === 'OUT' ? 'none' : undefined }}>
+              <label style={{ display: form.direction === 'IN' && form.receiptKind === 'invoice' ? undefined : 'none' }}>
                 <span>Outstanding Balance</span>
                 <input value={selectedInvoice ? money.format(outstanding) : '—'} readOnly />
               </label>
@@ -311,8 +368,8 @@ export function PaymentList() {
               </label>
               <label>
                 <span>Payment Amount (₹) *</span>
-                <input type="number" required min="0.01" max={form.direction === "IN" && selectedInvoice ? outstanding : undefined} step="0.01"
-                  inputMode="decimal" value={form.amount} disabled={saving || (form.direction === "IN" && !selectedInvoice)}
+                <input type="number" required min="0.01" max={form.direction === "IN" && form.receiptKind === 'invoice' && selectedInvoice ? outstanding : undefined} step="0.01"
+                  inputMode="decimal" value={form.amount} disabled={saving || (form.direction === "IN" && (form.receiptKind === 'advance' ? !form.customerId : !selectedInvoice))}
                   onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0.00" />
               </label>
               <label>
@@ -328,7 +385,7 @@ export function PaymentList() {
                   <option value="">Select account</option>
                   {accounts.filter((account) => account.isActive).map((account) => (
                     <option key={account.id} value={account.id}>
-                      {account.name} ({account.kind}) — {money.format(Number(account.currentBalance || 0))}
+                      {account.name} ({account.kind})
                     </option>
                   ))}
                 </select>
@@ -352,12 +409,12 @@ export function PaymentList() {
               </label>
               <div className="payment-form-confirmation payment-wide">
                 <ShieldCheck size={17} aria-hidden="true" />
-                <span>Payment status: <strong>Completed</strong>. {form.direction === "OUT" ? "The chosen account will be debited." : "The invoice and selected account will be credited."} Posted payments must be reversed through the authorized workflow.</span>
+                <span>Payment status: <strong>Completed</strong>. {form.direction === "OUT" ? "The chosen account will be debited." : form.receiptKind === 'advance' ? "The selected account receives funds; customer credit remains unapplied until allocated." : "The selected account receives funds and invoice due decreases."} Posted payments must be reversed through the authorized workflow.</span>
               </div>
             </div>
             <div className="payment-form-actions">
               <button type="button" className="payments-secondary-btn" onClick={() => navigate('/payments')} disabled={saving}>Cancel</button>
-              <button type="submit" className="payments-primary-btn" disabled={saving || (form.direction === "IN" && !selectedInvoice) || (!USE_MOCK_API && !form.accountId)}>
+              <button type="submit" className="payments-primary-btn" disabled={saving || (form.direction === "IN" && (form.receiptKind === 'advance' ? !form.customerId : !selectedInvoice)) || (!USE_MOCK_API && !form.accountId)}>
                 <CheckCircle2 size={16} aria-hidden="true" /> {saving ? 'Saving…' : 'Record Payment'}
               </button>
             </div>

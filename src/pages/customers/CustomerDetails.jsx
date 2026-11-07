@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { customerService } from '../../services/customer.service';
 import { CustomerTrackingLinkPanel } from '../../components/customers/CustomerTrackingLinkPanel';
 import { CustomerWhatsAppConsent } from '../../components/customers/CustomerWhatsAppConsent';
+import { CustomerCreditLedgerPanel } from '../../components/customers/CustomerCreditLedgerPanel';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/customer-tracking-link.css';
 import { paymentService } from '../../services/payment.service';
@@ -954,6 +955,8 @@ export const CustomerDetails = () => {
 
         {/* 11. PAYMENTS TAB */}
         {activeTab === 'payments' && (
+          <>
+          <CustomerCreditLedgerPanel customerId={customer.id} onChanged={loadCustomerData}/>
           <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
@@ -982,11 +985,14 @@ export const CustomerDetails = () => {
                       Date: {p.date} • Ref: {p.reference} • Recorded by: {p.recordedBy || '—'}
                     </div>
                   </div>
-                  <strong style={{ fontSize: '16px', color: 'var(--success)' }}>+{formatINR(p.amount)}</strong>
+                  <strong style={{ fontSize: '16px', color: p.direction === 'OUT' ? 'var(--danger)' : 'var(--success)' }}>
+                    {p.direction === 'OUT' ? '−' : '+'}{formatINR(p.amount)}
+                  </strong>
                 </div>
               ))}
             </div>
           </div>
+          </>
         )}
 
         {/* 12. NOTES TAB */}
@@ -1113,7 +1119,7 @@ export const CustomerDetails = () => {
             <option value="">Select Cash / Bank / UPI account</option>
             {payAccounts.map(account => (
               <option key={account.id} value={account.id}>
-                {account.name} ({account.kind}) — ₹{Number(account.currentBalance || 0).toLocaleString('en-IN')}
+                {account.name} ({account.kind})
               </option>
             ))}
           </Select>
