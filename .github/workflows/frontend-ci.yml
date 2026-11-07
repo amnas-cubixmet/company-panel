@@ -24,6 +24,12 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - name: Verify npm production configuration gate
+        run: npm run check:production-env
+        env:
+          # Syntax-only CI host; live deployment still needs real API domain.
+          VITE_API_URL: https://api.cubegears.app/api/v1
+          VITE_USE_MOCK_API: "false"
       - run: npm run build
         env:
           # Harmless build-only placeholder; deployment must supply its real API URL.
