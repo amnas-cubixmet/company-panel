@@ -1,5 +1,6 @@
 import { lazyPage } from './lazyPage';
 const OwnerCompanyProfile = lazyPage(() => import('../pages/saas/OwnerCompanyProfile'), 'OwnerCompanyProfile');
+const OwnerOnboarding = lazyPage(() => import('../pages/saas/OwnerOnboarding'), 'OwnerOnboarding');
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getStaffLandingPath } from '../utils/staffLanding';
@@ -263,6 +264,7 @@ export const AppRoutes = () => (
       <Route path="/account/credits/features" element={<Navigate to="/account/credits" replace />} />
       <Route path="/account/credits/logs" element={<CreditWorkspace section="logs" />} />
       <Route path="/account/company" element={<OwnerCompanyProfile />} />
+      <Route path="/onboarding" element={<OwnerOnboarding />} />
       <Route path="/account/billing" element={<Navigate to="/account" replace />} />
       <Route path="/account/plans" element={<Navigate to="/account/credits" replace />} />
       <Route path="/account/storage" element={<SaaSAccount section="storage" />} />
