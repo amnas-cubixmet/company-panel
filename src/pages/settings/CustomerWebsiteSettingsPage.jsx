@@ -83,7 +83,7 @@ export default function CustomerWebsiteSettingsPage(){
     }
     if(label===subdomainLabel)return;
     if(!await appConfirm(
-      'Change your default website address? Existing links using the previous subdomain will need to be sent again.'
+      'Change your default website address? Existing customer links using the previous subdomain will need to be sent again.'
     ))return;
     setSubdomainSaving(true);setError('');setNotice('');
     try{
