@@ -665,17 +665,6 @@ export function InvoiceRoutePage() {
     />
   ) : null;
 
-  const deleteDocument = async () => {
-    setSaving(true);
-    try {
-      await billingService.remove(id);
-      navigate('/invoices', { replace: true });
-    } catch (e) {
-      setError(e?.message || 'Unable to delete document.');
-      setSaving(false);
-    }
-  };
-
   if (mode === 'list') return (
     <div className="billing-page billing-list-dashboard invoice-dashboard">
       <InvoiceListHeader
@@ -719,7 +708,6 @@ export function InvoiceRoutePage() {
         onView={(document) => navigate(`/invoices/${document.id}`)}
         onPdf={(document) => downloadPdf(document)}
         onEdit={(document) => navigate(`/invoices/${document.id}/edit`)}
-        onDelete={(document) => navigate(`/invoices/${document.id}/delete`)}
       />
       {shareSheet}
     </div>
@@ -744,7 +732,7 @@ export function InvoiceRoutePage() {
 
         <div className="billing-head-actions">
           {form.kind === "invoice" && (form.finalizedAt || ["Finalized", "Paid", "Issued"].includes(form.status)) && form.status !== "Cancelled" && <WhatsAppManualShareButton targetType="invoice" targetId={form.id || id} />}
-          {form.status !== 'Converted' && (
+          {form.status === 'Draft' && (
             <button className="bill-btn secondary" onClick={() => navigate(`/invoices/${id}/edit`)}>
               <Edit3 size={16}/>Edit
             </button>
@@ -776,7 +764,7 @@ export function InvoiceRoutePage() {
             <Download size={16}/>{pdfLoading ? 'Generating PDF…' : 'Download Invoice PDF'}
           </button>
 
-          {form.status !== 'Cancelled' && form.status !== 'Converted' && (
+          {form.status === 'Draft' && (
             <button className="bill-btn secondary" disabled={saving} onClick={cancelDocument}>
               <XCircle size={16}/>Cancel
             </button>
