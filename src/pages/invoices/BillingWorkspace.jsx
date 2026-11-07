@@ -188,7 +188,7 @@ export function BillingWorkspace() {
             {form.kind === 'estimate' && form.id && <button className="bill-btn secondary" onClick={convertToInvoice}><CopyPlus size={16}/> Convert to Invoice</button>}
             <button className="bill-btn" onClick={finalize}><CheckCircle2 size={16}/> {form.kind === 'estimate' ? 'Issue Estimate' : 'Finalize Invoice'}</button>
             <button className="bill-btn secondary" onClick={() => window.print()}><Printer size={16}/> Print / PDF</button>
-            {form.id && form.status !== 'Cancelled' && <button className="bill-btn danger" onClick={cancel}><XCircle size={16}/> Cancel</button>}
+            {form.id && form.status === 'Draft' && <button className="bill-btn danger" onClick={cancel}><XCircle size={16}/> Cancel Draft</button>}
           </div>
         </div>
 
@@ -275,7 +275,7 @@ export function BillingWorkspace() {
               <strong>{totals.taxMode === 'cgst_sgst' ? 'CGST + SGST / UTGST' : totals.taxMode === 'igst' ? 'IGST' : 'Select place of supply'}</strong>
               <small>Item GST rates are calculated automatically for the selected State / UT.</small>
             </div>}
-            <label>Paid ₹<input type="number" min="0" value={form.paid || 0} onChange={(e) => update('paid', Number(e.target.value))}/></label>
+            <label>Received ₹ (posted payments)<input type="text" value={money.format(Number(form.paid || 0))} readOnly title="Customer receipts must be recorded in the Payments module."/><small>Record actual Cash/UPI/Bank receipts in Customer Payments after finalizing.</small></label>
             <label>Payment Mode<select value={form.paymentMode} onChange={(e) => update('paymentMode', e.target.value)}><option>Cash</option><option>UPI</option><option>Card</option><option>Bank Transfer</option><option>Cheque</option></select></label>
           </div>
         </section>
