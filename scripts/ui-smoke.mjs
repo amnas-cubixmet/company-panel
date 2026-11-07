@@ -124,6 +124,8 @@ function fixture(path) {
     if(row) return {...row, photo:'', ...(resource==='invoices'?{items:[],invoiceType:'non-gst'}:{})};
   }
   if(path==='/saas/credits/access') return {companyId:'company-a',permissions,enabledModules:permissions.map(code=>code.split('.')[0]),freeModules:['dashboard','staff','settings','roles','billing'],enforcementEnabled:true,isCompanyOwner:true,canManageFeatures:true};
+  // Simulate the existing Django health contract in isolated UI fixture mode.
+  if(path==='/health') return {status:'ok',service:'cubegears-backend',api_version:'v1'};
   if(path==='/dashboard') return structuredClone(dashboardMock);
   if(path==='/settings') return settings;
   if(path.startsWith('/settings/')) return settings[path.split('/').pop()] || {};
