@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, ChevronDown, ClipboardList, Download, Package, Pencil, Plus, ReceiptText, Trash2, Wrench, SkipForward } from 'lucide-react';
 import { jobService } from '../../services/job.service';
+import { WhatsAppManualShareButton } from '../common/WhatsAppManualShareButton';
 import { serviceService } from '../../services/service.service';
 import { stockCatalogService } from '../../services/stockCatalog.service';
 import { EstimateCatalogPicker } from './EstimateCatalogPicker';
@@ -652,10 +653,19 @@ export function QuickEstimatePanel({
                   <SkipForward size={16} aria-hidden="true"/> Skip Estimate
                 </button>
               {latest?.status === 'Awaiting Customer' ? (
-                <button type="button" className="job-quick-outline"
-                  disabled={busy || skipBusy} onClick={withdrawReview}>
-                  {busy ? 'Please wait…' : 'Withdraw from customer review'}
-                </button>
+                <>
+                  <div className="job-quote-whatsapp">
+                    <WhatsAppManualShareButton
+                      targetType="estimate" targetId={latest.id}
+                      label="Send Estimate via WhatsApp"
+                    />
+                    <small>Manual option: review the prepared message and press Send in WhatsApp. Automatic alerts require customer consent and an approved template.</small>
+                  </div>
+                  <button type="button" className="job-quick-outline"
+                    disabled={busy || skipBusy} onClick={withdrawReview}>
+                    {busy ? 'Please wait…' : 'Withdraw from customer review'}
+                  </button>
+                </>
               ) : (
                 <>
                   {latest?.status !== 'Customer Approved' && onShare && (
