@@ -48,6 +48,13 @@
 .backend-connection-banner button:disabled { opacity: .7; cursor: progress; }
 .backend-connection-banner button:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
 
+/* The bottom navigation remains clickable on phones during an API outage. */
+@media (max-width: 768px) {
+  .backend-connection-banner {
+    bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 @media (max-width: 480px) {
   .backend-connection-banner { gap: 8px; padding: 10px; }
   .backend-connection-copy strong { font-size: 13px; }
