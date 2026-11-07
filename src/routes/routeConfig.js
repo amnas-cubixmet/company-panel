@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Clock, UserCheck, Users, DollarSign, UserPlus, Car, Wrench, Coins,
-  ClipboardList, Boxes, FileText, CreditCard, Receipt, BarChart3, Bell, Settings, Globe2, Truck, FileCheck2
+  ClipboardList, Boxes, FileText, CreditCard, Receipt, BarChart3, Bell, Settings, Globe2, Truck, FileCheck2, TrendingUp
 } from 'lucide-react';
 
 export const ROUTE_SECTIONS = {
@@ -47,6 +47,7 @@ export const routeConfig = [
   { id: 'gstr', label: 'GSTR', path: '/gstr', icon: FileCheck2, section: ROUTE_SECTIONS.FINANCE, mobilePrimary: false, permission: 'gstr.view' },
   { id: 'payments', label: 'Payments', path: '/payments', icon: CreditCard, section: ROUTE_SECTIONS.FINANCE, mobilePrimary: false, permission: 'payments.view' },
   { id: 'expenses', label: 'Expenses', path: '/expenses', icon: Receipt, section: ROUTE_SECTIONS.FINANCE, mobilePrimary: false, permission: 'expenses.view' },
+  { id: 'finance', label: 'Finance', path: '/finance', icon: TrendingUp, section: ROUTE_SECTIONS.FINANCE, mobilePrimary: false, permission: 'payments.view' },
   { id: 'reports', label: 'Reports & BI', path: '/reports', icon: BarChart3, section: ROUTE_SECTIONS.ANALYTICS_SYSTEM, mobilePrimary: false, permission: 'reports.view' },
   { id: 'notifications', label: 'Notifications', path: '/notifications', icon: Bell, section: ROUTE_SECTIONS.ANALYTICS_SYSTEM, mobilePrimary: false, permission: 'notifications.view' },
   { id: 'settings', label: 'Settings', path: '/settings', icon: Settings, section: ROUTE_SECTIONS.ANALYTICS_SYSTEM, mobilePrimary: false, permission: 'settings.view' },

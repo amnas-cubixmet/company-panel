@@ -56,6 +56,10 @@ const InvoiceList = lazyPage(() => import('../pages/invoices/InvoiceList'), 'Inv
 const EWayBillPage = lazyPage(() => import('../pages/invoices/EWayBillPage'), 'EWayBillPage');
 const PaymentList = lazyPage(() => import('../pages/payments/PaymentList'), 'PaymentList');
 const ExpenseList = lazyPage(() => import('../pages/expenses/ExpenseList'), 'ExpenseList');
+const FinanceDashboard = lazyPage(() => import('../pages/finance/FinanceDashboard'), 'FinanceDashboard');
+const AccountsPage = lazyPage(() => import('../pages/finance/AccountsPage'), 'AccountsPage');
+const TransfersPage = lazyPage(() => import('../pages/finance/TransfersPage'), 'TransfersPage');
+const TransactionsPage = lazyPage(() => import('../pages/finance/TransactionsPage'), 'TransactionsPage');
 const Reports = lazyPage(() => import('../pages/reports/Reports'), 'Reports');
 const GSTRDashboard = lazyPage(() => import('../pages/gstr/GSTRDashboard'), 'default');
 const Notifications = lazyPage(() => import('../pages/notifications/Notifications'), 'Notifications');
@@ -239,6 +243,14 @@ export const AppRoutes = () => (
       <Route path="/expenses/:id" element={<ExpenseList />} />
       <Route path="/expenses/:id/edit" element={<ExpenseList />} />
       <Route path="/expenses/:id/delete" element={<ExpenseList />} />
+
+      <Route path="/finance" element={<FinanceDashboard />} />
+      <Route path="/finance/accounts" element={<AccountsPage />} />
+      <Route path="/finance/accounts/new" element={<AccountsPage />} />
+      <Route path="/finance/accounts/:id" element={<AccountsPage />} />
+      <Route path="/finance/transfers" element={<TransfersPage />} />
+      <Route path="/finance/transfers/new" element={<TransfersPage />} />
+      <Route path="/finance/transactions" element={<TransactionsPage />} />
 
       <Route path="/gstr" element={<GSTRDashboard />} />
       <Route path="/reports" element={<Reports />} />
