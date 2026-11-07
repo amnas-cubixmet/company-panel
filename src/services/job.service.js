@@ -286,6 +286,17 @@ export const skipJobEstimate = async (id, { reason, details = '' }) => {
   return apiClient.post(`${API_ENDPOINTS.JOBS}/${id}/estimate/skip`, { reason, details });
 };
 
+export const shareJobEstimate = async (jobId, estimateId, action = 'share') => {
+  if (USE_MOCK_API) throw new Error('Customer estimate sharing needs the live backend.');
+  if (!jobId || !estimateId || !['share', 'withdraw'].includes(action)) {
+    throw new Error('Select a valid estimate and sharing action.');
+  }
+  return apiClient.post(
+    `${API_ENDPOINTS.JOBS}/${encodeURIComponent(jobId)}/estimates/${encodeURIComponent(estimateId)}/share`,
+    { action }
+  );
+};
+
 export const rejectJobEstimate = async (id, estimateId) => {
   if (USE_MOCK_API) throw new Error('Use existing mock estimate workflow in demo mode.');
   return apiClient.post(`${API_ENDPOINTS.JOBS}/${id}/estimates/${estimateId}/decision`, { decision: 'Rejected' });
@@ -329,6 +340,7 @@ export const jobService = {
   saveQuickJobEstimate,
   skipJobEstimate,
   rejectJobEstimate,
+  shareJobEstimate,
   deleteJob,
   getVehicleHistory,
   getAll: getJobs,
