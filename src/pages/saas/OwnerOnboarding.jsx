@@ -11,26 +11,26 @@ const STEPS = [
     key: 'company', title: 'Workshop details', subtitle: 'Legal name, address and GST registration',
     fields: [
       ['name', 'Workshop / Company Name', 'text', true],
-      ['legal_name', 'Legal Business Name', 'text'],
-      ['phone', 'Workshop Contact Number', 'tel'],
+      ['legal_name', 'Legal Business Name', 'text', true],
+      ['phone', 'Workshop Contact Number', 'tel', true],
       ['email', 'Official Email', 'email'],
-      ['gstin', 'GSTIN (optional)', 'text'],
-      ['address', 'Registered Address', 'textarea'],
-      ['city', 'City', 'text'],
-      ['state', 'State', 'text'],
-      ['country', 'Country', 'text'],
-      ['pincode', 'PIN / Postal Code', 'text'],
+      ['gstin', 'GSTIN (unless exempt)', 'text', true],
+      ['address', 'Registered Address', 'textarea', true],
+      ['city', 'City', 'text', true],
+      ['state', 'State', 'text', true],
+      ['country', 'Country', 'text', true],
+      ['pincode', 'PIN / Postal Code', 'text', true],
     ],
   },
   {
     key: 'branch', title: 'Main branch & location', subtitle: 'Configure your actual workshop address and punch location',
     fields: [
       ['name', 'Main Branch Name', 'text', true],
-      ['phone', 'Branch Contact Number', 'tel'],
-      ['address', 'Branch Address', 'textarea'],
-      ['city', 'City', 'text'],
+      ['phone', 'Branch Contact Number', 'tel', true],
+      ['address', 'Branch Address', 'textarea', true],
+      ['city', 'City', 'text', true],
       ['state', 'State', 'text', true],
-      ['pincode', 'PIN / Postal Code', 'text'],
+      ['pincode', 'PIN / Postal Code', 'text', true],
       ['latitude', 'Workshop Latitude', 'number'],
       ['longitude', 'Workshop Longitude', 'number'],
       ['punchRadiusMeters', 'Punch Radius (metres)', 'number'],
@@ -73,7 +73,12 @@ const apiDataFor = (step, draft) => {
       values[name] = String(input ?? '').trim();
     }
   }
-  // GST is optional; a missing default tax selection is not an API number.
+  // A workshop without GST registration must explicitly confirm that fact.
+  if (step.key === 'company') {
+    values.gstNotRegistered = Boolean(draft?.gstNotRegistered);
+    if (values.gstNotRegistered) values.gstin = '';
+  }
+  // A missing default tax selection is not an API number.
   if (step.key === 'billing' && values.defaultTaxRate == null) {
     values.defaultTaxRate = '0';
   }
@@ -111,6 +116,15 @@ export function OwnerOnboarding() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const updateGstExemption = (checked) => {
+    setDrafts(previous => ({
+      ...previous,
+      company: { ...(previous.company || {}), gstNotRegistered: checked,
+        gstin: checked ? '' : previous.company?.gstin || '' },
+    }));
+    setError('');
+  };
 
   const update = (field, value) => {
     setDrafts(previous => ({
@@ -177,8 +191,29 @@ export function OwnerOnboarding() {
           <h1>Set up your workshop</h1>
           <p>Real company settings saved securely to your workshop account. Continue where you left off.</p>
         </div>
-        <Link className="cg-setup-later" to="/account">Finish later</Link>
+        {state.completed && <Link className="cg-setup-later" to="/account">Return to account</Link>}
       </header>
+      <section className="cg-setup-account" aria-label="Your workshop account details">
+        <div>
+          <span>Registered workshop</span>
+          <strong>{state.account?.companyName || '—'}</strong>
+          <small>{state.account?.ownerName || user?.name || 'Workshop owner'}</small>
+        </div>
+        <div>
+          <span>Contact</span>
+          <strong>{state.account?.contactPhone || '—'}</strong>
+          <small>{state.account?.contactEmail || 'Mobile registration'}</small>
+        </div>
+        <div>
+          <span>Wallet balance</span>
+          <strong>{state.account?.walletAvailable
+            ? `${state.account.walletBalanceCredits} credits`
+            : 'Not available'}</strong>
+          <small>Read-only balance from CubeGears billing</small>
+        </div>
+      </section>
+      <p className="cg-setup-lock-note">Complete the required workshop details to unlock your Account,
+        Wallet, feature activation, Dashboard and workspace. No charges are made during setup.</p>
       <div className="cg-setup-progress" role="status" aria-live="polite">
         <strong>{completedCount} of {STEPS.length} steps saved</strong>
         <div className="cg-setup-progress-track"><span style={{ width: `${completedCount / STEPS.length * 100}%` }} /></div>
@@ -186,7 +221,7 @@ export function OwnerOnboarding() {
       <div className="cg-setup-layout">
         <nav aria-label="Workshop setup steps" className="cg-setup-nav">
           {STEPS.map((step, index) => (
-            <button key={step.key} type="button" disabled={saving}
+            <button key={step.key} type="button" disabled={saving || (index > active && !completed.has(step.key))}
               className={`cg-setup-step ${active === index ? 'is-current' : ''}`}
               aria-current={active === index ? 'step' : undefined}
               onClick={() => { setActive(index); setError(''); }}>
@@ -205,19 +240,21 @@ export function OwnerOnboarding() {
           {state.completed && <p role="status" className="cg-setup-done">
             Setup previously completed. You can update these settings at any time.
           </p>}
-          <form onSubmit={submit} noValidate>
+          <form onSubmit={submit}>
             <div className="cg-setup-fields">
               {current.fields.map(([key, label, type, required]) => (
                 <label key={key} className={type === 'textarea' ? 'cg-setup-wide' : ''}>
-                  <span className="cg-setup-label">{label}{required ? ' *' : ''}</span>
+                  <span className="cg-setup-label">{label}{required && !(key === 'gstin' && drafts.company?.gstNotRegistered) ? ' *' : ''}</span>
                   {type === 'textarea' ? (
-                    <textarea name={key} rows={3} maxLength={1200} value={drafts[current.key]?.[key] ?? ''}
+                    <textarea name={key} rows={3} maxLength={1200} required={Boolean(required)} value={drafts[current.key]?.[key] ?? ''}
                       onChange={e => update(key, e.target.value)}/>
                   ) : type === 'checkbox' ? (
                     <input name={key} type="checkbox" checked={Boolean(drafts[current.key]?.[key])}
                       onChange={e => update(key, e.target.checked)}/>
                   ) : (
-                    <input name={key} type={type} required={Boolean(required)}
+                    <input name={key} type={type}
+                      required={Boolean(required && !(key === 'gstin' && drafts.company?.gstNotRegistered))}
+                      disabled={key === 'gstin' && drafts.company?.gstNotRegistered}
                       inputMode={type === 'number' ? 'decimal' : undefined}
                       step={type === 'number' ? (integerFields.has(key) ? '1' : 'any') : undefined}
                       value={drafts[current.key]?.[key] ?? ''}
@@ -227,6 +264,14 @@ export function OwnerOnboarding() {
                 </label>
               ))}
             </div>
+            {current.key === 'company' && <label className="cg-setup-gst-exempt">
+              <input type="checkbox" name="gstNotRegistered"
+                checked={Boolean(drafts.company?.gstNotRegistered)}
+                onChange={event => updateGstExemption(event.target.checked)}/>
+              <span><strong>No GST registration</strong>
+                <small>Tick if your workshop does not have a GSTIN. Otherwise enter a valid 15-character GSTIN above.</small>
+              </span>
+            </label>}
             {current.key === 'branch' && <p className="cg-setup-help">
               <MapPin size={16}/> GPS coordinates are optional. Provide both latitude and longitude to configure location-aware attendance. Accuracy depends on the staff device.
             </p>}

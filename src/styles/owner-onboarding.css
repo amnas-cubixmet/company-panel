@@ -41,3 +41,20 @@
 .owner-company-setup-link { display: inline-flex; padding: 11px 14px; border-radius: 9px; text-decoration: none; border: 1px solid #0f766e; color: #0f766e; font-size: 13px; font-weight: 650; margin-top: 10px; }
 @media (max-width: 800px) { .cg-setup { padding: 18px 14px 90px; } .cg-setup-layout { grid-template-columns: 1fr; gap: 18px; } .cg-setup-nav { flex-direction: row; overflow-x: auto; gap: 7px; padding-bottom: 5px; } .cg-setup-step { min-width: 152px; width: auto; } }
 @media (max-width: 540px) { .cg-setup-heading { flex-direction: column; } .cg-setup-fields { grid-template-columns: 1fr; } .cg-setup-card { padding: 18px 15px; } .cg-setup-actions { flex-wrap: wrap; } .cg-setup-actions button { flex: 1; min-width: 135px; } }
+
+/* The setup route mounts without the dashboard sidebar/header/bottom nav. */
+.cg-setup { min-height: 100dvh; color: #123046; background: #f6fafc; }
+.cg-setup-account { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-bottom: 16px; }
+.cg-setup-account>div { display: flex; flex-direction: column; gap: 6px; min-width: 0; border: 1px solid #d9e7ef; border-radius: 14px; padding: 15px 17px; background: white; }
+.cg-setup-account span { font-size: 12px; font-weight: 650; color: #65758b; }
+.cg-setup-account strong { font-size: 17px; overflow-wrap: anywhere; }
+.cg-setup-account small { font-size: 12px; color: #69778b; overflow-wrap: anywhere; }
+.cg-setup-lock-note { margin: 0 0 20px; color: #486078; font-size: 13px; line-height: 1.6; }
+.cg-setup-gst-exempt { display: flex; gap: 12px; align-items: flex-start; margin: 16px 0 0; padding: 14px; border: 1px solid #bdd7e8; background: #f3f9fc; border-radius: 12px; cursor: pointer; }
+.cg-setup-gst-exempt input { width: 22px; height: 22px; flex: none; margin: 1px 0 0; accent-color: #096c90; }
+.cg-setup-gst-exempt span { display: flex; flex-direction: column; gap: 5px; }
+.cg-setup-gst-exempt strong { font-size: 14px; }
+.cg-setup-gst-exempt small { font-size: 12px; line-height: 1.5; color: #486078; }
+.cg-setup-fields input:disabled { background: #eaf0f4; opacity: .72; }
+.cg-setup-step:disabled { opacity: .48; cursor: not-allowed; }
+@media(max-width: 750px) { .cg-setup-account { grid-template-columns: 1fr; } .cg-setup-account>div { padding: 12px 14px; } }
