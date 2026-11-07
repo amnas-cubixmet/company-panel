@@ -217,7 +217,8 @@ export function QuickEstimatePanel({
         setShowValidation(true);
         throw new Error('Choose an applicable GST rate for each item before proceeding.');
       }
-      const draftId = latest?.status === 'Draft' && !stale ? latest.id : null;
+      const draftId = latest?.status === 'Draft' && !stale
+        ? latest.id : (!latest && !stale ? savedEstimateRef.current?.id || null : null);
       const payload = {
         lines: preparedLines.map(({ description, type, quantity, unitPrice, catalogId, taxRate, taxChoice, taxTreatment, taxTreatmentConfirmed, hsnSac }) => ({
           description: description.trim(), type, quantity, unitPrice,
