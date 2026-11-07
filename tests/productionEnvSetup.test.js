@@ -38,7 +38,7 @@ test('Production env validation rejects localhost, http and mock API', () => {
 test('Production env validation accepts verified-style HTTPS API URL with real data mode', () => {
   const result = spawnSync(process.execPath, ['scripts/verify-production-env.mjs'], {
     cwd: root,
-    env: { ...process.env, VITE_API_URL: 'https://api.cubegears.test/api/v1', VITE_USE_MOCK_API: 'false' },
+    env: { ...process.env, VITE_API_URL: 'https://api.cubegears.app/api/v1', VITE_USE_MOCK_API: 'false' },
     encoding: 'utf8',
     timeout: 12000,
   });
