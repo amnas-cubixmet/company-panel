@@ -115,9 +115,10 @@ export const StaffShiftCrud = ({ staff = [] }) => {
       return;
     }
 
-    if (form.assignedStaffIds.some((id) =>
-      !assignableStaff.some((person) => String(person.id) === String(id)
-    )) {
+    const hasInvalidStaff = form.assignedStaffIds.some((id) =>
+      !assignableStaff.some((person) => String(person.id) === String(id))
+    );
+    if (hasInvalidStaff) {
       setError('Selected staff must belong to the chosen shift branch.');
       return;
     }
