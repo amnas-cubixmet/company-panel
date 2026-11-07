@@ -448,6 +448,17 @@ export function CreditWorkspace({ section = 'overview' }) {
               <span className={bundle.active ? 'cg-credit-pill active' : 'cg-credit-pill'}>{bundle.active ? 'Active' : bundle.purchaseDisabledReason === 'FREE_MODULES_ONLY' ? 'Already free' : bundle.purchaseDisabledReason === 'MODULE_PRICE_NOT_SET' ? 'Price not set' : 'Inactive'}</span>
             </div>
             <p>{bundle.description || 'Existing workshop features grouped into one package.'}</p>
+            {(bundle.workflowPaths || []).map(path => (
+              <p key={path} className="cg-bundle-workflow"><strong>Connected workflow:</strong> {path}</p>
+            ))}
+            {bundle.workflowDependencies?.length > 0 && (
+              <p className="cg-bundle-workflow">
+                <strong>Works with:</strong> {bundle.workflowDependencies.map(key => ({
+                  workshop_operations: 'Workshop Operations', accounts_tax: 'Accounts & Tax',
+                  attendance_payroll: 'Attendance & Payroll', business_insights: 'Reports & Analytics',
+                }[key] || key.replaceAll('_',' '))).join(', ')}
+              </p>
+            )}
             <div className="cg-bundle-price">
               {bundle.purchaseDisabledReason === 'FREE_MODULES_ONLY'
                 ? <><span>Included free</span><strong>0 <small>credits — no purchase needed</small></strong></>
