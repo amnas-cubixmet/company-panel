@@ -439,7 +439,10 @@ export function JobCardWorkspace() {
     if (!workflow || saving) return;
     const options = { ...extraOptions };
     if (stage === 'estimate') {
-      if (!await appConfirm('Confirm that the customer approved the latest estimate?')) return;
+      const version = options.estimateVersion ? ` V${options.estimateVersion}` : '';
+      if (!await appConfirm(
+        `Confirm that the customer approved this exact saved Estimate${version}? This records a staff confirmation, not a customer electronic signature.`
+      )) return;
       options.approveEstimate = true;
     }
     if (stage === 'work') {
@@ -1554,7 +1557,7 @@ export function JobCardWorkspace() {
           findings={findings}
           canEdit={can('jobs.edit') && currentStage === 'estimate' && !activeTabLocked}
           onSaved={() => refreshJobWorkflow()}
-          onApprove={() => completeStage('estimate')}
+          onApprove={(estimateId, estimateVersion) => completeStage('estimate', { estimateId, estimateVersion })}
           onSkip={skipEstimate}
           onReject={(estimateId) => setEstimateApproval(estimateId, 'Rejected')}
           onDownloadApproved={(approvedEstimate) => openApprovedPdfShare(job, approvedEstimate)}
