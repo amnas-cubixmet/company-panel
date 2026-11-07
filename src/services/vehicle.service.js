@@ -97,7 +97,7 @@ export const updateVehicle = async (id, data) => {
     await delay();
     return normalizeVehicle(updateMockVehicle(id, payload));
   }
-  const result = await apiClient.put(`${API_ENDPOINTS.VEHICLES}/${id}`, payload);
+  const result = await apiClient.patch(`${API_ENDPOINTS.VEHICLES}/${id}`, payload);
   return normalizeVehicle(result);
 };
 
