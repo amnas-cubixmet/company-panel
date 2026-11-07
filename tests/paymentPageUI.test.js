@@ -21,7 +21,7 @@ const invoice = {
 };
 const form = {
   date: '2026-10-13', invoiceId: invoice.id, method: 'UPI',
-  amount: '500.00', reference: 'UPI123'
+  amount: '500.00', reference: 'UPI123', accountId: 'cash-account-1'
 };
 
 test('normalizes Django Payment API customer/invoice fields without rendering objects', () => {
@@ -53,7 +53,7 @@ test('only outstanding finalized invoices are offered for payment', () => {
 test('backend payment payload uses invoice UUID, customer UUID and completed status', () => {
   assert.deepEqual(makePaymentPayload(form, invoice, 700), {
     date: '2026-10-13', amount: '500.00', method: 'UPI',
-    reference: 'UPI123', status: 'Completed',
+    reference: 'UPI123', status: 'Completed', account: 'cash-account-1',
     customer: invoice.customerId, invoice: invoice.id
   });
   assert.equal(makePaymentPayload(form, invoice, 700, true).invoice, invoice.number);
@@ -71,7 +71,7 @@ test('Payments provides real API posting and safe form/filter states', () => {
   assert.match(page, /makePaymentPayload\(form, selectedInvoice, outstanding, USE_MOCK_API\)/);
   assert.match(page, /await paymentService\.create\(payload\)/);
   assert.match(page, /<strong>Completed<\/strong>/);
-  assert.match(page, /form\.direction === "IN" && !selectedInvoice/);
+  assert.match(page, /form\.direction === "IN" && \(form\.receiptKind === 'advance' \? !form\.customerId : !selectedInvoice\)/);
   assert.match(page, /role="alert"/);
   assert.match(toolbar, /onClear/);
   assert.match(toolbar, /onRefresh/);
