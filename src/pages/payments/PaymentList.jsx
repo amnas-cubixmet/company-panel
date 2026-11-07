@@ -172,6 +172,22 @@ export function PaymentList() {
   const eligibleInvoices = useMemo(
     () => payableInvoices(invoices, calculateDocumentTotals), [invoices]
   );
+  // Deep links from a finalized invoice preselect only a payable document;
+  // the operator still chooses the actual bank/cash account and confirms
+  // the receipt. This never creates an automatic payment.
+  useEffect(() => {
+    if (!isNew || loading || !canCreate || !canViewInvoices) return;
+    const requestedId = new URLSearchParams(location.search).get('invoiceId');
+    if (!requestedId || String(form.invoiceId) === requestedId) return;
+    const linked = eligibleInvoices.find((row) => String(row.id) === requestedId);
+    if (linked) {
+      setForm((previous) => ({
+        ...previous, invoiceId: requestedId,
+        amount: invoiceOutstanding(linked, calculateDocumentTotals).toFixed(2),
+      }));
+    }
+  }, [isNew, loading, canCreate, canViewInvoices, location.search, eligibleInvoices, form.invoiceId]);
+
   const selectedInvoice = eligibleInvoices.find((row) => String(row.id) === form.invoiceId);
   const outstanding = selectedInvoice ? invoiceOutstanding(selectedInvoice, calculateDocumentTotals) : 0;
 
