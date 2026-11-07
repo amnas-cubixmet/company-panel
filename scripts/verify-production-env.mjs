@@ -12,7 +12,8 @@ if (!rawUrl) {
     const url = new URL(rawUrl);
     if (url.protocol !== 'https:') problems.push('VITE_API_URL must use HTTPS.');
     if (!url.hostname || /^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/.test(url.hostname) ||
-        /(^|\.)example\.(com|org|net)$/.test(url.hostname)) {
+        /(^|\.)example\.(com|org|net|invalid|test)$/.test(url.hostname) ||
+        /\.(invalid|test|localhost)$/.test(url.hostname)) {
       problems.push('VITE_API_URL must be a real production backend host.');
     }
     if (!/\/api\/v1\/?$/.test(url.pathname)) {
