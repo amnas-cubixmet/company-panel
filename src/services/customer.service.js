@@ -78,6 +78,14 @@ export const updateCustomer = async (id, data) => {
   return apiClient.put(`${API_ENDPOINTS.CUSTOMERS}/${id}`, data);
 };
 
+export const restoreCustomer = async (id) => {
+  if (USE_MOCK_API) {
+    await delay();
+    return updateMockCustomer(id, { status: 'active' });
+  }
+  return apiClient.post(`${API_ENDPOINTS.CUSTOMERS}/${id}/restore`, {});
+};
+
 export const archiveCustomer = async (id) => {
   if (USE_MOCK_API) {
     await delay();
@@ -236,6 +244,7 @@ export const customerService = {
   createCustomer,
   updateCustomer,
   archiveCustomer,
+  restoreCustomer,
   checkDuplicateCustomer,
   getCustomerVehicles,
   getCustomerJobs,
