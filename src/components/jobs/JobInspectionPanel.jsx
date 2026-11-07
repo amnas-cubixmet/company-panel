@@ -342,7 +342,7 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
               <Camera size={16}/> Take / upload photo
               <input type="file" accept="image/*" capture="environment" disabled={!editable || !!busy} onChange={savePhoto}/>
             </label>
-            <VehiclePhotoGallery jobId={job.id} canEdit={false} />
+            <VehiclePhotoGallery jobId={job.id} canEdit={false} refreshKey={photos.length} />
           </section>
           <section>
             <h4>Diagnostic codes</h4>
