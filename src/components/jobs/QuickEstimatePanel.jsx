@@ -11,6 +11,7 @@ import { latestApprovedEstimate } from '../../utils/approvedEstimatePdf';
 import { INDIA_STATES, calculateEstimateIndiaGst } from '../../utils/indiaGst';
 import { estimateGstOptions, ESTIMATE_ZERO_TAX_TREATMENTS } from './estimateGstRates';
 import { ResponsiveModalSheet } from '../common/ResponsiveModalSheet';
+import { customerEstimateDeclines } from './customerEstimateDeclines';
 import { invoiceTaxMode, invoiceChoiceFromTotalRate } from '../../utils/invoiceTaxUi';
 
 const emptyLine = (type = 'Labour') => ({
@@ -59,6 +60,14 @@ export function QuickEstimatePanel({
 }) {
   const latest = estimates.at(-1) || null;
   const approvedEstimate = latestApprovedEstimate(estimates);
+  // Backend JobActivity receipts survive later quote revisions, unlike the
+  // latest-only workflow_progress pointer.
+  const declineByEstimate = useMemo(
+    () => customerEstimateDeclines(job?.activities),
+    [job?.activities]
+  );
+  const latestDecline = latest?.id
+    ? declineByEstimate.get(String(latest.id)) : null;
   const [lines, setLines] = useState([]);
   const [discount, setDiscount] = useState('0');
   const registered = Boolean(job?.gstInfo?.registered);
@@ -529,6 +538,17 @@ export function QuickEstimatePanel({
         </button>
       </header>
 
+      {latest?.status === 'Customer Rejected' && latestDecline && (
+        <section className="job-estimate-customer-feedback" aria-label="Customer revision request">
+          <h3>Customer requested an estimate revision</h3>
+          <p><strong>Reason:</strong> {latestDecline.reasonLabel}</p>
+          {latestDecline.note && <p className="job-estimate-customer-message">{latestDecline.note}</p>}
+          <small>Estimate V{latestDecline.version || latest.version} ·
+            Decision receipt: {latestDecline.receiptId}</small>
+          <p>Update the work/parts above, save a new version, then share it to the customer portal.</p>
+        </section>
+      )}
+
       {stale && <p className="job-quick-warning" role="status">
         Inspection has changed. Approve & Continue will save the revised estimate before approval.
       </p>}
@@ -717,6 +737,14 @@ export function QuickEstimatePanel({
               <span>{'Estimate V' + (typeof item.version === 'number' ? item.version : String(item.version || ''))}</span>
               <strong>{money(item.total ?? item.grandTotal)}</strong>
               <span>{item.approvalStatus || item.status || 'Draft'}</span>
+              {item.status === 'Customer Rejected' && declineByEstimate.has(String(item.id)) && (
+                <div className="job-estimate-history-feedback">
+                  <strong>Customer feedback: {declineByEstimate.get(String(item.id)).reasonLabel}</strong>
+                  {declineByEstimate.get(String(item.id)).note &&
+                    <p>{declineByEstimate.get(String(item.id)).note}</p>}
+                  <small>Receipt: {declineByEstimate.get(String(item.id)).receiptId}</small>
+                </div>
+              )}
               {canEdit && item.id === latest?.id && item.status === 'Draft' &&
                 <button type="button" disabled={busy} onClick={() => onReject?.(item.id)}>Reject</button>}
             </div>
