@@ -118,7 +118,7 @@ export function FinanceDashboard() {
                 onKeyDown={e => e.key === 'Enter' && navigate(`/finance/accounts/${acc.id}`)}
               >
                 <div className="finance-account-top">
-                  <span className={`finance-account-badge finance-account-${acc.kind.toLowerCase()}`}>{acc.kind}</span>
+                  <span className={`finance-account-badge finance-account-${String(acc.kind || 'Other').toLowerCase()}`}>{acc.kind || 'Other'}</span>
                   <strong>{acc.name}</strong>
                 </div>
                 {acc.bankName && <span className="finance-account-bank">{acc.bankName}</span>}
@@ -142,7 +142,7 @@ export function FinanceDashboard() {
             {data.recentTransactions.map(txn => (
               <div key={txn.id} className="finance-txn-row">
                 <div className="finance-txn-info">
-                  <span className="finance-txn-type">{txn.type.replace(/_/g, ' ')}</span>
+                  <span className="finance-txn-type">{String(txn.type || 'Transaction').replace(/_/g, ' ')}</span>
                   <span className="finance-txn-account">{txn.account}</span>
                   {txn.reference && <span className="finance-txn-ref">{txn.reference}</span>}
                 </div>

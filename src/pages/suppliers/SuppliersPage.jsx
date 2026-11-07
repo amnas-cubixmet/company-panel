@@ -7,6 +7,7 @@ import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { USE_MOCK_API } from '../../api/apiConfig';
 import SupplierPurchaseFlow from '../../components/suppliers/SupplierPurchaseFlow';
+import SupplierReturnsPanel from '../../components/suppliers/SupplierReturnsPanel';
 import { useLocation } from 'react-router-dom';
 import { customerContactLinks } from '../../components/jobs/customerContact.utils';
 import '../../styles/suppliers-workspace.css';
@@ -604,6 +605,16 @@ export default function SuppliersPage({ section = 'all' }) {
         />
       )}
       {canViewFinance && (
+        <SupplierReturnsPanel
+          supplier={supplier}
+          bills={supplierBills}
+          payments={supplierPayments}
+          canReturn={canEdit && access.can('payments.edit')}
+          canPay={canPaySupplier}
+          onChanged={refreshSupplierDetails}
+        />
+      )}
+      {canViewFinance && (
         <section className="cg-supplier-profile" aria-label="Supplier credit and settlement">
           <div className="cg-supplier-profile-head">
             <CreditCard size={20}/><h2>Supplier Accounts & Payments</h2>
@@ -615,6 +626,8 @@ export default function SuppliersPage({ section = 'all' }) {
               <div><span>Paid Against Bills</span><strong>{money(supplierFinancials.totalPaymentsApplied)}</strong></div>
               <div><span>Remaining Credit</span><strong>{money(supplierFinancials.outstanding)}</strong></div>
               <div><span>Unapplied Advances</span><strong>{money(supplierFinancials.availableAdvance)}</strong></div>
+              <div><span>Purchase Returns</span><strong>{money(supplierFinancials.totalReturns)}</strong></div>
+              <div><span>Debit Note Credit Available</span><strong>{money(supplierFinancials.availableDebitCredit)}</strong></div>
             </div>
           )}
           <p>Purchase and payment actions are available above on this Supplier page.</p>

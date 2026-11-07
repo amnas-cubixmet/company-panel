@@ -214,7 +214,7 @@ export function AccountsPage() {
           <div className="finance-account-title-row">
             <h1>{account.name}</h1>
             <div className="finance-account-badges">
-              <span className={`finance-kind-badge finance-kind-${account.kind.toLowerCase()}`}>{account.kind}</span>
+              <span className={`finance-kind-badge finance-kind-${String(account.kind || 'Other').toLowerCase()}`}>{account.kind || 'Other'}</span>
               <span className={`finance-status-badge ${account.isActive ? 'is-active' : 'is-inactive'}`}>
                 {account.isActive ? 'Active' : 'Inactive'}
               </span>
@@ -377,7 +377,7 @@ export function AccountsPage() {
                 </div>
               </div>
               <div className="finance-account-row-right">
-                <span className={`finance-kind-badge finance-kind-${acc.kind.toLowerCase()}`}>{acc.kind}</span>
+                <span className={`finance-kind-badge finance-kind-${String(acc.kind || 'Other').toLowerCase()}`}>{acc.kind || 'Other'}</span>
                 {!acc.isActive && <span className="finance-status-badge is-inactive">Inactive</span>}
                 <strong className="finance-row-balance">{fmt(acc.currentBalance)}</strong>
               </div>
