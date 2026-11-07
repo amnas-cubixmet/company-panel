@@ -190,7 +190,6 @@ export default function GSTRDashboard() {
       setNotice(result.importId
         ? 'Official GSTR-2B match evidence saved. Supplier invoices remain unchanged.'
         : 'GSTR-2B reconciled. No source records changed.');
-      setReload(n => n + 1);
     } catch (error) {
       setIssue(error.fieldErrors?.file || error.message || 'Unable to reconcile the selected file.');
     } finally { setBusy(false); }
@@ -321,6 +320,15 @@ export default function GSTRDashboard() {
             <button type="button" disabled={busy || !access.can('gstr.export')} onClick={() => exportCsv('gstr1')}><Download size={16} /> Download CSV</button></div>
           <div><FileText size={22} /><strong>HSN / SAC Preview CSV</strong><span>Provisional line taxable amounts, not portal compatible.</span>
             <button type="button" disabled={busy || !access.can('gstr.export')} onClick={() => exportCsv('hsn')}><Download size={16} /> Download CSV</button></div>
+          <div><FileSpreadsheet size={22} /><strong>GSTR-3B Reviewed Preparation</strong>
+            <span>Output GST, approved ITC and reversals; not payable tax.</span>
+            <button type="button" disabled={busy || !access.can('gstr.export')} onClick={() => exportCsv('gstr3b')}><Download size={16} /> Download CSV</button></div>
+          <div><FileText size={22} /><strong>Sales GST Credit Notes</strong>
+            <span>Original-invoice linked credit note tax heads.</span>
+            <button type="button" disabled={busy || !access.can('gstr.export')} onClick={() => exportCsv('credits')}><Download size={16} /> Download CSV</button></div>
+          <div><FileSpreadsheet size={22} /><strong>ITC Approval Audit</strong>
+            <span>Claims reviewed against official GSTR-2B evidence.</span>
+            <button type="button" disabled={busy || !access.can('gstr.export')} onClick={() => exportCsv('itc')}><Download size={16} /> Download CSV</button></div>
         </div>
         <p className="gstr-note">These CSV files are preparation exports only, never GST Portal-compatible. PDF, XLSX and official portal filing are not connected.</p>
         <GSTPart15Workspace tab="exports" period={period} report={data}
