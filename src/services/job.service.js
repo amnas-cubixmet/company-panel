@@ -264,6 +264,9 @@ export const saveQuickJobEstimate = async (id, payload, draftId = null) => {
     return entry;
   }
   const base = `${API_ENDPOINTS.JOBS}/${id}/estimates/quick`;
+  if (!payload?.requestId || !/^[0-9a-f-]{36}$/i.test(String(payload.requestId))) {
+    throw new Error('A stable request reference is required for estimate saving.');
+  }
   return draftId
     ? apiClient.patch(`${base}/${draftId}`, payload)
     : apiClient.post(base, payload);

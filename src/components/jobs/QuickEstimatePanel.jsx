@@ -83,6 +83,10 @@ export function QuickEstimatePanel({
   const [skipError, setSkipError] = useState('');
   const [skipBusy, setSkipBusy] = useState(false);
   const formRef = useRef(null);
+  // Preserve the same operation token across retries. Different quote
+  // contents get a new token, preventing accidental duplicate versions.
+  const pendingSaveRef = useRef(null);
+  const savedEstimateRef = useRef(null);
   const revisedAt = job?.inspection?.revisedAt;
   const stale = !!(latest?.created_at && revisedAt &&
     new Date(latest.created_at).getTime() < new Date(revisedAt).getTime());
@@ -218,8 +222,9 @@ export function QuickEstimatePanel({
           setFeedback('Choose an applicable GST rate for each item before approval.');
           return;
         }
-        const draftId = latest?.status === 'Draft' && !stale ? latest.id : null;
-        await jobService.saveQuickJobEstimate(job.id, {
+        const draftId = latest?.status === 'Draft' && !stale
+          ? latest.id : (!stale ? savedEstimateRef.current?.id || null : null);
+        const payload = {
           lines: preparedLines.map(({ description, type, quantity, unitPrice, catalogId, taxRate, taxChoice, taxTreatment, taxTreatmentConfirmed, hsnSac }) => ({
             description: description.trim(), type, quantity, unitPrice,
             taxRate: taxRate || '0', taxChoice: taxChoice || '', hsnSac: hsnSac || '',
@@ -228,12 +233,27 @@ export function QuickEstimatePanel({
           })),
           taxPercent: '0', discount,
           gst: { mode: registered ? 'gst' : 'non_gst', placeOfSupply },
-        }, draftId);
-        await onSaved?.();
+        };
+        const fingerprint = JSON.stringify(payload);
+        if (!pendingSaveRef.current || pendingSaveRef.current.fingerprint !== fingerprint) {
+          pendingSaveRef.current = { id: crypto.randomUUID(), fingerprint };
+        }
+        payload.requestId = pendingSaveRef.current.id;
+        const saved = await jobService.saveQuickJobEstimate(job.id, payload, draftId);
+        // Save the identity before the refresh. If the refresh fails, a
+        // subsequent click must NOT create a second estimate version.
+        savedEstimateRef.current = { id: saved.id, version: saved.version };
         setChanged(false);
         setShowValidation(false);
+        try {
+          await onSaved?.();
+        } catch {
+          setFeedback('Estimate saved. Job Card refresh is unavailable; the saved version can still be approved.');
+        }
       }
-      await onApprove?.();
+      const target = savedEstimateRef.current || latest;
+      if (!target?.id) throw new Error('A saved estimate reference is required before approval.');
+      await onApprove?.(target.id, target.version);
     } catch (err) {
       setFeedback(err?.message || 'Unable to save and approve estimate.');
     } finally {
