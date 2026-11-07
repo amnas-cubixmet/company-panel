@@ -72,7 +72,9 @@ export const Login = () => {
         ...(!hasFieldError && [400, 401].includes(error?.status)
           ? { identifier: credentialError, password: credentialError } : {}),
       });
-      setFormError(hasFieldError ? '' : credentialError);
+      setFormError(error?.status === 429
+        ? `Too many sign-in attempts. Try again${error?.retryAfterSeconds ? ` in ${error.retryAfterSeconds} seconds` : ' later'}.`
+        : hasFieldError ? '' : credentialError);
     }
   };
 
@@ -109,7 +111,7 @@ export const Login = () => {
 
           <form onSubmit={handleSubmit} className="login-form" noValidate>
             <label className="block">
-              <span className="login-field-label">Mobile Number with Country Code</span>
+              <span className="login-field-label">Mobile Number with Country Code or Email</span>
               <div className={'login-input-shell ' + (fieldErrors.identifier ? 'is-error' : '')}>
                 <span className="login-input-icon" aria-hidden="true">
                   <Phone size={16} strokeWidth={1.8} />
@@ -118,7 +120,7 @@ export const Login = () => {
                   className="login-input"
                   type="text"
                   autoComplete="username"
-                  inputMode="text"
+                  inputMode={identifier.includes('@') ? 'email' : 'tel'}
                   value={identifier}
                   onChange={(event) => {
                     setIdentifier(event.target.value);

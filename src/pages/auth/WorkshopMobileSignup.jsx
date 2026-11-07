@@ -36,8 +36,15 @@ export default function WorkshopMobileSignup() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const details = Object.values(data || {}).flat().map(String).join(' ');
-        throw new Error(details || 'Unable to register your workshop.');
+        const details = Object.entries(data || {})
+          .filter(([field]) => field !== 'status' && field !== 'code')
+          .flatMap(([, value]) => Array.isArray(value) ? value : [value])
+          .filter((value) => typeof value === 'string')
+          .join(' ');
+        const retry = response.headers.get('Retry-After');
+        throw new Error(response.status === 429
+          ? `Too many registration attempts. Try again later${retry ? ` (retry after ${retry} seconds)` : ''}.`
+          : details || 'Unable to register your workshop.');
       }
       setRegistered(data);
     } catch (cause) {
@@ -58,7 +65,9 @@ export default function WorkshopMobileSignup() {
           <h1 className="login-title">Workshop registered</h1>
           <p className="login-description">{registered.message || 'Your password invitation is pending delivery.'}</p>
           <p className="login-description">Workshop code: <strong>{registered.workshop?.slug}</strong>. Keep this code for logging in when your mobile belongs to multiple workshops.</p>
-          <p className="login-description">For mobile-only accounts, an official platform WhatsApp sender must be configured to deliver your password setup link. If no message arrives, contact CubeGears support.</p>
+          <p className="login-description">{registered.setupDelivery === 'platform_whatsapp_pending'
+            ? 'Your password invitation is pending official WhatsApp delivery. The registration confirmation does not mean the message was delivered. Contact CubeGears support if no link arrives.'
+            : 'Check your registered email for the secure setup link. If the message does not arrive, contact CubeGears support.'}</p>
           <Link className="login-submit" to="/login">Go to Login</Link>
         </> : <>
           <h1 className="login-title">Create a workshop</h1>
