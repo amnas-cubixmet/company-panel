@@ -57,6 +57,7 @@ const EWayBillPage = lazyPage(() => import('../pages/invoices/EWayBillPage'), 'E
 const PaymentList = lazyPage(() => import('../pages/payments/PaymentList'), 'PaymentList');
 const ExpenseList = lazyPage(() => import('../pages/expenses/ExpenseList'), 'ExpenseList');
 const FinanceDashboard = lazyPage(() => import('../pages/finance/FinanceDashboard'), 'FinanceDashboard');
+const AccountingWorkspace = lazyPage(() => import('../pages/finance/AccountingWorkspace'), 'default');
 const AccountsPage = lazyPage(() => import('../pages/finance/AccountsPage'), 'AccountsPage');
 const TransfersPage = lazyPage(() => import('../pages/finance/TransfersPage'), 'TransfersPage');
 const TransactionsPage = lazyPage(() => import('../pages/finance/TransactionsPage'), 'TransactionsPage');
@@ -245,6 +246,7 @@ export const AppRoutes = () => (
       <Route path="/expenses/:id/delete" element={<ExpenseList />} />
 
       <Route path="/finance" element={<FinanceDashboard />} />
+      <Route path="/finance/accounting" element={<AccountingWorkspace />} />
       <Route path="/finance/accounts" element={<AccountsPage />} />
       <Route path="/finance/accounts/new" element={<AccountsPage />} />
       <Route path="/finance/accounts/:id" element={<AccountsPage />} />
