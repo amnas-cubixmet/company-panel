@@ -69,6 +69,11 @@ export const ProtectedRoute = () => {
     return <Navigate to="/access-denied" replace />;
   }
   const requiredPermission = getPermissionForPath(location.pathname);
+  // Only the verified owner may finish initial setup without buying features;
+  // Django independently enforces owner identity on every wizard API request.
+  const isOwnerOnboarding = location.pathname === '/onboarding'
+    && featureAccess.isCompanyOwner === true
+    && featureAccess.permissions.includes('company.manage');
   // Supplier accounting requires both Inventory and Payments permission.
   const missingSupplierAccess = ['/suppliers/credits', '/suppliers/payments', '/stock/suppliers'].includes(location.pathname)
     && (!featureAccess.can('stock.view') || !featureAccess.can('payments.view'));
@@ -84,8 +89,8 @@ export const ProtectedRoute = () => {
   if (
     location.pathname !== '/access-denied' &&
     requiredPermission &&
-    (missingJobAccess || missingSupplierAccess || !moduleIsVisible(featureAccess, requiredPermission) ||
-      ((!isOwnStaffProfile || featureAccess.labelOnly) && !featureAccess.can(requiredPermission)))
+    (!isOwnerOnboarding && (missingJobAccess || missingSupplierAccess || !moduleIsVisible(featureAccess, requiredPermission) ||
+      ((!isOwnStaffProfile || featureAccess.labelOnly) && !featureAccess.can(requiredPermission))))
   ) {
     return (
       <Navigate
