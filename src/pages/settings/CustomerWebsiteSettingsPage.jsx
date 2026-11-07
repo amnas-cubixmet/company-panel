@@ -123,9 +123,10 @@ export default function CustomerWebsiteSettingsPage(){
 
   const primaryDomain = domains.find(d=>d.isPrimary && d.status==='active' && d.sslStatus==='ready' && d.ownershipVerified && d.dnsConfigured);
   const websiteHost = primaryDomain?.hostname || subdomain;
+  const websiteReady = Boolean(primaryDomain || wildcardReady);
 
   async function copyLink(){
-    if(!websiteHost)return;
+    if(!websiteHost||!websiteReady)return;
     try{
       await navigator.clipboard.writeText('https://'+websiteHost);
       setNotice('Default website address copied.');
@@ -147,10 +148,10 @@ export default function CustomerWebsiteSettingsPage(){
         <div className="cws-heading"><div className="cws-square"><Globe2 size={23}/></div><div><h2>Your Customer Website</h2><p>Visitors see your workshop website at the domain root.</p></div></div>
         <div className="cws-domain-url">
           <span>{websiteHost ? 'https://'+websiteHost+'/' : 'Website domain not configured'}</span>
-          <button type="button" aria-label="Copy website URL" onClick={copyLink} disabled={!websiteHost}><Copy size={17}/></button>
+          <button type="button" aria-label="Copy website URL" onClick={copyLink} disabled={!websiteReady||!websiteHost}><Copy size={17}/></button>
         </div>
         <div className="cws-actions">
-          {wildcardReady&&websiteHost&&<a className="cws-btn cws-primary" href={'https://'+websiteHost+'/'} target="_blank" rel="noopener noreferrer">Open Website <ArrowUpRight size={16}/></a>}
+          {websiteReady&&websiteHost&&<a className="cws-btn cws-primary" href={'https://'+websiteHost+'/'} target="_blank" rel="noopener noreferrer">Open Website <ArrowUpRight size={16}/></a>}
           <Link to="/settings/customer-website/domains" className="cws-btn cws-secondary">Add My Own Domain / DNS Settings</Link>
         </div>
         <form className="cws-subdomain-form" onSubmit={updateDefaultSubdomain}>
