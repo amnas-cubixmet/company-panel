@@ -123,7 +123,6 @@ export default function CustomerWebsiteSettingsPage(){
   }
 
   const primaryDomain = domains.find(d=>d.isPrimary && d.status==='active' && d.sslStatus==='ready' && d.ownershipVerified && d.dnsConfigured);
-  const websiteHost = primaryDomain?.hostname || subdomain;
   const websiteReady = Boolean(primaryDomain || wildcardReady);
   const urls = customerWebsiteAddresses({
     subdomain, subdomainLabel, primaryDomain, wildcardReady,
