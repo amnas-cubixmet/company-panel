@@ -1138,31 +1138,34 @@ try {
         }
 
         if(path==='/staff-management/staff') {
-          const card=page.locator('.staff-directory-card').first();
+          const card=page.locator('.staff-directory-row').first();
           await card.waitFor();
           const stats=await card.evaluate(node => {
-            const facts=[...node.querySelectorAll('.staff-directory-fact')];
-            const actions=[...node.querySelectorAll('.staff-directory-card__actions button')];
+            const cells=[...node.querySelectorAll('.staff-directory-cell')];
+            const actions=[...node.querySelectorAll('.staff-directory-row-actions button')];
             const sizes=actions.map(b=>({w:b.getBoundingClientRect().width,h:b.getBoundingClientRect().height}));
             const rect=node.getBoundingClientRect();
-            const minFont=Math.min(...facts.flatMap(f=>[
-              ...f.querySelectorAll('.staff-directory-fact__copy > span')
-            ]).map(el=>parseFloat(getComputedStyle(el).fontSize)));
-            const clipped=facts.some(f=>f.scrollWidth>f.clientWidth+2);
-            return {font:minFont,actions:sizes,clipped,
-              cardWidth:rect.width,viewport:innerWidth,
+            const texts=[...node.querySelectorAll('.staff-directory-person-copy strong,.staff-directory-branch > span,.staff-directory-contact > span,.staff-directory-wage > span')]
+              .filter(el=>el.getClientRects().length);
+            const minFont=texts.length
+              ? Math.min(...texts.map(el=>parseFloat(getComputedStyle(el).fontSize)))
+              : 0;
+            const clipped=cells.some(cell=>cell.scrollWidth>cell.clientWidth+2);
+            const columns=getComputedStyle(node).gridTemplateColumns.split(/\s+/).filter(Boolean).length;
+            return {
+              font:minFont,actions:sizes,clipped,
+              cardWidth:rect.width,viewport:innerWidth,columns,
               pageOverflow:document.documentElement.scrollWidth>innerWidth+2,
-              detailColumns:getComputedStyle(node.querySelector('.staff-directory-details')).gridTemplateColumns,
             };
           });
           if(stats.font<13.5 || stats.clipped || stats.pageOverflow) {
-            throw Error('Staff Directory card text unreadable or clipped: '+JSON.stringify(stats));
+            throw Error('Staff Directory row unreadable or clipped: '+JSON.stringify(stats));
           }
-          if(stats.actions.some(b=>b.h<43.5 || b.w<43.5)) {
-            throw Error('Staff Directory card touch button below 44px: '+JSON.stringify(stats));
+          if(!stats.actions.length || stats.actions.some(b=>b.h<43.5 || b.w<43.5)) {
+            throw Error('Staff Directory action touch target below 44px: '+JSON.stringify(stats));
           }
-          if(stats.cardWidth<305 && stats.detailColumns.split(' ').length!==1) {
-            throw Error('Narrow Staff card facts are not stacked: '+JSON.stringify(stats));
+          if(stats.cardWidth<305 && stats.columns!==2) {
+            throw Error('Narrow Staff row must wrap into two readable columns: '+JSON.stringify(stats));
           }
           const power=card.locator('.staff-status-button');
           if(await power.count() && !(await power.getAttribute('aria-label'))) {

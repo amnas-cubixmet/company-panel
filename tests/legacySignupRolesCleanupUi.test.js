@@ -35,5 +35,7 @@ test('legacy review is responsive and does not alter role metadata or access', (
   assert.match(css, /@media \(max-width: 600px\)/);
   const page = read('src/pages/staff-management/UserRoles.jsx');
   assert.match(page, /<RoleCardGrid/);
-  assert.match(page, /<RoleOverviewStats roles=\{roles\}/);
+  assert.match(page, /roles-search-row/);
+  assert.match(page, /roles=\{visibleRoles\}/);
+  assert.doesNotMatch(page, /<RoleOverviewStats/);
 });

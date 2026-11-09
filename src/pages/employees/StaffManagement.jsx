@@ -10,6 +10,7 @@ import { SimpleStaffOverview } from '../staff-management/SimpleStaffOverview';
 import '../../styles/staff-management.css';
 import '../../styles/staff-simple-overview.css';
 import '../../styles/staff-management-readable.css';
+import '../../styles/staff-management-compact.css';
 
 const resolveSection = (pathname) => {
   if (pathname.endsWith('/overview')) return 'overview';
