@@ -1518,3 +1518,14 @@ button.expense-data-row {
   .cg-expenses .expense-dashboard-stats { grid-template-columns: 1fr; }
   .cg-expenses .expense-dashboard-stat-card { padding: 12px; }
 }
+
+.cg-expenses :is(input,select,textarea)[aria-invalid="true"] {
+  border: 1px solid #dc2626 !important;
+  box-shadow: 0 0 0 2px rgb(220 38 38 / 12%) !important;
+  background: #fff6f6 !important;
+}
+.cg-expenses .expense-alert[role="alert"],
+.cg-expenses .expense-field [data-cg-field-error="true"] {
+  color: #b91c1c !important;
+  border-color: #ef4444 !important;
+}
