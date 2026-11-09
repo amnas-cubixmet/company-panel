@@ -544,7 +544,7 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
                     ? 'Enable staff login first' : !staff.whatsappConsent ? 'Record WhatsApp consent first' : undefined}
                   className="staff360-secondary-button">
                   <Send size={14}/>
-                  {staff.loginStatus === 'Active' ? 'Reset via WhatsApp' : 'Send via WhatsApp'}
+                  {staff.loginStatus === 'Active' ? 'Reset via WhatsApp' : 'Resend via WhatsApp'}
                 </button>
                 <details className="staff360-more-actions">
                   <summary>More</summary>
