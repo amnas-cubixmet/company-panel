@@ -94,10 +94,13 @@ test('only an explicit click opens WhatsApp; opening is not delivery confirmatio
     assert.equal(local.localOnlyLink, true);
     assert.equal(popup.opener, null);
     assert.equal(closed, false);
-    await assert.rejects(() => shareManualStaffInvite(async () => ({ whatsappInviteStatus: 'queued' }), {
+    const cloud = await shareManualStaffInvite(async () => ({ whatsappInviteStatus: 'queued' }), {
       phone: '+919876543210',
-    }), /not ready/);
+    });
+    assert.equal(cloud.status, 'queued');
     assert.equal(closed, true);
+    // Queue acknowledgement is not delivery confirmation or a manual send.
+    assert.equal(cloud.localOnlyLink, false);
   } finally {
     if (prior === undefined) delete globalThis.window;
     else globalThis.window = prior;
