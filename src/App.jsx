@@ -50,6 +50,8 @@ import './styles/workspace-responsive-polish.css';
 // Connection banner CSS must precede the final global typography/form layers.
 import './styles/backend-connection.css';
 import './styles/responsive-typography.css';
+// Ensure product branding is scoped and loaded before final form/typography layers.
+import './styles/cubixgear-branding.css';
 // Last shared layers: preserve regular text and a single clean search border.
 import './styles/form-typography.css';
 import './styles/form-controls-unified.css';
@@ -58,8 +60,6 @@ import './styles/form-errors-unified.css';
 import './styles/desktop-typography.css';
 // Shared accessible outlined floating labels for standard form controls.
 import './styles/floating-fields.css';
-// Ensure brand images use the same logo treatment across auth, account and workshop shells.
-import './styles/cubixgear-branding.css';
 
 export function App() {
   return (
