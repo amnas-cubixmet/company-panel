@@ -10,10 +10,10 @@ test('workshop website gets backend default address without creating Vercel doma
   assert.match(source,/apiClient\.patch\('\/company\/customer-website\/subdomain',\{label\}\)/);
   assert.match(source,/Update Subdomain/);
   assert.match(source,/Existing customer links/);
-  assert.match(source,/Default address reserved in CubeGears/);
+  assert.match(source,/Production address reserved in CubeGears/);
   assert.match(source,/websiteReady = Boolean\(primaryDomain \|\| wildcardReady\)/);
   assert.match(source,/Add My Own Domain \/ DNS Settings/);
-  assert.match(source,/!websiteReady\|\|!websiteHost/);
+  assert.match(source,/!urls\.canOpen\|\|!websiteUrl/);
 });
 
 test('verified optional custom domains have DNS/TXT instructions and preserve default site',()=>{
