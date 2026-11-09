@@ -4,41 +4,67 @@ import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 
-test('staff profile hides top directory tabs but preserves staff list navigation', () => {
+test('staff detail keeps only its own tabs and removes redundant Back button', () => {
   const shell = read('src/pages/employees/StaffManagement.jsx');
   const profile = read('src/pages/staff-management/staff/StaffProfile.jsx');
+  const card = read('src/components/staff-management/StaffDirectoryCard.jsx');
   assert.match(shell, /activeSection !== 'profile' && <StaffManagementTabs \/>/);
-  assert.match(shell, /activeSection === 'profile' \? null : <StaffManagementHeader \/>/);
-  assert.match(profile, /aria-label="Back to staff"/);
-  assert.match(profile, /onClick=\{goBack\}/);
-  // The employee's own Attendance, Work, Payroll and Documents tabs remain.
+  assert.doesNotMatch(profile, /aria-label="Back to staff"|onClick=\{goBack\}/);
   assert.match(profile, /className="staff-profile-tabs staff360-tabs"/);
+  assert.match(card, /className="staff-directory-full-link"/);
+  assert.match(card, /to=\{\`\/staff-management\/staff\/\$\{encodeURIComponent\(staff\.id\)\}\`\}/);
+  assert.match(card, /aria-label=\{\`Open \$\{staff\.name\} staff profile\`\}/);
 });
 
-test('staff payment settings use the real wage API and existing rate editor', () => {
+test('payment settings offer rate and existing audited Cash/Bank wage payout routes', () => {
   const profile = read('src/pages/staff-management/staff/StaffProfile.jsx');
   const editor = read('src/components/payroll/EmployeePayConfigurationSheet.jsx');
-  assert.match(profile, /const canEditPaymentSettings = canViewPayroll && can\('payroll\.rates\.manage'\)/);
-  assert.match(profile, /if \(!canEditPaymentSettings \|\| paymentSettingsBusy \|\| !staff\?\.id\) return/);
+  const wage = read('src/pages/payroll/DailyWageAccountPage.jsx');
+  assert.match(profile, /canViewPayroll && can\('payroll\.rates\.manage'\)/);
+  assert.match(profile, /canViewPayroll && can\('payroll\.payments\.record'\)/);
+  assert.match(profile, /if \(!canEditWageRate \|\| paymentSettingsBusy \|\| !staff\?\.id\) return/);
   assert.match(profile, /await dailyWageService\.account\(staff\.id\)/);
-  assert.match(profile, /dailyRate: account\?\.currentRate/);
   assert.match(profile, /onClick=\{openPaymentSettings\}/);
   assert.match(profile, /Payment Settings/);
+  assert.match(profile, /Cash Payment/);
+  assert.match(profile, /Bank Payment/);
+  assert.match(profile, /state: \{ openPayment: true, paymentMethod: method \}/);
   assert.match(profile, /<EmployeePayConfigurationSheet/);
-  assert.match(profile, /structure=\{paymentStructure\}/);
-  assert.match(profile, /setPaymentSettingsOpen\(false\)/);
+  assert.match(profile, /<ResponsiveModalSheet/);
   assert.match(editor, /dailyWageService\.addRate\(employeeId/);
+  assert.match(editor, /aria-invalid=\{Boolean\(fieldErrors\.rate\)\}/);
+  assert.match(editor, /aria-invalid=\{Boolean\(fieldErrors\.effectiveFrom\)\}/);
+  assert.match(editor, /aria-invalid=\{Boolean\(fieldErrors\.reason\)\}/);
   assert.doesNotMatch(profile, /dailyWageService\.pay\(/);
-  assert.doesNotMatch(profile, /apiClient\.post\(/);
+  assert.match(wage, /dailyWageService\.pay\(id/);
+  assert.match(wage, /location\.state\?\.openPayment/);
+  assert.match(wage, /chosen\.currentBalance/);
+  assert.match(wage, /Select account/);
+  assert.match(wage, /insufficient|Insufficient/);
 });
 
-test('staff payment settings handle backend failure and support mobile touch targets', () => {
+test('bank/cash payment setting and error borders are accessible on mobile', () => {
+  const css = read('src/styles/staff-payment-settings.css');
   const profile = read('src/pages/staff-management/staff/StaffProfile.jsx');
-  const css = read('src/styles/staff-management-compact.css');
-  assert.match(profile, /Unable to load payment settings/);
+  const wage = read('src/pages/payroll/DailyWageAccountPage.jsx');
+  assert.match(profile, /Unable to load daily wage rate/);
   assert.match(profile, /paymentSettingsError && \(/);
   assert.match(profile, /role="alert"/);
-  assert.match(profile, /disabled=\{paymentSettingsBusy\}/);
-  assert.match(css, /\.staff360-payment-settings/);
-  assert.match(css, /min-height: 44px !important/);
+  assert.match(css, /staff-payment-settings-ways/);
+  assert.match(css, /aria-invalid="true"/);
+  assert.match(css, /#dc2626/);
+  assert.match(css, /@media \(max-width: 640px\)/);
+  assert.doesNotMatch(wage, /className="dw-text-link dw-back"/);
+});
+
+test('reset link is not offered for the owner or elevated system roles', () => {
+  const profile = read('src/pages/staff-management/staff/StaffProfile.jsx');
+  const share = read('src/utils/staffManualInvite.js');
+  assert.match(profile, /canManageLogin && !isOwnProfile/);
+  assert.match(profile, /super admin/);
+  assert.match(profile, /Account Security/);
+  assert.match(profile, /'\/account\/security'/);
+  assert.match(profile, /Record staff WhatsApp consent/);
+  assert.match(profile, /\['queued', 'sending', 'sent'\]/);
+  assert.match(share, /\['queued', 'sending', 'sent'\]\.includes\(status\)/);
 });
