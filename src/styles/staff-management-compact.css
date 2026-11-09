@@ -323,3 +323,24 @@
   .cg-staff-management .staff360-more-actions { flex: 1 1 auto; }
   .cg-staff-management .staff360-more-actions > div { right: 0; min-width: min(250px, 80vw); }
 }
+
+/* Detail page: keep only employee-level navigation, not the directory tabs. */
+.cg-staff-management .staff-profile-topbar {
+  margin-bottom: 10px;
+}
+.cg-staff-management .staff360-payment-settings {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px !important;
+  border-color: var(--border) !important;
+  white-space: nowrap;
+}
+.cg-staff-management .staff360-payment-settings:disabled {
+  opacity: .6;
+  cursor: progress;
+}
+@media (max-width: 560px) {
+  .cg-staff-management .staff360-payment-settings { flex: 1 1 auto; }
+}
