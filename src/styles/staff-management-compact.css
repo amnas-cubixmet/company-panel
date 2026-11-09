@@ -344,3 +344,30 @@
 @media (max-width: 560px) {
   .cg-staff-management .staff360-payment-settings { flex: 1 1 auto; }
 }
+
+/* Entire staff card/row opens the profile while privileged actions remain independent. */
+.cg-staff-management .staff-directory-row { position: relative; }
+.cg-staff-management .staff-directory-full-link {
+  position: absolute; inset: 0; z-index: 1;
+  display: block; border-radius: inherit; cursor: pointer;
+}
+.cg-staff-management .staff-directory-full-link:focus-visible {
+  outline: 3px solid var(--primary); outline-offset: -3px;
+}
+.cg-staff-management .staff-directory-row-actions,
+.cg-staff-management .staff-directory-wage > button {
+  position: relative; z-index: 2;
+}
+.cg-staff-management .staff-directory-row:has(.staff-directory-full-link):hover {
+  border-color: var(--primary) !important;
+}
+.cg-staff-management .staff-profile-topbar { display: none !important; }
+.cg-staff-management .staff360-info-item:has([aria-invalid="true"]),
+.cg-staff-management .staff-directory-message.is-error {
+  border-color: #d92d20 !important;
+  color: #b42318 !important;
+}
+.cg-staff-management .staff360-hero-actions > button,
+.cg-staff-management .staff360-hero-actions > details > summary {
+  min-height: 44px !important;
+}
