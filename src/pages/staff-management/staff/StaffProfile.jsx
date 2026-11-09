@@ -531,37 +531,35 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
           </div>
         </div>
 
-        {(canEdit || canManagePayroll) && (
+        {canEdit && (
           <div className="staff360-hero-actions">
-            {canManagePayroll && (
-              <button type="button" className="staff360-secondary-button" onClick={() => navigate(`/staff/${staff.id}/wages`)}>
-                <WalletCards size={14}/>
-                Daily Wage Account
-              </button>
-            )}
+            <button type="button" className="staff360-secondary-button" onClick={() => setEditOpen(true)}>
+              <Pencil size={14}/> Edit Profile
+            </button>
             {canManageLogin && (
               <>
-                <button type="button" className="staff360-secondary-button" onClick={() => setEditOpen(true)}>
-                  <Pencil size={14}/>
-                  Edit Profile
-                </button>
                 <button type="button" onClick={handleSendInvite}
                   disabled={inviteBusy || staff.loginStatus === 'Disabled' || !staff.whatsappConsent}
                   title={staff.loginStatus === 'Disabled'
                     ? 'Enable staff login first' : !staff.whatsappConsent ? 'Record WhatsApp consent first' : undefined}
                   className="staff360-secondary-button">
                   <Send size={14}/>
-                  {staff.loginStatus === 'Active' ? 'Reset via WhatsApp' : 'Resend via WhatsApp'}
+                  {staff.loginStatus === 'Active' ? 'Reset via WhatsApp' : 'Send via WhatsApp'}
                 </button>
-                <button type="button" className="staff360-secondary-button"
-                  disabled={inviteBusy || staff.loginStatus === 'Disabled' || !staff.whatsappConsent}
-                  onClick={handleCopyInvite}>
-                  <Copy size={14}/> Copy Setup Message
-                </button>
-                <button type="button" onClick={handleToggleAccount} className="staff360-secondary-button">
-                  {staff.loginStatus === 'Disabled' ? <Unlock size={14}/> : <Lock size={14}/>}
-                  {staff.loginStatus === 'Disabled' ? 'Enable Login' : 'Disable Login'}
-                </button>
+                <details className="staff360-more-actions">
+                  <summary>More</summary>
+                  <div>
+                    <button type="button" className="staff360-secondary-button"
+                      disabled={inviteBusy || staff.loginStatus === 'Disabled' || !staff.whatsappConsent}
+                      onClick={handleCopyInvite}>
+                      <Copy size={14}/> Copy setup message
+                    </button>
+                    <button type="button" onClick={handleToggleAccount} className="staff360-secondary-button">
+                      {staff.loginStatus === 'Disabled' ? <Unlock size={14}/> : <Lock size={14}/>}
+                      {staff.loginStatus === 'Disabled' ? 'Enable login' : 'Disable login'}
+                    </button>
+                  </div>
+                </details>
               </>
             )}
           </div>
@@ -591,11 +589,7 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
               <div>
                 <strong>Employee details</strong>
               </div>
-              {canEdit && !canManageLogin && (
-                <button type="button" onClick={() => setEditOpen(true)}>
-                  <Pencil size={14}/> Edit
-                </button>
-              )}
+
             </div>
 
             <div className="staff360-section">
