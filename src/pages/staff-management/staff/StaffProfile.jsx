@@ -2,7 +2,6 @@ import '../../../styles/staff-payment-settings.css';
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
-  ArrowLeft,
   BriefcaseBusiness,
   Building2,
   CalendarDays,
@@ -163,12 +162,11 @@ const normalizeActivity = (item = {}) => ({
   ),
 });
 
-export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
+export const StaffProfile = ({ staffId: staffIdProp }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { staffId: routeStaffId } = useParams();
   const staffId = staffIdProp || routeStaffId;
-  const goBack = onBack || (() => navigate('/staff-management/staff'));
   const { user } = useAuth();
   const { can } = useFeatureAccess();
 
@@ -596,6 +594,12 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
             {canEdit && (
               <button type="button" className="staff360-secondary-button" onClick={() => setEditOpen(true)}>
                 <Pencil size={14}/> Edit Profile
+              </button>
+            )}
+            {isOwnProfile && (
+              <button type="button" className="staff360-secondary-button"
+                onClick={() => navigate('/account/security')}>
+                <Settings2 size={14} aria-hidden="true" /> Account Security
               </button>
             )}
             {canResetStaffPassword && (
