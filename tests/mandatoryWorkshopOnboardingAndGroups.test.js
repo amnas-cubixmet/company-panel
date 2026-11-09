@@ -110,3 +110,19 @@ test('branch setup captures device location without manual GPS text inputs', () 
   assert.match(wizard, /\['longitude', 'Workshop Longitude', 'number'\]/);
   assert.match(wizard, /\['punchRadiusMeters', 'Punch Radius \(metres\)', 'number'\]/);
 });
+
+test('onboarding includes a bank step tied to the actual finance ledger', () => {
+  const wizard = source('src/pages/saas/OwnerOnboarding.jsx');
+  const css = source('src/styles/owner-onboarding.css');
+  assert.match(wizard, /key: 'bank', title: 'Bank & opening balance'/);
+  assert.match(wizard, /mode: 'new'/);
+  assert.match(wizard, /mode: 'existing', accountId: draft\.accountId/);
+  assert.match(wizard, /mode: 'skip'/);
+  assert.match(wizard, /accountNumber: String\(draft\?\.accountNumber \|\| ''\)\.trim\(\)/);
+  assert.match(wizard, /onboardingService\.saveStep\(current\.key, apiDataFor\(current, drafts\[current\.key\]\)\)/);
+  assert.match(wizard, /drafts\.bank\?\.availableAccounts/);
+  assert.match(wizard, /drafts\.bank\.accountNumberMasked/);
+  assert.match(wizard, /The opening balance creates a real finance account/);
+  assert.match(wizard, /No bank account will be created/);
+  assert.match(css, /\.cg-setup-bank-modes/);
+});
