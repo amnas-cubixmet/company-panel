@@ -83,3 +83,16 @@
   .cg-pay-finance-extra .cg-pay-finance-cards { grid-template-columns: 1fr; }
   .cg-pay-finance-cards article { padding: 13px; }
 }
+
+.cg-pay-finance :is(input,select,textarea)[aria-invalid="true"],
+.payments-page :is(input,select,textarea)[aria-invalid="true"] {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 2px rgb(220 38 38 / 12%) !important;
+  background: #fff6f6 !important;
+}
+.cg-pay-finance .cg-pay-finance-error,
+.payments-page .payments-error {
+  border: 1px solid #ef4444 !important;
+  color: #b91c1c !important; background: #fef2f2 !important;
+  border-radius: 10px;
+}
