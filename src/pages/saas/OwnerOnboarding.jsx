@@ -95,6 +95,7 @@ export function OwnerOnboarding() {
   const [error, setError] = useState('');
   const [logoFile, setLogoFile] = useState(null);
   const firstField = useRef(null);
+  const previousActive = useRef(active);
   const current = STEPS[active];
   const completed = useMemo(() => new Set(state?.completedSteps || []), [state]);
   const completedCount = completed.size;
@@ -116,6 +117,25 @@ export function OwnerOnboarding() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // The wizard is a full-screen route outside the DashboardLayout scroll area.
+  // Bring the newly selected step into view only when changing steps, not on
+  // initial render (where the registration summary should remain visible).
+  useEffect(() => {
+    if (previousActive.current !== active) {
+      firstField.current?.scrollIntoView?.({
+        behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    }
+    previousActive.current = active;
+  }, [active]);
+
+  useEffect(() => {
+    if (error && state) {
+      firstField.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    }
+  }, [error, state]);
 
   const updateGstExemption = (checked) => {
     setDrafts(previous => ({
@@ -151,7 +171,6 @@ export function OwnerOnboarding() {
       const missing = STEPS.findIndex(step => !next.completedSteps.includes(step.key));
       if (missing >= 0) {
         setActive(missing);
-        firstField.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
       } else {
         const finished = await onboardingService.complete();
         setState(finished);
@@ -174,14 +193,16 @@ export function OwnerOnboarding() {
     </section></main>;
   }
 
-  if (loading) return <main className="cg-setup"><section className="cg-setup-card" role="status">
-    Loading workshop setup…
+  if (loading) return <main className="cg-setup"><section className="cg-setup-card" role="status" aria-live="polite">
+    <h1>Loading workshop setup…</h1>
+    <p>Connecting to your workshop account and retrieving saved details.</p>
   </section></main>;
 
   if (!state) return <main className="cg-setup"><section className="cg-setup-card">
     <h1>Unable to open workshop setup</h1>
     <p role="alert">{error}</p>
-    <button type="button" onClick={load}>Retry</button>
+    <p>Check your Django backend connection. Your existing workshop data has not been changed.</p>
+    <button type="button" onClick={load}>Retry loading setup</button>
   </section></main>;
 
   return (
