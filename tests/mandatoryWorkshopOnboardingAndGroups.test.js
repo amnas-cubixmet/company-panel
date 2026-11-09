@@ -52,8 +52,9 @@ test('fullscreen onboarding is vertically scrollable independently of the dashbo
   const wizard = source('src/pages/saas/OwnerOnboarding.jsx');
   assert.match(global, /html, body, #root\s*\{[^}]*overflow: hidden/s);
   assert.match(css, /\.cg-setup\s*\{[^}]*height:\s*100dvh;[^}]*overflow-y:\s*auto;/s);
-  assert.match(css, /\.cg-setup::-webkit-scrollbar\s*\{\s*width:\s*10px;/);
-  assert.match(css, /scrollbar-width:\s*thin/);
+  assert.match(css, /\.cg-setup::-webkit-scrollbar\s*\{[^}]*display:\s*none;/);
+  assert.match(css, /scrollbar-width:\s*none/);
+  assert.match(css, /-ms-overflow-style:\s*none/);
   assert.match(wizard, /previousActive\.current !== active/);
   assert.match(wizard, /firstField\.current\?\.scrollIntoView/);
 });
