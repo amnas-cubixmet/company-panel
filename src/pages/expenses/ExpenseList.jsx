@@ -675,7 +675,10 @@ export const ExpenseList = () => {
         currentMonthTotal={currentMonthRows.reduce((sum,item)=>sum+item.amount,0)}
         approvedTotal={approvedRows.reduce((sum,item)=>sum+item.amount,0)}
         pendingCount={pendingRows.length}
-        todayTotal={todayRows.reduce((sum,item)=>sum+item.amount,0)}
+        todayTotal={todayRows.reduce((sum,item)=>sum+Number(item.amount || 0),0)}
+        paidTotal={expenses.reduce((sum,item)=>sum+Number(item.paidAmount || 0),0)}
+        outstandingTotal={expenses.filter(item=>!['draft','rejected','cancelled'].includes(item.status))
+          .reduce((sum,item)=>sum+Number(item.balanceDue ?? Math.max(0,Number(item.amount || 0)-Number(item.paidAmount || 0))),0)}
         formatMoney={(value)=>money.format(value || 0)}
       />
 
