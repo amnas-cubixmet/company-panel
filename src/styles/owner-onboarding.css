@@ -43,9 +43,8 @@
 @media (max-width: 540px) { .cg-setup-heading { flex-direction: column; } .cg-setup-fields { grid-template-columns: 1fr; } .cg-setup-card { padding: 18px 15px; } .cg-setup-actions { flex-wrap: wrap; } .cg-setup-actions button { flex: 1; min-width: 135px; } }
 
 /* The setup route mounts without the dashboard sidebar/header/bottom nav. */
-/* The wizard does not mount DashboardLayout's .app-scroll-area.
-   Global html/body/#root are intentionally scroll-locked for the dashboard,
-   so the onboarding page needs its own visible, keyboard/touch scroll area. */
+/* The wizard has its own scroll area because global html/body/#root are
+   scroll-locked for the dashboard. Keep scrolling, but hide the visual bar. */
 .cg-setup {
   height: 100dvh;
   min-height: 0;
@@ -55,17 +54,14 @@
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
   scroll-padding-top: 22px;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-  scrollbar-color: #9bb5c7 #edf4f8;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   color: #123046;
   background: #f6fafc;
 }
-.cg-setup::-webkit-scrollbar { width: 10px; }
-.cg-setup::-webkit-scrollbar-track { background: #edf4f8; }
-.cg-setup::-webkit-scrollbar-thumb { background: #9bb5c7; border-radius: 999px; border: 2px solid #edf4f8; }
+.cg-setup::-webkit-scrollbar { display: none; width: 0; height: 0; }
 @media (max-width: 800px) {
-  .cg-setup { scroll-padding-top: 14px; scrollbar-gutter: auto; }
+  .cg-setup { scroll-padding-top: 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .cg-setup { scroll-behavior: auto; }
