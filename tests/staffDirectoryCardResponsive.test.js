@@ -2,40 +2,46 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const read = path => readFileSync(new URL('../'+path, import.meta.url),'utf8');
+const read = path => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 const card = read('src/components/staff-management/StaffDirectoryCard.jsx');
-const css = read('src/styles/staff-management-readable.css');
+const page = read('src/pages/staff-management/Staff.jsx');
+const css = read('src/styles/staff-management-compact.css');
 
-test('Staff directory displays labeled branch, role, shift and joined values without clipping', () => {
-  for (const name of ['Branch', 'Company Role', 'Shift', 'Mobile / Login', 'Daily wage']) {
-    assert.ok(card.includes('<small>'+name+'</small>'), 'Missing card label '+name);
+test('Directory shows staff identity, branch, shift, mobile and login as compact rows', () => {
+  assert.match(page, /staff-directory-table-header/);
+  assert.match(card, /staff-directory-row/);
+  for (const name of ['Branch', 'Mobile', 'Daily wage', 'Status']) {
+    assert.ok(card.includes(`data-label="${name}"`), 'Missing responsive label ' + name);
   }
-  assert.match(card, /className="staff-directory-fact__copy"/);
-  assert.match(css, /\.staff-directory-fact__copy > span \{[\s\S]*?white-space: normal !important/);
-  assert.match(css, /\.staff-directory-fact--wage \{[\s\S]*?grid-column: 1 \/ -1/);
+  assert.match(card, /staff\.role/);
+  assert.match(card, /staff\.shift/);
+  assert.match(card, /staff\.loginStatus/);
+  assert.match(card, /getEmployeeLabel\(staff, index\)/);
+  assert.match(css, /overflow-wrap: anywhere/);
 });
 
-test('Zero daily wage is displayed as configured zero rather than incorrectly missing', () => {
-  assert.match(card,/payPlan\?\.dailyRate != null/);
-  assert.match(card,/Number\.isFinite\(Number\(payPlan\.dailyRate\)\)/);
-  assert.match(card,/toLocaleString\('en-IN'\)/);
-  assert.match(card,/Not configured/);
+test('Zero daily wage is displayed as configured zero rather than missing', () => {
+  assert.match(card, /payPlan\?\.dailyRate != null/);
+  assert.match(card, /Number\.isFinite\(rate\)/);
+  assert.match(card, /rate\.toLocaleString\('en-IN'\)/);
+  assert.match(card, /Not set/);
 });
 
-test('Buttons retain functionality, meaningful power action label and sufficient touch size', () => {
-  assert.match(card,/event\.stopPropagation\(\)/);
-  assert.match(card,/onOpenWages\(\)/);
-  assert.match(card,/onToggleStatus\(\)/);
-  assert.match(card,/aria-label=\{staff\.accountStatus === 'Active'/);
-  assert.match(card,/Deactivate \$\{staff\.name\}/);
-  assert.match(css,/\.staff-directory-card__actions \.staff-status-button \{[\s\S]*?min-height: 44px !important/);
-  assert.match(css,/\.staff-directory-card__actions \.staff-view-button,[\s\S]*?min-height: 44px !important/);
+test('All actions keep permission-controlled handlers, labels and 44px hit targets', () => {
+  assert.match(card, /onOpenWages &&/);
+  assert.match(card, /onClick=\{onOpenWages\}/);
+  assert.match(card, /onToggleStatus &&/);
+  assert.match(card, /onClick=\{onToggleStatus\}/);
+  assert.match(card, /aria-label=\{staff\.accountStatus === 'Active'/);
+  assert.match(card, /Deactivate \$\{staff\.name\}/);
+  assert.match(page, /onToggleStatus=\{canEditStaff \?/);
+  assert.match(css, /\.staff-directory-row-actions > button \{[\s\S]*?min-height: 44px !important/);
+  assert.match(css, /\.staff-directory-row-actions \.staff-status-button \{[\s\S]*?min-width: 44px !important/);
 });
 
-test('Responsive card handles narrow desktop columns and mobile without page-wide overflow', () => {
-  assert.match(css,/container: staff-directory-card \/ inline-size/);
-  assert.match(css,/@container staff-directory-card \(max-width: 305px\)/);
-  assert.match(css,/\.staff-directory-details \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) !important/);
-  assert.match(css,/\.staff-directory-card__actions \{[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\) !important/);
-  assert.match(css,/white-space: normal !important/);
+test('Compact rows adapt to narrow widths without large card columns', () => {
+  assert.match(css, /@media \(max-width: 1000px\)/);
+  assert.match(css, /\.staff-directory-row,[\s\S]*?grid-template-columns: repeat\(2,minmax\(0,1fr\)\) !important/);
+  assert.match(css, /@media \(max-width: 560px\)/);
+  assert.match(css, /\.staff-directory-table.without-wages/);
 });
