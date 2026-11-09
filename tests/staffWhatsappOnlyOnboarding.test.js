@@ -55,7 +55,7 @@ test('manual WhatsApp message uses actual E.164 phone, workshop, staff name and 
   assert.equal(parsed.origin, 'https://wa.me');
   assert.equal(parsed.pathname, '/919876543210');
   const draft = parsed.searchParams.get('text');
-  assert.match(draft, /Welcome to CubeGears!/);
+  assert.match(draft, /Welcome to cubixgear!/);
   assert.match(draft, /Workshop: Alpha Garage/);
   assert.match(draft, /Name: Test Mechanic/);
   assert.match(draft, /Login Mobile: \+919876543210/);
