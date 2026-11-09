@@ -40,7 +40,7 @@ test('All actions keep permission-controlled handlers, labels and 44px hit targe
 });
 
 test('Compact rows adapt to narrow widths without large card columns', () => {
-  assert.match(css, /@media \(max-width: 1000px\)/);
+  assert.match(css, /@media \(max-width: 1250px\)/);
   assert.match(css, /\.staff-directory-row,[\s\S]*?grid-template-columns: repeat\(2,minmax\(0,1fr\)\) !important/);
   assert.match(css, /@media \(max-width: 560px\)/);
   assert.match(css, /\.staff-directory-table.without-wages/);
