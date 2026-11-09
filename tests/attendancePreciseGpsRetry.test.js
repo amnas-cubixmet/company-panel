@@ -57,7 +57,7 @@ test('denied browser permission stops immediately with a helpful error', async (
 
 test('invalid radius or unsupported GPS fails closed', async () => {
   await assert.rejects(acquireWorkshopLocation({}, 100), /not supported/);
-  await assert.rejects(acquireWorkshopLocation({ watchPosition() {} }, 25), /not configured correctly/);
+  await assert.rejects(acquireWorkshopLocation({ watchPosition() {} }, 15), /not configured correctly/);
 });
 
 test('Check In and Check Out share one precise GPS policy and an accessible retry button', () => {

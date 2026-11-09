@@ -16,15 +16,14 @@ test('attendance rules error state is red and success state remains green', () =
   assert.match(css, /\.attendance-rules-message\{[^\n]*var\(--success\)/);
 });
 
-test('GPS and place-search errors use red alerts while successful selection remains green', () => {
+test('onboarding geofence summary uses source-of-truth workshop coordinates', () => {
   const page = read('src/pages/attendance-manager/RulesSettings.jsx');
   const place = read('src/components/attendance-manager/WorkshopPlaceSearch.jsx');
   const css = read('src/styles/attendance-manager-pages.css');
-  assert.match(page, /setLocationStatusType\('error'\)/);
-  assert.match(page, /setLocationStatusType\('success'\)/);
-  assert.match(page, /attendance-location-feedback is-\$\{locationStatusType/);
-  assert.match(page, /role=\{locationStatusType === 'success' \? 'status' : 'alert'\}/);
+  assert.match(page, /attendance-location-readonly/);
+  assert.match(page, /Workshop radius active/);
+  assert.match(page, /Onboarding → Main branch &amp; location/);
+  assert.doesNotMatch(page, /setLocationStatusType/);
   assert.match(place, /attendance-location-feedback is-error" role="alert"/);
-  assert.match(css, /\.attendance-rules-page \.attendance-location-feedback\.is-error/);
-  assert.match(css, /\.attendance-rules-page \.attendance-location-feedback\.is-success/);
+  assert.match(css, /\.attendance-location-setup-link/);
 });

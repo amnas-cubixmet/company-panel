@@ -93,7 +93,7 @@ test('reports expose live-data filters and CSV export without fake totals', () =
   assert.match(css, /\.am-report-table \{display:none\}/);
 });
 
-test('rules preserve mode, GPS, approval and holiday API guards', () => {
+test('rules preserve mode, onboarding GPS summary, approval and holiday API guards', () => {
   const modes = read('src/components/attendance-manager/AttendanceModeSelector.jsx');
   for (const mode of ["'single'","'multi'","'auto_checkout'","'hybrid'"]) {
     assert.ok(modes.includes(mode), mode);
@@ -101,7 +101,8 @@ test('rules preserve mode, GPS, approval and holiday API guards', () => {
   assert.match(modes,/aria-pressed=\{selected\}/);
   assert.match(rules,/const multiMode = rules\.attendanceMode === 'multi'/);
   assert.match(rules,/const autoMode = \['auto_checkout', 'hybrid'\]/);
-  assert.match(rules,/navigator\.geolocation\.getCurrentPosition/);
+  assert.match(rules,/Onboarding → Main branch &amp; location/);
+  assert.doesNotMatch(rules,/navigator\.geolocation\.getCurrentPosition/);
   assert.match(rules,/punchRadiusMeters/);
   assert.match(rules,/attendanceManagerService\.saveRules\(rules\)/);
   assert.match(rules,/correctionApproval/);
