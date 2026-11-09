@@ -1,7 +1,7 @@
+import '../../../styles/staff-payment-settings.css';
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
-  ArrowLeft,
   BriefcaseBusiness,
   Building2,
   CalendarDays,
@@ -30,6 +30,7 @@ import {
   StaffProfileEditSheet,
 } from '../../../components/staff-management';
 import { EmployeePayConfigurationSheet } from '../../../components/payroll/EmployeePayConfigurationSheet';
+import { ResponsiveModalSheet } from '../../../components/common/ResponsiveModalSheet';
 import { getEmployeeLabel } from '../../../components/staff-management/staffDisplay';
 import { useAuth } from '../../../hooks/useAuth';
 import { useFeatureAccess } from '../../../context/FeatureAccessContext';
@@ -161,12 +162,11 @@ const normalizeActivity = (item = {}) => ({
   ),
 });
 
-export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
+export const StaffProfile = ({ staffId: staffIdProp }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { staffId: routeStaffId } = useParams();
   const staffId = staffIdProp || routeStaffId;
-  const goBack = onBack || (() => navigate('/staff-management/staff'));
   const { user } = useAuth();
   const { can } = useFeatureAccess();
 
@@ -195,6 +195,7 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
   const [editOpen, setEditOpen] = useState(false);
   const [documentOpen, setDocumentOpen] = useState(false);
   const [paymentSettingsOpen, setPaymentSettingsOpen] = useState(false);
+  const [wageRateOpen, setWageRateOpen] = useState(false);
   const [paymentSettingsBusy, setPaymentSettingsBusy] = useState(false);
   const [paymentSettingsError, setPaymentSettingsError] = useState('');
   const [paymentStructure, setPaymentStructure] = useState(null);
@@ -210,7 +211,13 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
   const canManageAttendance = can('attendance.manage');
   const canViewPayroll = can('payroll.view');
   const canManagePayroll = can('payroll.edit');
-  const canEditPaymentSettings = canViewPayroll && can('payroll.rates.manage');
+  const canEditWageRate = canViewPayroll && can('payroll.rates.manage');
+  const canRecordWagePayment = canViewPayroll && can('payroll.payments.record');
+  const canEditPaymentSettings = canEditWageRate || canRecordWagePayment;
+  // The owner and system administrators manage their own password under
+  // Account Security. Django correctly rejects a staff invitation for them.
+  const canResetStaffPassword = canManageLogin && !isOwnProfile &&
+    !['owner', 'super admin', 'platform admin'].includes(String(staff?.role || '').trim().toLowerCase());
   const visibleTabs = TABS.filter(([tab]) =>
     !['Assigned Work', 'Performance'].includes(tab) || canViewJobs
   ).filter(([tab]) =>
@@ -428,9 +435,11 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
         () => staffService.sendLoginInvite(staff.id),
         { phone: staff.phone, staffName: staff.name, workshopName: user?.company?.name },
       );
-      setInviteNotice(handoff.localOnlyLink
-        ? 'WhatsApp opened, but the password link uses localhost. Set backend FRONTEND_URL to your public HTTPS company-panel URL before sharing with staff.'
-        : 'WhatsApp opened — review the message and press Send manually.');
+      setInviteNotice(['queued', 'sending', 'sent'].includes(handoff.status)
+        ? 'Password reset has been handed to the official WhatsApp delivery service. Check its delivery status; no manual message was sent.'
+        : handoff.localOnlyLink
+          ? 'WhatsApp opened, but the setup URL is localhost. Set backend FRONTEND_URL to the public HTTPS company-panel address before the employee opens the link.'
+          : 'WhatsApp opened. Review the prepared reset message and press Send.');
       await refreshAll();
     } catch (requestError) {
       setInviteError(staffInviteErrorMessage(requestError));
@@ -470,10 +479,14 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
     }
   };
 
-  const openPaymentSettings = async () => {
-    // Permission must be confirmed by the backend feature-access response.
-    // Do not request another employee's payroll data on initial profile load.
-    if (!canEditPaymentSettings || paymentSettingsBusy || !staff?.id) return;
+  const openPaymentSettings = () => {
+    if (!canEditPaymentSettings || !staff?.id) return;
+    setPaymentSettingsError('');
+    setPaymentSettingsOpen(true);
+  };
+
+  const openWageRateSettings = async () => {
+    if (!canEditWageRate || paymentSettingsBusy || !staff?.id) return;
     setPaymentSettingsBusy(true);
     setPaymentSettingsError('');
     try {
@@ -484,12 +497,21 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
         staffName: staff.name,
         dailyRate: account?.currentRate ?? account?.dailyRate ?? '',
       });
-      setPaymentSettingsOpen(true);
+      setPaymentSettingsOpen(false);
+      setWageRateOpen(true);
     } catch (cause) {
-      setPaymentSettingsError(cause?.message || 'Unable to load payment settings.');
+      setPaymentSettingsError(cause?.message || 'Unable to load daily wage rate.');
     } finally {
       setPaymentSettingsBusy(false);
     }
+  };
+
+  const openCashBankPayment = (method) => {
+    if (!canRecordWagePayment || !staff?.id) return;
+    setPaymentSettingsOpen(false);
+    navigate(`/staff/${staff.id}/wages`, {
+      state: { openPayment: true, paymentMethod: method },
+    });
   };
 
   const handleEdit = async (payload) => {
@@ -538,15 +560,7 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
         </div>
       )}
 
-      <div className="staff-profile-topbar">
-        <button type="button" onClick={goBack} aria-label="Back to staff">
-          <ArrowLeft size={15} />
-        </button>
-        <div>
-          <h2>Staff Profile</h2>
-          
-        </div>
-      </div>
+
 
       <section className="staff-profile-hero staff360-hero">
         <div className="staff360-person">
@@ -582,12 +596,18 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
                 <Pencil size={14}/> Edit Profile
               </button>
             )}
-            {canEdit && canManageLogin && (
+            {isOwnProfile && (
+              <button type="button" className="staff360-secondary-button"
+                onClick={() => navigate('/account/security')}>
+                <Settings2 size={14} aria-hidden="true" /> Account Security
+              </button>
+            )}
+            {canResetStaffPassword && (
               <>
                 <button type="button" onClick={handleSendInvite}
-                  disabled={inviteBusy || staff.loginStatus === 'Disabled' || !staff.whatsappConsent}
+                  disabled={inviteBusy || staff.loginStatus === 'Disabled'}
                   title={staff.loginStatus === 'Disabled'
-                    ? 'Enable staff login first' : !staff.whatsappConsent ? 'Record WhatsApp consent first' : undefined}
+                    ? 'Enable staff login first' : !staff.whatsappConsent ? 'Record WhatsApp consent in Edit Profile before sending' : undefined}
                   className="staff360-secondary-button">
                   <Send size={14}/>
                   {staff.loginStatus === 'Active' ? 'Reset via WhatsApp' : 'Resend via WhatsApp'}
@@ -903,13 +923,41 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
       </section>
 
       {canEditPaymentSettings && (
-        <EmployeePayConfigurationSheet
-          isOpen={paymentSettingsOpen}
+        <ResponsiveModalSheet isOpen={paymentSettingsOpen}
           onClose={() => setPaymentSettingsOpen(false)}
+          title={`Payment Settings · ${staff.name}`} maxWidth="540px">
+          <div className="staff-payment-settings-menu">
+            {paymentSettingsError && <p className="staff-directory-message is-error" role="alert">{paymentSettingsError}</p>}
+            {canEditWageRate && (
+              <button type="button" onClick={openWageRateSettings} disabled={paymentSettingsBusy}>
+                <Settings2 size={17} aria-hidden="true" />
+                <span><strong>Daily Wage Rate</strong><small>Set the rate and effective date</small></span>
+              </button>
+            )}
+            {canRecordWagePayment && (
+              <>
+                <p>Pay an outstanding wage using an existing funded account. Each confirmed payment updates the wage and financial ledgers once.</p>
+                <div className="staff-payment-settings-ways">
+                  <button type="button" onClick={() => openCashBankPayment('Cash')}>
+                    <WalletCards size={17} aria-hidden="true" /> Cash Payment
+                  </button>
+                  <button type="button" onClick={() => openCashBankPayment('Bank Transfer')}>
+                    <WalletCards size={17} aria-hidden="true" /> Bank Payment
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </ResponsiveModalSheet>
+      )}
+      {canEditWageRate && (
+        <EmployeePayConfigurationSheet
+          isOpen={wageRateOpen}
+          onClose={() => setWageRateOpen(false)}
           structure={paymentStructure}
           onSaved={() => {
-            setPaymentSettingsOpen(false);
-            showToast('Daily wage payment settings updated.');
+            setWageRateOpen(false);
+            showToast('Daily wage rate updated.');
           }}
         />
       )}

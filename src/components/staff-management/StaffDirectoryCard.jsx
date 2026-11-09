@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Eye, Power, WalletCards } from 'lucide-react';
 import { StaffAvatar } from './StaffAvatar';
 import { getEmployeeLabel } from './staffDisplay';
@@ -23,6 +24,8 @@ export const StaffDirectoryCard = ({
 
   return (
     <article className="staff-directory-card staff-directory-row">
+      <Link className="staff-directory-full-link" to={`/staff-management/staff/${encodeURIComponent(staff.id)}`}
+        aria-label={`Open ${staff.name} staff profile`} />
       <div className="staff-directory-cell staff-directory-person" data-label="Staff">
         <StaffAvatar staff={staff} size="md" />
         <div className="staff-directory-person-copy">
