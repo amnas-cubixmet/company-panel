@@ -112,10 +112,8 @@ const TABS = [
   ['Overview', User],
   ['Attendance', CalendarDays],
   ['Assigned Work', BriefcaseBusiness],
-  ['Performance', Gauge],
   ['Payroll', WalletCards],
   ['Documents', FileText],
-  ['Activity History', Activity],
 ];
 
 const InfoItem = ({ label, value, icon: Icon }) => (
@@ -591,13 +589,11 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
           <div className="staff360-overview">
             <div className="staff360-overview-commandbar">
               <div>
-                <strong>Profile Overview</strong>
-                <span>Use Edit Profile to change role, team, shift, skills or employment details.</span>
+                <strong>Employee details</strong>
               </div>
-              {canEdit && (
+              {canEdit && !canManageLogin && (
                 <button type="button" onClick={() => setEditOpen(true)}>
-                  <Pencil size={13}/>
-                  Edit / Change
+                  <Pencil size={14}/> Edit
                 </button>
               )}
             </div>
@@ -624,31 +620,18 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
               </div>
             </div>
 
-            <div className="staff360-section">
-              <div className="staff360-section__title"><Wrench size={15}/> Skills & Specialization</div>
+            {Boolean(staff.skills?.length) && <div className="staff360-section">
+              <div className="staff360-section__title"><Wrench size={15}/> Skills</div>
               <div className="staff-chip-row">
                 {staff.skills?.length
                   ? staff.skills.map((skill, index) => {
                       const label = displayText(skill, 'Skill');
                       return <span key={String(skill?.id || skill?.name || label || index)}>{label}</span>;
                     })
-                  : <span className="is-muted">No skills assigned</span>}
+                  : null}
               </div>
-            </div>
+            </div>}
 
-            <div className="staff360-quick-grid">
-              {[
-                ['Attendance', 'Attendance', CalendarDays],
-                ['Assigned Work', 'Assigned Work', BriefcaseBusiness],
-                ['Payroll', 'Payroll', WalletCards],
-                ['Documents', 'Documents', FileText],
-              ].map(([label, tab, Icon]) => (
-                <button type="button" key={label} onClick={() => setActiveTab(tab)}>
-                  <Icon size={14}/>
-                  <span>{label}</span>
-                </button>
-              ))}
-            </div>
           </div>
         )}
 
@@ -790,8 +773,7 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
                 <div>
                   <WalletCards size={17}/>
                   <div>
-                    <strong>Daily Wage Account</strong>
-                    <span>Approved attendance, extra earnings, running balance and payment history.</span>
+                    <strong>Salary &amp; payments</strong>
                   </div>
                 </div>
                 <button type="button" onClick={() => navigate(`/staff/${staff.id}/wages`)}>
