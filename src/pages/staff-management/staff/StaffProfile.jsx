@@ -1,3 +1,4 @@
+import '../../../styles/staff-payment-settings.css';
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
