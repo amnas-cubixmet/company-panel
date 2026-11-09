@@ -45,3 +45,24 @@ test('one package describes related modules, links and one backend price', () =>
   assert.match(marketplace, /creditWalletService\.purchaseBundle\(bundle\.id\)/);
   assert.match(marketplace, /bundle\.totalCredits/);
 });
+
+test('fullscreen onboarding is vertically scrollable independently of the dashboard scroll lock', () => {
+  const global = source('src/styles/globals.css');
+  const css = source('src/styles/owner-onboarding.css');
+  const wizard = source('src/pages/saas/OwnerOnboarding.jsx');
+  assert.match(global, /html, body, #root\s*\{[^}]*overflow: hidden/s);
+  assert.match(css, /\.cg-setup\s*\{[^}]*height:\s*100dvh;[^}]*overflow-y:\s*auto;/s);
+  assert.match(css, /\.cg-setup::-webkit-scrollbar\s*\{\s*width:\s*10px;/);
+  assert.match(css, /scrollbar-width:\s*thin/);
+  assert.match(wizard, /previousActive\.current !== active/);
+  assert.match(wizard, /firstField\.current\?\.scrollIntoView/);
+});
+
+test('onboarding explains loading failures and keeps a retry action', () => {
+  const wizard = source('src/pages/saas/OwnerOnboarding.jsx');
+  assert.match(wizard, /Loading workshop setup…/);
+  assert.match(wizard, /Connecting to your workshop account/);
+  assert.match(wizard, /Check your Django backend connection/);
+  assert.match(wizard, /onClick=\{load\}>Retry loading setup/);
+});
+
