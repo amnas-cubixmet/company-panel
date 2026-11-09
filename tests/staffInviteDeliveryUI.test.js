@@ -15,7 +15,7 @@ test('staff creation has confirmed green success and no bearer token kept in sta
 
 test('staff profile retains manual WhatsApp resend without the verbose setup panel', () => {
   assert.match(profile, /shareManualStaffInvite\(/);
-  assert.match(profile, /staffService\.sendLoginInvite\(staff\.id\)/);
+  assert.match(profile, /staffService\.sendLoginInvite\(staff\.id, \{/);
   assert.match(profile, /Resend via WhatsApp/);
   assert.doesNotMatch(profile, /Copy Secure Setup Link|Staff mobile login invitation|Mobile \+ Password Login/);
   assert.doesNotMatch(profile, /showToast\('Login invite sent by email\.'\)/);
