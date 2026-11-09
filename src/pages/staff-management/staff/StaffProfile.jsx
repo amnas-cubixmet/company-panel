@@ -552,7 +552,7 @@ export const StaffProfile = ({ staffId: staffIdProp, onBack }) => {
                     <button type="button" className="staff360-secondary-button"
                       disabled={inviteBusy || staff.loginStatus === 'Disabled' || !staff.whatsappConsent}
                       onClick={handleCopyInvite}>
-                      <Copy size={14}/> Copy setup message
+                      <Copy size={14}/> Copy Setup Message
                     </button>
                     <button type="button" onClick={handleToggleAccount} className="staff360-secondary-button">
                       {staff.loginStatus === 'Disabled' ? <Unlock size={14}/> : <Lock size={14}/>}
