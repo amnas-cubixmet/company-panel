@@ -103,6 +103,7 @@ export const RoleEditorForm = ({
           ))}
         </div>
       </fieldset>
+      <p className="sr-only">Branch-specific restrictions are not available yet. Paid modules still require activation and permissions.</p>
       <section className="role-permission-choice">
         <button type="button" className="role-permission-expand" aria-expanded={advanced}
           aria-controls="role-permission-details" onClick={() => setAdvanced(value => !value)}>
