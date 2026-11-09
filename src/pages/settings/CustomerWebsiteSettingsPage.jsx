@@ -124,6 +124,12 @@ export default function CustomerWebsiteSettingsPage(){
   const primaryDomain = domains.find(d=>d.isPrimary && d.status==='active' && d.sslStatus==='ready' && d.ownershipVerified && d.dnsConfigured);
   const websiteHost = primaryDomain?.hostname || subdomain;
   const websiteReady = Boolean(primaryDomain || wildcardReady);
+  // Only expose the local preview in the Vite dev build. Production links
+  // must remain gated by verified DNS/HTTPS and never point to localhost.
+  const localPreview = import.meta.env.DEV &&
+    /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$/.test(subdomainLabel)
+    ? 'http://' + subdomainLabel + '.localhost:5174/'
+    : '';
 
   async function copyLink(){
     if(!websiteHost||!websiteReady)return;
@@ -152,6 +158,7 @@ export default function CustomerWebsiteSettingsPage(){
         </div>
         <div className="cws-actions">
           {websiteReady&&websiteHost&&<a className="cws-btn cws-primary" href={'https://'+websiteHost+'/'} target="_blank" rel="noopener noreferrer">Open Website <ArrowUpRight size={16}/></a>}
+          {localPreview&&<a className="cws-btn cws-secondary" href={localPreview} target="_blank" rel="noopener noreferrer">Open Local Preview <ArrowUpRight size={16}/></a>}
           <Link to="/settings/customer-website/domains" className="cws-btn cws-secondary">Add My Own Domain / DNS Settings</Link>
         </div>
         <form className="cws-subdomain-form" onSubmit={updateDefaultSubdomain}>
