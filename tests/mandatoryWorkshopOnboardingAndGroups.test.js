@@ -89,3 +89,24 @@ test('GST exemption checkbox has separate aligned title and description', () => 
   assert.match(css, /#root \.cg-setup-gst-exempt\s*\{[^}]*grid-template-columns:\s*22px minmax\(0, 1fr\)/s);
   assert.match(css, /#root \.cg-setup-gst-copy\s*\{[^}]*flex-direction:\s*column;[^}]*gap:\s*7px/s);
 });
+
+test('branch setup captures device location without manual GPS text inputs', () => {
+  const wizard = source('src/pages/saas/OwnerOnboarding.jsx');
+  const css = source('src/styles/owner-onboarding.css');
+  assert.match(wizard, /navigator\.geolocation\.getCurrentPosition\(/);
+  assert.match(wizard, /!window\.isSecureContext/);
+  assert.match(wizard, /enableHighAccuracy: true, timeout: 20000, maximumAge: 0/);
+  assert.match(wizard, /latitude: latitude\.toFixed\(6\)/);
+  assert.match(wizard, /longitude: longitude\.toFixed\(6\)/);
+  assert.match(wizard, /current\.key !== 'branch' \|\| !LOCATION_FIELDS\.has\(key\)/);
+  assert.match(wizard, /Use current location/);
+  assert.match(wizard, /onClick=\{clearWorkshopLocation\}/);
+  assert.match(wizard, /name="punchRadiusMeters" value=\{String\(radius\)\}/);
+  assert.match(wizard, /GPS is optional/);
+  assert.match(wizard, /locationRequestRef\.current !== requestId/);
+  assert.match(css, /\.cg-setup-location\s*\{/);
+  // The API still sends latitude, longitude and punchRadiusMeters as before.
+  assert.match(wizard, /fields: \[[\s\S]*?\['latitude', 'Workshop Latitude', 'number'\]/);
+  assert.match(wizard, /\['longitude', 'Workshop Longitude', 'number'\]/);
+  assert.match(wizard, /\['punchRadiusMeters', 'Punch Radius \(metres\)', 'number'\]/);
+});

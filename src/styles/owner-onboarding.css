@@ -98,3 +98,46 @@
   .cg-setup-logo-preview { flex-direction: row; max-width: 100%; gap: 12px; text-align: left; }
   .cg-setup-logo-preview img { width: 76px; height: 76px; }
 }
+
+/* Onboarding branch geolocation: capture a real device fix without manual
+   latitude/longitude/radius text entry; preserve the existing API payload. */
+.cg-setup-location {
+  margin-top: 20px;
+  padding: clamp(16px, 2.5vw, 22px);
+  border: 1px solid #c5dce7;
+  border-radius: 14px;
+  background: #f3f9fc;
+}
+.cg-setup-location-heading { display: flex; align-items: flex-start; gap: 12px; color: #123046; }
+.cg-setup-location-heading > svg { flex: 0 0 19px; margin-top: 3px; color: #0f766e; }
+.cg-setup-location-heading strong { display: block; font-size: 15px; font-weight: 700; }
+.cg-setup-location-heading p { margin: 5px 0 0; color: #486078; font-size: 13px; line-height: 1.5; }
+.cg-setup-location-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.cg-setup-location-actions button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  min-height: 44px; border-radius: 10px; padding: 10px 14px;
+  font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.cg-setup-locate { border: 1px solid #0f766e; color: #fff; background: #0f766e; }
+.cg-setup-clear-location { border: 1px solid #bacfdb; color: #334155; background: #fff; }
+.cg-setup-location-actions button:disabled { opacity: .55; cursor: progress; }
+.cg-setup-location-error { margin: 12px 0 0; font-size: 13px; line-height: 1.5; color: #b91c1c; }
+.cg-setup-location-status {
+  display: flex; flex-direction: column; gap: 5px;
+  margin-top: 14px; padding: 12px 14px; border-radius: 10px;
+  border: 1px solid #d5e7ee; background: #fff; overflow-wrap: anywhere;
+  font-size: 13px; line-height: 1.5; color: #334155;
+}
+.cg-setup-location-status strong { color: #065f46; font-size: 13px; }
+.cg-setup-location-status small { display: block; color: #64748b; font-size: 12px; }
+.cg-setup-radius { display: flex; flex-direction: column; gap: 7px; margin-top: 18px; }
+.cg-setup-radius select {
+  width: min(100%, 260px); min-height: 46px; padding: 9px 12px;
+  border: 1px solid #bfd2df; border-radius: 10px;
+  background: #fff; color: #123046; font: inherit; font-size: 15px;
+}
+.cg-setup-radius small { color: #486078; font-size: 12px; line-height: 1.5; }
+@media (max-width: 540px) {
+  .cg-setup-location-actions button { width: 100%; }
+  .cg-setup-radius select { width: 100%; }
+}

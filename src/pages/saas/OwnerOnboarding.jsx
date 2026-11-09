@@ -58,6 +58,8 @@ const STEPS = [
 
 const integerFields = new Set(['punchRadiusMeters', 'bookingSlotMinutes', 'paymentTermsDays']);
 const numberFields = new Set(['latitude', 'longitude', 'defaultTaxRate']);
+const LOCATION_FIELDS = new Set(['latitude', 'longitude', 'punchRadiusMeters']);
+const PUNCH_RADIUS_OPTIONS = [50, 100, 150, 200, 300, 500, 1000];
 
 const apiDataFor = (step, draft) => {
   const values = {};
@@ -97,11 +99,26 @@ export function OwnerOnboarding() {
   const [logoPreviewUrl, setLogoPreviewUrl] = useState('');
   const [savedLogoUrl, setSavedLogoUrl] = useState('');
   const [logoVersion, setLogoVersion] = useState(0);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState('');
+  const [locationAccuracy, setLocationAccuracy] = useState(null);
+  const locationRequestRef = useRef(0);
   const firstField = useRef(null);
   const previousActive = useRef(active);
   const current = STEPS[active];
   const completed = useMemo(() => new Set(state?.completedSteps || []), [state]);
   const completedCount = completed.size;
+  const branchDraft = drafts.branch || {};
+  const hasWorkshopLocation = (
+    branchDraft.latitude !== null && branchDraft.latitude !== undefined &&
+    String(branchDraft.latitude).trim() !== '' &&
+    branchDraft.longitude !== null && branchDraft.longitude !== undefined &&
+    String(branchDraft.longitude).trim() !== ''
+  );
+  const radius = Number(branchDraft.punchRadiusMeters ?? 100);
+  const radiusChoices = PUNCH_RADIUS_OPTIONS.includes(radius)
+    ? PUNCH_RADIUS_OPTIONS
+    : [...PUNCH_RADIUS_OPTIONS, radius].sort((a, b) => a - b);
 
   const load = async () => {
     setLoading(true);
@@ -120,6 +137,64 @@ export function OwnerOnboarding() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Ignore GPS callbacks after this page unmounts (or a newer request starts).
+  useEffect(() => () => { locationRequestRef.current += 1; }, []);
+
+  const locateWorkshop = () => {
+    if (!window.isSecureContext || !navigator.geolocation) {
+      setLocationError('Location access needs HTTPS or localhost and a browser with location services.');
+      return;
+    }
+    const requestId = ++locationRequestRef.current;
+    setLocating(true);
+    setLocationError('');
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        if (locationRequestRef.current !== requestId) return;
+        const { latitude, longitude, accuracy } = coords;
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+            Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
+          setLocationError('The device returned an invalid location. Please try again.');
+          setLocating(false);
+          return;
+        }
+        setDrafts(previous => ({
+          ...previous,
+          branch: {
+            ...(previous.branch || {}),
+            latitude: latitude.toFixed(6),
+            longitude: longitude.toFixed(6),
+            punchRadiusMeters: previous.branch?.punchRadiusMeters ?? 100,
+          },
+        }));
+        setLocationAccuracy(Number.isFinite(accuracy) ? Math.round(accuracy) : null);
+        setLocating(false);
+      },
+      (locationFailure) => {
+        if (locationRequestRef.current !== requestId) return;
+        const errors = {
+          1: 'Location permission was denied. Allow location access in your browser settings and retry.',
+          2: 'Your device could not determine its location. Check location services and retry.',
+          3: 'Location request timed out. Move to an area with better GPS reception and retry.',
+        };
+        setLocationError(errors[locationFailure?.code] || 'Unable to read your location. Please retry.');
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    );
+  };
+
+  const clearWorkshopLocation = () => {
+    locationRequestRef.current += 1;
+    setLocating(false);
+    setLocationError('');
+    setLocationAccuracy(null);
+    setDrafts(previous => ({
+      ...previous,
+      branch: { ...(previous.branch || {}), latitude: null, longitude: null },
+    }));
+  };
 
   // Browser object URLs keep large logo files out of React state and are
   // revoked as soon as the selected file changes or the page unmounts.
@@ -303,7 +378,7 @@ export function OwnerOnboarding() {
           </p>}
           <form onSubmit={submit}>
             <div className="cg-setup-fields">
-              {current.fields.map(([key, label, type, required]) => (
+              {current.fields.filter(([key]) => current.key !== 'branch' || !LOCATION_FIELDS.has(key)).map(([key, label, type, required]) => (
                 <label key={key} className={type === 'textarea' ? 'cg-setup-wide' : ''}>
                   <span className="cg-setup-label">{label}{required && !(key === 'gstin' && drafts.company?.gstNotRegistered) ? ' *' : ''}</span>
                   {type === 'textarea' ? (
@@ -334,9 +409,51 @@ export function OwnerOnboarding() {
                 <small>Tick if your workshop does not have a GSTIN. Otherwise enter a valid 15-character GSTIN above.</small>
               </span>
             </label>}
-            {current.key === 'branch' && <p className="cg-setup-help">
-              <MapPin size={16}/> GPS coordinates are optional. Provide both latitude and longitude to configure location-aware attendance. Accuracy depends on the staff device.
-            </p>}
+            {current.key === 'branch' && <div className="cg-setup-location">
+              <div className="cg-setup-location-heading">
+                <MapPin size={19} aria-hidden="true"/>
+                <div>
+                  <strong>Workshop location</strong>
+                  <p>Capture the GPS location while you are physically at the workshop. No coordinates to type.</p>
+                </div>
+              </div>
+              <div className="cg-setup-location-actions">
+                <button type="button" className="cg-setup-locate" onClick={locateWorkshop}
+                  disabled={locating || saving} aria-busy={locating}>
+                  <MapPin size={17} aria-hidden="true"/>
+                  {locating ? 'Detecting location…' : hasWorkshopLocation ? 'Update current location' : 'Use current location'}
+                </button>
+                {hasWorkshopLocation && (
+                  <button type="button" className="cg-setup-clear-location"
+                    onClick={clearWorkshopLocation} disabled={locating || saving}>
+                    Clear location
+                  </button>
+                )}
+              </div>
+              {locationError && <p className="cg-setup-location-error" role="alert">{locationError}</p>}
+              <div className="cg-setup-location-status" role="status" aria-live="polite">
+                {hasWorkshopLocation ? (
+                  <>
+                    <strong>Location selected</strong>
+                    <span>Latitude: {branchDraft.latitude} · Longitude: {branchDraft.longitude}</span>
+                    {locationAccuracy !== null && <small>Device accuracy: approximately {locationAccuracy} m</small>}
+                    <small>Press Save &amp; continue below to store this location.</small>
+                  </>
+                ) : (
+                  <span>Location not selected. GPS is optional; you can save this step without it.</span>
+                )}
+              </div>
+              <label className="cg-setup-radius" htmlFor="cg-punch-radius">
+                <span className="cg-setup-label">Attendance punch radius</span>
+                <select id="cg-punch-radius" name="punchRadiusMeters" value={String(radius)}
+                  onChange={event => update('punchRadiusMeters', event.target.value)}>
+                  {radiusChoices.map(value => (
+                    <option value={value} key={value}>{value} metres</option>
+                  ))}
+                </select>
+                <small>Staff must be within this distance of the saved workshop location to punch attendance.</small>
+              </label>
+            </div>}
             {current.key === 'company' && <div className="cg-setup-logo">
               <div className="cg-setup-logo-picker">
                 <label className="cg-setup-logo-title" htmlFor="cg-workshop-logo">
