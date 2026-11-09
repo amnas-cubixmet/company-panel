@@ -1145,7 +1145,7 @@ try {
             const actions=[...node.querySelectorAll('.staff-directory-row-actions button')];
             const sizes=actions.map(b=>({w:b.getBoundingClientRect().width,h:b.getBoundingClientRect().height}));
             const rect=node.getBoundingClientRect();
-            const texts=[...node.querySelectorAll('.staff-directory-person-copy strong,.staff-directory-cell > span')]
+            const texts=[...node.querySelectorAll('.staff-directory-person-copy strong,.staff-directory-branch > span,.staff-directory-contact > span,.staff-directory-wage > span')]
               .filter(el=>el.getClientRects().length);
             const minFont=texts.length
               ? Math.min(...texts.map(el=>parseFloat(getComputedStyle(el).fontSize)))
