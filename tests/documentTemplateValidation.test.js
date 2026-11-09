@@ -83,3 +83,23 @@ test('oversized and non-image logos are rejected before browser decoding', async
     /Choose an image file/,
   );
 });
+
+test('document templates inherit onboarding logo and bank from backend and offer refresh', () => {
+  const service = readFileSync(new URL('../src/services/documentTemplates.service.js', import.meta.url), 'utf8');
+  assert.match(service, /loadDocumentTemplateSettings = async/);
+  assert.match(service, /workshop_defaults: '1'/);
+  for (const key of [
+    'businessLogo', 'businessLegalName', 'businessGstin',
+    'bankName', 'bankAccountNumber', 'bankIfsc',
+  ]) {
+    assert.match(service, new RegExp("'" + key + "'"));
+  }
+  assert.match(source, /loadDocumentTemplateSettings\(\)\.then/);
+  assert.doesNotMatch(source, /settingsService\.getSettings\('company'\)/);
+  assert.match(source, /loadWorkshopTemplateDetails\(\)/);
+  assert.match(source, /Use latest workshop details/);
+  assert.match(source, /WORKSHOP_TEMPLATE_FIELDS\.map/);
+  assert.match(source, /Save Templates to keep these values/);
+  assert.match(source, /showBusinessLogo: false/);
+  assert.match(source, /businessLogo: value, showBusinessLogo: true/);
+});
