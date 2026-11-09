@@ -254,7 +254,7 @@
 .cg-staff-management .staff360-pay-config-command strong { font-size: 16px; }
 .cg-staff-management .staff360-pay-config-command button { min-height: 44px; }
 
-@media (max-width: 1000px) {
+@media (max-width: 1250px) {
   .cg-staff-management .staff-directory-table-header,
   .cg-staff-management .roles-simple-list-head { display: none !important; }
   #root .app-shell .cg-staff-management .staff-directory-table,
