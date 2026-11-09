@@ -4,21 +4,12 @@ import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 
-test('Workshop location supports place-name search with selectable results', () => {
+test('Attendance location no longer duplicates the workshop place picker', () => {
   const page = read('src/pages/attendance-manager/RulesSettings.jsx');
-  const search = read('src/components/attendance-manager/WorkshopPlaceSearch.jsx');
-  assert.match(page, /<WorkshopPlaceSearch/);
-  assert.match(page, /workshopLocationName: name/);
-  assert.match(page, /workshopLatitude: latitude/);
-  assert.match(page, /workshopLongitude: longitude/);
-  assert.match(page, /workshopLocationName: ''/);
-  assert.match(page, /Advanced coordinates/);
-  assert.match(page, /attendanceManagerService\.saveRules\(rules\)/);
-  assert.match(search, /Workshop Location \/ Place/);
-  assert.match(search, /Search Place/);
-  assert.match(search, /results\.map\(\(place\) =>/);
-  assert.match(search, /onSelect\(place\)/);
-  assert.match(search, /View on Map/);
+  assert.match(page, /Onboarding → Main branch &amp; location/);
+  assert.match(page, /href="\/onboarding"/);
+  assert.doesNotMatch(page, /<WorkshopPlaceSearch/);
+  assert.doesNotMatch(page, /Workshop Location \/ Place/);
 });
 
 test('Place geocoding is explicitly initiated and not a request-per-keystroke autocomplete', () => {
@@ -35,13 +26,11 @@ test('Place geocoding is explicitly initiated and not a request-per-keystroke au
   assert.match(search, /setResults\(\[\]\)/);
 });
 
-test('Original punch geofence and GPS controls remain unchanged', () => {
-  const page = read('src/pages/attendance-manager/RulesSettings.jsx');
+test('Self attendance still sends GPS for the server-enforced onboarding radius', () => {
   const service = read('src/services/attendance.service.js');
-  assert.match(page, /Only Within Workshop Radius/);
-  assert.match(page, /Use Current Location/);
-  assert.match(page, /Allowed Radius \(metres\)/);
-  assert.match(page, /workshopLatitude: Number\(coords\.latitude\.toFixed\(7\)\)/);
+  const page = read('src/pages/attendance-manager/RulesSettings.jsx');
   assert.match(service, /getBrowserLocation\(locationMandatory\)/);
   assert.match(service, /apiClient\.post\('\/attendance\/toggle'/);
+  assert.match(page, /Allowed radius:/);
+  assert.doesNotMatch(page, /Use Current Location/);
 });
