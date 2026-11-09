@@ -100,7 +100,7 @@ test('document templates inherit onboarding logo and bank from backend and offer
   assert.match(source, /Use latest workshop details/);
   assert.match(source, /WORKSHOP_TEMPLATE_FIELDS\.map/);
   assert.match(source, /Save Templates to keep these values/);
-  assert.match(source, /showBusinessLogo: false/);
+  assert.match(source, /update\('showBusinessLogo', false\)/);
   assert.match(source, /businessLogo: value, showBusinessLogo: true/);
 });
 
