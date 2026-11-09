@@ -227,7 +227,7 @@ export const StaffAddPage = () => {
                   onChange={event => set('name', event.target.value)} placeholder="Full name"/>
               </label>
               <div className="staff-phone-field">
-                <label htmlFor="staff-mobile-number">Mobile Number *</label>
+                <label htmlFor="staff-mobile-number">Mobile Number with Country Code *</label>
                 <div className="staff-phone-field__row">
                   <select aria-label="Mobile country code" value={countryCode}
                     onChange={event => {
