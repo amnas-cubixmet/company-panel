@@ -4,19 +4,19 @@ import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL('../' + path, import.meta.url), 'utf8');
 
-test('attendance rules have configurable workshop punch location and radius', () => {
+test('attendance rules read workshop punch location from owner onboarding without a second editor', () => {
   const rules = read('src/pages/attendance-manager/RulesSettings.jsx');
   for (const field of ['punchLocationMode', 'workshopLatitude', 'workshopLongitude', 'punchRadiusMeters']) {
     assert.ok(rules.includes(field), field);
   }
-  assert.match(rules, /<option value="anywhere">Allow Punch Anywhere<\/option>/);
-  assert.match(rules, /<option value="workshop">Only Within Workshop Radius<\/option>/);
-  assert.match(rules, /Use Current Location/);
-  assert.match(rules, /navigator\.geolocation\.getCurrentPosition/);
-  assert.match(rules, /min="50" max="5000"/);
-  assert.match(rules, /setRules\(\(current\) =>/);
+  assert.match(rules, /Onboarding → Main branch &amp; location/);
+  assert.match(rules, /Workshop radius active/);
+  assert.match(rules, /Allowed radius:/);
+  assert.match(rules, /href="\/onboarding"/);
+  assert.doesNotMatch(rules, /<WorkshopPlaceSearch/);
+  assert.doesNotMatch(rules, /navigator\.geolocation\.getCurrentPosition/);
+  assert.doesNotMatch(rules, /onChange=\{\(event\) => change\('punchRadiusMeters'/);
   assert.match(rules, /attendanceManagerService\.saveRules\(rules\)/);
-  assert.match(rules, /locationRequired: mode === 'workshop'/);
 });
 
 test('employee punch follows backend location-required policy without touching timing', () => {
@@ -30,11 +30,13 @@ test('employee punch follows backend location-required policy without touching t
   assert.match(punch, /locationRequired: Boolean\(state\?\.rule\?\.locationRequired\)/);
 });
 
-test('new geofence controls have consistent mobile accessibility styling', () => {
+test('onboarding geofence summary has readable mobile links and no editable GPS fields', () => {
   const css = read('src/styles/attendance-manager-pages.css');
-  assert.match(css, /\.attendance-punch-location-settings/);
-  assert.match(css, /min-height:44px/);
+  assert.match(css, /\.attendance-location-from-onboarding/);
+  assert.match(css, /\.attendance-location-readonly/);
+  assert.match(css, /\.attendance-location-setup-link/);
+  assert.match(css, /min-height: 44px/);
   const rule = read('src/pages/attendance-manager/RulesSettings.jsx');
-  assert.match(rule, /disabled=\{rules\.punchLocationMode === 'workshop'\}/);
-  assert.match(rule, /disabled=\{!rules\.locationTrackingEnabled \|\| rules\.punchLocationMode === 'workshop'\}/);
+  assert.match(rule, /Workshop GPS not configured/);
+  assert.doesNotMatch(rule, /Advanced coordinates/);
 });
