@@ -281,3 +281,15 @@
   .my-attendance-summary-page .cg-summary-panel{padding:13px}
   .my-attendance-summary-page .cg-summary-list-row{font-size:13px}
 }
+
+/* Staff-only, read-only salary history inside the always-free My Attendance. */
+.my-salary-panel { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.my-salary-panel header { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+.my-salary-panel h2 { font-size: 20px; font-weight: 750; margin: 0; }
+.my-salary-panel p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+.my-salary-panel .my-salary-refetch { min-height: 42px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text-primary); cursor: pointer; }
+.my-salary-panel .my-salary-records { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.my-salary-panel .my-salary-record { padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); display: flex; flex-direction: column; gap: 8px; overflow-wrap: anywhere; }
+.my-salary-record .my-salary-amount { font-size: 22px; font-weight: 760; color: var(--text-primary); }
+.my-salary-record small { font-size: 13px; color: var(--text-secondary); }
+.my-salary-panel .my-salary-message { padding: 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
