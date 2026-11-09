@@ -46,6 +46,18 @@ const STEPS = [
     ],
   },
   {
+    key: 'bank', title: 'Bank & opening balance', subtitle: 'Connect an existing bank or add a new one (optional)',
+    fields: [
+      ['name', 'Account display name', 'text', true],
+      ['bankName', 'Bank name', 'text', true],
+      ['accountNumber', 'Bank account number', 'text'],
+      ['ifsc', 'IFSC / routing code', 'text'],
+      ['branchName', 'Bank branch', 'text'],
+      ['openingBalance', 'Opening balance (₹)', 'number'],
+      ['openingDate', 'Opening balance date', 'date'],
+    ],
+  },
+  {
     key: 'billing', title: 'Invoice defaults', subtitle: 'Set payment terms and tax defaults for new invoices',
     fields: [
       ['invoicePrefix', 'Invoice Number Prefix', 'text', true],
@@ -62,6 +74,25 @@ const LOCATION_FIELDS = new Set(['latitude', 'longitude', 'punchRadiusMeters']);
 const PUNCH_RADIUS_OPTIONS = [50, 100, 150, 200, 300, 500, 1000];
 
 const apiDataFor = (step, draft) => {
+  if (step.key === 'bank') {
+    if (draft?.configured) return { mode: 'existing', accountId: draft.accountId };
+    const mode = draft?.mode || 'new';
+    if (mode === 'skip') return { mode: 'skip' };
+    if (mode === 'existing') {
+      return { mode: 'existing', accountId: draft?.selectedAccountId || '' };
+    }
+    // Never send a masked account number from snapshot back as raw bank data.
+    return {
+      mode: 'new',
+      name: String(draft?.name || '').trim(),
+      bankName: String(draft?.bankName || '').trim(),
+      accountNumber: String(draft?.accountNumber || '').trim(),
+      ifsc: String(draft?.ifsc || '').trim(),
+      branchName: String(draft?.branchName || '').trim(),
+      openingBalance: draft?.openingBalance === '' ? '0.00' : String(draft?.openingBalance ?? '0.00'),
+      openingDate: draft?.openingDate || null,
+    };
+  }
   const values = {};
   for (const [name, , type] of step.fields) {
     const input = draft?.[name];
@@ -126,7 +157,13 @@ export function OwnerOnboarding() {
     try {
       const result = await onboardingService.get();
       setState(result);
-      setDrafts(Object.fromEntries(STEPS.map(({ key }) => [key, result[key] || {}])));
+      setDrafts(Object.fromEntries(STEPS.map(({ key }) => [
+        key,
+        key === 'bank'
+          ? { ...(result.bank || {}), mode: result.bank?.skipped ? 'skip' : 'new',
+              selectedAccountId: '' }
+          : result[key] || {},
+      ])));
       const next = STEPS.findIndex(({ key }) => !(result.completedSteps || []).includes(key));
       setActive(next < 0 ? 0 : next);
     } catch (cause) {
@@ -282,7 +319,13 @@ export function OwnerOnboarding() {
         next = await onboardingService.get();
       }
       setState(next);
-      setDrafts(previous => ({ ...previous, [current.key]: next[current.key] || previous[current.key] }));
+      setDrafts(previous => ({
+        ...previous,
+        [current.key]: current.key === 'bank'
+          ? { ...(next.bank || {}), mode: next.bank?.skipped ? 'skip' : 'new',
+              selectedAccountId: '' }
+          : next[current.key] || previous[current.key],
+      }));
       const missing = STEPS.findIndex(step => !next.completedSteps.includes(step.key));
       if (missing >= 0) {
         setActive(missing);
@@ -378,7 +421,8 @@ export function OwnerOnboarding() {
           </p>}
           <form onSubmit={submit}>
             <div className="cg-setup-fields">
-              {current.fields.filter(([key]) => current.key !== 'branch' || !LOCATION_FIELDS.has(key)).map(([key, label, type, required]) => (
+              {current.fields.filter(([key]) => current.key !== 'bank' &&
+                (current.key !== 'branch' || !LOCATION_FIELDS.has(key))).map(([key, label, type, required]) => (
                 <label key={key} className={type === 'textarea' ? 'cg-setup-wide' : ''}>
                   <span className="cg-setup-label">{label}{required && !(key === 'gstin' && drafts.company?.gstNotRegistered) ? ' *' : ''}</span>
                   {type === 'textarea' ? (
@@ -483,6 +527,92 @@ export function OwnerOnboarding() {
                 </div>
               )}
             </div>}
+            {current.key === 'bank' && (
+              <section className="cg-setup-bank" aria-label="Bank account setup">
+                {drafts.bank?.configured ? (
+                  <div className="cg-setup-bank-saved" role="status">
+                    <Check size={20} aria-hidden="true"/>
+                    <div>
+                      <strong>{drafts.bank.name}</strong>
+                      <p>{drafts.bank.bankName} · {drafts.bank.accountNumberMasked || 'Account number not provided'}</p>
+                      <p>Opening balance: ₹{drafts.bank.openingBalance}</p>
+                      <small>Saved in Finance Accounts. Manage later changes there to preserve your accounting history.</small>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="cg-setup-bank-intro">
+                      Add your workshop bank account and its starting balance.
+                      This is for internal accounting, not a bank connection. You may skip and add it later.
+                    </p>
+                    <div className="cg-setup-bank-modes" role="group" aria-label="Bank setup choice">
+                      <label>
+                        <input type="radio" name="bankMode" value="new"
+                          checked={(drafts.bank?.mode || 'new') === 'new'}
+                          onChange={() => update('mode', 'new')}/>
+                        Add bank account
+                      </label>
+                      {(drafts.bank?.availableAccounts?.length > 0) && (
+                        <label>
+                          <input type="radio" name="bankMode" value="existing"
+                            checked={drafts.bank?.mode === 'existing'}
+                            onChange={() => update('mode', 'existing')}/>
+                          Use existing bank
+                        </label>
+                      )}
+                      <label>
+                        <input type="radio" name="bankMode" value="skip"
+                          checked={drafts.bank?.mode === 'skip'}
+                          onChange={() => update('mode', 'skip')}/>
+                        Skip for now
+                      </label>
+                    </div>
+                    {(drafts.bank?.mode || 'new') === 'new' && (
+                      <div className="cg-setup-fields cg-setup-bank-fields">
+                        {current.fields.map(([key, label, type, required]) => (
+                          <label key={key}>
+                            <span className="cg-setup-label">{label}{required ? ' *' : ''}</span>
+                            <input name={key} type={type}
+                              required={Boolean(required)}
+                              min={key === 'openingBalance' ? '0' : undefined}
+                              step={key === 'openingBalance' ? '0.01' : undefined}
+                              autoComplete={key === 'accountNumber' ? 'off' : undefined}
+                              value={drafts.bank?.[key] ?? (key === 'openingBalance' ? '0.00' : '')}
+                              onChange={event => update(key, event.target.value)}/>
+                          </label>
+                        ))}
+                        <p className="cg-setup-bank-note cg-setup-wide">
+                          The opening balance creates a real finance account and balanced opening journal once.
+                          Please check it before saving; subsequent balance changes are made in Finance Accounts.
+                        </p>
+                      </div>
+                    )}
+                    {drafts.bank?.mode === 'existing' && (
+                      <label className="cg-setup-bank-existing">
+                        <span className="cg-setup-label">Existing workshop bank *</span>
+                        <select required name="selectedBankAccount"
+                          value={drafts.bank?.selectedAccountId || ''}
+                          onChange={event => update('selectedAccountId', event.target.value)}>
+                          <option value="">Select a bank</option>
+                          {(drafts.bank?.availableAccounts || []).map(account => (
+                            <option key={account.id} value={account.id}>
+                              {account.name} — {account.bankName} {account.accountNumberMasked}
+                            </option>
+                          ))}
+                        </select>
+                        <small>The existing bank balance and transactions will not change.</small>
+                      </label>
+                    )}
+                    {drafts.bank?.mode === 'skip' && (
+                      <p className="cg-setup-bank-note">
+                        No bank account will be created. You can add cash, bank and UPI accounts
+                        later in Finance → Accounts.
+                      </p>
+                    )}
+                  </>
+                )}
+              </section>
+            )}
             {current.key === 'billing' && <p className="cg-setup-help">
               <ShieldCheck size={16}/> GST rates are configurable defaults, not a filing determination. Actual invoice tax depends on the applicable transaction.
             </p>}

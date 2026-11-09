@@ -141,3 +141,38 @@
   .cg-setup-location-actions button { width: 100%; }
   .cg-setup-radius select { width: 100%; }
 }
+
+/* Optional bank onboarding uses the same financial account model, not a
+   duplicate account balance in local storage or a parallel bank ledger. */
+.cg-setup-bank { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.cg-setup-bank-intro { margin: 0; color: #486078; font-size: 14px; line-height: 1.6; }
+.cg-setup-bank-modes { display: flex; flex-wrap: wrap; gap: 10px; }
+.cg-setup-bank-modes label {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 10px 13px;
+  background: #f3f9fc; border: 1px solid #bfd2df; border-radius: 11px;
+  cursor: pointer; font-size: 13px; color: #123046; font-weight: 650;
+}
+.cg-setup-bank-modes input[type="radio"] { width: 18px; height: 18px; accent-color: #0f766e; }
+.cg-setup-bank-fields { padding-top: 6px; }
+.cg-setup-bank-fields label { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.cg-setup-bank-note { margin: 4px 0 0; color: #486078; font-size: 12px; line-height: 1.6; }
+.cg-setup-bank-existing { display: flex; flex-direction: column; gap: 8px; }
+.cg-setup-bank-existing select {
+  display: block; width: 100%; max-width: 520px;
+  min-height: 46px; padding: 10px 12px; border: 1px solid #bfd2df;
+  border-radius: 10px; background: #fff; color: #123046;
+}
+.cg-setup-bank-existing small { color: #64748b; font-size: 12px; }
+.cg-setup-bank-saved {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 18px; background: #edf9f5; border: 1px solid #99d5c7; border-radius: 12px;
+}
+.cg-setup-bank-saved > svg { flex: 0 0 20px; color: #0f766e; }
+.cg-setup-bank-saved strong { font-size: 16px; color: #065f46; }
+.cg-setup-bank-saved p { margin: 5px 0; font-size: 13px; color: #334155; }
+.cg-setup-bank-saved small { display: block; margin-top: 8px; font-size: 12px; line-height: 1.5; color: #486078; }
+@media (max-width: 540px) {
+  .cg-setup-bank-modes { display: grid; grid-template-columns: 1fr; }
+  .cg-setup-bank-modes label { width: 100%; }
+}
