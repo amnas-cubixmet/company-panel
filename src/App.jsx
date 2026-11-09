@@ -58,6 +58,8 @@ import './styles/form-errors-unified.css';
 import './styles/desktop-typography.css';
 // Shared accessible outlined floating labels for standard form controls.
 import './styles/floating-fields.css';
+// Ensure brand images use the same logo treatment across auth, account and workshop shells.
+import './styles/cubixgear-branding.css';
 
 export function App() {
   return (
