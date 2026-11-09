@@ -70,6 +70,6 @@ test('Share and Resend allow authorized copy fallback and preserve manual send s
   assert.match(add, /Copy Setup Message/);
   assert.match(profile, /copyManualStaffInvite/);
   assert.match(profile, /Resend via WhatsApp/);
-  assert.match(profile, /Copy Setup Message/);
+  assert.match(profile, /Copy Password Link Message/);
   assert.match(add, /Paste it only into the registered staff WhatsApp chat and press Send manually/);
 });
