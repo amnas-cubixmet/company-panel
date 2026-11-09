@@ -6,6 +6,7 @@ import { getStaffLandingPath } from '../src/utils/staffLanding.js';
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const login = read('../src/pages/auth/Login.jsx');
 const setup = read('../src/pages/auth/SetupPassword.jsx');
+const staffSetup = read('../src/pages/auth/StaffSetPasswordPage.jsx');
 const forgot = read('../src/pages/auth/ForgotPassword.jsx');
 const reset = read('../src/pages/auth/ResetPassword.jsx');
 const magic = read('../src/pages/auth/MagicLinkVerify.jsx');
@@ -36,6 +37,20 @@ test('password setup, reset and magic link honour current role instead of forcin
   assert.match(magic, /getStaffLandingPath\(user, next\)/);
   assert.match(login, /getStaffLandingPath\(authenticatedUser, params\.get\('next'\)\)/);
   assert.match(read('../src/pages/auth/AccessDenied.jsx'), /getStaffLandingPath\(user\)/);
+});
+
+test('one-use staff password setup signs in with a complete Django session and a permitted landing route', () => {
+  assert.match(staffSetup, /publicPasswordRequest\('consume'/);
+  assert.match(staffSetup, /typeof accessToken !== 'string'/);
+  assert.match(staffSetup, /typeof refreshToken !== 'string'/);
+  assert.match(staffSetup, /!user\?\.id \|\| !\(user\?\.phone \|\| user\?\.email\)/);
+  assert.match(staffSetup, /localStorage\.setItem\('auth_token', accessToken\)/);
+  assert.match(staffSetup, /localStorage\.setItem\('auth_refresh_token', refreshToken\)/);
+  assert.match(staffSetup, /localStorage\.setItem\('auth_user', JSON\.stringify\(user\)\)/);
+  assert.match(staffSetup, /getStaffLandingPath\(user\)/);
+  assert.match(staffSetup, /window\.location\.replace\(destination\)/);
+  assert.match(staffSetup, /setState\('success'\)/); // fallback if no JWT
+  assert.doesNotMatch(staffSetup, /localStorage\.setItem\('auth_token', token\)/);
 });
 
 test('password reset signs in only when Django returns a complete verified session', () => {
