@@ -34,6 +34,9 @@ export const templateDefaults = {
   authorizedSignatory: '',
   termsText: '',
   showBusinessLogo: true,
+  showGstin: true,
+  showPan: true,
+  showWebsite: true,
   showBankDetails: true,
   showTerms: true,
   showSignature: true

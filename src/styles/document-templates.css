@@ -158,3 +158,31 @@
 @media (max-width: 540px) {
   .template-workshop-sync button { width: 100%; }
 }
+
+/* Branding image and optional document identity visibility controls. */
+.document-templates-page .business-logo-preview img { object-fit: contain; }
+.document-templates-page .template-identity-field {
+  display: flex; flex-direction: column; gap: 7px;
+  min-width: 0; padding: 10px; border: 1px solid var(--border);
+  border-radius: 10px; background: var(--surface);
+}
+.document-templates-page .template-identity-field > label:not(.template-identity-toggle) {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.document-templates-page .template-identity-field input:disabled {
+  opacity: .65; cursor: not-allowed;
+}
+.document-templates-page .template-identity-toggle {
+  display: flex !important; flex-direction: row !important;
+  justify-content: space-between; align-items: center; gap: 12px;
+  min-height: 32px; font-size: 12px !important; cursor: pointer;
+}
+.document-templates-page .template-identity-toggle input[type="checkbox"] {
+  appearance: auto; width: 20px; height: 20px; accent-color: #087f8c;
+  margin: 0; flex: 0 0 20px; cursor: pointer;
+}
+.document-templates-page .template-tax-identity-notice {
+  margin: 12px 0 0; padding: 10px 12px; border-radius: 9px;
+  background: var(--surface-2); color: var(--text-secondary);
+  font-size: 12px; line-height: 1.5;
+}
