@@ -91,7 +91,7 @@ export const RoleEditorForm = ({
         <legend>Access level</legend>
         <div className="role-preset-options">
           {[
-            { id: 'viewer', label: 'View only', help: 'View permissions across available modules' },
+            { id: 'viewer', label: 'View only', help: 'Basic workshop pages, no finance or payroll' },
             { id: 'none', label: 'No access', help: 'Keep permissions off' },
             { id: 'custom', label: 'Custom', help: 'Choose permissions yourself' },
           ].map(item => (
