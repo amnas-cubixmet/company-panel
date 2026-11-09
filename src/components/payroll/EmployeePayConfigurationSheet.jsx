@@ -1,3 +1,4 @@
+import '../../styles/staff-payment-settings.css';
 import { useEffect, useState } from "react";
 import { Save, WalletCards } from 'lucide-react';
 import { ResponsiveModalSheet } from '../common/ResponsiveModalSheet';
