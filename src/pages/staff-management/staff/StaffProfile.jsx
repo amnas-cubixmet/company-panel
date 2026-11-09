@@ -422,7 +422,7 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
   }, [jobs, staff]);
 
   const handleSendInvite = async () => {
-    if (inviteBusy || !canManageLogin) return;
+    if (inviteBusy || !canResetStaffPassword || !staff?.id) return;
     if (!staff.whatsappConsent) {
       setInviteError('Record staff WhatsApp consent before sharing a setup link.');
       return;
@@ -432,14 +432,17 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
     setInviteNotice('');
     try {
       const handoff = await shareManualStaffInvite(
-        () => staffService.sendLoginInvite(staff.id),
+        () => staffService.sendLoginInvite(staff.id, {
+          manualOnly: true,
+          replace: staff.loginStatus === 'Active',
+        }),
         { phone: staff.phone, staffName: staff.name, workshopName: user?.company?.name },
       );
       setInviteNotice(['queued', 'sending', 'sent'].includes(handoff.status)
         ? 'Password reset has been handed to the official WhatsApp delivery service. Check its delivery status; no manual message was sent.'
         : handoff.localOnlyLink
           ? 'WhatsApp opened, but the setup URL is localhost. Set backend FRONTEND_URL to the public HTTPS company-panel address before the employee opens the link.'
-          : 'WhatsApp opened. Review the prepared reset message and press Send.');
+          : 'Password link is ready in WhatsApp. Review it and press Send to share manually.');
       await refreshAll();
     } catch (requestError) {
       setInviteError(staffInviteErrorMessage(requestError));
@@ -449,13 +452,16 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
   };
 
   const handleCopyInvite = async () => {
-    if (inviteBusy || !canManageLogin || !staff?.whatsappConsent) return;
+    if (inviteBusy || !canResetStaffPassword || !staff?.whatsappConsent) return;
     setInviteBusy(true);
     setInviteError('');
     setInviteNotice('');
     try {
       await copyManualStaffInvite(
-        () => staffService.sendLoginInvite(staff.id),
+        () => staffService.sendLoginInvite(staff.id, {
+          manualOnly: true,
+          replace: staff.loginStatus === 'Active',
+        }),
         { phone: staff.phone, staffName: staff.name, workshopName: user?.company?.name },
       );
       setInviteNotice('Setup message copied. Paste it into the staff WhatsApp chat and manually press Send.');
@@ -608,9 +614,13 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
                   disabled={inviteBusy || staff.loginStatus === 'Disabled'}
                   title={staff.loginStatus === 'Disabled'
                     ? 'Enable staff login first' : !staff.whatsappConsent ? 'Record WhatsApp consent in Edit Profile before sending' : undefined}
-                  className="staff360-secondary-button">
-                  <Send size={14}/>
-                  {staff.loginStatus === 'Active' ? 'Reset via WhatsApp' : 'Resend via WhatsApp'}
+                  className="staff360-secondary-button staff360-manual-reset"
+                  aria-label={staff.loginStatus === 'Active'
+                    ? 'Send password reset link manually via WhatsApp'
+                    : 'Send password setup link manually via WhatsApp'}>
+                  <Send size={14} aria-hidden="true"/>
+                  {inviteBusy ? 'Preparing link…' : staff.loginStatus === 'Active'
+                    ? 'Send Reset Link via WhatsApp' : 'Resend via WhatsApp'}
                 </button>
                 <details className="staff360-more-actions">
                   <summary>More</summary>
@@ -618,7 +628,7 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
                     <button type="button" className="staff360-secondary-button"
                       disabled={inviteBusy || staff.loginStatus === 'Disabled' || !staff.whatsappConsent}
                       onClick={handleCopyInvite}>
-                      <Copy size={14}/> Copy Setup Message
+                      <Copy size={14}/> Copy Password Link Message
                     </button>
                     <button type="button" onClick={handleToggleAccount} className="staff360-secondary-button">
                       {staff.loginStatus === 'Disabled' ? <Unlock size={14}/> : <Lock size={14}/>}
