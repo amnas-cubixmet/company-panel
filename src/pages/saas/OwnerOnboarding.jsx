@@ -319,7 +319,13 @@ export function OwnerOnboarding() {
         next = await onboardingService.get();
       }
       setState(next);
-      setDrafts(previous => ({ ...previous, [current.key]: next[current.key] || previous[current.key] }));
+      setDrafts(previous => ({
+        ...previous,
+        [current.key]: current.key === 'bank'
+          ? { ...(next.bank || {}), mode: next.bank?.skipped ? 'skip' : 'new',
+              selectedAccountId: '' }
+          : next[current.key] || previous[current.key],
+      }));
       const missing = STEPS.findIndex(step => !next.completedSteps.includes(step.key));
       if (missing >= 0) {
         setActive(missing);
