@@ -45,7 +45,8 @@ export const RoleEditorForm = ({
           module.key,
           Object.fromEntries(module.actions.map(action => [
             action,
-            value === 'viewer' && action === 'view',
+            value === 'viewer' && action === 'view'
+              && ['dashboard', 'customers', 'vehicles', 'services', 'jobs', 'stock'].includes(module.key),
           ])),
         ])),
       },
