@@ -245,7 +245,7 @@ export const StaffAddPage = () => {
                     autoComplete="tel-national" inputMode="numeric"
                     value={localPhone}
                     maxLength={currentCountry.digits}
-                    onChange={event => set('phone', countryCode + event.target.value.replace(/\\D/g, '').slice(0, currentCountry.digits))}
+                    onChange={event => set('phone', countryCode + event.target.value.replace(/\D/g, '').slice(0, currentCountry.digits))}
                     placeholder={`${currentCountry.digits}-digit mobile number`}/>
                 </div>
               </div>
