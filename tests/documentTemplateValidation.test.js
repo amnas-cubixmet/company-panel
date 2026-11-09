@@ -103,3 +103,32 @@ test('document templates inherit onboarding logo and bank from backend and offer
   assert.match(source, /showBusinessLogo: false/);
   assert.match(source, /businessLogo: value, showBusinessLogo: true/);
 });
+
+test('GST, PAN and website display switches validate as booleans', () => {
+  const service = readFileSync(new URL('../src/services/documentTemplates.service.js', import.meta.url), 'utf8');
+  for (const field of ['showGstin', 'showPan', 'showWebsite']) {
+    assert.match(service, new RegExp(field + ': true'));
+    assert.equal(validateDocumentTemplateSettings({ [field]: false })[field], undefined);
+    assert.match(validateDocumentTemplateSettings({ [field]: 'off' })[field], /enabled or disabled/);
+  }
+  assert.match(source, /Show GSTIN/);
+  assert.match(source, /Show PAN/);
+  assert.match(source, /Show Website/);
+  assert.match(source, /settings\.showGstin === false/);
+  assert.match(source, /settings\.showPan === false/);
+  assert.match(source, /settings\.showWebsite === false/);
+  assert.match(source, /settings\.showWebsite && settings\.businessWebsite/);
+  assert.match(source, /GSTIN remains/);
+});
+
+test('template logo falls back to the private workshop logo and shared upload API', () => {
+  assert.match(source, /settingsService\.getCompanyLogo\(\)/);
+  assert.match(source, /URL\.createObjectURL\(logo\)/);
+  assert.match(source, /URL\.revokeObjectURL\(blobUrl\)/);
+  assert.match(source, /settingsService\.uploadCompanyLogo\(file\)/);
+  assert.match(source, /settings\.businessLogo \|\| workshopLogoUrl/);
+  assert.match(source, /workshopLogoUrl=\{workshopLogoUrl\}/);
+  assert.match(source, /No saved workshop logo found/);
+  assert.match(source, /Hide on documents/);
+  assert.match(source, /Show logo/);
+});
