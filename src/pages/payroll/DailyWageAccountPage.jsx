@@ -1,6 +1,6 @@
 import { appConfirm, appPrompt } from '../../components/common/appDialogs';
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CalendarCheck2, CheckCircle2, ClipboardList, History, Pencil, Plus, Wallet, WalletCards } from "lucide-react";
+import { CalendarCheck2, CheckCircle2, ClipboardList, History, Pencil, Plus, Wallet, WalletCards } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
@@ -203,7 +203,6 @@ export const DailyWageAccountPage = () => {
     <main className="dw-page dashboard-page">
       <header className="dw-header dashboard-heading">
         <div className="dashboard-heading-copy">
-          <button type="button" className="dw-text-link dw-back" onClick={() => navigate('/payroll/daily-wages')}><ArrowLeft size={16}/> Daily Wages</button>
           <h1>{account?.employee?.name || 'Daily Wage Account'}</h1>
           <p>{account?.employee?.employeeCode || ''} · {account?.employee?.designation || 'Workshop Staff'} · Daily Wage Ledger</p>
         </div>
