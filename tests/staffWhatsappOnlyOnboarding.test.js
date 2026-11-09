@@ -125,7 +125,7 @@ test('WhatsApp consent remains editable without the removed information panel', 
   assert.match(profileEdit, /whatsappConsentSource: staff\.whatsappConsentSource/);
   assert.match(profileEdit, /showFormFieldError\(formRef\.current, 'whatsappConsentSource'/);
   assert.match(profile, /staff\.whatsappConsent/);
-  assert.match(profile, /staffService\.sendLoginInvite\(staff\.id\)/);
+  assert.match(profile, /staffService\.sendLoginInvite\(staff\.id, \{/);
   assert.doesNotMatch(profile, /staff-setup-link-panel|handleRecordWhatsAppConsent|Copy Secure Setup Link/);
   assert.doesNotMatch(profile, /queue_staff_whatsapp_invitation|send_template_message/);
 });
