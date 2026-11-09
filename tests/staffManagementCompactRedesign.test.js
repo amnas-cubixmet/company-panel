@@ -61,7 +61,7 @@ test('staff profile retains useful tabs, real wage account and documented action
   assert.match(profile, /handleSendInvite/);
   assert.match(profile, /handleCopyInvite/);
   assert.match(profile, /staff360-more-actions/);
-  assert.match(stylesheet, /@media \(max-width: 1000px\)/);
+  assert.match(stylesheet, /@media \(max-width: 1250px\)/);
   assert.match(stylesheet, /@media \(max-width: 560px\)/);
   assert.match(layout, /import '\.\.\/\.\.\/styles\/staff-management-compact\.css'/);
 });
