@@ -344,7 +344,7 @@ export function DocumentTemplates() {
               {workshopLogoState === 'missing' && 'No saved workshop logo found. Upload it here or save it from onboarding.'}
               {workshopLogoState === 'error' && 'Could not fetch the saved workshop logo. Check your backend connection.'}
               {workshopLogoState === 'available' && 'Workshop logo is available. Upload a replacement if needed.'}
-              {' '}Choose an image under 10 MB; it will be resized for PDF templates.
+              {' '}Choose an image under 10 MB; it will be resized and compressed before saving.
             </small>
             {fieldErrors.businessLogo && <small id="business-logo-error" className="template-input-error" role="alert">{fieldErrors.businessLogo}</small>}
           </div>
