@@ -29,7 +29,7 @@ test('bank and cash wage shortcuts do not bypass confirmation or idempotency', (
   for (const fragment of [
     "method: 'Cash'", "location.state.paymentMethod === 'Bank Transfer'",
     "open('pay', method)", "requestKey: form.requestKey", "account: form.account || null",
-    "Select an active Cash or Bank account", "chosen.currentBalance",
+    "Choose an active Cash or Bank account", "chosen.currentBalance",
   ]) assert.ok(account.includes(fragment), fragment);
   assert.match(account, /if \(!actionAccess\[modal\] \|\| saving \|\| !modal\) return/);
   assert.match(account, /onSubmit=\{submit\}/);
