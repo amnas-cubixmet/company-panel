@@ -1151,7 +1151,7 @@ try {
               ? Math.min(...texts.map(el=>parseFloat(getComputedStyle(el).fontSize)))
               : 0;
             const clipped=cells.some(cell=>cell.scrollWidth>cell.clientWidth+2);
-            const columns=getComputedStyle(node).gridTemplateColumns.split(/\\s+/).filter(Boolean).length;
+            const columns=getComputedStyle(node).gridTemplateColumns.split(/\s+/).filter(Boolean).length;
             return {
               font:minFont,actions:sizes,clipped,
               cardWidth:rect.width,viewport:innerWidth,columns,
