@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Check, FileText, ImagePlus, LayoutTemplate, ReceiptText, Save, Sparkles, Trash2 } from 'lucide-react';
-import { settingsService } from '../../services/settings.service';
-import { templateDefaults as defaults, loadDocumentTemplateSettings, saveDocumentTemplateSettings } from '../../services/documentTemplates.service';
+import {
+  templateDefaults as defaults, loadDocumentTemplateSettings,
+  loadWorkshopTemplateDetails, WORKSHOP_TEMPLATE_FIELDS,
+  saveDocumentTemplateSettings,
+} from '../../services/documentTemplates.service';
 import { validateDocumentTemplateSettings, templateApiFieldErrors, templateErrorSummary } from '../../utils/documentTemplateValidation';
 import { AccountHeader } from '../../components/account';
 import { optimizeDocumentLogo } from '../../utils/optimizeDocumentLogo';
@@ -125,7 +128,8 @@ export function DocumentTemplates() {
   const [settingsError, setSettingsError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [saved, setSaved] = useState(false);
-  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [syncingProfile, setSyncingProfile] = useState(false);
+  const [profileSynced, setProfileSynced] = useState(false);
   const [previewKind, setPreviewKind] = useState('invoice');
   const [mobilePane, setMobilePane] = useState('edit');
 
@@ -144,20 +148,11 @@ export function DocumentTemplates() {
 
   useEffect(() => {
     let alive = true;
-    Promise.all([
-      loadDocumentTemplateSettings(),
-      settingsService.getSettings('company').catch(() => ({})),
-    ]).then(([savedSettings, company]) => {
+    loadDocumentTemplateSettings().then((savedSettings) => {
       if (!alive) return;
-      setSettings({
-        ...savedSettings,
-        businessName: savedSettings.businessName || company.name || defaults.businessName,
-        businessGstin: savedSettings.businessGstin || company.gstNo || '',
-        businessPhone: savedSettings.businessPhone || company.phone || '',
-        businessEmail: savedSettings.businessEmail || company.email || '',
-        businessAddress: savedSettings.businessAddress || company.address || '',
-      });
-      setProfileLoaded(true);
+      // The backend merges live company, logo and selected bank details into
+      // template defaults before the first preview. No stale local cache.
+      setSettings(savedSettings);
       setSettingsReady(true);
       setSettingsError('');
     }).catch((error) => {
@@ -177,8 +172,34 @@ export function DocumentTemplates() {
     setSettings((old) => ({ ...old, [key]: value }));
   };
 
+  const syncWorkshopProfile = async () => {
+    if (!settingsReady || syncingProfile || savingSettings || preparingLogo) return;
+    setSyncingProfile(true);
+    setProfileSynced(false);
+    setSettingsError('');
+    try {
+      const latest = await loadWorkshopTemplateDetails();
+      const values = Object.fromEntries(
+        WORKSHOP_TEMPLATE_FIELDS.map((key) => [key, latest[key] || ''])
+      );
+      setSettings((old) => ({
+        ...old,
+        ...values,
+        showBusinessLogo: Boolean(values.businessLogo) || old.showBusinessLogo,
+      }));
+      setFieldErrors((old) => Object.fromEntries(
+        Object.entries(old).filter(([key]) => !WORKSHOP_TEMPLATE_FIELDS.includes(key))
+      ));
+      setProfileSynced(true);
+    } catch (cause) {
+      setSettingsError(cause?.message || 'Unable to refresh workshop details.');
+    } finally {
+      setSyncingProfile(false);
+    }
+  };
+
   const save = async () => {
-    if (savingSettings || settingsLoading || preparingLogo || !settingsReady) return;
+    if (savingSettings || settingsLoading || preparingLogo || syncingProfile || !settingsReady) return;
     setSaved(false);
     const problems = validateDocumentTemplateSettings(settings);
     setFieldErrors(problems);
@@ -218,7 +239,7 @@ export function DocumentTemplates() {
     });
     try {
       const value = await optimizeDocumentLogo(file);
-      update('businessLogo', value);
+      setSettings((old) => ({ ...old, businessLogo: value, showBusinessLogo: true }));
     } catch (error) {
       const message = error?.message || 'Unable to prepare this image.';
       setFieldErrors((old) => ({ ...old, businessLogo: message }));
@@ -236,7 +257,7 @@ export function DocumentTemplates() {
         active="templates"
         onNavigate={navigate}
         actions={
-          <button className="template-save-button" type="button" disabled={!settingsReady || settingsLoading || savingSettings || preparingLogo} onClick={save}>
+          <button className="template-save-button" type="button" disabled={!settingsReady || settingsLoading || savingSettings || preparingLogo || syncingProfile} onClick={save}>
             {saved ? <Check size={15}/> : <Save size={15}/>}
             {savingSettings ? 'Saving…' : saved ? 'Saved' : 'Save Templates'}
           </button>
@@ -245,7 +266,18 @@ export function DocumentTemplates() {
 
       {settingsError && <p className="template-server-error" role="alert">{settingsError}</p>}
       {settingsLoading && <p className="template-server-loading" role="status">Loading saved company invoice templates…</p>}
-      <details className="template-server-note"><summary>Document information</summary><p>Templates are company-scoped. Finalized documents retain their saved appearance. Legal seller and GST details come from Company Settings.</p></details>
+      <div className="template-workshop-sync">
+        <div>
+          <strong>Workshop details connected</strong>
+          <p>Brand name, legal details, GSTIN, contact, uploaded logo and the selected bank are loaded from the backend. Existing template overrides are preserved.</p>
+        </div>
+        <button type="button" onClick={syncWorkshopProfile}
+          disabled={!settingsReady || settingsLoading || savingSettings || syncingProfile || preparingLogo}>
+          {syncingProfile ? 'Refreshing…' : 'Use latest workshop details'}
+        </button>
+        {profileSynced && <small role="status">Workshop details refreshed in this preview. Click Save Templates to keep these values.</small>}
+      </div>
+      <details className="template-server-note"><summary>Document information</summary><p>Templates are company-scoped. Finalized documents retain their saved appearance. The live workshop profile provides defaults, and saved template overrides are retained unless refreshed.</p></details>
       <div className="template-mobile-mode" role="tablist" aria-label="Template editing mode">
         <button role="tab" type="button" aria-selected={mobilePane === 'edit'} onClick={() => setMobilePane('edit')}>Edit</button>
         <button role="tab" type="button" aria-selected={mobilePane === 'preview'} onClick={() => setMobilePane('preview')}>Preview</button>
@@ -263,7 +295,10 @@ export function DocumentTemplates() {
             <div className="business-logo-actions">
               <button type="button" className="template-upload-button" aria-controls="business-logo-input" aria-invalid={Boolean(fieldErrors.businessLogo)} aria-describedby={fieldErrors.businessLogo ? 'business-logo-error' : 'business-logo-help'} disabled={preparingLogo} onClick={() => logoInputRef.current?.click()}><ImagePlus size={15}/>{preparingLogo ? 'Preparing logo…' : 'Upload Logo'}</button>
               <input ref={logoInputRef} id="business-logo-input" className="template-logo-input" type="file" accept="image/*" aria-label="Choose business logo image" disabled={preparingLogo} onChange={uploadLogo}/>
-              {settings.businessLogo && <button type="button" className="template-remove-logo" onClick={() => update('businessLogo', '')}><Trash2 size={14}/>Remove</button>}
+              {settings.businessLogo && <button type="button" className="template-remove-logo"
+                onClick={() => setSettings((old) => ({ ...old, businessLogo: '', showBusinessLogo: false }))}>
+                <Trash2 size={14}/>Remove
+              </button>}
             </div>
             <small id="business-logo-help" className="template-logo-help">Choose an image under 10 MB. It will be resized and compressed before saving.</small>
             {fieldErrors.businessLogo && <small id="business-logo-error" className="template-input-error" role="alert">{fieldErrors.businessLogo}</small>}
