@@ -88,3 +88,13 @@
   .employee-pay-config-form .pay-config-actions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
   .employee-pay-config-form .pay-config-actions button { min-width: 0; }
 }
+
+/* Existing staff-edit sheets use the shared formValidation aria-invalid state. */
+.staff-profile-edit-form :is(input,select,textarea)[aria-invalid="true"] {
+  border: 1px solid #dc2626 !important;
+  box-shadow: 0 0 0 2px rgb(220 38 38 / 12%) !important;
+  background: #fff6f6 !important;
+}
+.staff-profile-edit-form [data-cg-field-error="true"] .cg-inline-field-error {
+  color: #b91c1c !important; font-size: 13px;
+}
