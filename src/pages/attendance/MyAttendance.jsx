@@ -6,17 +6,14 @@ import { HistoryLogs } from '../my-attendance/HistoryLogs';
 import { LeaveRequests } from '../my-attendance/LeaveRequests';
 import { AttendanceSummary } from '../my-attendance/AttendanceSummary';
 import { OvertimeRequests } from '../my-attendance/OvertimeRequests';
-import { MySalaryPayments } from '../my-attendance/MySalaryPayments';
 import '../../styles/my-attendance-pages.css';
 
 export const MyAttendance = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const activeTab = location.pathname.includes('/salary')
-    ? 'salary'
-    : location.pathname.includes('/history')
-      ? 'history'
+  const activeTab = location.pathname.includes('/history')
+    ? 'history'
     : location.pathname.includes('/leave')
       ? 'leave'
       : location.pathname.includes('/overtime')
@@ -36,7 +33,6 @@ export const MyAttendance = () => {
         {activeTab === 'leave' && <LeaveRequests />}
         {activeTab === 'overtime' && <OvertimeRequests />}
         {activeTab === 'summary' && <AttendanceSummary />}
-        {activeTab === 'salary' && <MySalaryPayments />}
       </main>
     </div>
   );
