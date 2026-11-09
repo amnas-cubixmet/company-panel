@@ -94,6 +94,9 @@ export function OwnerOnboarding() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [logoFile, setLogoFile] = useState(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState('');
+  const [savedLogoUrl, setSavedLogoUrl] = useState('');
+  const [logoVersion, setLogoVersion] = useState(0);
   const firstField = useRef(null);
   const previousActive = useRef(active);
   const current = STEPS[active];
@@ -117,6 +120,42 @@ export function OwnerOnboarding() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Browser object URLs keep large logo files out of React state and are
+  // revoked as soon as the selected file changes or the page unmounts.
+  useEffect(() => {
+    if (!logoFile) {
+      setLogoPreviewUrl('');
+      return undefined;
+    }
+    const previewUrl = URL.createObjectURL(logoFile);
+    setLogoPreviewUrl(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [logoFile]);
+
+  // Existing uploaded logos are private; fetch via the authenticated Django
+  // endpoint instead of constructing a public media URL.
+  useEffect(() => {
+    if (!state?.logoAvailable) {
+      setSavedLogoUrl('');
+      return undefined;
+    }
+    let activeRequest = true;
+    let objectUrl = '';
+    settingsService.getCompanyLogo()
+      .then((blob) => {
+        if (!activeRequest || !(blob instanceof Blob)) return;
+        objectUrl = URL.createObjectURL(blob);
+        setSavedLogoUrl(objectUrl);
+      })
+      .catch(() => {
+        if (activeRequest) setSavedLogoUrl('');
+      });
+    return () => {
+      activeRequest = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [state?.logoAvailable, logoVersion]);
 
   // The wizard is a full-screen route outside the DashboardLayout scroll area.
   // Bring the newly selected step into view only when changing steps, not on
@@ -164,6 +203,7 @@ export function OwnerOnboarding() {
       if (current.key === 'company' && logoFile) {
         await settingsService.uploadCompanyLogo(logoFile);
         setLogoFile(null);
+        setLogoVersion(version => version + 1);
         next = await onboardingService.get();
       }
       setState(next);
@@ -289,19 +329,43 @@ export function OwnerOnboarding() {
               <input type="checkbox" name="gstNotRegistered"
                 checked={Boolean(drafts.company?.gstNotRegistered)}
                 onChange={event => updateGstExemption(event.target.checked)}/>
-              <span><strong>No GST registration</strong>
+              <span className="cg-setup-gst-copy">
+                <strong>No GST registration</strong>
                 <small>Tick if your workshop does not have a GSTIN. Otherwise enter a valid 15-character GSTIN above.</small>
               </span>
             </label>}
             {current.key === 'branch' && <p className="cg-setup-help">
               <MapPin size={16}/> GPS coordinates are optional. Provide both latitude and longitude to configure location-aware attendance. Accuracy depends on the staff device.
             </p>}
-            {current.key === 'company' && <label className="cg-setup-logo">
-              <ImagePlus size={20}/><span>Workshop logo (optional) {state.logoAvailable ? '· Uploaded' : ''}</span>
-              <input type="file" accept="image/png,image/jpeg,image/webp"
-                onChange={e => setLogoFile(e.target.files?.[0] || null)}/>
-              {logoFile && <small>Selected: {logoFile.name}</small>}
-            </label>}
+            {current.key === 'company' && <div className="cg-setup-logo">
+              <div className="cg-setup-logo-picker">
+                <label className="cg-setup-logo-title" htmlFor="cg-workshop-logo">
+                  <ImagePlus size={20} aria-hidden="true"/>
+                  <span>Workshop logo (optional) {state.logoAvailable ? '· Uploaded' : ''}</span>
+                </label>
+                <p className="cg-setup-logo-hint">PNG, JPG or WEBP image</p>
+                <input id="cg-workshop-logo" type="file" accept="image/png,image/jpeg,image/webp"
+                  onChange={e => {
+                    const nextFile = e.target.files?.[0] || null;
+                    if (nextFile && !['image/png', 'image/jpeg', 'image/webp'].includes(nextFile.type)) {
+                      setError('Choose a PNG, JPG or WEBP logo image.');
+                      setLogoFile(null);
+                      e.target.value = '';
+                      return;
+                    }
+                    setLogoFile(nextFile);
+                    setError('');
+                  }}/>
+                {logoFile && <small className="cg-setup-logo-selected">Selected: {logoFile.name}</small>}
+              </div>
+              {(logoPreviewUrl || savedLogoUrl) && (
+                <div className="cg-setup-logo-preview" role="status">
+                  <img src={logoPreviewUrl || savedLogoUrl}
+                    alt={logoPreviewUrl ? 'Selected workshop logo preview' : 'Saved workshop logo preview'}/>
+                  <span>{logoPreviewUrl ? 'New logo preview' : 'Saved logo'}</span>
+                </div>
+              )}
+            </div>}
             {current.key === 'billing' && <p className="cg-setup-help">
               <ShieldCheck size={16}/> GST rates are configurable defaults, not a filing determination. Actual invoice tax depends on the applicable transaction.
             </p>}

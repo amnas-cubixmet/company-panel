@@ -28,8 +28,18 @@
 .cg-setup-wide { grid-column: 1 / -1; }
 .cg-setup-help { display: flex; gap: 9px; align-items: flex-start; color: #475569; font-size: 12px; line-height: 1.6; margin-top: 19px; }
 .cg-setup-help svg { flex: none; margin-top: 1px; }
-.cg-setup-logo { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 22px; padding: 13px; border: 1px dashed #94a3b8; border-radius: 12px; font-size: 13px; }
-.cg-setup-logo input { max-width: 100%; font-size: 13px; }
+.cg-setup-logo { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; justify-content: space-between; margin-top: 22px; padding: 16px; border: 1px dashed #94a3b8; border-radius: 12px; background: #fbfdff; font-size: 13px; }
+.cg-setup-logo-picker { display: flex; flex: 1 1 240px; min-width: 0; flex-direction: column; align-items: flex-start; gap: 8px; }
+.cg-setup-logo-title { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; line-height: 1.5; }
+.cg-setup-logo-title svg { flex: none; color: #0f766e; }
+.cg-setup-logo-hint { color: #64748b; font-size: 12px; line-height: 1.5; }
+.cg-setup-logo input[type="file"] { display: block; max-width: 100%; font-size: 13px; color: #334155; }
+.cg-setup-logo input[type="file"]::file-selector-button { margin-right: 12px; padding: 9px 12px; min-height: 40px; border: 1px solid #bfd2df; border-radius: 8px; background: #fff; color: #123046; font: inherit; cursor: pointer; }
+.cg-setup-logo input[type="file"]:focus-visible { outline: 3px solid #99f6e4; outline-offset: 3px; }
+.cg-setup-logo-selected { display: block; font-size: 12px; color: #475569; overflow-wrap: anywhere; }
+.cg-setup-logo-preview { display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 132px; font-size: 11px; color: #475569; text-align: center; }
+.cg-setup-logo-preview img { display: block; width: 100px; height: 100px; object-fit: contain; padding: 8px; border: 1px solid #d9e7ef; border-radius: 12px; background: #fff; }
+.cg-setup-logo-preview span { display: block; line-height: 1.4; }
 .cg-setup-actions { display: flex; gap: 12px; justify-content: space-between; margin-top: 26px; }
 .cg-setup-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 46px; padding: 10px 18px; border-radius: 11px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 .cg-setup-back { background: #fff; border: 1px solid #cbd5e1; color: #334155; }
@@ -72,11 +82,19 @@
 .cg-setup-account strong { font-size: 17px; overflow-wrap: anywhere; }
 .cg-setup-account small { font-size: 12px; color: #69778b; overflow-wrap: anywhere; }
 .cg-setup-lock-note { margin: 0 0 20px; color: #486078; font-size: 13px; line-height: 1.6; }
-.cg-setup-gst-exempt { display: flex; gap: 12px; align-items: flex-start; margin: 16px 0 0; padding: 14px; border: 1px solid #bdd7e8; background: #f3f9fc; border-radius: 12px; cursor: pointer; }
-.cg-setup-gst-exempt input { width: 22px; height: 22px; flex: none; margin: 1px 0 0; accent-color: #096c90; }
-.cg-setup-gst-exempt span { display: flex; flex-direction: column; gap: 5px; }
-.cg-setup-gst-exempt strong { font-size: 14px; }
-.cg-setup-gst-exempt small { font-size: 12px; line-height: 1.5; color: #486078; }
+/* Keep the checkbox and its two text lines separated even when shared form
+   label/span rules apply. The entire GST option remains one click target. */
+#root .cg-setup-gst-exempt { display: grid; grid-template-columns: 22px minmax(0, 1fr); column-gap: 14px; align-items: start; margin: 20px 0 0; padding: 15px 16px; border: 1px solid #bdd7e8; background: #f3f9fc; border-radius: 12px; cursor: pointer; }
+#root .cg-setup-gst-exempt input[type="checkbox"] { width: 22px; height: 22px; margin: 1px 0 0; accent-color: #096c90; }
+#root .cg-setup-gst-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; min-width: 0; }
+#root .cg-setup-gst-copy strong { display: block; margin: 0; font-size: 14px; line-height: 1.4; }
+#root .cg-setup-gst-copy small { display: block; margin: 0; font-size: 12px; line-height: 1.6; color: #486078; }
 .cg-setup-fields input:disabled { background: #eaf0f4; opacity: .72; }
 .cg-setup-step:disabled { opacity: .48; cursor: not-allowed; }
 @media(max-width: 750px) { .cg-setup-account { grid-template-columns: 1fr; } .cg-setup-account>div { padding: 12px 14px; } }
+
+@media (max-width: 540px) {
+  .cg-setup-logo { align-items: flex-start; }
+  .cg-setup-logo-preview { flex-direction: row; max-width: 100%; gap: 12px; text-align: left; }
+  .cg-setup-logo-preview img { width: 76px; height: 76px; }
+}

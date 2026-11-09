@@ -67,3 +67,25 @@ test('onboarding explains loading failures and keeps a retry action', () => {
   assert.match(wizard, /onClick=\{load\}>Retry loading setup/);
 });
 
+
+test('workshop logo shows a local preview and authenticated saved image', () => {
+  const wizard = source('src/pages/saas/OwnerOnboarding.jsx');
+  const css = source('src/styles/owner-onboarding.css');
+  assert.match(wizard, /URL\.createObjectURL\(logoFile\)/);
+  assert.match(wizard, /URL\.revokeObjectURL\(previewUrl\)/);
+  assert.match(wizard, /settingsService\.getCompanyLogo\(\)/);
+  assert.match(wizard, /URL\.revokeObjectURL\(objectUrl\)/);
+  assert.match(wizard, /src=\{logoPreviewUrl \|\| savedLogoUrl\}/);
+  assert.match(wizard, /alt=\{logoPreviewUrl \? 'Selected workshop logo preview'/);
+  assert.match(wizard, /settingsService\.uploadCompanyLogo\(logoFile\)/);
+  assert.match(css, /\.cg-setup-logo-preview img\s*\{[^}]*object-fit:\s*contain/s);
+});
+
+test('GST exemption checkbox has separate aligned title and description', () => {
+  const wizard = source('src/pages/saas/OwnerOnboarding.jsx');
+  const css = source('src/styles/owner-onboarding.css');
+  assert.match(wizard, /className="cg-setup-gst-copy"/);
+  assert.match(wizard, /<strong>No GST registration<\/strong>/);
+  assert.match(css, /#root \.cg-setup-gst-exempt\s*\{[^}]*grid-template-columns:\s*22px minmax\(0, 1fr\)/s);
+  assert.match(css, /#root \.cg-setup-gst-copy\s*\{[^}]*flex-direction:\s*column;[^}]*gap:\s*7px/s);
+});
