@@ -65,8 +65,8 @@ export const StaffManagement = () => {
           <h1>Staff Overview</h1>
           <p>Current staff records from your workshop database.</p>
         </header>
-      ) : <StaffManagementHeader />}
-      <StaffManagementTabs />
+      ) : activeSection === 'profile' ? null : <StaffManagementHeader />}
+      {activeSection !== 'profile' && <StaffManagementTabs />}
 
       <main className="staff-management-content">
         {renderSection()}
