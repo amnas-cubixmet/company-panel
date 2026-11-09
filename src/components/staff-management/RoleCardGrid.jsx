@@ -25,8 +25,8 @@ export const RoleCardGrid = ({ roles, countPermissions, onOpen, canManage = fals
             {role.status || 'Active'}
           </b>
         </span>
-        <div className="roles-dashboard-card-actions roles-simple-actions">
-          {canManage ? (
+        {canManage && <div className="roles-dashboard-card-actions roles-simple-actions">
+          {(
             <>
               <button type="button" onClick={() => onOpen(role)}>
                 <Pencil size={14} aria-hidden="true" /> {role.isProtected ? 'View' : 'Edit'}
@@ -39,8 +39,8 @@ export const RoleCardGrid = ({ roles, countPermissions, onOpen, canManage = fals
                 </button>
               )}
             </>
-          ) : <span>View only</span>}
-        </div>
+          )}
+        </div>}
       </article>
     ))}
     {!roles.length && <div className="roles-dashboard-empty">No roles match this search.</div>}
