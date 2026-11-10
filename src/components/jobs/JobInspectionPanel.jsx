@@ -60,6 +60,13 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
     setBusy(label);
     setError('');
     try {
+      // Users can record a check immediately: start the backend inspection
+      // first, then save the actual choice. Keep the existing audit/workflow
+      // transition and never fabricate an inspection locally.
+      if (['check', 'finding', 'diagnostic', 'photo'].includes(label) &&
+          inspection && !['In Progress', 'Completed', 'Skipped'].includes(inspection.status)) {
+        await jobInspectionService.startInspection(job.id);
+      }
       await operation();
       await reload();
       await onChanged?.(label);
@@ -86,7 +93,7 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
   const isCompleted = inspection?.status === 'Completed';
   const isSkipped = inspection?.status === 'Skipped';
   const isStarted = inspection?.status === 'In Progress' || isCompleted;
-  const editable = canEdit && isStarted && !isSkipped && (!isCompleted || (canCorrect && editing));
+  const editable = canEdit && Boolean(inspection) && !isSkipped && (!isCompleted || (canCorrect && editing));
   const maySkip = canEdit && !isCompleted && !isSkipped && inspection?.skipAllowed !== false;
   const skipBlockedReason = inspection?.skipBlockedReason || 'Inspection cannot be skipped in this stage.';
   const skipReason = skipChoice === 'Other' ? skipOther.trim() : skipChoice;
@@ -98,13 +105,6 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
 
   const visibleGroup = activeGroups.find((group) => group.id === selectedGroup) || activeGroups[0];
   const groupPosition = activeGroups.findIndex((group) => group.id === visibleGroup?.id);
-
-  // Keep the primary action visible above the long checklist. The footer
-  // reuses this handler so both entry points save the same backend state.
-  const handleStartInspection = () => {
-    if (!canEdit || !inspection || isStarted || isSkipped || busy) return;
-    return perform('start', () => jobInspectionService.startInspection(job.id));
-  };
 
   const submitSkip = async (event) => {
     event.preventDefault();
@@ -191,16 +191,6 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
             </div>}
           </div>
           <div className="cg-inspection-header-actions">
-            {!isStarted && !isSkipped && (
-              <button type="button" className="cg-inspection-primary cg-inspection-start-action"
-                disabled={!canEdit || !inspection || !!busy}
-                aria-busy={busy === 'start'}
-                title={!canEdit ? 'Your role or workflow stage cannot start inspection.' : 'Begin the inspection checklist'}
-                onClick={handleStartInspection}>
-                <ClipboardCheck size={16} aria-hidden="true" />
-                {busy === 'start' ? 'Starting…' : 'Start Inspection'}
-              </button>
-            )}
             <button type="button" className="cg-inspection-icon-button" aria-label="Refresh inspection" disabled={!!busy} onClick={() => perform('refresh', async () => {})}><RefreshCcw size={16} /></button>
             {isCompleted && canCorrect && (
               <button type="button" className="cg-inspection-primary" disabled={!!busy}
@@ -244,7 +234,7 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
             <input aria-label="Search inspection items" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search checks"/>
           </label>
         </div>
-        {!isStarted && !isSkipped && <p className="cg-inspection-hint">Start inspection to enable checklist options.</p>}
+        {!isStarted && !isSkipped && canEdit && <p className="cg-inspection-hint">Choose Good, Attention, Critical or N/A to automatically start inspection and save your check.</p>}
         {isSkipped && <p className="cg-inspection-hint">Skipped — checklist results are retained but locked. No unchecked items were marked Good.</p>}
         <div className="cg-inspection-category-row">
           <label htmlFor="cg-inspection-category">Category</label>
@@ -286,7 +276,7 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
                       </button>
                     ))}
                     {selected !== 'Not Checked' && editable && (
-                      <button type="button" className="cg-inspection-reset" aria-label={'Clear ' + item} title="Clear check" disabled={!!busy} onClick={() => perform('check', () => jobInspectionService.updateChecklistItem(job.id, item, 'Not Checked'))}>×</button>
+                      <button type="button" className="cg-inspection-reset" aria-label={'Clear ' + item} title="Clear check" disabled={!editable || !!busy || !isStarted} onClick={() => perform('check', () => jobInspectionService.updateChecklistItem(job.id, item, 'Not Checked'))}>×</button>
                     )}
                   </div>
                 </div>
@@ -383,7 +373,7 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
 
       <footer className="cg-inspection-footer">
         <div>
-          <strong>{isSkipped ? 'Inspection skipped' : isCompleted ? 'Inspection completed' : !isStarted ? 'Start the inspection' : completed ? 'Ready to finish inspection' : 'Check the vehicle to continue'}</strong>
+          <strong>{isSkipped ? 'Inspection skipped' : isCompleted ? 'Inspection completed' : !isStarted ? 'Choose a condition to begin' : completed ? 'Ready to finish inspection' : 'Check the vehicle to continue'}</strong>
           <p>{isSkipped ? 'Reason: ' + (inspection.skipReason || 'Not supplied')
             : isCompleted
               ? canCorrect ? 'Use Edit Inspection to correct checks before estimate approval.' : 'Inspection is approved and read-only.'
@@ -402,12 +392,10 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
               <SkipForward size={16} aria-hidden="true" /> Skip Inspection
             </button>
             <button type="button" className="cg-inspection-primary"
-              disabled={!canEdit || !inspection || !!busy || (isStarted && completed === 0)}
-              onClick={() => isStarted
-                ? perform('complete', () => jobInspectionService.completeInspection(job.id, true))
-                : handleStartInspection()}>
+              disabled={!canEdit || !inspection || !!busy || !isStarted || completed === 0}
+              onClick={() => perform('complete', () => jobInspectionService.completeInspection(job.id, true))}>
               <CheckCircle2 size={16} aria-hidden="true"/>
-              {busy === 'complete' ? 'Finishing…' : busy === 'start' ? 'Starting…' : isStarted ? 'Complete Inspection' : 'Start Inspection'}
+              {busy === 'complete' ? 'Finishing…' : 'Complete Inspection'}
             </button>
           </div>
         )}
