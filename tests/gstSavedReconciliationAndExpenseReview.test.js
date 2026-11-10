@@ -28,5 +28,6 @@ test('GST page discloses filing review uncertainty and verifies upload extension
   assert.match(page, /Not submitted by CubixGear/);
   assert.match(page, /5 \* 1024 \* 1024/);
   assert.match(page, /!data\.company\?\.registered/);
-  assert.match(page, /setSearch\(''\); updateParams\(\{ tab: value \}\)/);
+  assert.match(page, /next\.set\('tab', value\)/);
+  assert.match(page, /next\.delete\('invoice'\)/);
 });
