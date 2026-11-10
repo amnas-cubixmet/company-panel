@@ -53,7 +53,8 @@ test('tax controls and ITC approval remain permission-scoped and do not write fr
   assert.match(review, /apiClient\.post\('\/gstr\/filing-review'/);
   assert.match(review, /if \(saving \|\| !canReview\) return/);
   assert.match(review, /internal review/i);
-  assert.match(review, /!fetching && !error/);
+  assert.match(review, /!fetching && !loadError/);
+  assert.match(review, /setLoadError\(errorText\(cause\)\)/);
 });
 
 test('mobile layout keeps readable cards, tables, search, touch controls and accessible retry', () => {
