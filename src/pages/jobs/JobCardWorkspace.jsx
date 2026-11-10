@@ -27,6 +27,8 @@ import { JobWorkerAssignments } from '../../components/jobs/JobWorkerAssignments
 import { JobOutsideStaffSection } from '../../components/jobs/JobOutsideStaffSection';
 import { JobWorkTimerPanel } from '../../components/jobs/JobWorkTimerPanel';
 import { JobWorkServiceQuickAdd } from '../../components/jobs/JobWorkServiceQuickAdd';
+import { JobWorkSavedServices } from '../../components/jobs/JobWorkSavedServices';
+import { totalCustomerServiceCharges } from '../../utils/jobWorkServiceCharges';
 import { JobWorkStockPanel } from '../../components/jobs/JobWorkStockPanel';
 import { JobTotalCostPanel } from '../../components/jobs/JobTotalCostPanel';
 import { JobActivityTimeline } from '../../components/jobs/JobActivityTimeline';
@@ -308,6 +310,7 @@ export function JobCardWorkspace() {
   const findings = job?.inspection?.findings || job?.vehicleInspection?.findings || job?.inspectionFindings || [];
   const inspectionChecks = job?.inspection?.checklist || {};
   const labourRecords = USE_MOCK_API ? (job?.labourRecords || []) : (job?.work || []);
+  const customerServiceCharges = totalCustomerServiceCharges(job);
   const parts = job?.partsUsed || [];
   const outsidePurchases = job?.outsidePurchases || [];
   const estimates = (job?.estimates || [])
@@ -955,6 +958,7 @@ export function JobCardWorkspace() {
         jobId={job.id}
         refreshVersion={timerRefreshVersion}
         refreshOnTab={activeTab}
+        customerServiceCharges={customerServiceCharges}
       />}
 
       {activeTab !== 'overview' && activeTab !== 'activity' && !showWorkTools && (
@@ -1451,6 +1455,7 @@ export function JobCardWorkspace() {
               onSaved={async () => {
                 const updated = await jobService.getJobById(job.id);
                 if (updated) setJob(updated);
+                setTimerRefreshVersion((version) => version + 1);
               }}
             />
           </div>
@@ -1506,37 +1511,18 @@ export function JobCardWorkspace() {
             </div>
           )}
 
-          <details className="job-work-records-details">
-            <summary>Labour & Work Items <span>{labourRecords.length} {labourRecords.length === 1 ? 'entry' : 'entries'}</span></summary>
-          <section className="job-panel job-work-items-panel rounded-2xl border border-line bg-surface p-4" aria-label="Labour and Work Items">
-            <header className="job-work-items-head">
-              <div>
-                <h3>Labour & Work Items</h3>
-                <p>Saved work entries for this Job Card.</p>
-              </div>
-              <span className="job-work-items-count">
-                {labourRecords.length} {labourRecords.length === 1 ? 'entry' : 'entries'}
-              </span>
-            </header>
-            {labourRecords.length ? (
-              <div className="job-work-items-list">
-                {labourRecords.map((item) => (
-                  <div key={item.id} className="job-work-items-row">
-                    <div>
-                      <strong>{item.service || 'Work item'}</strong>
-                      <span>{item.mechanicName || 'Unassigned'} · Estimated {item.estimatedHours || 0}h · Actual {item.hours || 0}h</span>
-                    </div>
-                    <strong className="job-work-items-price">{money.format(cleanNumber(item.customerCharge || 0))}</strong>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="job-work-items-empty">
-                No labour entries yet. Record internal work using Technician Work Timers above.
-              </p>
-            )}
-          </section>
-          </details>
+          <JobWorkSavedServices
+            job={job}
+            canEdit={can('jobs.edit') && currentStage === 'work' && !activeTabLocked}
+            onChanged={async (updated) => {
+              if (updated) setJob(updated);
+              else {
+                const fresh = await jobService.getJobById(job.id);
+                if (fresh) setJob(fresh);
+              }
+              setTimerRefreshVersion((version) => version + 1);
+            }}
+          />
         </div>
       )}
 
