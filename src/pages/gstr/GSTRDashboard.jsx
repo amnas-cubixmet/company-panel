@@ -144,7 +144,9 @@ export default function GSTRDashboard() {
   const [issue, setIssue] = useState('');
   const [loading, setLoading] = useState(true);
   const [reload, setReload] = useState(0);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(
+    () => params.get('tab') === 'gstr1' ? params.get('invoice') || '' : ''
+  );
   const [upload, setUpload] = useState(null);
   const [reconciliation, setReconciliation] = useState(null);
   const [savedImports, setSavedImports] = useState([]);
@@ -167,7 +169,9 @@ export default function GSTRDashboard() {
     setReconciliation(null);
     setActiveImportId('');
     setUpload(null);
-    setSearch('');
+    setSearch(
+      params.get('tab') === 'gstr1' ? params.get('invoice') || '' : ''
+    );
     apiClient.get('/gstr/overview', { params: { period } })
       .then((value) => { if (active) setData(value); })
       .catch((error) => { if (active) setIssue(error.message || 'Unable to load GSTR data.'); })
@@ -308,7 +312,13 @@ export default function GSTRDashboard() {
         {TABS.map(([value, label]) =>
           <button key={value} type="button" className={tab === value ? 'is-active' : ''}
             aria-current={tab === value ? 'page' : undefined}
-            onClick={() => { setSearch(''); updateParams({ tab: value }); }}>{label}</button>
+            onClick={() => {
+              setSearch('');
+              const next = new URLSearchParams(params);
+              next.set('tab', value);
+              next.delete('invoice');
+              setParams(next, { replace: true });
+            }}>{label}</button>
         )}
       </nav>
 
@@ -326,6 +336,9 @@ export default function GSTRDashboard() {
 
       {tab === 'gstr1' && <section className="gstr-panel">
         <div className="gstr-panel-heading"><h2>GSTR-1 · Outward Supplies</h2><span>{invoices.length} invoices</span></div>
+        {params.get('invoice') && <p className="gstr-note" role="status">
+          Opened from invoice {params.get('invoice')}. Matching records are shown below; finalized and validated tax invoices only.
+        </p>}
         <div className="gstr-search"><Search size={17} /><input aria-label="Search outward invoices" placeholder="Search invoice, customer or GSTIN" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
         <DataTable key={'sales-' + period} rows={invoices} columns={invoiceColumns} search={search} />
         <p className="gstr-note">Source: finalized GST invoices only. Sales credit notes are recorded separately under GST Credit Notes; amendments and document summary require independent review.</p>
