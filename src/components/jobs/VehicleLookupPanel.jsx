@@ -9,7 +9,7 @@ const LookupStat = ({ icon: Icon, label, value }) => (
   </div>
 );
 
-export const VehicleLookupPanel = ({ lookup, onOpenCurrentJob }) => {
+export const VehicleLookupPanel = ({ lookup, onOpenCurrentJob, canViewTotals = false }) => {
   if (!lookup) return null;
 
   return (
@@ -31,7 +31,7 @@ export const VehicleLookupPanel = ({ lookup, onOpenCurrentJob }) => {
       <div className="jobs-vehicle-stats">
         <LookupStat icon={History} label="Recorded Visits" value={lookup.sameVehicle.length} />
         <LookupStat icon={Wrench} label="Last Status" value={lookup.latest.status} />
-        <LookupStat icon={WalletCards} label="Recorded Job Totals" value={jobMoney.format(lookup.spending)} />
+        {canViewTotals && <LookupStat icon={WalletCards} label="Recorded Job Totals" value={jobMoney.format(lookup.spending)} />}
         <LookupStat icon={Car} label="Last Service" value={lookup.latest.createdDate || '—'} />
       </div>
 
