@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Building2, CreditCard, Mail, MessageCircle, Package, Pencil, Phone, Plus, Search, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Building2, CreditCard, Mail, MessageCircle, Package, Pencil, Phone, Plus, Search, ShoppingBag, Wallet, ChevronRight, RefreshCw, ReceiptText } from 'lucide-react';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { supplierService } from '../../services/supplier.service';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
@@ -8,9 +8,12 @@ import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalShe
 import { USE_MOCK_API } from '../../api/apiConfig';
 import SupplierPurchaseFlow from '../../components/suppliers/SupplierPurchaseFlow';
 import SupplierReturnsPanel from '../../components/suppliers/SupplierReturnsPanel';
+import { SupplierWorkspaceGuide, SupplierOverviewCards } from '../../components/suppliers/SupplierWorkspaceGuide';
+import { appConfirm } from '../../components/common/appDialogs';
 import { useLocation } from 'react-router-dom';
 import { customerContactLinks } from '../../components/jobs/customerContact.utils';
 import '../../styles/suppliers-workspace.css';
+import '../../styles/suppliers-unified-ui.css';
 
 const asText = value => String(value ?? '').trim();
 const formFields = ['name', 'contact_person', 'phone', 'email', 'gstNo', 'address'];
@@ -50,6 +53,7 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
   const [busy, setBusy] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [error, setError] = useState('');
+  const [dirty, setDirty] = useState(false);
   const inputRefs = useRef({});
   const labels = {
     name: 'Supplier Name *', contact_person: 'Contact Person', phone: 'Mobile Number',
@@ -66,6 +70,7 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
   }, [formErrors]);
 
   const setField = (key, value) => {
+    setDirty(true);
     setForm(prev => ({ ...prev, [key]: value }));
     setFormErrors(prev => {
       if (!prev[key]) return prev;
@@ -122,9 +127,18 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
     }
   };
 
-  return <ResponsiveModalSheet isOpen onClose={() => !busy && onClose()}
-    title={supplier ? 'Edit Supplier' : 'Add Supplier'} maxWidth="590px">
+  const tryClose = async () => {
+    if (busy) return;
+    if (dirty && !await appConfirm('Discard changes to this supplier?', {
+      title: 'Discard supplier changes?', confirmLabel: 'Discard Changes', tone: 'danger',
+    })) return;
+    onClose();
+  };
+
+  return <ResponsiveModalSheet isOpen onClose={tryClose}
+    title={supplier ? 'Edit Supplier' : 'Add Supplier'} maxWidth="680px">
     <form className="cg-supplier-form" noValidate onSubmit={submit}>
+      <p className="cg-supplier-form-intro">Enter the supplier's contact details. Supplier Name is required; GSTIN and other details are optional.</p>
       {formFields.map(key => <label key={key} className="cg-supplier-field">
         <span>{labels[key]}</span>
         {key === 'address'
@@ -146,9 +160,9 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
       {error && <p role="alert" className="cg-supplier-error">{error}</p>}
       {USE_MOCK_API && <p className="cg-supplier-note">Saving requires the Django backend.</p>}
       <div className="cg-supplier-modal-actions">
-        <button type="button" onClick={onClose} disabled={busy}>Cancel</button>
+        <button type="button" onClick={tryClose} disabled={busy}>Cancel</button>
         <button type="submit" className="primary" disabled={!canWrite || busy}>
-          {busy ? 'Saving…' : 'Save Supplier'}
+          {busy ? 'Saving…' : supplier ? 'Save Changes' : 'Add Supplier'}
         </button>
       </div>
     </form>
@@ -195,6 +209,8 @@ export default function SuppliersPage({ section = 'all' }) {
   const [editor, setEditor] = useState(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [reloadList, setReloadList] = useState(0);
+  const [reloadPurchaseHistory, setReloadPurchaseHistory] = useState(0);
   const statusFilter = params.get('status') || 'all';
   const search = params.get('q') || '';
 
@@ -209,10 +225,10 @@ export default function SuppliersPage({ section = 'all' }) {
     setLoading(true);setError('');
     supplierService.list()
       .then(rows => { if(active)setSuppliers(rows); })
-      .catch(cause => { if(active)setError(cause?.message || 'Could not load suppliers.'); })
+      .catch(cause => { if(active){ setSuppliers([]); setError(cause?.message || 'Could not load suppliers.'); } })
       .finally(() => { if(active)setLoading(false); });
     return()=>{active=false};
-  }, []);
+  }, [reloadList]);
 
   useEffect(() => {
     if (!id) { setSupplier(null);setOrders([]);setProducts([]);setDetailsLoading(false);return undefined; }
@@ -272,10 +288,10 @@ export default function SuppliersPage({ section = 'all' }) {
     setPurchaseHistoryError('');
     supplierService.purchaseOrders()
       .then(rows => { if (active) setPurchaseHistory(rows); })
-      .catch(cause => { if (active) setPurchaseHistoryError(cause?.message || 'Unable to load purchase history.'); })
+      .catch(cause => { if (active) { setPurchaseHistory([]); setPurchaseHistoryError(cause?.message || 'Unable to load purchase history.'); } })
       .finally(() => { if (active) setPurchaseHistoryLoading(false); });
     return () => { active = false; };
-  }, [purchaseView]);
+  }, [purchaseView, reloadPurchaseHistory]);
 
   useEffect(() => {
     if (!canViewFinance || USE_MOCK_API) return undefined;
@@ -329,6 +345,9 @@ export default function SuppliersPage({ section = 'all' }) {
 
   async function deactivateSupplier() {
     if (!supplier || !canEdit || actionBusy) return;
+    if (!await appConfirm('Deactivate ' + supplier.name + '? They will remain in historical bills and payments.', {
+      title: 'Deactivate Supplier?', confirmLabel: 'Deactivate', tone: 'danger',
+    })) return;
     setActionBusy(true); setError('');
     try {
       const changed = await supplierService.update(supplier.id, { is_active: false });
@@ -354,6 +373,8 @@ export default function SuppliersPage({ section = 'all' }) {
 
   const refreshSupplierDetails = async () => {
     if (!id) return;
+    setSupplierFinanceError('');
+    try {
     const [summary, bills, payments, catalog] = await Promise.all([
       supplierFinanceService.getSupplierSummary(id),
       supplierFinanceService.getBills(id),
@@ -365,6 +386,9 @@ export default function SuppliersPage({ section = 'all' }) {
     setSupplierPayments(payments);
     setProducts(catalog.filter(row => supplierIdOf(row) === String(id)));
     setNotice('Supplier purchase, stock, payments and outstanding balance updated.');
+    } catch (cause) {
+      setSupplierFinanceError(cause?.message || 'Supplier balances could not be refreshed. Try again.');
+    }
   };
 
   function onSaved(saved) {
