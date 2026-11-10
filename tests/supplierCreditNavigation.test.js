@@ -19,9 +19,10 @@ test('supplier is one main menu entry and one profile page, no duplicate supplie
 });
 
 test('deprecated URLs redirect to the correct supplier instead of showing a second page', () => {
-  for (const oldPath of ['/stock/suppliers', '/suppliers/credits', '/suppliers/purchases', '/suppliers/payments']) {
+  for (const oldPath of ['/stock/suppliers', '/suppliers/credits', '/suppliers/payments']) {
     assert.ok(routes.includes('path="' + oldPath + '" element={<LegacySupplierRouteRedirect />}'), oldPath);
   }
+  assert.match(routes, /path="\/suppliers\/purchases" element=\{<SuppliersPage section="purchases" \/>}\/?>/);
   assert.match(routes, /new URLSearchParams\(search\).get\('supplier'\)/);
   assert.match(routes, /'\/suppliers\/' \+ encodeURIComponent\(selected\)/);
   assert.doesNotMatch(routes, /SupplierFinancePage|SupplierWorkspace/);
