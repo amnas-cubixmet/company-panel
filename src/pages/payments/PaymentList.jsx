@@ -239,7 +239,7 @@ export function PaymentList() {
     try {
       const saved = await paymentService.create(payload);
       if (!saved?.id) throw new Error('Payment was recorded but no record ID was returned. Refresh payments before retrying.');
-      navigate(`/payments/${saved.id}`, { replace: true });
+      navigate(`/finance/payments/${saved.id}`, { replace: true });
     } catch (e) {
       setError(friendlyError(e, 'Unable to record payment.'));
     } finally {
@@ -259,7 +259,7 @@ export function PaymentList() {
     setSaving(true);
     setError('');
     try {
-      await apiClient.post(`/payments/${id}/reverse`, { reason: reason.trim() });
+      await apiClient.post(`/finance/payments/${id}/reverse`, { reason: reason.trim() });
       setRefreshKey((value) => value + 1);
     } catch (e) {
       setError(friendlyError(e, 'Unable to reverse payment.'));
@@ -277,7 +277,7 @@ export function PaymentList() {
             <h1>Record Customer Payment</h1>
             <p>Receive a partial invoice payment or a customer advance into a real Cash, UPI or Bank account. Adjust unused advances on the customer's ledger.</p>
             <div className="payment-form-actions">
-              <button type="button" className="payments-secondary-btn" onClick={() => navigate('/expenses')}>
+              <button type="button" className="payments-secondary-btn" onClick={() => navigate('/finance/expenses')}>
                 Pay Workshop Expense
               </button>
               <button type="button" className="payments-secondary-btn" onClick={() => navigate('/payroll/daily-wages')}>
@@ -411,7 +411,7 @@ export function PaymentList() {
               </div>
             </div>
             <div className="payment-form-actions">
-              <button type="button" className="payments-secondary-btn" onClick={() => navigate('/payments')} disabled={saving}>Cancel</button>
+              <button type="button" className="payments-secondary-btn" onClick={() => navigate('/finance/payments')} disabled={saving}>Cancel</button>
               <button type="submit" className="payments-primary-btn" disabled={saving || (form.direction === "IN" && (form.receiptKind === 'advance' ? !form.customerId : !selectedInvoice)) || (!USE_MOCK_API && !form.accountId)}>
                 <CheckCircle2 size={16} aria-hidden="true" /> {saving ? 'Saving…' : 'Record Payment'}
               </button>
@@ -468,7 +468,7 @@ export function PaymentList() {
 
   return (
     <div className="payments-page payments-dashboard">
-      <PaymentsHeader onRecordPayment={() => navigate('/payments/new')} />
+      <PaymentsHeader onRecordPayment={() => navigate('/finance/payments/new')} />
       {!USE_MOCK_API ? (
         <PaymentFinanceOverview
           summary={financeSummary}
@@ -487,8 +487,8 @@ export function PaymentList() {
           onLedgerAccountChange={value => { setLedgerAccount(value); setLedgerPage(1); }}
           onLedgerQueryChange={value => { setLedgerQuery(value); setLedgerPage(1); }}
           canManage={canManageAccounts}
-          onRecord={() => navigate('/payments/new')}
-          onExpense={() => navigate('/expenses/new')}
+          onRecord={() => navigate('/finance/payments/new')}
+          onExpense={() => navigate('/finance/expenses/new')}
         />
       ) : (
         <PaymentOverviewStats payments={payments} formatMoney={(value) => money.format(value || 0)} />
@@ -538,7 +538,7 @@ export function PaymentList() {
       {error && <div className="payments-error" role="alert">{error}</div>}
       <PaymentRecordsPanel payments={filtered} loading={loading}
         formatMoney={(value) => money.format(value || 0)}
-        onView={(row) => navigate(row.detailPath || `/payments/${row.id}`)} />
+        onView={(row) => navigate(row.detailPath ? row.detailPath.replace(/^\/(payments|expenses)(?=\/|$)/, '/finance/$1') : `/finance/payments/${row.id}`)} />
     </div>
   );
 }
