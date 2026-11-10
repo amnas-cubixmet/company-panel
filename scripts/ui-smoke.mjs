@@ -259,6 +259,11 @@ try {
         // Job Card creation: exercise the actual React form, image blob URLs,
         // computed responsive grid, light/dark tokens, and accordion state.
         if(path==='/jobs/new') {
+          // Route hydration can finish before the async Job form is ready.
+          // Check the real form after it renders, not an empty transient DOM.
+          await page.locator('.job-create-form > .job-create-section').first().waitFor({
+            state:'visible', timeout:15000,
+          });
           const sectionOrder=await page.evaluate(()=>[...document.querySelectorAll('.job-create-form > .job-create-section')]
             .map(node=>node.querySelector('h2')?.textContent.trim() || ''));
           if(sectionOrder.slice(0,5).map(label=>label.replace(/^\d+\s*/, '')).join(' | ') !==
@@ -949,6 +954,10 @@ try {
         }
 
         if(path==='/dashboard') {
+          // Loaders may be hidden before the dashboard API promise resolves.
+          await page.locator('.dashboard-top-actions').waitFor({
+            state:'visible', timeout:15000,
+          });
           const dimensions = await page.evaluate(() => {
             const top = document.querySelector('.dashboard-top-actions');
             const stats = document.querySelector('.dashboard-stats');

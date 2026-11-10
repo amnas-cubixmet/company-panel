@@ -18,6 +18,7 @@ import {
   X
 } from 'lucide-react';
 import { stockService } from '../../services/stock.service';
+import { financeService } from '../../services/finance.service';
 import { jobPartsService } from '../../services/jobParts.service';
 import { financeService } from '../../services/finance.service';
 import { useAuth } from '../../hooks/useAuth';
@@ -698,17 +699,19 @@ function OutsidePartPurchasePanel({ initial, onClose, onSave, busy, error }) {
   const [form, setForm] = useState(() => ({
     partName: initial.partName || '', sku: initial.sku || '',
     vendor: '', invoiceNo: '', quantity: '1',
-    unitCost: '', sellingPrice: String(initial.sellingPrice ?? '')
+    unitCost: '', sellingPrice: String(initial.sellingPrice ?? ''), purchaseGstRate: '0'
   }));
   const set = (key, value) => setForm((old) => ({ ...old, [key]: value }));
   const quantity = Number(form.quantity);
   const cost = Number(form.unitCost);
   const selling = Number(form.sellingPrice);
+  const gst = Number(form.purchaseGstRate);
   const valid = !!form.partName.trim() && !!form.vendor.trim() &&
     form.unitCost !== '' && form.sellingPrice !== '' &&
     Number.isFinite(quantity) && quantity > 0 && quantity <= 999999.99 &&
     Number.isFinite(cost) && cost >= 0 && cost <= 999999999.99 &&
-    Number.isFinite(selling) && selling >= 0 && selling <= 999999999.99;
+    Number.isFinite(selling) && selling >= 0 && selling <= 999999999.99 &&
+    Number.isFinite(gst) && gst >= 0 && gst <= 100 && form.purchaseGstRate !== '';
   const submit = (event) => {
     event.preventDefault();
     if (!valid || busy) return;
@@ -716,7 +719,7 @@ function OutsidePartPurchasePanel({ initial, onClose, onSave, busy, error }) {
       requestId, partName: form.partName.trim(), sku: form.sku.trim(),
       vendor: form.vendor.trim(), invoiceNo: form.invoiceNo.trim(),
       quantity: form.quantity, unitCost: form.unitCost,
-      sellingPrice: form.sellingPrice
+      sellingPrice: form.sellingPrice, purchaseGstRate: form.purchaseGstRate
     });
   };
   return (
@@ -747,13 +750,17 @@ function OutsidePartPurchasePanel({ initial, onClose, onSave, busy, error }) {
             min="0" step="0.01" max="999999999.99"
             value={form.unitCost} onChange={(e) => set('unitCost', e.target.value)} placeholder="Cost from shop" />
         </label>
+        <label className="form-label">Purchase GST Rate (%) *
+          <input className="cubegears-input" type="number" required min="0" max="100" step="0.01"
+            value={form.purchaseGstRate} onChange={event => set('purchaseGstRate', event.target.value)} />
+        </label>
         <label className="form-label job-parts-modal-full">Customer Selling Price / Unit (₹) *
           <input className="cubegears-input" type="number" required inputMode="decimal"
             min="0" step="0.01" max="999999999.99"
             value={form.sellingPrice} onChange={(e) => set('sellingPrice', e.target.value)} placeholder="Selling price" />
         </label>
         <div className="job-parts-outside-calculation job-parts-modal-full">
-          <div><span>Quoted Purchase Total</span><strong>{money.format(valid ? quantity * cost : 0)}</strong></div>
+          <div><span>Purchase Total (incl. GST)</span><strong>{money.format(valid ? quantity * cost * (1 + gst / 100) : 0)}</strong></div>
           <div><span>Customer Value</span><strong>{money.format(valid ? quantity * selling : 0)}</strong></div>
         </div>
         <p className="job-parts-modal-stock-note job-parts-modal-full">
@@ -772,6 +779,24 @@ function OutsidePartPurchasePanel({ initial, onClose, onSave, busy, error }) {
 
 function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) {
   const [invoiceNo, setInvoiceNo] = useState('');
+  const [paymentType, setPaymentType] = useState('Credit');
+  const [accountId, setAccountId] = useState('');
+  const [accounts, setAccounts] = useState([]);
+  const [accountsError, setAccountsError] = useState('');
+  useEffect(() => {
+    if (paymentType === 'Credit') {
+      setAccountsError('');
+      return;
+    }
+    let active = true;
+    setAccountsError('');
+    financeService.listAccounts().then(result => {
+      if (active) setAccounts(Array.isArray(result) ? result.filter(row => row.isActive !== false) : []);
+    }).catch(() => {
+      if (active) setAccountsError('Unable to load accounts. Check Finance permissions or choose Credit.');
+    });
+    return () => { active = false; };
+  }, [paymentType]);
   const [unitCost, setUnitCost] = useState(String(purchase.unitCost || ''));
   const [bill, setBill] = useState(null);
   const [uploadError, setUploadError] = useState('');
@@ -798,7 +823,9 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
     (paymentType === 'Cash' ? account.kind === 'Cash' :
       account.kind === 'Bank' || account.kind === 'UPI'));
   const quantity = Number(purchase.quantity);
-  const actualTotal = quantity * Number(unitCost);
+  const gstRate = Number(purchase.purchaseGstRate || 0);
+  const actualTotal = quantity * Number(unitCost) * (1 + gstRate / 100);
+  const availableAccounts = accounts.filter(row => row.kind === paymentType);
   const approvedTotal = Number(purchase.quotedTotal || 0);
   const withinApproval = Number.isFinite(actualTotal) &&
     Number(unitCost) >= 0 && actualTotal <= approvedTotal && Number(unitCost) <= 999999999.99;
@@ -891,6 +918,12 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
         </p>
         {!withinApproval && <p className="job-parts-modal-warning job-parts-modal-full" role="alert">
           Actual purchase total exceeds the approved quotation. Request a revised approval.
+        </p>}
+        {paymentType === 'Credit' && <p className="job-parts-modal-stock-note job-parts-modal-full">
+          Credit is recorded as an unpaid workshop expense. No bank or cash balance changes until settled.
+        </p>}
+        {paymentType !== 'Credit' && <p className="job-parts-modal-stock-note job-parts-modal-full">
+          After confirming this supplier bill, the selected account is debited by the purchase total including GST.
         </p>}
         {uploadError && <p className="job-parts-modal-warning job-parts-modal-full" role="alert">{uploadError}</p>}
         {error && <p className="job-parts-modal-warning job-parts-modal-full" role="alert">{error}</p>}
