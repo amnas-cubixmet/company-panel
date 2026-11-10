@@ -412,10 +412,12 @@ export function JobPartsWorkflow({ jobId, assignedTo = '', initialPanel = null }
                     <span>{row.vendor} · Qty {row.quantity} {row.sku ? `· ${row.sku}` : ''}</span>
                     <small>{purchased ? (row.invoiceNo ? `Bill ${row.invoiceNo} · ` : '') + 'Purchased' : 'Supplier quotation pending workflow'} · Quoted {money.format(quotedTotal)}</small>
                     {purchased && row.expenseId && (
-                      <small>
-                        Purchase Expense: {money.format(row.totalCost)} · {row.paymentType === 'Credit' ?
-                          'Unpaid credit' : `Paid from ${row.paymentType === 'Bank' ? 'Bank / UPI' : 'Cash'}`}
-                        {' · '}<Link to={`/expenses/${row.expenseId}`}>View Expense</Link>
+                      <small className="job-outside-finance-record">
+                        Job Purchase: {money.format(row.totalCost)} · GST included {money.format(Number(row.purchaseGstAmount || 0))}
+                        {' · '}Paid {money.format(Number(row.paidAmount || 0))}
+                        {' · '}Credit Due {money.format(Number(row.balanceDue ??
+                          Math.max(0, Number(row.totalCost || 0) - Number(row.paidAmount || 0))))}
+                        {' · '}<Link to={`/finance/expenses/${row.expenseId}`}>Open Finance Expense</Link>
                       </small>
                     )}
                     <div className="job-parts-outside-controls">
@@ -868,9 +870,9 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error, ca
         </label>
         <label className="form-label">Payment Type *
           <select className="cubegears-select" required value={paymentType}
-            onChange={event => { setPaymentType(event.target.value); setAccountId(''); }}>
-            <option value="Cash">Cash — Paid Now</option>
-            <option value="Bank">Bank / UPI — Paid Now</option>
+            onChange={event => { setPaymentType(event.target.value); setAccountId(''); setPaidAmount(''); }}>
+            {canPayNow && <option value="Cash">Cash in Hand — Pay Now</option>}
+            {canPayNow && <option value="Bank">Bank — Pay Now</option>}
             <option value="Credit">Credit — Pay Later</option>
           </select>
         </label>
@@ -884,8 +886,15 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error, ca
             ))}
           </select>
         </label>}
+        {paymentType !== 'Credit' && <label className="form-label">Pay Now (₹) *
+          <input className="cubegears-input" type="number" inputMode="decimal"
+            min="0.01" max={actualTotal.toFixed(2)} step="0.01"
+            value={paidAmount} placeholder={actualTotal.toFixed(2)}
+            onChange={event => setPaidAmount(event.target.value)}/>
+          <small>Leave empty to pay the whole bill. Enter a smaller amount for part payment.</small>
+        </label>}
         {paymentType === 'Credit' && <p className="job-parts-modal-stock-note">
-          Recorded as unpaid Expense. Pay the supplier later from Expenses.
+          Full credit: no money is debited. Pay the remaining expense later in <Link to="/finance/expenses">Finance → Expenses</Link>.
         </p>}
         {paymentType !== 'Credit' && !accountsLoading && !eligibleAccounts.length &&
           <p className="job-parts-modal-warning job-parts-modal-full" role="alert">
@@ -901,12 +910,21 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error, ca
         </label>
         <div className="job-parts-outside-calculation job-parts-modal-full">
           <div><span>Approved Quote</span><strong>{money.format(approvedTotal)}</strong></div>
+          <div><span>Purchase Before GST</span><strong>{money.format(Number.isFinite(purchaseBase) ? purchaseBase : 0)}</strong></div>
+          <div><span>Purchase GST ({gstRate}%)</span><strong>{money.format(Number.isFinite(purchaseGST) ? purchaseGST : 0)}</strong></div>
           <div><span>Actual Purchase Total / Job Expense</span><strong>{money.format(Number.isFinite(actualTotal) ? actualTotal : 0)}</strong></div>
+          <div><span>Cash / Bank Paid Now</span><strong>{money.format(Number.isFinite(payNow) ? payNow : 0)}</strong></div>
+          <div><span>Remaining Supplier Credit</span><strong>{money.format(Number.isFinite(remainingCredit) ? remainingCredit : 0)}</strong></div>
         </div>
+        {!validPaidAmount && <p className="job-parts-modal-warning job-parts-modal-full" role="alert">
+          Pay Now must be greater than zero and no more than the purchase total, with at most two decimals.
+        </p>}
         <p className="job-parts-modal-stock-note job-parts-modal-full">
           Purchase price is recorded as Job Cost and in Expenses. Customer invoice uses the separate selling price only.
           {paymentType === 'Credit' ? ' No money is debited until settlement.' :
-            ' Payment debits only the selected workshop Cash/Bank account.'} No GST is added here.
+            ' Only the entered payment debits the selected workshop Cash/Bank account.'}
+          Purchase GST is included in the supplier total, not added to the payment again.
+          Outside-part GST is for cost tracking, not automatically verified as input tax credit.
         </p>
         {!withinApproval && <p className="job-parts-modal-warning job-parts-modal-full" role="alert">
           Actual purchase total exceeds the approved quotation. Request a revised approval.
@@ -915,7 +933,7 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error, ca
           Credit is recorded as an unpaid workshop expense. No bank or cash balance changes until settled.
         </p>}
         {paymentType !== 'Credit' && <p className="job-parts-modal-stock-note job-parts-modal-full">
-          After confirming this supplier bill, the selected account is debited by the purchase total including GST.
+          After confirming, only Pay Now is debited. Any remaining credit stays on the same Finance Expense until settled.
         </p>}
         {uploadError && <p className="job-parts-modal-warning job-parts-modal-full" role="alert">{uploadError}</p>}
         {error && <p className="job-parts-modal-warning job-parts-modal-full" role="alert">{error}</p>}
