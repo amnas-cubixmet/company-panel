@@ -272,6 +272,7 @@ export const JobList = () => {
 
       <VehicleLookupPanel
         lookup={vehicleLookup}
+        canViewTotals={canViewPayments}
         onOpenCurrentJob={() =>
           vehicleLookup?.currentOpen
             ? openJob(vehicleLookup.currentOpen.id)
