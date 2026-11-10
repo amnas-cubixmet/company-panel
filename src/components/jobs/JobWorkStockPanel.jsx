@@ -158,7 +158,7 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], canEdit = true, onC
       setCreateError('Enter a valid manufacturer part number.');
       return;
     }
-    if (!newPart.tax.trim() || !/^\\d{1,3}(?:\\.\\d{1,2})?$/.test(newPart.tax) ||
+    if (!newPart.tax.trim() || !/^\d{1,3}(?:\.\d{1,2})?$/.test(newPart.tax) ||
         !Number.isFinite(tax) || tax < 0 || tax > 100 ||
         (tax === 0 && !newPart.zeroTaxClassification)) {
       setCreateError('Choose a valid GST rate and a classification for 0% GST.');
