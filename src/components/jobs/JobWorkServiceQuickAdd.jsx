@@ -33,6 +33,7 @@ export function JobWorkServiceQuickAdd({ jobId, staff = [], canEdit, onSaved }) 
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
     Promise.all([serviceService.getServices(), serviceService.getServiceCategories()])
       .then(([entries, parents]) => {
         if (active) {
@@ -40,7 +41,8 @@ export function JobWorkServiceQuickAdd({ jobId, staff = [], canEdit, onSaved }) 
           setCategories(Array.isArray(parents) ? parents : []);
         }
       })
-      .catch(err => { if (active) setError(showError(err)); });
+      .catch(err => { if (active) setError(showError(err)); })
+      .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
 
