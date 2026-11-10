@@ -41,6 +41,7 @@ export default function GSTPart15Workspace({ tab, period, report, onChanged }) {
   const [fetching, setFetching] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [message, setMessage] = useState('');
   const [version, setVersion] = useState(0);
   const [itcForm, setITCForm] = useState({
@@ -56,7 +57,7 @@ export default function GSTPart15Workspace({ tab, period, report, onChanged }) {
 
   const load = useCallback(async () => {
     setFetching(true);
-    setError('');
+    setLoadError('');
     try {
       const params = { period };
       const [batchData, itcData, notesData, ledgerData, filingData, invoiceData] =
@@ -76,7 +77,7 @@ export default function GSTPart15Workspace({ tab, period, report, onChanged }) {
       setInvoices(list(invoiceData));
       setError('');
     } catch (cause) {
-      setError(errorText(cause));
+      setLoadError(errorText(cause));
       setBatches([]);
       setCredits([]);
       setCreditNotes([]);
@@ -173,13 +174,13 @@ export default function GSTPart15Workspace({ tab, period, report, onChanged }) {
       <button type="button" onClick={() => setVersion(v => v + 1)}
         disabled={fetching || saving}><RefreshCw size={16}/> Refresh</button>
     </div>
-    {error && <div className="gstr15-error" role="alert">
-      <span>{error}</span>
-      <button type="button" onClick={() => setVersion(v => v + 1)} disabled={fetching}>Retry</button>
+    {(error || loadError) && <div className="gstr15-error" role="alert">
+      <span>{loadError || error}</span>
+      {loadError && <button type="button" onClick={() => setVersion(v => v + 1)} disabled={fetching}>Retry</button>}
     </div>}
     {message && <p className="gstr15-success" role="status">{message}</p>}
     {fetching && <p className="gstr15-loading" role="status">Loading reviewed GST records…</p>}
-    {!fetching && !error && <>
+    {!fetching && !loadError && <>
 
     {tab === 'itc' && <>
       <p className="gstr15-note">Step 1: select saved GSTR-2B match evidence. Step 2: choose a matching supplier bill. Step 3: document the independent ITC eligibility review before approving. A match alone is not legal eligibility.</p>
