@@ -7,7 +7,7 @@ import '../../styles/finance-transfers.css';
 const money = new Intl.NumberFormat('en-IN', {
   style: 'currency', currency: 'INR', maximumFractionDigits: 2
 });
-const fmt = (v) => money.format(parseFloat(v || 0));
+const fmt = (v) => v == null ? 'Balance restricted' : money.format(parseFloat(v || 0));
 
 export function TransfersPage() {
   const navigate = useNavigate();
