@@ -11,6 +11,7 @@ const stats = read('src/components/jobs/JobsStats.jsx');
 const create = read('src/pages/jobs/JobCreatePage.jsx');
 const detail = read('src/pages/jobs/JobCardWorkspace.jsx');
 const guide = read('src/components/jobs/JobCardsGuide.jsx');
+const vehicleLookup = read('src/components/jobs/VehicleLookupPanel.jsx');
 const css = read('src/styles/jobs-unified-ui.css');
 
 test('job list keeps existing server fetch, filters and URL-backed pagination', () => {
@@ -40,6 +41,8 @@ test('unavailable invoice API does not misreport a job as unpaid, paid or uninvo
   assert.match(list, /canViewInvoices = can\('invoices\.view'\)/);
   assert.match(list, /canViewPayments = can\('payments\.view'\)/);
   assert.match(list, /canCollectPayments = can\('payments\.create'\)/);
+  assert.match(list, /canViewTotals=\{canViewPayments\}/);
+  assert.match(vehicleLookup, /canViewTotals && <LookupStat/);
   assert.match(list, /billingService\.list\(\{ kind: 'invoice' \}\)/);
   assert.match(list, /invoicesError=\{Boolean\(invoicesError\)\}/);
   assert.match(records, /invoicesError \? 'Invoice unavailable' : 'Not invoiced'/);
