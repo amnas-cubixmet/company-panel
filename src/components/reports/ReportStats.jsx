@@ -10,7 +10,7 @@ export const ReportStats = ({ report, formatMoney }) => {
     ['Expenses', report.available.expenses ? formatMoney(report.expenseTotal) : '—',
       report.expenseRows.length + ' expense entries', IndianRupee, 'orange'],
     ['Net Cash Flow', report.available.payments && report.available.expenses
-      ? formatMoney(report.netCash) : '—', 'Collections less expenses', TrendingUp, 'purple'],
+      ? formatMoney(report.netCash) : '—', 'Net collections less paid operating expenses', TrendingUp, 'purple'],
     ['Invoice Balance', report.available.invoices ? formatMoney(report.outstanding) : '—',
       'Due from selected invoices', Landmark, 'red'],
     ['Stock Value', report.available.stock && report.comparable ? formatMoney(report.stockValue) : '—',
