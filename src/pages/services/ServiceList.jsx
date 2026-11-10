@@ -314,7 +314,7 @@ export const ServiceList = () => {
   }, [isNew]);
 
   useEffect(() => {
-    if (!isEdit || !id || !services.length) return;
+    if (!isEdit || !id) return;
     const service = services.find((item)=>String(item.id)===String(id)) || focusedService;
     if (!service || String(service.id) !== String(id)) return;
     setForm({
@@ -335,7 +335,7 @@ export const ServiceList = () => {
     });
     setFormError('');
     setFormDirty(false);
-  }, [isEdit, id, services, categories, focusedService]);
+  }, [isEdit, id, services, focusedService]);
 
   useEffect(() => {
     if (isNew && !form.categoryId && categories.length) {
