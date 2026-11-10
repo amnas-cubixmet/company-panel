@@ -260,6 +260,9 @@ export default function SuppliersPage({ section = 'all' }) {
     }
     let active = true;
     setSupplierFinanceError('');
+    setSupplierFinancials(null);
+    setSupplierBills([]);
+    setSupplierPayments([]);
     Promise.all([
       supplierFinanceService.getSupplierSummary(id),
       supplierFinanceService.getBills(id),
@@ -270,7 +273,12 @@ export default function SuppliersPage({ section = 'all' }) {
       setSupplierBills(bills);
       setSupplierPayments(payments);
     }).catch(error => {
-      if (active) setSupplierFinanceError(error?.message || 'Supplier finance records could not be loaded.');
+      if (active) {
+        setSupplierFinancials(null);
+        setSupplierBills([]);
+        setSupplierPayments([]);
+        setSupplierFinanceError(error?.message || 'Supplier finance records could not be loaded.');
+      }
     });
     return () => { active = false; };
   }, [id, canViewFinance]);
@@ -429,7 +437,8 @@ export default function SuppliersPage({ section = 'all' }) {
     </nav>}
     {id && <nav className="cg-supplier-details-nav" aria-label="Supplier details sections">
       <a href="#supplier-profile"><Building2 size={16}/> Profile</a>
-      {(canCreatePurchase || canPaySupplier) && <a href="#supplier-purchase-form"><ShoppingBag size={16}/> Purchases</a>}
+      {canCreatePurchase && <a href="#supplier-purchase-form"><ShoppingBag size={16}/> Purchases</a>}
+      {canPaySupplier && <a href="#supplier-pay-now"><CreditCard size={16}/> Pay Credit</a>}
       {canViewFinance && <a href="#supplier-returns"><Package size={16}/> Returns</a>}
       {canViewFinance && <a href="#supplier-ledger"><Wallet size={16}/> Accounts &amp; Payments</a>}
     </nav>}
@@ -663,7 +672,6 @@ export default function SuppliersPage({ section = 'all' }) {
         </div>}
         <div className="cg-supplier-contacts">
           <SupplierContactActions supplier={supplier}/>
-          {false && supplier.phone&&<a href={'tel:'+String(supplier.phone).replace(/[^\d+]/g,'')}><Phone size={15}/> Call</a>}
           {supplier.email&&<a href={'mailto:'+supplier.email}><Mail size={15}/> Email</a>}
           <Link to={'/stock?supplier='+encodeURIComponent(supplier.id)}><Package size={15}/> Inventory</Link>
           {canCreatePurchase && <a href="#supplier-purchase-form">
