@@ -37,6 +37,8 @@ import { jobDisplayLabel } from '../../components/jobs/jobs.utils';
 import { jobInvoiceGST, jobInvoiceFinance } from '../../utils/jobGstFinance';
 import '../../styles/job-gst-finance.css';
 import { JobBreadcrumbs } from '../../components/jobs/JobBreadcrumbs';
+import { JobDetailGuide } from '../../components/jobs/JobCardsGuide';
+import '../../styles/jobs-unified-ui.css';
 import { WhatsAppManualShareButton } from '../../components/common/WhatsAppManualShareButton';
 import { statusForComplaint, complaintStatusClass, unresolvedComplaintCount, COMPLAINT_STATUSES } from '../../components/jobs/complaintStatus';
 
@@ -916,7 +918,7 @@ export function JobCardWorkspace() {
   );
 
   return (
-    <div className="job-management-page cg-job-detail job-workspace-dashboard flex w-full min-w-0 flex-col gap-4 pb-4">
+    <div className="job-management-page cg-job-detail jobs-ui-polished job-workspace-dashboard flex w-full min-w-0 flex-col gap-4 pb-4">
       <JobBreadcrumbs current={TABS.find(([key]) => key === activeTab)?.[1] || "Overview"} jobLabel={jobDisplayLabel(job)} jobId={job.id} />
       <header className="job-detail-header flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
@@ -938,6 +940,7 @@ export function JobCardWorkspace() {
         </div>
       </header>
 
+      <JobDetailGuide/>
       {can('payroll.view') && can('expenses.view') && hasStockAccess && <JobTotalCostPanel
         jobId={job.id}
         refreshVersion={timerRefreshVersion}
