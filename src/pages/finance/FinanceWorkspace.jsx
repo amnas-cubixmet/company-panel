@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ArrowDownLeft, Receipt, Wallet, ArrowLeftRight,
   List, BookOpen, UserRound, Truck, Wrench, FileText
@@ -28,6 +28,9 @@ export default function FinanceWorkspace() {
   const access = useFeatureAccess();
   const location = useLocation();
   const canView = access.can('payments.view') || access.can('expenses.view');
+  if (location.pathname === '/finance' && !access.can('payments.view') && access.can('expenses.view')) {
+    return <Navigate to="/finance/expenses" replace />;
+  }
   if (!canView) {
     return <div className="finance-workspace-denied" role="alert">
       You do not have permission to view the company finance workspace.
