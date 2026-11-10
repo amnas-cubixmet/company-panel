@@ -462,7 +462,7 @@ export function EWayBillPage() {
                       {row.status === 'Draft' && (
                         <button type="button" aria-label={`Edit ${row.documentNo || row.id}`} title="Edit" onClick={() => navigate(`/invoices/e-way-bills/${row.id}/edit`)}><Edit3 size={16}/></button>
                       )}
-                      <button type="button" aria-label={`Delete ${row.documentNo || row.id}`} title="Delete" className="danger" onClick={() => navigate(`/invoices/e-way-bills/${row.id}/delete`)}><Trash2 size={16}/></button>
+                      {row.status === 'Draft' && <button type="button" aria-label={`Delete ${row.documentNo || row.id}`} title="Delete Draft" className="danger" onClick={() => navigate(`/invoices/e-way-bills/${row.id}/delete`)}><Trash2 size={16}/></button>}
                     </div>
                   </article>
                 );
