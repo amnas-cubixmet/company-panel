@@ -85,25 +85,25 @@ export function TransfersPage() {
           <button className="finance-back-btn" onClick={() => navigate('/finance/transfers')}>
             <ArrowLeft size={16} /> Transfers
           </button>
-          <h1>Transfer Money</h1>
-          <p>Move funds between your bank and cash accounts atomically.</p>
+          <h1>Move Money Between Accounts</h1>
+          <p>Choose the source and destination accounts. A transfer moves money; it is not an income or expense.</p>
         </header>
         {error && <div className="finance-error" role="alert">{error}</div>}
         <form className="finance-transfer-form" onSubmit={handleSubmit}>
           <div className="finance-form-grid">
             <label className="finance-field">
-              <span>From Account *</span>
+              <span>Take Money From *</span>
               <select required value={form.fromAccountId} onChange={e => setForm({ ...form, fromAccountId: e.target.value })}>
-                <option value="">— Select source account —</option>
+                <option value="">Select source account</option>
                 {accounts.map(a => (
                   <option key={a.id} value={a.id}>{a.name} ({a.kind}) — {fmt(a.currentBalance)}</option>
                 ))}
               </select>
             </label>
             <label className="finance-field">
-              <span>To Account *</span>
+              <span>Send Money To *</span>
               <select required value={form.toAccountId} onChange={e => setForm({ ...form, toAccountId: e.target.value })}>
-                <option value="">— Select destination account —</option>
+                <option value="">Select destination account</option>
                 {accounts.map(a => (
                   <option key={a.id} value={a.id}>{a.name} ({a.kind}) — {fmt(a.currentBalance)}</option>
                 ))}
@@ -124,7 +124,7 @@ export function TransfersPage() {
                 placeholder="Optional reference number" maxLength={120} />
             </label>
             <label className="finance-field finance-field-wide">
-              <span>Notes</span>
+              <span>Reason / Notes</span>
               <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} />
             </label>
           </div>
@@ -146,8 +146,8 @@ export function TransfersPage() {
       <header className="finance-page-header">
         <div>
           <span className="finance-dash-kicker">FINANCE</span>
-          <h1>Money Transfers</h1>
-          <p>Internal account-to-account fund movements.</p>
+          <h1>Account Transfers</h1>
+          <p>See money moved between the workshop's cash and bank accounts. These movements are not sales or expenses.</p>
         </div>
         {canManage && <button className="finance-primary-btn" onClick={() => navigate('/finance/transfers/new')}>
           <Plus size={16} /> New Transfer
@@ -160,8 +160,8 @@ export function TransfersPage() {
         transfers.length === 0 ? (
           <div className="finance-empty">
             <ArrowLeftRight size={40} />
-            <h3>No transfers recorded</h3>
-            <p>Transfer funds between your accounts and they will appear here.</p>
+            <h3>No account transfers yet</h3>
+            <p>Use New Transfer to move money from one workshop account to another.</p>
           </div>
         ) : (
           <div className="finance-transfers-list">
