@@ -36,7 +36,7 @@ export default function FinanceWorkspace() {
       You do not have permission to view the company finance workspace.
     </div>;
   }
-  const current = sections.find((item) =>
+  const current = [...sections].sort((a, b) => b.to.length - a.to.length).find((item) =>
     location.pathname === item.to || location.pathname.startsWith(item.to + '/')
   );
   return <main className="finance-workspace">
