@@ -55,7 +55,11 @@ export function SupplierWorkspaceGuide({ purchaseView = false }) {
 }
 
 export function SupplierOverviewCards({ suppliers, balances, canViewFinance, purchaseBillsError }) {
-  const payableAmounts = balances ? [...balances.values()].map(Number) : null;
+  // Directory balances are complete posted-bill summaries, not scalar amounts.
+  // Never coerce the supplier summary object with Number(object) (NaN).
+  const payableAmounts = balances ? [...balances.values()].map(row =>
+    Number(row?.outstanding ?? row)
+  ) : null;
   const outstanding = payableAmounts?.every(Number.isFinite)
     ? payableAmounts.reduce((total, value) => total + value, 0)
     : null;
