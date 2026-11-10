@@ -67,10 +67,12 @@ export const Sidebar = () => {
   }, [location.pathname, canViewNotifications]);
 
   const sections = Object.values(ROUTE_SECTIONS);
-  const isRouteActive = (route) =>
-    route.path === '/dashboard'
-      ? location.pathname === '/dashboard'
-      : location.pathname === route.path || location.pathname.startsWith(`${route.path}/`);
+  const isRouteActive = (route) => {
+    if (route.path === '/dashboard') return location.pathname === '/dashboard';
+    // Customer Website is a standalone navigation entry, not an active Settings tab.
+    if (route.path === '/settings' && location.pathname.startsWith('/settings/customer-website')) return false;
+    return location.pathname === route.path || location.pathname.startsWith(`${route.path}/`);
+  };
 
   return (
     <aside className={`app-sidebar ${collapsed ? 'is-collapsed' : ''}`}>
@@ -118,6 +120,7 @@ export const Sidebar = () => {
                       <NavLink
                         key={route.id}
                         to={route.path}
+                        end={route.path === '/settings'}
                         ref={active ? activeItemRef : null}
                         title={collapsed ? route.label : undefined}
                         className={`sidebar-nav-item ${active ? 'is-active' : ''} ${collapsed ? 'is-icon-only' : ''}`}
