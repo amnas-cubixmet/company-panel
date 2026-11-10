@@ -71,3 +71,19 @@
 @media(max-width:380px){
   .vehicle-photo-gallery .vehicle-photo-add-actions>*{flex-basis:100%}
 }
+
+/* The inspection publishing choice is ON for new job photos and opt-out.
+   Keep regular vehicle uploads private until explicitly chosen. */
+.vehicle-photo-gallery .vehicle-gallery-upload-metadata .vehicle-photo-upload-publish{
+  grid-column:1/-1;display:flex;align-items:center;gap:10px;
+  min-height:48px;border:1px solid var(--border);border-radius:11px;
+  padding:11px 13px;background:var(--surface-2);
+  font-size:14px;color:var(--text-primary);cursor:pointer
+}
+.vehicle-photo-gallery .vehicle-photo-upload-publish input[type=checkbox]{
+  width:20px;min-width:20px;height:20px;min-height:20px;
+  margin:0;accent-color:var(--primary)
+}
+.vehicle-photo-gallery .vehicle-photo-upload-publish:focus-within{
+  outline:2px solid var(--primary);outline-offset:2px
+}
