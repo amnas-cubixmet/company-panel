@@ -93,6 +93,17 @@ export const getPermissionForPath = (pathname = '') => {
   if (/^\/jobs\/[^/]+\/invoice(?:\/|$)/.test(pathname)) return 'invoices.view';
   if (/^\/jobs\/[^/]+\/parts(?:\/|$)/.test(pathname)) return 'stock.view';
 
+  // Nested finance actions must retain their OWN module-specific permission,
+  // never inherit the broad Finance overview read permission.
+  for (const [prefix, module] of [
+    ['/finance/payments', 'payments'],
+    ['/finance/expenses', 'expenses'],
+  ]) {
+    if (pathname === prefix || pathname.startsWith(prefix + '/')) {
+      return module + '.' + actionForCrudPath(pathname, prefix);
+    }
+  }
+
   const special = SPECIAL_PATH_PERMISSIONS
     .filter(([prefix]) => pathname === prefix || pathname.startsWith(`${prefix}/`))
     .sort((a, b) => b[0].length - a[0].length)[0];
