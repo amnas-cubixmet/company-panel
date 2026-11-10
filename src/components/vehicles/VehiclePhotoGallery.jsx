@@ -69,6 +69,9 @@ export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPubl
   const [category, setCategory] = useState('additional');
   const [phase, setPhase] = useState('before');
   const [caption, setCaption] = useState('');
+  // Inspection/job photos are published by default; general vehicle uploads
+  // remain private unless a staff member explicitly opts in.
+  const [publishNewPhotos, setPublishNewPhotos] = useState(Boolean(jobId && canPublish));
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
@@ -93,7 +96,10 @@ export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPubl
     setUploading(true);
     setError('');
     try {
-      const saved = await vehiclePhotoService.upload({ vehicleId, jobId, file, ...metadata });
+      const saved = await vehiclePhotoService.upload({
+        vehicleId, jobId, file, ...metadata,
+        published: Boolean(canPublish && publishNewPhotos),
+      });
       setPhotos((current) => [saved, ...current]);
     } catch (cause) {
       setError(cause?.message || 'Unable to upload photo. Retake and retry.');
@@ -124,12 +130,13 @@ export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPubl
         const saved = await vehiclePhotoService.upload({
           vehicleId, jobId, file, category, phase,
           caption: caption.trim().slice(0, 255),
+          published: Boolean(canPublish && publishNewPhotos),
         });
         setPhotos(current => [saved, ...current.filter(photo => photo.id !== saved.id)]);
         completed += 1;
       }
       setCaption('');
-      setUploadProgress(`${completed} photo${completed === 1 ? '' : 's'} saved privately. Use Publish to share with the customer.`);
+      setUploadProgress(`${completed} photo${completed === 1 ? '' : 's'} ${canPublish && publishNewPhotos ? 'published to customer' : 'saved privately'}.`);
     } catch (cause) {
       setError(`${completed} of ${files.length} uploaded. ${cause?.message || 'Could not upload remaining photos.'}`);
       setUploadProgress('');
@@ -147,7 +154,7 @@ export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPubl
     <section className="vehicle-photo-gallery" aria-label="Vehicle inspection photos">
       <div className="vehicle-camera-heading">
         <div><h3><Camera size={18}/> Vehicle Photo Gallery</h3>
-          <p>Only workshop staff can upload and publish photos. Photos remain private until published.</p></div>
+          <p>Only workshop staff can upload photos. New inspection photos are published by default; switch off to keep them private.</p></div>
         {canEdit && <div className="vehicle-photo-add-actions">
           <LiveVehicleCamera onCapture={capture} disabled={uploading} count={photos.length}/>
           <label className="vehicle-gallery-upload-label">
@@ -181,6 +188,11 @@ export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPubl
             onChange={event => setCaption(event.target.value)}
             placeholder="Describe vehicle photo"/>
         </label>
+        {canPublish && <label className="vehicle-photo-upload-publish">
+          <input type="checkbox" checked={publishNewPhotos} disabled={uploading}
+            onChange={event => setPublishNewPhotos(event.target.checked)}/>
+          Publish new photos to customer
+        </label>}
       </div>}
       {uploadProgress && <p className="vehicle-photo-gallery-progress" role="status">{uploadProgress}</p>}
       {uploading && !uploadProgress && <p role="status">Uploading captured photo…</p>}
