@@ -21,7 +21,8 @@ test('supplier directory and existing purchase history have distinct accessible 
 
 test('finance totals are permission-scoped, derive only from posted bills and fail as unavailable', () => {
   assert.match(page, /access\.can\('payments\.view'\) && access\.can\('stock\.view'\)/);
-  assert.match(page, /if \(bill\.postingStatus !== 'Posted'\) continue/);
+  assert.match(page, /supplierFinanceService\.getSupplierBalances\(\)/);
+  assert.match(guide, /Number\(row\?\.outstanding \?\? row\)/);
   assert.match(page, /setCreditBalances\(null\)/);
   assert.match(page, /canViewFinance=\{canViewFinance\}/);
   assert.match(guide, /if \(canViewFinance\)/);
