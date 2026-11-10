@@ -44,7 +44,8 @@ test('payment form validates amount and account balance before mutation', () => 
 test('credit and payment history use company-scoped supplier APIs', () => {
   assert.match(supplier, /supplierFinanceService\.getSupplierSummary/);
   assert.match(supplier, /supplierBills\.filter/);
-  assert.match(supplier, /supplierPayments\.map/);
+  assert.match(supplier, /<SupplierAccountStatement/);
+  assert.match(supplier, /supplierFinanceService\.getSupplierLedger/);
   assert.match(form, /postNow: true/);
   assert.match(form, /no second stock receipt or expense/);
   assert.doesNotMatch(form, /localStorage|stockSuppliersMock/);
