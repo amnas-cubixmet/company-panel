@@ -11,7 +11,8 @@ const money = new Intl.NumberFormat('en-IN', {
 });
 const fmt = (v) => money.format(parseFloat(v || 0));
 
-const KINDS = ['Cash', 'Bank', 'UPI', 'Wallet', 'Other'];
+// Two money-source categories. UPI and card receipts are settled into a Bank account.
+const KINDS = ['Cash', 'Bank'];
 
 const emptyForm = {
   name: '', kind: 'Bank', bankName: '', accountNumber: '',
