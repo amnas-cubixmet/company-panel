@@ -376,3 +376,35 @@
 @media(prefers-reduced-motion:reduce){
   .cg-services .service-spinning{animation:none}
 }
+
+
+.cg-services.service-dashboard .service-catalog-card__title{
+  display:block;width:100%;min-width:0;
+  border:0;background:transparent;padding:0;margin:4px 0 0;
+  color:var(--text-primary);text-align:left;
+  font-size:16px;line-height:1.4;letter-spacing:-.01em;
+  font-weight:750;cursor:pointer;overflow-wrap:anywhere;
+}
+.cg-services.service-dashboard .service-catalog-card__title:hover{
+  color:var(--primary);text-decoration:underline;
+  text-underline-offset:3px;
+}
+.cg-services.service-dashboard .service-catalog-card__title:focus-visible{
+  outline:2px solid var(--primary);outline-offset:3px;border-radius:4px;
+}
+.responsive-modal-body .service-category-select-field{
+  min-width:0;display:flex;flex-direction:column;gap:6px;
+}
+.responsive-modal-body .service-category-select-field .service-field{
+  min-width:0;
+}
+.responsive-modal-body .service-add-category-inline{
+  align-self:flex-start;display:inline-flex;align-items:center;gap:6px;
+  min-height:34px;border:0;border-radius:8px;
+  background:transparent;color:var(--primary);
+  font-size:13px;font-weight:700;cursor:pointer;
+  padding:6px 2px;
+}
+.responsive-modal-body .service-add-category-inline:focus-visible{
+  outline:2px solid var(--primary);outline-offset:2px;
+}
