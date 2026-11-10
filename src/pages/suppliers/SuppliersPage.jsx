@@ -393,6 +393,16 @@ export default function SuppliersPage({ section = 'all' }) {
     setSupplierBills(bills);
     setSupplierPayments(payments);
     setProducts(catalog.filter(row => supplierIdOf(row) === String(id)));
+    setCreditBalances(current => {
+      if (!current) return current;
+      const totalDue = bills
+        .filter(bill => bill.postingStatus === 'Posted')
+        .reduce((total, bill) => total + Number(bill.outstanding || 0), 0);
+      if (!Number.isFinite(totalDue)) return current;
+      const updated = new Map(current);
+      updated.set(String(id), totalDue);
+      return updated;
+    });
     setNotice('Supplier purchase, stock, payments and outstanding balance updated.');
     } catch (cause) {
       setSupplierFinanceError(cause?.message || 'Supplier balances could not be refreshed. Try again.');
@@ -479,7 +489,7 @@ export default function SuppliersPage({ section = 'all' }) {
       {loading ? <p role="status" className="cg-supplier-empty">Loading suppliers…</p>
         : error ? null : matches.length ? <>
           <div className="cg-supplier-directory-table-wrap">
-            <table className="cg-supplier-directory-table">
+            <table className="cg-supplier-directory-table" aria-label="Workshop supplier directory">
               <thead><tr>
                 <th scope="col">Supplier</th>
                 <th scope="col">Phone / WhatsApp</th>
