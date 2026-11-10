@@ -30,6 +30,7 @@ export function TransfersPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const [t, a] = await Promise.all([
         financeService.listTransfers(),
@@ -156,7 +157,7 @@ export function TransfersPage() {
       {error && <div className="finance-error" role="alert">{error}</div>}
       {loading ? (
         <div className="finance-loading">Loading transfers…</div>
-      ) : (
+      ) : error ? null : (
         transfers.length === 0 ? (
           <div className="finance-empty">
             <ArrowLeftRight size={40} />
