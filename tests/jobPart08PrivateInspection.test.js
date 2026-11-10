@@ -20,7 +20,7 @@ test('job inspection photo capture uses private multipart Django storage', () =>
   const photos = src('src/services/vehiclePhoto.service.js');
   assert.match(panel, /vehiclePhotoService\.upload\(/);
   assert.match(panel, /jobInspectionService\.addInspectionPhoto\(job\.id, \{ photoId: uploaded\.id \}\)/);
-  assert.match(panel, /<VehiclePhotoGallery jobId=\{job\.id\} canEdit=\{false\} refreshKey=\{photos\.length\} \/>/);
+  assert.match(panel, /<VehiclePhotoGallery jobId=\{job\.id\} canEdit=\{editable\} canPublish=\{canEdit\} refreshKey=\{photos\.length\} \/>/);
   assert.doesNotMatch(panel, /new FileReader\(/);
   assert.doesNotMatch(panel, /readAsDataURL\(/);
   assert.doesNotMatch(panel, /src=\{photo\.url\}/);
