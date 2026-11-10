@@ -7,6 +7,7 @@ import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { USE_MOCK_API } from '../../api/apiConfig';
 import SupplierPurchaseFlow from '../../components/suppliers/SupplierPurchaseFlow';
+import SupplierAccountStatement from '../../components/suppliers/SupplierAccountStatement';
 import SupplierReturnsPanel from '../../components/suppliers/SupplierReturnsPanel';
 import { SupplierWorkspaceGuide, SupplierOverviewCards } from '../../components/suppliers/SupplierWorkspaceGuide';
 import { appConfirm } from '../../components/common/appDialogs';
@@ -781,7 +782,7 @@ export default function SuppliersPage({ section = 'all' }) {
       {canViewFinance && (
         <section className="cg-supplier-profile" id="supplier-ledger" aria-label="Supplier credit and settlement">
           <div className="cg-supplier-profile-head">
-            <CreditCard size={20}/><h2>Supplier Accounts &amp; Payments</h2>
+            <CreditCard size={20}/><h2>Supplier Credit, Balance & Transactions</h2>
           </div>
           {supplierFinanceError && <p className="cg-supplier-error" role="alert">{supplierFinanceError}</p>}
           {supplierFinancials && (
@@ -796,7 +797,18 @@ export default function SuppliersPage({ section = 'all' }) {
               <div><span>Net After Available Credits</span><strong>{money(supplierFinancials.netExposureAfterAvailableCredits)}</strong></div>
             </div>
           )}
-          <p className="cg-supplier-ledger-note">Use “Pay Supplier” above to settle a posted bill. Payments, advances and supplier returns remain separate accounting entries.</p>
+          <p className="cg-supplier-ledger-note" aria-label="Credit outstanding">
+            Credit outstanding is based on posted supplier bills. Use “Pay Supplier” above to settle a bill.
+            Advances, supplier payments and returns remain separate accounting entries.
+          </p>
+          <SupplierAccountStatement
+            supplier={supplier}
+            ledger={supplierLedger}
+            loading={supplierLedgerLoading}
+            error={supplierFinanceError}
+            onRefresh={() => refreshSupplierDetails().catch(cause =>
+              setSupplierFinanceError(cause?.message || 'Unable to refresh supplier transactions.'))}
+          />
           <h3>Purchase Bills</h3>
           {supplierBills.filter(b => b.postingStatus === 'Posted').map(bill => (
             <div key={bill.id} className="cg-supplier-record">
@@ -820,16 +832,6 @@ export default function SuppliersPage({ section = 'all' }) {
           canPurchase={canCreatePurchase}
           canPay={canPaySupplier}
           bills={supplierBills}
-          onChanged={refreshSupplierDetails}
-        />
-      )}
-      {canViewFinance && (
-        <SupplierReturnsPanel
-          supplier={supplier}
-          bills={supplierBills}
-          payments={supplierPayments}
-          canReturn={canEdit && access.can('payments.edit')}
-          canPay={canPaySupplier}
           onChanged={refreshSupplierDetails}
         />
       )}
