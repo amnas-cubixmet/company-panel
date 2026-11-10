@@ -8,6 +8,7 @@ import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalShe
 import { USE_MOCK_API } from '../../api/apiConfig';
 import SupplierPurchaseFlow from '../../components/suppliers/SupplierPurchaseFlow';
 import SupplierReturnsPanel from '../../components/suppliers/SupplierReturnsPanel';
+import SupplierAccountStatement from '../../components/suppliers/SupplierAccountStatement';
 import { useLocation } from 'react-router-dom';
 import { customerContactLinks } from '../../components/jobs/customerContact.utils';
 import '../../styles/suppliers-workspace.css';
@@ -171,6 +172,7 @@ export default function SuppliersPage({ section = 'all' }) {
   const canDelete = access.can('stock.delete') && !USE_MOCK_API;
   const [suppliers, setSuppliers] = useState([]);
   const [creditBalances, setCreditBalances] = useState(null);
+  const [balancesError, setBalancesError] = useState('');
   const [purchaseBills, setPurchaseBills] = useState([]);
   const [purchaseBillsError, setPurchaseBillsError] = useState('');
   const [purchaseHistory, setPurchaseHistory] = useState([]);
@@ -185,6 +187,8 @@ export default function SuppliersPage({ section = 'all' }) {
   const [supplierFinancials, setSupplierFinancials] = useState(null);
   const [supplierBills, setSupplierBills] = useState([]);
   const [supplierPayments, setSupplierPayments] = useState([]);
+  const [supplierLedger, setSupplierLedger] = useState(null);
+  const [supplierLedgerLoading, setSupplierLedgerLoading] = useState(false);
   const [supplierFinanceError, setSupplierFinanceError] = useState('');
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
@@ -240,22 +244,29 @@ export default function SuppliersPage({ section = 'all' }) {
       setSupplierFinancials(null);
       setSupplierBills([]);
       setSupplierPayments([]);
+      setSupplierLedger(null);
+      setSupplierLedgerLoading(false);
       return undefined;
     }
     let active = true;
     setSupplierFinanceError('');
+    setSupplierLedgerLoading(true);
+    setSupplierFinancials(null);
+    setSupplierLedger(null);
     Promise.all([
       supplierFinanceService.getSupplierSummary(id),
       supplierFinanceService.getBills(id),
       supplierFinanceService.getPayments(id),
-    ]).then(([summary, bills, payments]) => {
+      supplierFinanceService.getSupplierLedger(id),
+    ]).then(([summary, bills, payments, ledger]) => {
       if (!active) return;
       setSupplierFinancials(summary);
       setSupplierBills(bills);
       setSupplierPayments(payments);
+      setSupplierLedger(ledger);
     }).catch(error => {
       if (active) setSupplierFinanceError(error?.message || 'Supplier finance records could not be loaded.');
-    });
+    }).finally(() => { if (active) setSupplierLedgerLoading(false); });
     return () => { active = false; };
   }, [id, canViewFinance]);
 
@@ -278,28 +289,45 @@ export default function SuppliersPage({ section = 'all' }) {
   }, [purchaseView]);
 
   useEffect(() => {
-    if (!canViewFinance || USE_MOCK_API) return undefined;
+    if (!canViewFinance || USE_MOCK_API) {
+      setCreditBalances(null);
+      setBalancesError('');
+      return undefined;
+    }
     let active = true;
-    // SupplierBill is the authoritative posted payable, not a draft PO or an expense.
-    setPurchaseBillsError('');
-    supplierFinanceService.getBills().then(rows => {
+    setBalancesError('');
+    setCreditBalances(null);
+    // This API includes ALL posted supplier bills, payments, returns and credits.
+    // The purchase-bills list intentionally returns at most 100 records and
+    // must never be used as the source of directory outstanding balances.
+    supplierFinanceService.getSupplierBalances().then(rows => {
       if (!active) return;
-      setPurchaseBills(rows);
-      const balances = new Map();
-      for (const bill of rows) {
-        if (bill.postingStatus !== 'Posted') continue;
-        const key = String(bill.supplierId);
-        balances.set(key, (balances.get(key) || 0) + Number(bill.outstanding || 0));
-      }
-      setCreditBalances(balances);
+      setCreditBalances(new Map(rows.map(row => [String(row.supplierId), row])));
     }).catch(cause => {
       if (!active) return;
       setCreditBalances(null);
+      setBalancesError(cause?.message || 'Unable to load supplier credit balances.');
+    });
+    return () => { active = false; };
+  }, [canViewFinance]);
+
+  useEffect(() => {
+    if (!canViewFinance || !purchaseView || USE_MOCK_API) {
+      setPurchaseBills([]);
+      setPurchaseBillsError('');
+      return undefined;
+    }
+    let active = true;
+    setPurchaseBillsError('');
+    supplierFinanceService.getBills().then(rows => {
+      if (active) setPurchaseBills(rows);
+    }).catch(cause => {
+      if (!active) return;
       setPurchaseBills([]);
       setPurchaseBillsError(cause?.message || 'Unable to load supplier purchase bills.');
     });
     return () => { active = false; };
-  }, [canViewFinance]);
+  }, [canViewFinance, purchaseView]);
 
   const matches = useMemo(() => {
     const needle=search.trim().toLowerCase();
@@ -354,17 +382,23 @@ export default function SuppliersPage({ section = 'all' }) {
 
   const refreshSupplierDetails = async () => {
     if (!id) return;
-    const [summary, bills, payments, catalog] = await Promise.all([
+    const [summary, bills, payments, ledger, balances, catalog] = await Promise.all([
       supplierFinanceService.getSupplierSummary(id),
       supplierFinanceService.getBills(id),
       supplierFinanceService.getPayments(id),
+      supplierFinanceService.getSupplierLedger(id),
+      supplierFinanceService.getSupplierBalances(),
       supplierService.products(),
     ]);
     setSupplierFinancials(summary);
     setSupplierBills(bills);
     setSupplierPayments(payments);
+    setSupplierLedger(ledger);
+    setCreditBalances(new Map(balances.map(row => [String(row.supplierId), row])));
+    setBalancesError('');
+    setSupplierFinanceError('');
     setProducts(catalog.filter(row => supplierIdOf(row) === String(id)));
-    setNotice('Supplier purchase, stock, payments and outstanding balance updated.');
+    setNotice('Supplier credits, transactions, purchases and account balances updated.');
   };
 
   function onSaved(saved) {
