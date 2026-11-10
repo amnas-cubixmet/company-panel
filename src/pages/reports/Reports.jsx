@@ -207,20 +207,55 @@ export function Reports() {
   }, [query, report.invoiceRows]);
 
   const exportCsv = () => {
-    if (!availability.invoices) return;
-    const rows = [
-      ['Invoice', 'Date', 'Customer', 'Vehicle', 'Status', 'Total', 'Paid', 'Balance'],
-      ...filteredRows.map((item) => {
-        const amounts = invoiceAmounts(item);
-        return [
-          item.number || '', reportDate(item, 'invoice'),
-          item.customerName || item.customer?.name || '',
-          item.vehicle?.registration || '', item.status,
-          amounts.total, amounts.paid, amounts.balance,
-        ];
-      }),
+    if (loading || truncatedSources.length || !dateRangeValid) return;
+    const rows = [];
+    const append = (section, headings, items) => {
+      rows.push([section, periodLabel]);
+      rows.push(headings);
+      rows.push(...items);
+      rows.push([]);
+    };
+
+    if ((tab === 'overview' || tab === 'sales') && availability.invoices) {
+      append('INVOICES', ['Invoice', 'Date', 'Customer', 'Vehicle', 'Status', 'Total', 'Paid', 'Balance'],
+        filteredRows.map((item) => {
+          const amounts = invoiceAmounts(item);
+          return [item.number, reportDate(item, 'invoice'), item.customerName,
+            item.vehicleReg || item.vehicle?.registration, item.status,
+            amounts.total, amounts.paid, amounts.balance];
+        }));
+    }
+    if ((tab === 'overview' || tab === 'payments') && availability.payments) {
+      append('CUSTOMER PAYMENTS', ['Reference', 'Date', 'Customer', 'Invoice', 'Method', 'Direction', 'Status', 'Amount'],
+        report.paymentRows.map((item) => [
+          item.reference || item.id, reportDate(item, 'payment'), item.customerName,
+          item.invoiceNo, item.method, item.direction || 'IN', item.status,
+          (String(item.direction || 'IN').toUpperCase() === 'OUT' ? -1 : 1) * Number(item.amount || 0),
+        ]));
+    }
+    if ((tab === 'overview' || tab === 'expenses') && availability.expenses) {
+      append('OPERATING EXPENSES', ['Date', 'Expense', 'Category', 'Vendor', 'Status', 'Amount', 'Paid'],
+        report.expenseRows.map((item) => [
+          reportDate(item, 'expense'), item.title || item.description,
+          item.category, item.vendor, item.status, item.amount,
+          item.paidAmount ?? item.paid_amount ?? 0,
+        ]));
+    }
+    if ((tab === 'overview' || tab === 'stock') && availability.stock && report.comparable) {
+      append('CURRENT STOCK', ['SKU', 'Item', 'On Hand', 'Reserved', 'Cost Price', 'Stock Value'],
+        report.stockRows.map((item) => [
+          item.sku, item.name || item.partName, item.onHand, item.reserved,
+          item.costPrice, Number(item.onHand || 0) * Number(item.costPrice || 0),
+        ]));
+    }
+    if (!rows.length) return;
+    const titleRows = [
+      ['Workshop', workshopName],
+      ['Period', periodLabel],
+      ['Exported', new Date().toLocaleString('en-IN')],
+      [],
     ];
-    const csv = rows.map((row) => row.map(csvEscape).join(',')).join('\n');
+    const csv = '\uFEFF' + [...titleRows, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     const link = document.createElement('a');
     link.href = url;
@@ -360,7 +395,7 @@ export function Reports() {
                     <td>{item.invoiceNo || objectLabel(item.invoice) || '—'}</td>
                     <td>{item.method || item.paymentMethod || '—'}</td>
                     <td>{item.status || 'Completed'}</td>
-                    <td>{reportMoney(item.amount)}</td>
+                    <td>{reportMoney((String(item.direction || 'IN').toUpperCase() === 'OUT' ? -1 : 1) * Number(item.amount || 0))}</td>
                   </tr>)}
                   {!report.paymentRows.length && noRecords(7, availability.payments ? 'No payments for this selection.' : 'Payment data unavailable.')}
                 </tbody>
