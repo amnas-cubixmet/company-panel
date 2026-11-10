@@ -10,23 +10,23 @@ const workStart = workspace.indexOf("{activeTab === 'work' && (");
 const partsStart = workspace.indexOf("activeTab === 'parts' && (", workStart);
 const work = workspace.slice(workStart, partsStart);
 
-test('Outside Staff is the first feature in the Job Card Work stage', () => {
+test('Work retains outside staff and advanced timers while surfacing Added Services', () => {
   assert.ok(workStart !== -1 && partsStart > workStart);
   const outside = work.indexOf('<JobOutsideStaffSection');
   const internal = work.indexOf('<JobWorkerAssignments');
   const timers = work.indexOf('<JobWorkTimerPanel');
-  const items = work.indexOf('Labour & Work Items');
+  const items = work.indexOf('<JobWorkSavedServices');
   assert.ok(outside >= 0 && internal > outside && timers > internal && items > timers);
 });
 
-test('Remove duplicate Add Labour form, state, handler without hiding saved work entries', () => {
+test('No duplicate Add Labour form or legacy Labour & Work Items bar', () => {
   assert.doesNotMatch(workspace, /const addLabour\s*=/);
   assert.doesNotMatch(workspace, /const blankLabour\s*=/);
   assert.doesNotMatch(workspace, /\[labour, setLabour\]/);
   assert.doesNotMatch(work, /<form onSubmit=\{addLabour\}/);
   assert.doesNotMatch(work, />Add Labour</);
-  assert.match(work, /labourRecords\.map/);
-  assert.match(work, /No labour entries yet/);
+  assert.doesNotMatch(work, /Labour & Work Items/);
+  assert.match(work, /<JobWorkSavedServices/);
 });
 
 test('Work timer still allows recording internal mechanics without duplicate form', () => {
@@ -35,10 +35,13 @@ test('Work timer still allows recording internal mechanics without duplicate for
   assert.match(work, /labourRecords=\{labourRecords\}/);
 });
 
-test('Labour & Work Items uses one responsive full width card with compact empty state', () => {
-  assert.match(work, /job-work-items-panel/);
-  assert.match(css, /\.job-work-items-panel \{/);
-  assert.match(css, /min-height:0!important/);
-  assert.match(css, /\.job-work-items-empty \{/);
-  assert.match(css, /@media \(max-width:650px\)/);
+test('Added Services has a separate responsive list with safe delete controls', () => {
+  const component = read('../src/components/jobs/JobWorkSavedServices.jsx');
+  const styles = read('../src/styles/job-work-saved-services.css');
+  assert.match(work, /<JobWorkSavedServices/);
+  assert.match(component, /Added Services/);
+  assert.match(component, /removeJobService\(job\.id, item\.id\)/);
+  assert.match(component, /totalCustomerServiceCharges\(job\)/);
+  assert.match(styles, /\.job-work-saved-row/);
+  assert.match(styles, /@media\(max-width:600px\)/);
 });
