@@ -154,7 +154,7 @@ export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPubl
     <section className="vehicle-photo-gallery" aria-label="Vehicle inspection photos">
       <div className="vehicle-camera-heading">
         <div><h3><Camera size={18}/> Vehicle Photo Gallery</h3>
-          <p>Only workshop staff can upload photos. New inspection photos are published by default; switch off to keep them private.</p></div>
+          <p>{jobId && canPublish ? "New inspection photos are published by default. Switch off to keep them private." : "Only workshop staff can upload and publish photos. Vehicle photos remain private unless you choose to publish."}</p></div>
         {canEdit && <div className="vehicle-photo-add-actions">
           <LiveVehicleCamera onCapture={capture} disabled={uploading} count={photos.length}/>
           <label className="vehicle-gallery-upload-label">
