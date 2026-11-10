@@ -770,19 +770,24 @@ function OutsidePartPurchasePanel({ initial, onClose, onSave, busy, error }) {
 
 function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) {
   const [invoiceNo, setInvoiceNo] = useState('');
-  const [paymentType, setPaymentType] = useState('Cash');
+  const [paymentType, setPaymentType] = useState('Credit');
   const [accountId, setAccountId] = useState('');
   const [accounts, setAccounts] = useState([]);
   const [accountsError, setAccountsError] = useState('');
   useEffect(() => {
+    if (paymentType === 'Credit') {
+      setAccountsError('');
+      return;
+    }
     let active = true;
+    setAccountsError('');
     financeService.listAccounts().then(result => {
       if (active) setAccounts(Array.isArray(result) ? result.filter(row => row.isActive !== false) : []);
     }).catch(() => {
       if (active) setAccountsError('Unable to load accounts. Check Finance permissions or choose Credit.');
     });
     return () => { active = false; };
-  }, []);
+  }, [paymentType]);
   const [unitCost, setUnitCost] = useState(String(purchase.unitCost || ''));
   const [bill, setBill] = useState(null);
   const [uploadError, setUploadError] = useState('');
