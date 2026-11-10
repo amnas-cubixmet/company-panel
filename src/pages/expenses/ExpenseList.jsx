@@ -62,8 +62,14 @@ const emptyForm = {
   receiptUrl: '',
   accountId: '',
   budgetItemId: '',
-  requestKey: globalThis.crypto?.randomUUID?.() || `expense-${Date.now()}-${Math.random()}`
+  requestKey: ''
 };
+
+const freshExpenseForm = () => ({
+  ...emptyForm,
+  expenseDate: today(),
+  requestKey: globalThis.crypto?.randomUUID?.() || `expense-${Date.now()}-${Math.random()}`,
+});
 
 const Metric = ({ label, value, icon: Icon, tone = 'primary', note }) => (
   <article className="expense-metric-card">
@@ -290,7 +296,7 @@ export const ExpenseList = () => {
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [form, setForm] = useState(() => ({ ...emptyForm, expenseDate: today() }));
+  const [form, setForm] = useState(freshExpenseForm);
 
   const load = async () => {
     setLoading(true);
@@ -420,6 +426,7 @@ export const ExpenseList = () => {
       } else {
         const created = await expenseService.createExpense(payload);
         if (created?.id) setExpenses((current) => [created, ...current]);
+        setForm(freshExpenseForm());
         navigate(created?.id ? `/expenses/${created.id}` : '/expenses');
       }
     } catch (error) {
