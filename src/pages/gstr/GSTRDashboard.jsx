@@ -332,7 +332,7 @@ export default function GSTRDashboard() {
       </section>}
 
       {tab === 'gstr3b' && <section className="gstr-panel">
-        <div className="gstr-panel-heading"><h2>GSTR-3B · Preparation Summary</h2><span>Not filed</span></div>
+        <div className="gstr-panel-heading"><h2>GSTR-3B · Preparation Summary</h2><span>{data.filing?.status === 'Reported Filed' ? 'Reported filed internally · Unverified' : 'Not filed by CubixGear'}</span></div>
         <div className="gstr-breakdown">
           {[['Outward Taxable Supplies', sums.taxable], ['Output IGST', sums.igst],
             ['Output CGST', sums.cgst], ['Output SGST / UTGST', sums.sgst],
@@ -402,7 +402,7 @@ export default function GSTRDashboard() {
       </section>}
 
       {tab === 'exports' && <section className="gstr-panel">
-        <div className="gstr-panel-heading"><h2>Exports & Filing Review</h2><span>Not Prepared</span></div>
+        <div className="gstr-panel-heading"><h2>Exports & Filing Review</h2><span>{data.filing?.status || 'Not Reviewed'} · Portal unverified</span></div>
         <div className="gstr-export-actions">
           <div><FileSpreadsheet size={22} /><strong>GSTR-1 Preparation CSV</strong><span>Original recorded invoice tax totals.</span>
             <button type="button" disabled={busy || !access.can('gstr.export')} onClick={() => exportCsv('gstr1')}><Download size={16} /> Download CSV</button></div>
