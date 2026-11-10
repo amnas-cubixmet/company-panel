@@ -1,6 +1,7 @@
 import { appConfirm } from '../../components/common/appDialogs';
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowDownToLine,
@@ -408,6 +409,13 @@ export function JobPartsWorkflow({ jobId, assignedTo = '', initialPanel = null }
                     </div>
                     <span>{row.vendor} · Qty {row.quantity} {row.sku ? `· ${row.sku}` : ''}</span>
                     <small>{purchased ? (row.invoiceNo ? `Bill ${row.invoiceNo} · ` : '') + 'Purchased' : 'Supplier quotation pending workflow'} · Quoted {money.format(quotedTotal)}</small>
+                    {purchased && row.expenseId && (
+                      <small>
+                        Purchase Expense: {money.format(row.totalCost)} · {row.paymentType === 'Credit' ?
+                          'Unpaid credit' : `Paid from ${row.paymentType === 'Bank' ? 'Bank / UPI' : 'Cash'}`}
+                        {' · '}<Link to={`/expenses/${row.expenseId}`}>View Expense</Link>
+                      </small>
+                    )}
                     <div className="job-parts-outside-controls">
                       {purchaseStatus === 'Pending Approval' && canApproveOutside && (
                         <>
