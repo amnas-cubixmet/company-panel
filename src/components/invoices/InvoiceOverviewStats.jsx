@@ -41,7 +41,7 @@ export const InvoiceOverviewStats = ({
     {
       label: 'Document Value',
       value: formatMoney(totalValue),
-      meta: 'includes drafts; not money collected',
+      meta: 'includes drafts and cancelled; not cash received',
       icon: IndianRupee,
     },
   ];
