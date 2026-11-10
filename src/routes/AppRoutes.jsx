@@ -241,7 +241,11 @@ export const AppRoutes = () => (
       <Route path="/quotations/new" element={<Navigate to="/invoices/new?kind=estimate" replace />} />
 
       {/* Existing external bookmarks keep working; there is only one Finance UI. */}
+      <Route path="/payments" element={<LegacyFinanceRedirect />} />
+      <Route path="/payments/:id" element={<LegacyFinanceRedirect />} />
       <Route path="/payments/*" element={<LegacyFinanceRedirect />} />
+      <Route path="/expenses" element={<LegacyFinanceRedirect />} />
+      <Route path="/expenses/:id" element={<LegacyFinanceRedirect />} />
       <Route path="/expenses/*" element={<LegacyFinanceRedirect />} />
 
       <Route path="/finance" element={<FinanceWorkspace />}>
