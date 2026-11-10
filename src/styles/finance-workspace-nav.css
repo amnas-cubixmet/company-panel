@@ -1,0 +1,44 @@
+/* One Finance control center: responsive tabs are shared by all finance pages. */
+.finance-workspace-nav {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
+  padding: 6px 0 15px;
+  margin: 0 0 12px;
+  max-width: 100%;
+  border-bottom: 1px solid var(--border-color, rgba(148, 163, 184, .24));
+}
+.finance-workspace-nav::-webkit-scrollbar { display: none; }
+.finance-workspace-nav-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 9px 15px;
+  border: 1px solid var(--border-color, rgba(148, 163, 184, .25));
+  border-radius: 10px;
+  color: var(--text-secondary, #64748b);
+  background: var(--card-bg, transparent);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.finance-workspace-nav-link:hover,
+.finance-workspace-nav-link:focus-visible {
+  border-color: var(--primary, #2563eb);
+  color: var(--primary, #2563eb);
+}
+.finance-workspace-nav-link.is-active {
+  border-color: var(--primary, #2563eb);
+  background: var(--primary, #2563eb);
+  color: #fff;
+}
+@media (max-width: 640px) {
+  .finance-workspace-nav { margin-inline: -4px; padding-inline: 4px; }
+  .finance-workspace-nav-link { min-height: 44px; padding-inline: 13px; }
+}
