@@ -6,6 +6,12 @@ import { useAuth } from '../hooks/useAuth';
 import { getStaffLandingPath } from '../utils/staffLanding';
 import { ProtectedRoute } from './ProtectedRoute';
 
+function LegacyFinanceRedirect({ target }) {
+  const location = useLocation();
+  const suffix = location.pathname.replace(new RegExp('^/' + target + '(?=/|$)'), '');
+  return <Navigate to={'/finance/' + target + suffix + location.search + location.hash} replace />;
+}
+
 const CreditWorkspace = lazyPage(() => import('../pages/saas/CreditWorkspace'), 'CreditWorkspace');
 
 // Old supplier finance URLs remain safe bookmarks, but no duplicate UI/page is
@@ -234,17 +240,20 @@ export const AppRoutes = () => (
       <Route path="/quotations" element={<Navigate to="/invoices?kind=estimate" replace />} />
       <Route path="/quotations/new" element={<Navigate to="/invoices/new?kind=estimate" replace />} />
 
-      <Route path="/payments" element={<PaymentList />} />
-      <Route path="/payments/new" element={<PaymentList />} />
-      <Route path="/payments/:id" element={<PaymentList />} />
-      <Route path="/payments/:id/edit" element={<PaymentList />} />
-      <Route path="/payments/:id/delete" element={<PaymentList />} />
+      {/* Legacy URLs are kept as bookmarks; all finance pages live under /finance. */}
+      <Route path="/payments/*" element={<LegacyFinanceRedirect target="payments" />} />
+      <Route path="/expenses/*" element={<LegacyFinanceRedirect target="expenses" />} />
 
-      <Route path="/expenses" element={<ExpenseList />} />
-      <Route path="/expenses/new" element={<ExpenseList />} />
-      <Route path="/expenses/:id" element={<ExpenseList />} />
-      <Route path="/expenses/:id/edit" element={<ExpenseList />} />
-      <Route path="/expenses/:id/delete" element={<ExpenseList />} />
+      <Route path="/finance/payments" element={<PaymentList />} />
+      <Route path="/finance/payments/new" element={<PaymentList />} />
+      <Route path="/finance/payments/:id" element={<PaymentList />} />
+      <Route path="/finance/payments/:id/edit" element={<PaymentList />} />
+      <Route path="/finance/payments/:id/delete" element={<PaymentList />} />
+      <Route path="/finance/expenses" element={<ExpenseList />} />
+      <Route path="/finance/expenses/new" element={<ExpenseList />} />
+      <Route path="/finance/expenses/:id" element={<ExpenseList />} />
+      <Route path="/finance/expenses/:id/edit" element={<ExpenseList />} />
+      <Route path="/finance/expenses/:id/delete" element={<ExpenseList />} />
 
       <Route path="/finance" element={<FinanceDashboard />} />
       <Route path="/finance/accounting" element={<AccountingWorkspace />} />
