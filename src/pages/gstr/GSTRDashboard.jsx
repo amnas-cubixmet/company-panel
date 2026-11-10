@@ -388,7 +388,7 @@ export default function GSTRDashboard() {
           <p className="gstr-note">Finance Expenses may record a tax amount without a verified supplier GSTIN or CGST/SGST/IGST invoice breakdown. These amounts appear for investigation only; they are excluded from eligible ITC and GSTR-3B.</p>
           <DataTable key={'expense-gst-' + period} rows={expenseTaxReview} columns={expenseGSTColumns} />
         </div>
-      </section>
+      </section>}
 
       {['itc', 'credits', 'ledger'].includes(tab) && (
         <GSTPart15Workspace tab={tab} period={period} report={data}
