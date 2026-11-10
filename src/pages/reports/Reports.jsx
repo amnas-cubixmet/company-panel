@@ -14,6 +14,8 @@ import {
 } from './reportsDashboard.utils';
 import { ReportPerformanceChart, ReportExpenseCategoryChart } from '../../components/reports/ReportCharts';
 import { ReportFiscalPrint } from '../../components/reports/ReportFiscalPrint';
+import { ReportHelpGuide } from '../../components/reports/ReportHelpGuide';
+import { reportLoadErrorMessage } from './reportErrorMessage';
 import { ReportPeriodFilter, ReportStats, ReportTabs, ReportsHeader } from '../../components/reports';
 import '../../styles/reports-dashboard.css';
 import '../../styles/reports-dashboard-polished.css';
@@ -86,7 +88,7 @@ export function Reports() {
           const source = payload.sources[name];
           if (source?.available === false) {
             issues[name] = source.reason === 'permission'
-              ? 'Access restricted. Ask the workshop owner to enable the module and View permission.'
+              ? 'You cannot see this section. Ask the workshop owner to enable View access for it.'
               : source.reason || 'Report source unavailable.';
             availabilityBySource[name] = false;
             data[name] = [];
@@ -116,7 +118,7 @@ export function Reports() {
         setExpenses([]);
         setStock([]);
         setFiscalComparison(null);
-        setDataIssues({ reports: error?.message || 'Report API unavailable.' });
+        setDataIssues({ reports: reportLoadErrorMessage(error) });
         setTruncatedSources([]);
         setAvailability({ invoices: false, payments: false, expenses: false, stock: false });
       } finally {
@@ -211,7 +213,7 @@ export function Reports() {
     const q = query.trim().toLowerCase();
     return !q ? report.invoiceRows : report.invoiceRows.filter((item) =>
       [item.number, item.customerName, item.customer?.name,
-        item.vehicle?.registration, item.status].some((v) =>
+        item.vehicle?.registration, item.vehicleReg, item.status].some((v) =>
         String(v || '').toLowerCase().includes(q)));
   }, [query, report.invoiceRows]);
 
@@ -278,7 +280,8 @@ export function Reports() {
   return (
     <div className="reports-page reports-page-polished">
       <ReportsHeader onRefresh={load} onCsv={exportCsv} onPrint={() => window.print()}
-        loading={loading} exportDisabled={!dateRangeValid || truncatedSources.length > 0}
+        loading={loading} exportDisabled={!dateRangeValid || truncatedSources.length > 0 ||
+          !Object.values(availability).some(Boolean)}
         periodLabel={periodLabel}/>
       <ReportPeriodFilter from={from} to={to}
         month={month} year={year} years={years}
@@ -291,11 +294,17 @@ export function Reports() {
         onTo={(value) => customDate('to', value)}
         onThisMonth={() => chooseMonth(defaultMonth, defaultYear)}
         onAllTime={() => chooseMonth('All')}/>
+      <ReportHelpGuide/>
+      <p className="report-pdf-guide no-print">
+        <strong>Print / PDF:</strong> The first page compares two financial years;
+        the following pages show the dates you selected above.
+        In the print window, choose “Save as PDF” to save a file.
+      </p>
       {!dateRangeValid && <div role="alert" className="reports-error no-print">
-        Start date must not be later than end date.
+        Choose an end date on or after the start date.
       </div>}
       {loading && <div className="reports-inline-loading" role="status">
-        <RefreshCw size={16} className="reports-spinning"/> Loading live report data…
+        <RefreshCw size={16} className="reports-spinning"/> Getting the latest workshop figures…
       </div>}
       {incompleteSources.length > 0 && (
         <div role="alert" className="reports-error no-print">
@@ -368,18 +377,18 @@ export function Reports() {
 
         <section className={`report-panel ${tab === 'overview' || tab === 'sales' ? '' : 'report-section-screen-hidden'}`}>
             <div className="report-section-head">
-              <div><span>SALES ANALYTICS</span><h3>Invoice Report</h3>
+              <div><span>CUSTOMER BILLS</span><h3>Customer Invoice Report</h3>
                 <p>{filteredRows.length} invoices in the selected period</p></div>
               <label className="report-search no-print"><Search size={16}/>
                 <input aria-label="Search invoices" value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search invoice or customer…"/>
+                  placeholder="Invoice, customer, or vehicle number…"/>
               </label>
             </div>
             <div className="report-table-wrap">
               <table className="report-table">
                 <thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Vehicle</th>
-                  <th>Status</th><th>Total</th><th>Balance</th></tr></thead>
+                  <th>Status</th><th>Invoice Total</th><th>Still Due</th></tr></thead>
                 <tbody>
                   {filteredRows.map((item) => {
                     const t = invoiceAmounts(item);
@@ -400,8 +409,8 @@ export function Reports() {
 
         <section className={`report-panel ${tab === 'overview' || tab === 'payments' ? '' : 'report-section-screen-hidden'}`}>
             <div className="report-section-head">
-              <div><span>COLLECTIONS</span><h3>Payment Report</h3>
-                <p>{report.paymentRows.length} posted payment records</p></div>
+              <div><span>CUSTOMER PAYMENTS</span><h3>Money Received from Customers</h3>
+                <p>{report.paymentRows.length} completed payments (refunds are deducted)</p></div>
               <Link className="report-related-link no-print" to="/payments">Open Payments</Link>
             </div>
             <div className="report-table-wrap">
@@ -426,7 +435,7 @@ export function Reports() {
 
         <section className={`report-panel ${tab === 'overview' || tab === 'expenses' ? '' : 'report-section-screen-hidden'}`}>
             <div className="report-section-head">
-              <div><span>SPENDING</span><h3>Expense Report</h3>
+              <div><span>WORKSHOP COSTS</span><h3>Expenses Recorded</h3>
                 <p>{report.expenseRows.length} operating expenses</p></div>
               <Link className="report-related-link no-print" to="/expenses">Open Expenses</Link>
             </div>
@@ -449,8 +458,8 @@ export function Reports() {
 
         <section className={`report-panel ${tab === 'overview' || tab === 'stock' ? '' : 'report-section-screen-hidden'}`}>
             <div className="report-section-head">
-              <div><span>INVENTORY SNAPSHOT</span><h3>Stock Report</h3>
-                <p>Current stock quantities and cost values, independent of the date range.</p></div>
+              <div><span>CURRENT PARTS</span><h3>Parts &amp; Stock</h3>
+                <p>Parts currently in store, at purchase cost (not the selected month's stock history).</p></div>
             </div>
             <div className="report-table-wrap">
               <table className="report-table">
