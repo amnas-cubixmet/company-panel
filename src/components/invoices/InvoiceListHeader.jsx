@@ -11,8 +11,8 @@ export const InvoiceListHeader = ({ activeTab, onCreate, onFinance, onGSTR }) =>
       <div>
         <h1>{activeTab === 'estimate' ? 'Estimates' : 'Invoices'}</h1>
         <p>{activeTab === 'estimate'
-          ? 'Prepare quotations, track approvals, and convert accepted estimates to invoices.'
-          : 'Manage customer invoices, payments, downloads and billing records.'}</p>
+          ? 'Create quotations, track approvals, and convert approved estimates to invoices.'
+          : 'Create customer bills, track payment status, and print saved invoices.'}</p>
       </div>
 
       <div className="invoice-dashboard-header-actions">
@@ -34,7 +34,7 @@ export const InvoiceListHeader = ({ activeTab, onCreate, onFinance, onGSTR }) =>
         {hasPermission(user, 'invoices.create') && (
           <button type="button" className="bill-btn" onClick={onCreate}>
             <Plus size={14} />
-            {activeTab === 'estimate' ? 'New Estimate' : 'New Invoice'}
+            {activeTab === 'estimate' ? 'Add Estimate' : 'Create Invoice'}
           </button>
         )}
       </div>

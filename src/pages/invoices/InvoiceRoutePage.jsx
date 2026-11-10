@@ -18,6 +18,8 @@ import '../../styles/invoice-template-sync.css';
 import { customerService } from '../../services/customer.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { InvoicePdfShareSheet } from '../../components/invoices/InvoicePdfShareSheet';
+import InvoiceHelpGuide from '../../components/invoices/InvoiceHelpGuide';
+import '../../styles/invoice-unified-ui.css';
 import { WhatsAppManualShareButton } from '../../components/common/WhatsAppManualShareButton';
 import {
   InvoiceFilterToolbar,
@@ -146,6 +148,7 @@ export function InvoiceRoutePage() {
 
   const loadList = async ({ withReferences = false } = {}) => {
     setLoading(true);
+    setError('');
     try {
       // Listing invoices is a standalone invoices.view operation.
       const docs = await billingService.list();
@@ -156,7 +159,8 @@ export function InvoiceRoutePage() {
         setCustomers([]);
       }
     } catch (e) {
-      setError(e?.message || 'Unable to load billing data.');
+      setDocuments([]);
+      setError(e?.message || 'Could not load your invoices. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -668,7 +672,7 @@ export function InvoiceRoutePage() {
   ) : null;
 
   if (mode === 'list') return (
-    <div className="billing-page billing-list-dashboard invoice-dashboard">
+    <div className="billing-page billing-ui-unified billing-list-dashboard invoice-dashboard">
       <InvoiceListHeader
         activeTab={activeTab}
         onCreate={() => navigate(`/invoices/new?kind=${activeTab}`)}
@@ -685,6 +689,7 @@ export function InvoiceRoutePage() {
         onEWayBills={() => navigate('/invoices/e-way-bills')}
       />
 
+      <InvoiceHelpGuide mode={activeTab}/>
       <InvoiceOverviewStats
         activeTab={activeTab}
         documents={activeDocuments}
@@ -701,8 +706,6 @@ export function InvoiceRoutePage() {
         resultCount={filteredDocs.length}
       />
 
-      {error && <div className="billing-error">{error}</div>}
-
       <InvoiceRecordsPanel
         documents={filteredDocs}
         loading={loading}
@@ -712,13 +715,16 @@ export function InvoiceRoutePage() {
         onView={(document) => navigate(`/invoices/${document.id}`)}
         onPdf={(document) => downloadPdf(document)}
         onEdit={(document) => navigate(`/invoices/${document.id}/edit`)}
+        onCreate={() => navigate(`/invoices/new?kind=${activeTab}`)}
+        onRetry={() => void loadList()}
+        loadError={error}
       />
       {shareSheet}
     </div>
   );
 
   if (mode === 'delete') return (
-    <div className="billing-page">
+    <div className="billing-page billing-ui-unified">
       <header className="billing-page-head"><div><span className="billing-kicker">DOCUMENT HISTORY</span><h1>{form.number || id}</h1><p>Document ID: {id}</p></div></header>
       {error && <div className="billing-error">{error}</div>}
       {loading ? <div className="billing-empty">Loading…</div> : <section className="billing-card"><h3>Keep invoice audit history</h3><p>Invoice numbers, payment references and issued PDFs must remain available. Draft documents can be cancelled, but never permanently deleted.</p><div className="billing-head-actions"><button type="button" className="bill-btn secondary" onClick={() => navigate(`/invoices/${id}`)}>Back to document</button></div></section>}
@@ -726,7 +732,7 @@ export function InvoiceRoutePage() {
   );
 
   if (mode === 'view') return (
-    <div className="billing-page invoice-view-page">
+    <div className="billing-page billing-ui-unified invoice-view-page">
       <div className="billing-editor-head no-print">
         <div>
           <span className="billing-kicker">{form.kind === 'estimate' ? 'ESTIMATE / QUOTATION' : 'INVOICE'}</span>
@@ -735,6 +741,10 @@ export function InvoiceRoutePage() {
         </div>
 
         <div className="billing-head-actions">
+          <button type="button" className="bill-btn secondary no-print"
+            onClick={() => navigate(`/invoices?kind=${form.kind === 'estimate' ? 'estimate' : 'invoice'}`)}>
+            Back to List
+          </button>
           {form.kind === "invoice" && (form.finalizedAt || ["Finalized", "Paid", "Issued"].includes(form.status)) && form.status !== "Cancelled" && <WhatsAppManualShareButton targetType="invoice" targetId={form.id || id} />}
           {form.status === 'Draft' && (
             <button className="bill-btn secondary" onClick={() => navigate(`/invoices/${id}/edit`)}>
@@ -830,7 +840,7 @@ export function InvoiceRoutePage() {
   );
 
   return (
-    <div className="billing-page" ref={invoiceEditorRef}>
+    <div className="billing-page billing-ui-unified" ref={invoiceEditorRef}>
       <div className="billing-editor-head no-print">
         <div>
           <span className="billing-kicker">{form.kind === 'estimate' ? 'ESTIMATE' : 'TAX / SALES INVOICE'}</span>
@@ -853,6 +863,7 @@ export function InvoiceRoutePage() {
         </div>
       </div>
 
+      <InvoiceHelpGuide mode={form.kind}/>
       {mode === 'create' && workshopTaxLoading && <p role="status" className="billing-empty">Verifying workshop GST registration…</p>}
       {mode === 'create' && workshopTaxError && <div className="billing-error no-print" role="alert">
         {workshopTaxError}
@@ -1080,7 +1091,7 @@ export function InvoiceRoutePage() {
                   {fieldErrors[`items.${index}.unit`] && <small className="invoice-input-error" role="alert">{fieldErrors[`items.${index}.unit`]}</small>}
                 </div>
                 <div className="invoice-field-wrap invoice-price-field">
-                  <span className="invoice-mobile-label">Price / Unit (₹)</span>
+                  <span className="invoice-mobile-label">Selling Price / Unit (₹)</span>
                   <input data-invoice-field={`items.${index}.rate`} className="plain-number-input" aria-label="Price per unit" aria-invalid={Boolean(fieldErrors[`items.${index}.rate`])} inputMode="decimal" value={inputNumber(row.rate)} onChange={(e) => updateItem(row.id, 'rate', parseDecimal(e.target.value))} placeholder="₹ 0.00"/>
                   {fieldErrors[`items.${index}.rate`] && <small className="invoice-input-error" role="alert">{fieldErrors[`items.${index}.rate`]}</small>}
                 </div>
@@ -1132,7 +1143,7 @@ export function InvoiceRoutePage() {
         <div className="invoice-bottom-grid no-print">
           <section className="billing-card">
             <span className="billing-kicker">PAYMENT & TERMS</span>
-            <h3>Invoice Terms</h3>
+            <h3>Payment &amp; Invoice Terms</h3>
             <div className="invoice-two-col">
               <label>GST Type (automatic)
                 <input readOnly aria-readonly="true" value={appliedTaxMode === 'none' ? 'None — Normal Invoice' : appliedTaxMode === 'cgst_sgst' ? 'CGST + SGST (same-state supply)' : appliedTaxMode === 'igst' ? 'IGST (inter-state supply)' : 'GST rate ready — verify supply state before saving'} />

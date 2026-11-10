@@ -183,7 +183,7 @@ export default function GSTPart15Workspace({ tab, period, report, onChanged }) {
     {!fetching && !loadError && <>
 
     {tab === 'itc' && <>
-      <p className="gstr15-note">Step 1: select saved GSTR-2B match evidence. Step 2: choose a matching supplier bill. Step 3: document the independent ITC eligibility review before approving. A match alone is not legal eligibility.</p>
+      <p className="gstr15-note">Step 1: select saved GSTR-2B match evidence with source ITC availability confirmed. Step 2: choose a matching supplier bill. Step 3: document the independent ITC eligibility review before approving. A match alone is not legal eligibility.</p>
       <div className="gstr15-stats">
         <div><span>Saved 2B Imports</span><strong>{batches.length}</strong></div>
         <div><span>Approved ITC</span><strong>{money(report?.overview?.eligibleITC)}</strong></div>

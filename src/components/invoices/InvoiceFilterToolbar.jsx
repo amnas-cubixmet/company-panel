@@ -8,7 +8,7 @@ export const InvoiceFilterToolbar = ({
   onStatusChange,
   statuses,
   resultCount,
-  placeholder = 'Search invoice no, customer, phone, vehicle or Job Card',
+  placeholder = 'Search invoice number, customer, phone, vehicle or job',
 }) => (
   <section className="invoice-dashboard-toolbar">
     <label className="invoice-dashboard-search">
@@ -31,7 +31,7 @@ export const InvoiceFilterToolbar = ({
     </label>
 
     <div className="invoice-dashboard-result-count">
-      <span>Showing</span>
+      <span>Matches</span>
       <strong>{resultCount}</strong>
     </div>
   </section>
