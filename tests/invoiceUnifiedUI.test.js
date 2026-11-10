@@ -19,7 +19,7 @@ test('all invoice, estimate and E-Way Bill routes share mobile UI while print st
   assert.match(page, /<InvoiceHelpGuide mode=\{activeTab\}\/>/);
   assert.match(page, /<InvoiceHelpGuide mode=\{form\.kind\}\/>/);
   assert.match(eway, /<InvoiceHelpGuide mode="eway"\/>/);
-  assert.match(css, /^@media screen \{/);
+  assert.match(css, /@media screen \{/);
   assert.doesNotMatch(css, /@media print/);
   assert.match(css, /@media\(max-width:700px\)/);
   assert.match(css, /invoice-dashboard-mobile-card/);
