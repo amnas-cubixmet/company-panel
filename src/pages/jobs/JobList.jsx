@@ -11,10 +11,20 @@ import {
 import { normalizeRegistration } from '../../components/jobs/jobs.utils';
 import { JobBreadcrumbs } from '../../components/jobs/JobBreadcrumbs';
 import { jobService } from '../../services/job.service';
+import { billingService } from '../../services/billing.service';
+import { useFeatureAccess } from '../../context/FeatureAccessContext';
+import { jobInvoiceFor } from '../../utils/jobGstFinance';
+import { USE_MOCK_API } from '../../api/apiConfig';
+import '../../styles/job-gst-finance.css';
 import '../../styles/jobs-dashboard.css';
 
 export const JobList = () => {
   const navigate = useNavigate();
+  const { can } = useFeatureAccess();
+  const canViewInvoices = can('invoices.view');
+  const canViewGST = can('gstr.view');
+  const canViewPayments = can('payments.view');
+  const canCollectPayments = can('payments.create');
   const [searchParams, setSearchParams] = useSearchParams();
   const query = (searchParams.get('q') || '').slice(0, 100);
   const rawStatus = (searchParams.get('status') || '').toLowerCase();
@@ -46,6 +56,9 @@ export const JobList = () => {
   const setQuery = (value) => changeFilter('q', value);
   const setStatus = (value) => changeFilter('status', value);
   const [jobs, setJobs] = useState([]);
+  const [jobInvoiceRows, setJobInvoiceRows] = useState([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [invoicesError, setInvoicesError] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
@@ -71,6 +84,29 @@ export const JobList = () => {
       active = false;
     };
   }, [reloadKey]);
+
+  // One company-scoped invoice read powers the job-list GST/payment status.
+  // Never fetch Finance totals for users without the invoice entitlement.
+  useEffect(() => {
+    if (!canViewInvoices || USE_MOCK_API) {
+      setJobInvoiceRows([]);
+      setInvoicesError('');
+      return undefined;
+    }
+    let active = true;
+    setInvoicesLoading(true);
+    setInvoicesError('');
+    billingService.list({ kind: 'invoice' })
+      .then(response => {
+        if (active) setJobInvoiceRows(Array.isArray(response) ? response : response?.results || []);
+      })
+      .catch(error => {
+        if (!active) return;
+        setJobInvoiceRows([]);
+        setInvoicesError(error?.message || 'Unable to load linked invoice GST and payment status.');
+      }).finally(() => { if (active) setInvoicesLoading(false); });
+    return () => { active = false; };
+  }, [canViewInvoices, reloadKey]);
 
   const filteredJobs = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -117,6 +153,10 @@ export const JobList = () => {
   const currentPage = Number.isSafeInteger(requestedPage) && requestedPage > 0
     ? Math.min(requestedPage, pageCount) : 1;
   const pagedJobs = filteredJobs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const invoiceByJob = useMemo(
+    () => new Map(pagedJobs.map(job => [String(job.id), jobInvoiceFor(jobInvoiceRows, job)])),
+    [pagedJobs, jobInvoiceRows]
+  );
   const setPage = (value) => {
     const next = new URLSearchParams(searchParams);
     if (value <= 1) next.delete('page');
@@ -197,6 +237,12 @@ export const JobList = () => {
     <div className="jobs-dashboard">
       <JobBreadcrumbs />
       <JobsHeader onNavigate={navigate} />
+      {(canViewGST || canViewPayments) && <nav className="jobs-gst-finance-nav" aria-label="Job GST and finance links">
+        <span>Linked workshop finances</span>
+        {canViewGST && <button type="button" onClick={() => navigate('/gstr')}>GST Returns</button>}
+        {canViewPayments && <button type="button" onClick={() => navigate('/finance/payments')}>Customer Payments</button>}
+        {canViewPayments && <button type="button" onClick={() => navigate('/finance')}>Finance Overview</button>}
+      </nav>}
 
       <JobsStats counts={counts} selectedStatus={status} onFilter={setStatus} />
 
@@ -232,8 +278,18 @@ export const JobList = () => {
           <button type="button" onClick={() => setReloadKey((value) => value + 1)}>Retry</button>
         </div>
       )}
+      {invoicesError && canViewInvoices && <div className="jobs-load-error" role="alert">
+        Linked invoices: {invoicesError}
+        <button type="button" onClick={() => setReloadKey(value => value + 1)}>Retry</button>
+      </div>}
       <JobRecordsPanel
         jobs={pagedJobs}
+        invoiceByJob={invoiceByJob}
+        showBilling={canViewInvoices && !USE_MOCK_API}
+        invoicesLoading={invoicesLoading}
+        canViewGST={canViewGST}
+        canViewPayments={canViewPayments}
+        canCollectPayments={canCollectPayments}
         totalCount={filteredJobs.length}
         loading={loading}
         status={status}
