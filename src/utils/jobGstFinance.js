@@ -32,7 +32,7 @@ export const jobInvoiceFor = (invoices, job) => {
   const related = (Array.isArray(invoices) ? invoices : [])
     .filter(invoice => (invoice.kind || 'invoice') === 'invoice')
     .filter(invoice =>
-      String(invoice.sourceJobId || invoice.source_job_id || invoice.job || invoice.job_id || '') === String(job.id)
+      String(invoice.jobId || invoice.job_id || invoice.sourceJobId || invoice.source_job_id || invoice.job || '') === String(job.id)
       || (job.jobNumber && String(invoice.jobCardNo || invoice.job_card_no || '') === String(job.jobNumber))
     ).sort((left, right) => String(right.createdAt || right.created_at || right.date || '')
       .localeCompare(String(left.createdAt || left.created_at || left.date || '')));

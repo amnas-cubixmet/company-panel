@@ -205,8 +205,8 @@ export function JobCardWorkspace() {
       const allInvoices = Array.isArray(invoiceResponse) ? invoiceResponse : invoiceResponse?.results || [];
       const related = allInvoices.filter((row) =>
         (row.kind || 'invoice') === 'invoice' &&
-        (String(row.sourceJobId || '') === String(id) ||
-         (job?.jobNumber && String(row.jobCardNo || '') === String(job.jobNumber)))
+        (String(row.jobId || row.job_id || row.sourceJobId || row.source_job_id || '') === String(id) ||
+         (job?.jobNumber && String(row.jobCardNo || row.job_card_no || '') === String(job.jobNumber)))
       ).sort((a, b) => String(b.createdAt || b.date || '').localeCompare(String(a.createdAt || a.date || '')));
       const current = related.find((row) => row.status !== 'Cancelled') || related[0];
       // Invoice read access and payment ledger read access are separate roles.
