@@ -298,6 +298,7 @@ export const JobList = () => {
         hasError={Boolean(loadError)}
         showBilling={canViewInvoices && !USE_MOCK_API}
         invoicesLoading={invoicesLoading}
+        invoicesError={Boolean(invoicesError)}
         canViewGST={canViewGST}
         canViewPayments={canViewPayments}
         canCollectPayments={canCollectPayments}
