@@ -78,6 +78,6 @@ test('consistent route-local light/dark and mobile payroll styling', () => {
 
 test('payments route remains payroll wage payments, not customer invoice collections', () => {
   assert.match(routes,/path="\/payroll\/payments" element=\{<DailyWagePage mode="payments" \/>\}/);
-  assert.match(routes,/path="\/payments" element=\{<PaymentList \/>\}/);
+  assert.match(routes,/path="\/payments" element=\{<LegacyFinanceRedirect \/>\}/);
   assert.match(wages,/mode === 'history' \? 'Daily Wage History' : 'Wage Payments'/);
 });

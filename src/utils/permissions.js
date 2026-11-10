@@ -87,9 +87,12 @@ const actionForCrudPath = (pathname, prefix) => {
 };
 
 export const getPermissionForPath = (pathname = '') => {
-  if (!pathname || pathname === '/profile' || pathname === '/access-denied' || pathname === '/finance') {
+  if (!pathname || pathname === '/profile' || pathname === '/access-denied') {
     return null;
   }
+  // Explicit tenant permission for finance root; expense-only roles are
+  // separately allowed at the root and redirected to their section.
+  if (pathname === '/finance') return 'payments.view';
   // A Job Card has cross-module sections; its invoice screen is NOT covered
   // by the Jobs label alone. Direct deep-links also require invoice access.
   if (/^\/jobs\/[^/]+\/invoice(?:\/|$)/.test(pathname)) return 'invoices.view';
