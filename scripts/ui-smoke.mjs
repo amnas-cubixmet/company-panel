@@ -406,9 +406,24 @@ try {
           }
         }
         if(path==='/jobs') {
-          // All viewport/theme profiles exercise the actual rendered toolbar.
+          // Compact mobile layout keeps advanced filters collapsed by default.
+          // Expand them before checking ALL control sizes and editing dates.
           const grid = page.locator('.jobs-toolbar-combined');
           await grid.waitFor({state:'visible'});
+          const mobileMoreFilters = page.locator('.jobs-more-filters');
+          if (await mobileMoreFilters.isVisible()) {
+            if (await mobileMoreFilters.getAttribute('aria-expanded') !== 'false') {
+              throw Error('Mobile Job Cards advanced filters must start collapsed');
+            }
+            const hiddenDate = page.getByLabel('Job card created from date');
+            if (await hiddenDate.isVisible()) {
+              throw Error('Mobile advanced date filters must start hidden');
+            }
+            await mobileMoreFilters.click();
+            if (await mobileMoreFilters.getAttribute('aria-expanded') !== 'true') {
+              throw Error('Mobile Job Cards advanced filters did not expand');
+            }
+          }
           const metrics = await grid.evaluate(root => {
             const dashboard = root.closest('.jobs-dashboard');
             const elements = [...root.querySelectorAll('.jobs-filter-field,.jobs-toolbar-actions')];
