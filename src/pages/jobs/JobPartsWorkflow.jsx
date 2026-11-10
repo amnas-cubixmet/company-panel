@@ -20,7 +20,6 @@ import {
 import { stockService } from '../../services/stock.service';
 import { financeService } from '../../services/finance.service';
 import { jobPartsService } from '../../services/jobParts.service';
-import { financeService } from '../../services/finance.service';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
 
@@ -783,49 +782,29 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
   const [accountId, setAccountId] = useState('');
   const [accounts, setAccounts] = useState([]);
   const [accountsError, setAccountsError] = useState('');
-  useEffect(() => {
-    if (paymentType === 'Credit') {
-      setAccountsError('');
-      return;
-    }
-    let active = true;
-    setAccountsError('');
-    financeService.listAccounts().then(result => {
-      if (active) setAccounts(Array.isArray(result) ? result.filter(row => row.isActive !== false) : []);
-    }).catch(() => {
-      if (active) setAccountsError('Unable to load accounts. Check Finance permissions or choose Credit.');
-    });
-    return () => { active = false; };
-  }, [paymentType]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
   const [unitCost, setUnitCost] = useState(String(purchase.unitCost || ''));
   const [bill, setBill] = useState(null);
   const [uploadError, setUploadError] = useState('');
-  const [paymentType, setPaymentType] = useState('Cash');
-  const [accountId, setAccountId] = useState('');
-  const [accounts, setAccounts] = useState([]);
-  const [accountsError, setAccountsError] = useState('');
-  const [accountsLoading, setAccountsLoading] = useState(true);
   useEffect(() => {
+    if (paymentType === 'Credit') return;
     let active = true;
-    financeService.listAccounts().then(rows => {
-      if (active) {
-        setAccounts(Array.isArray(rows) ? rows : []);
-        setAccountsError('');
-      }
+    setAccountsLoading(true);
+    setAccountsError('');
+    financeService.listAccounts().then(result => {
+      if (active) setAccounts(Array.isArray(result) ? result : []);
     }).catch(err => {
-      if (active) setAccountsError(err?.message || 'Could not load workshop accounts.');
+      if (active) setAccountsError(err?.message || 'Unable to load accounts. Check Finance permissions or choose Credit.');
     }).finally(() => {
       if (active) setAccountsLoading(false);
     });
     return () => { active = false; };
-  }, []);
-  const eligibleAccounts = accounts.filter(account => account.isActive !== false &&
-    (paymentType === 'Cash' ? account.kind === 'Cash' :
-      account.kind === 'Bank' || account.kind === 'UPI'));
+  }, [paymentType]);
+  const eligibleAccounts = accounts.filter(row => row.isActive !== false &&
+    (row.kind === paymentType || (paymentType === 'Bank' && row.kind === 'UPI')));
   const quantity = Number(purchase.quantity);
   const gstRate = Number(purchase.purchaseGstRate || 0);
   const actualTotal = quantity * Number(unitCost) * (1 + gstRate / 100);
-  const availableAccounts = accounts.filter(row => row.kind === paymentType);
   const approvedTotal = Number(purchase.quotedTotal || 0);
   const withinApproval = Number.isFinite(actualTotal) &&
     Number(unitCost) >= 0 && actualTotal <= approvedTotal && Number(unitCost) <= 999999999.99;
@@ -893,7 +872,7 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
           </select>
         </label>}
         {paymentType === 'Credit' && <p className="job-parts-modal-stock-note">
-          Recorded as unpaid Expense. You can pay later from Expenses.
+          Recorded as unpaid Expense. Pay the supplier later from Expenses.
         </p>}
         {paymentType !== 'Credit' && !accountsLoading && !eligibleAccounts.length &&
           <p className="job-parts-modal-warning job-parts-modal-full" role="alert">
@@ -912,7 +891,7 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
           <div><span>Actual Purchase Total / Job Expense</span><strong>{money.format(Number.isFinite(actualTotal) ? actualTotal : 0)}</strong></div>
         </div>
         <p className="job-parts-modal-stock-note job-parts-modal-full">
-          Purchase price is recorded as Job Cost and in Expenses. Customer invoice uses only the selling rate.
+          Purchase price is recorded as Job Cost and in Expenses. Customer invoice uses the separate selling price only.
           {paymentType === 'Credit' ? ' No money is debited until settlement.' :
             ' Payment debits only the selected workshop Cash/Bank account.'} No GST is added here.
         </p>

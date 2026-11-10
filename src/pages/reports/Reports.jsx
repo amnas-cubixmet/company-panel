@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, AlertCircle, RefreshCw } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import apiClient from '../../api/apiClient';
+import { USE_MOCK_API } from '../../api/apiConfig';
 import { billingService } from '../../services/billing.service';
 import { expenseService } from '../../services/expense.service';
 import { stockCatalogService } from '../../services/stockCatalog.service';
@@ -13,6 +16,7 @@ import { ReportPerformanceChart, ReportExpenseCategoryChart } from '../../compon
 import { ReportPeriodFilter, ReportStats, ReportTabs, ReportsHeader } from '../../components/reports';
 import '../../styles/reports-dashboard.css';
 import '../../styles/reports-dashboard-polished.css';
+import '../../styles/reports-print.css';
 
 const paymentService = resourceConfigs.payments.service;
 const MONTHS = ['January','February','March','April','May','June',
@@ -27,6 +31,7 @@ const noRecords = (columns, text = 'No records for this selection.') =>
   <tr className="report-empty-row"><td colSpan={columns}>{text}</td></tr>;
 
 export function Reports() {
+  const { user } = useAuth();
   const [params, setParams] = useSearchParams();
   const now = new Date();
   const defaultYear = String(now.getFullYear());
@@ -50,6 +55,8 @@ export function Reports() {
   const [stock, setStock] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dataIssues, setDataIssues] = useState({});
+  const [truncatedSources, setTruncatedSources] = useState([]);
+  const [reportWorkshop, setReportWorkshop] = useState(null);
   const [availability, setAvailability] = useState({
     invoices: false, payments: false, expenses: false, stock: false,
   });
@@ -57,6 +64,61 @@ export function Reports() {
   const load = async () => {
     setLoading(true);
     const names = ['invoices', 'payments', 'expenses', 'stock'];
+    if (!USE_MOCK_API) {
+      try {
+        // Dedicated Django report endpoint returns only the sources this role
+        // can access. Do not bypass Expenses/Payments permissions via reports.view.
+        const payload = await apiClient.get('/reports/workspace', {
+          params: { ...(from ? { from } : {}), ...(to ? { to } : {}) },
+        });
+        if (!payload || !payload.sources) throw new Error('Invalid report API response.');
+        const issues = {};
+        const availabilityBySource = {};
+        const truncated = [];
+        const data = {};
+        for (const name of names) {
+          const source = payload.sources[name];
+          if (source?.available === false) {
+            issues[name] = source.reason === 'permission'
+              ? 'Access restricted. Ask the workshop owner to enable the module and View permission.'
+              : source.reason || 'Report source unavailable.';
+            availabilityBySource[name] = false;
+            data[name] = [];
+          } else if (!source || !Array.isArray(payload[name])) {
+            issues[name] = 'Unexpected response from reports API.';
+            availabilityBySource[name] = false;
+            data[name] = [];
+          } else {
+            data[name] = payload[name];
+            availabilityBySource[name] = true;
+            if (source.truncated) truncated.push(name);
+          }
+        }
+        setInvoices(data.invoices.filter((row) =>
+          String(row.kind || 'invoice').toLowerCase() === 'invoice'));
+        setPayments(data.payments);
+        setExpenses(data.expenses);
+        setStock(data.stock);
+        setReportWorkshop(payload.company || null);
+        setDataIssues(issues);
+        setTruncatedSources(truncated);
+        setAvailability(availabilityBySource);
+      } catch (error) {
+        setInvoices([]);
+        setPayments([]);
+        setExpenses([]);
+        setStock([]);
+        setDataIssues({ reports: error?.message || 'Report API unavailable.' });
+        setTruncatedSources([]);
+        setAvailability({ invoices: false, payments: false, expenses: false, stock: false });
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Demo mode keeps the old explicit mock adapters; production never
+    // silently substitutes demo rows for a failed finance API.
     const results = await Promise.allSettled([
       billingService.list(), paymentService.list(),
       expenseService.getExpenses(), stockCatalogService.getItems(),
@@ -77,11 +139,12 @@ export function Reports() {
     setPayments(data[1]);
     setExpenses(data[2]);
     setStock(data[3]);
+    setTruncatedSources([]);
     setDataIssues(issues);
     setAvailability(Object.fromEntries(names.map((name) => [name, !issues[name]])));
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { void load(); }, [from, to]);
 
   const filterOptions = useMemo(() =>
     reportFilterOptions([invoices, payments, expenses]),
@@ -130,6 +193,11 @@ export function Reports() {
     [report, chartFrom, chartTo]);
   const periodLabel = month === 'Custom' ? (from || 'Beginning') + ' – ' + (to || 'Today')
     : month === 'All' ? 'All time' : month + ' ' + year;
+  const workshopName = reportWorkshop?.name || user?.company?.name || 'Workshop';
+  const workshopAddress = reportWorkshop?.address || user?.company?.address || '';
+  const workshopPhone = reportWorkshop?.phone || user?.company?.phone || '';
+  const workshopGstin = reportWorkshop?.gstin || user?.company?.gstin || '';
+  const incompleteSources = Object.keys(dataIssues);
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return !q ? report.invoiceRows : report.invoiceRows.filter((item) =>
@@ -139,20 +207,55 @@ export function Reports() {
   }, [query, report.invoiceRows]);
 
   const exportCsv = () => {
-    if (!availability.invoices) return;
-    const rows = [
-      ['Invoice', 'Date', 'Customer', 'Vehicle', 'Status', 'Total', 'Paid', 'Balance'],
-      ...filteredRows.map((item) => {
-        const amounts = invoiceAmounts(item);
-        return [
-          item.number || '', reportDate(item, 'invoice'),
-          item.customerName || item.customer?.name || '',
-          item.vehicle?.registration || '', item.status,
-          amounts.total, amounts.paid, amounts.balance,
-        ];
-      }),
+    if (loading || truncatedSources.length || !dateRangeValid) return;
+    const rows = [];
+    const append = (section, headings, items) => {
+      rows.push([section, periodLabel]);
+      rows.push(headings);
+      rows.push(...items);
+      rows.push([]);
+    };
+
+    if ((tab === 'overview' || tab === 'sales') && availability.invoices) {
+      append('INVOICES', ['Invoice', 'Date', 'Customer', 'Vehicle', 'Status', 'Total', 'Paid', 'Balance'],
+        filteredRows.map((item) => {
+          const amounts = invoiceAmounts(item);
+          return [item.number, reportDate(item, 'invoice'), item.customerName,
+            item.vehicleReg || item.vehicle?.registration, item.status,
+            amounts.total, amounts.paid, amounts.balance];
+        }));
+    }
+    if ((tab === 'overview' || tab === 'payments') && availability.payments) {
+      append('CUSTOMER PAYMENTS', ['Reference', 'Date', 'Customer', 'Invoice', 'Method', 'Direction', 'Status', 'Amount'],
+        report.paymentRows.map((item) => [
+          item.reference || item.id, reportDate(item, 'payment'), item.customerName,
+          item.invoiceNo, item.method, item.direction || 'IN', item.status,
+          (String(item.direction || 'IN').toUpperCase() === 'OUT' ? -1 : 1) * Number(item.amount || 0),
+        ]));
+    }
+    if ((tab === 'overview' || tab === 'expenses') && availability.expenses) {
+      append('OPERATING EXPENSES', ['Date', 'Expense', 'Category', 'Vendor', 'Status', 'Amount', 'Paid'],
+        report.expenseRows.map((item) => [
+          reportDate(item, 'expense'), item.title || item.description,
+          item.category, item.vendor, item.status, item.amount,
+          item.paidAmount ?? item.paid_amount ?? 0,
+        ]));
+    }
+    if ((tab === 'overview' || tab === 'stock') && availability.stock && report.comparable) {
+      append('CURRENT STOCK', ['SKU', 'Item', 'On Hand', 'Reserved', 'Cost Price', 'Stock Value'],
+        report.stockRows.map((item) => [
+          item.sku, item.name || item.partName, item.onHand, item.reserved,
+          item.costPrice, Number(item.onHand || 0) * Number(item.costPrice || 0),
+        ]));
+    }
+    if (!rows.length) return;
+    const titleRows = [
+      ['Workshop', workshopName],
+      ['Period', periodLabel],
+      ['Exported', new Date().toLocaleString('en-IN')],
+      [],
     ];
-    const csv = rows.map((row) => row.map(csvEscape).join(',')).join('\n');
+    const csv = '\uFEFF' + [...titleRows, ...rows].map((row) => row.map(csvEscape).join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
     const link = document.createElement('a');
     link.href = url;
@@ -166,7 +269,8 @@ export function Reports() {
   return (
     <div className="reports-page reports-page-polished">
       <ReportsHeader onRefresh={load} onCsv={exportCsv} onPrint={() => window.print()}
-        loading={loading} periodLabel={periodLabel}/>
+        loading={loading} exportDisabled={!dateRangeValid || truncatedSources.length > 0}
+        periodLabel={periodLabel}/>
       <ReportPeriodFilter from={from} to={to}
         month={month} year={year} years={years}
         branch={branch} staff={staff}
@@ -184,11 +288,21 @@ export function Reports() {
       {loading && <div className="reports-inline-loading" role="status">
         <RefreshCw size={16} className="reports-spinning"/> Loading live report data…
       </div>}
-      {Object.keys(dataIssues).length > 0 && (
+      {incompleteSources.length > 0 && (
         <div role="alert" className="reports-error no-print">
-          <AlertCircle size={16}/> Some sources could not load: {Object.keys(dataIssues).join(', ')}.
-          Missing figures are shown as — instead of ₹0.
+          <AlertCircle size={16}/>
+          <span>Reports are incomplete. Missing figures are shown as — instead of ₹0.
+            {Object.entries(dataIssues).map(([source, reason]) =>
+              <span key={source} className="report-source-error"><strong>{source}:</strong> {reason}</span>)}
+          </span>
           <button type="button" onClick={load}><RefreshCw size={14}/> Retry</button>
+        </div>
+      )}
+      {truncatedSources.length > 0 && (
+        <div role="alert" className="reports-error no-print">
+          <AlertCircle size={16}/>
+          The report reached the API row limit for {truncatedSources.join(', ')}.
+          Narrow the date range before relying on totals or exporting.
         </div>
       )}
       {(staff !== 'All' || branch !== 'All') && (
@@ -200,23 +314,39 @@ export function Reports() {
 
       <div className="report-print-sheet">
         <header className="report-print-head">
-          <div><span>CUBIXGEAR</span><h2>Business Report</h2>
-            <p>{periodLabel} · {from || 'Beginning'} — {to || 'Today'}</p></div>
-          <div><strong>Generated</strong><span>{new Date().toLocaleString('en-IN')}</span></div>
+          <div className="report-print-identity">
+            <span>CUBIXGEAR / BUSINESS REPORT</span>
+            <h2>{workshopName}</h2>
+            {workshopAddress && <p>{workshopAddress}</p>}
+            {(workshopGstin || workshopPhone) &&
+              <p>{[workshopGstin && 'GSTIN: ' + workshopGstin,
+                workshopPhone && 'Phone: ' + workshopPhone].filter(Boolean).join(' · ')}</p>}
+            <strong>Financial & Operations Report</strong>
+          </div>
+          <div className="report-print-meta">
+            <strong>{periodLabel}</strong>
+            <span>{from || 'Beginning'} — {to || 'Today'}</span>
+            <span>Generated: {new Date().toLocaleString('en-IN')}</span>
+          </div>
         </header>
+        {incompleteSources.length > 0 && <div className="report-print-warning">
+          INCOMPLETE REPORT — {incompleteSources.join(', ')} data unavailable.
+          Missing figures display as —.
+        </div>}
+        {truncatedSources.length > 0 && <div className="report-print-warning">
+          INCOMPLETE REPORT — row limit reached: {truncatedSources.join(', ')}.
+          Narrow the date range.
+        </div>}
         <ReportStats report={report} formatMoney={reportMoney}/>
         <ReportTabs active={tab} onChange={setTab}/>
-        {tab === 'overview' && (
-          <div className="reports-charts-grid">
+        <div className={`reports-charts-grid ${tab === 'overview' ? '' : 'report-section-screen-hidden'}`}>
             <ReportPerformanceChart buckets={buckets} report={report}
               from={chartFrom} to={chartTo}/>
             <ReportExpenseCategoryChart rows={report.expenseCategories}
               expensesAvailable={availability.expenses}/>
-          </div>
-        )}
+        </div>
 
-        {(tab === 'overview' || tab === 'sales') && (
-          <section className="report-panel">
+        <section className={`report-panel ${tab === 'overview' || tab === 'sales' ? '' : 'report-section-screen-hidden'}`}>
             <div className="report-section-head">
               <div><span>SALES ANALYTICS</span><h3>Invoice Report</h3>
                 <p>{filteredRows.length} invoices in the selected period</p></div>
@@ -242,18 +372,17 @@ export function Reports() {
                       <td>{reportMoney(t.total)}</td><td>{reportMoney(t.balance)}</td>
                     </tr>;
                   })}
-                  {!filteredRows.length && noRecords(7)}
+                  {!filteredRows.length && noRecords(7, availability.invoices ? 'No invoices for this selection.' : 'Invoice data unavailable.')}
                 </tbody>
               </table>
             </div>
           </section>
-        )}
 
-        {(tab === 'overview' || tab === 'payments') && (
-          <section className="report-panel">
+        <section className={`report-panel ${tab === 'overview' || tab === 'payments' ? '' : 'report-section-screen-hidden'}`}>
             <div className="report-section-head">
               <div><span>COLLECTIONS</span><h3>Payment Report</h3>
-                <p>{report.paymentRows.length} completed payments</p></div>
+                <p>{report.paymentRows.length} posted payment records</p></div>
+              <Link className="report-related-link no-print" to="/payments">Open Payments</Link>
             </div>
             <div className="report-table-wrap">
               <table className="report-table">
@@ -267,20 +396,19 @@ export function Reports() {
                     <td>{item.invoiceNo || objectLabel(item.invoice) || '—'}</td>
                     <td>{item.method || item.paymentMethod || '—'}</td>
                     <td>{item.status || 'Completed'}</td>
-                    <td>{reportMoney(item.amount)}</td>
+                    <td>{reportMoney((String(item.direction || 'IN').toUpperCase() === 'OUT' ? -1 : 1) * Number(item.amount || 0))}</td>
                   </tr>)}
-                  {!report.paymentRows.length && noRecords(7)}
+                  {!report.paymentRows.length && noRecords(7, availability.payments ? 'No payments for this selection.' : 'Payment data unavailable.')}
                 </tbody>
               </table>
             </div>
           </section>
-        )}
 
-        {(tab === 'overview' || tab === 'expenses') && (
-          <section className="report-panel">
+        <section className={`report-panel ${tab === 'overview' || tab === 'expenses' ? '' : 'report-section-screen-hidden'}`}>
             <div className="report-section-head">
               <div><span>SPENDING</span><h3>Expense Report</h3>
-                <p>{report.expenseRows.length} recorded expenses</p></div>
+                <p>{report.expenseRows.length} operating expenses</p></div>
+              <Link className="report-related-link no-print" to="/expenses">Open Expenses</Link>
             </div>
             <div className="report-table-wrap">
               <table className="report-table">
@@ -293,15 +421,13 @@ export function Reports() {
                     <td>{item.category || '—'}</td><td>{item.vendor || '—'}</td>
                     <td>{item.status || '—'}</td><td>{reportMoney(item.amount)}</td>
                   </tr>)}
-                  {!report.expenseRows.length && noRecords(6)}
+                  {!report.expenseRows.length && noRecords(6, availability.expenses ? 'No expenses for this selection.' : 'Expense data unavailable.')}
                 </tbody>
               </table>
             </div>
           </section>
-        )}
 
-        {(tab === 'overview' || tab === 'stock') && (
-          <section className="report-panel">
+        <section className={`report-panel ${tab === 'overview' || tab === 'stock' ? '' : 'report-section-screen-hidden'}`}>
             <div className="report-section-head">
               <div><span>INVENTORY SNAPSHOT</span><h3>Stock Report</h3>
                 <p>Current stock quantities and cost values, independent of the date range.</p></div>
@@ -330,7 +456,7 @@ export function Reports() {
               </table>
             </div>
           </section>
-        )}
+        <footer className="report-print-footer">Generated by cubixgear · {workshopName} · {periodLabel}</footer>
       </div>
     </div>
   );
