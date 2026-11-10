@@ -95,9 +95,9 @@ export const JobRecordsPanel = ({
                     {!invoice || invoicesLoading
                       ? <span className="jobs-finance-muted">—</span>
                       : <div className="jobs-gst-finance-cell">
-                        <small>{finance.posted
-                          ? finance.outstanding > 0 ? 'Payment due' : 'Paid'
-                          : 'Invoice not finalized'}</small>
+                        <small>{!finance.posted ? 'Invoice not finalized'
+                          : canViewPayments ? finance.outstanding > 0 ? 'Payment due' : 'Paid'
+                            : 'Payment balance restricted'}</small>
                         {canViewPayments && finance.posted &&
                           <strong>{finance.outstanding > 0 ? 'Due ₹' + finance.outstanding.toFixed(2) : 'Settled'}</strong>}
                         {canCollectPayments && finance.paymentUrl &&
@@ -150,7 +150,9 @@ export const JobRecordsPanel = ({
                 </div>
                 <div>
                   <span>Payment</span>
-                  <strong>{finance.posted ? finance.outstanding > 0 ? 'Due' : 'Paid' : 'Not finalized'}</strong>
+                  <strong>{!finance.posted ? 'Not finalized'
+                    : !canViewPayments ? 'Restricted'
+                      : finance.outstanding > 0 ? 'Due' : 'Paid'}</strong>
                   {canViewPayments && finance.posted &&
                     <small>{finance.outstanding > 0 ? '₹' + finance.outstanding.toFixed(2) : 'Settled'}</small>}
                 </div>
