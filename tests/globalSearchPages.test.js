@@ -44,7 +44,7 @@ test('search catalog never exposes routes without both route and entitlement per
 
 test('global search renders page suggestions while Django is still searching records', () => {
   assert.match(searchUI, /searchWorkspacePages\(query, routeConfig, can\)/);
-  assert.match(searchUI, /\[\.\.\.pages, \.\.\.results\]/);
+  assert.match(searchUI, /\[\.\.\.pages, \.\.\.permittedRecords\]/);
   assert.match(searchUI, /\{groups\.map\(\(group\) => \{/);
   assert.match(service, /apiClient\.get\('\/search'/);
 });
