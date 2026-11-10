@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { stockCatalogService } from '../../services/stockCatalog.service';
 import { invoiceLineTaxChoices, invoiceTotalRateFromChoice, invoiceChoiceFromTotalRate } from '../../utils/invoiceTaxUi';
+import { FINANCE_CHANNELS, accountChannel, financeAccountsForChannel } from '../../utils/financeCashBank';
 import '../../styles/supplier-purchase-flow.css';
 
 const rupees = value => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(value || 0));
@@ -29,7 +31,7 @@ const choices = invoiceLineTaxChoices('unknown');
 const totalRate = row => row.gstChoice === 'none' ? 0 :
   row.gstChoice === 'custom' ? n(row.customTax) : n(invoiceTotalRateFromChoice(row.gstChoice));
 // Supplier bills use the same two Cash/Bank channels as Finance Management.
-const accountMethod = account => account?.kind === 'Cash' ? 'Cash' : 'Bank';
+const accountMethod = account => accountChannel(account?.kind);
 const getErrorText = error => {
   const data = error?.response?.data || error?.data || {};
   if (typeof data === 'string') return data;
@@ -60,7 +62,7 @@ export default function SupplierPurchaseFlow({
   const [invoiceNumber, setInvoiceNumber] = useState(purchaseReference);
   const [placeOfSupply, setPlaceOfSupply] = useState('');
   const [splits, setSplits] = useState([]);
-  const [settlement, setSettlement] = useState({ amount: '', accountId: '', reference: '' });
+  const [settlement, setSettlement] = useState({ amount: '', channel: '', accountId: '', reference: '' });
   const [settling, setSettling] = useState(false);
   const settleKey = useRef(requestKey());
 
@@ -135,6 +137,15 @@ export default function SupplierPurchaseFlow({
   const total = costRows.reduce((sum, row) => sum + row.total, 0);
   const paidNow = splits.reduce((sum, row) => sum + n(row.amount), 0);
   const remaining = Math.max(0, total - paidNow);
+  const supplierStateCode = String(supplier.gstNo || supplier.gstin || '').slice(0, 2);
+  const gstBreakup = placeOfSupply && /^\d{2}$/.test(supplierStateCode)
+    ? (placeOfSupply === supplierStateCode
+      ? { mode: 'Intra-state', cgst: Math.round(tax * 50) / 100,
+          sgst: Math.round(tax * 100 - Math.round(tax * 50)) / 100, igst: 0 }
+      : { mode: 'Inter-state', cgst: 0, sgst: 0, igst: tax })
+    : null;
+  // Preview only. The backend validates and persists the official supplier
+  // purchase GST components when the posted bill is created.
 
   const selectItem = value => {
     const item = stock.find(row => String(row.id) === String(value));
@@ -222,6 +233,14 @@ export default function SupplierPurchaseFlow({
   };
 
   const changeSplit = (index, changes) => setSplits(rows => rows.map((row, i) => i === index ? { ...row, ...changes } : row));
+  const addPaymentChannel = channel => {
+    if (!FINANCE_CHANNELS.includes(channel) || splits.length >= 5) return;
+    const matching = financeAccountsForChannel(accounts, channel);
+    setSplits(existing => [...existing, {
+      id: requestKey(), channel, accountId: matching.length === 1 ? String(matching[0].id) : '',
+      amount: '', reference: '',
+    }]);
+  };
 
   const finishPurchase = async () => {
     if (posting || parts.length === 0) return;
@@ -254,7 +273,9 @@ export default function SupplierPurchaseFlow({
     const accountTotals = new Map();
     for (const row of splits) {
       const account = accounts.find(a => String(a.id) === row.accountId);
-      if (!account || !Number.isFinite(Number(row.amount)) ||
+      if (!account || !FINANCE_CHANNELS.includes(row.channel) ||
+        accountChannel(account.kind) !== row.channel ||
+        !Number.isFinite(Number(row.amount)) ||
         n(row.amount) <= 0 || !/^\d+(?:\.\d{1,2})?$/.test(String(row.amount))) {
         setError('Every Cash/Bank split needs a valid account and amount.'); return;
       }
@@ -307,7 +328,9 @@ export default function SupplierPurchaseFlow({
     setError('');
     const amount = Number(settlement.amount);
     const account = accounts.find(a => String(a.id) === String(settlement.accountId));
-    if (!account || !Number.isFinite(amount) || amount <= 0 ||
+    if (!account || !FINANCE_CHANNELS.includes(settlement.channel) ||
+      accountChannel(account.kind) !== settlement.channel ||
+      !Number.isFinite(amount) || amount <= 0 ||
       !/^\d+(?:\.\d{1,2})?$/.test(String(settlement.amount)) ||
       amount > remainingSupplier + 0.001) {
       setError('Select an account and amount within the outstanding supplier credit.'); return;
@@ -334,7 +357,7 @@ export default function SupplierPurchaseFlow({
         allocations, idempotencyKey: settleKey.current,
       });
       settleKey.current = requestKey();
-      setSettlement({ amount: '', accountId: '', reference: '' });
+      setSettlement({ amount: '', channel: '', accountId: '', reference: '' });
       await Promise.resolve(onChanged());
       await reload();
     } catch (cause) { setError(getErrorText(cause)); }
