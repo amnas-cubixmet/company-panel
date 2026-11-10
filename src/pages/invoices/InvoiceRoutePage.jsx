@@ -840,7 +840,7 @@ export function InvoiceRoutePage() {
         <div className="billing-head-actions">
           <button type="button" className="bill-btn secondary" onClick={() => navigate(`/invoices?kind=${form.kind === 'estimate' ? 'estimate' : 'invoice'}`)}>Back to List</button>
           {can('company.manage') && <button type="button" className="bill-btn secondary"
-            onClick={() => navigate('/account/company')}><Settings2 size={15}/>GST Settings</button>
+            onClick={() => navigate('/account/company')}><Settings2 size={15}/>GST Settings</button>}
           <button className="bill-btn secondary" disabled={saving || jobDraftLoading || !newInvoiceTaxReady} onClick={save}>Save Draft</button>
           <button className="bill-btn secondary" type="button" disabled={!form.id || saving || pdfLoading}
             title={form.id ? 'Download saved invoice (unsaved edits are not included)' : 'Save Draft first to download PDF'}
