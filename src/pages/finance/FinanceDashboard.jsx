@@ -42,21 +42,21 @@ export function FinanceDashboard() {
   const stats = data ? [
     { label: 'Bank Balance', value: fmt(data.bankBalance), icon: Building2, color: 'blue' },
     { label: 'Cash Balance', value: fmt(data.cashBalance), icon: Wallet, color: 'green' },
-    { label: 'Total Received', value: fmt(data.totalReceived), icon: ArrowDownLeft, color: 'emerald' },
-    { label: 'Total Paid', value: fmt(data.totalPaid), icon: ArrowUpRight, color: 'orange' },
-    { label: 'Customer Outstanding', value: fmt(data.outstandingCustomer), icon: Users, color: 'yellow' },
-    { label: 'Supplier Outstanding', value: fmt(data.supplierOutstanding), icon: Package, color: 'red' },
-    { label: 'Pending Expenses', value: fmt(data.pendingExpenses), icon: AlertCircle, color: 'purple' },
-    ...(data.estimatedProfit === undefined ? [] : [{ label: 'Estimated Operating Result',
+    { label: 'Money Received', value: fmt(data.totalReceived), icon: ArrowDownLeft, color: 'emerald' },
+    { label: 'Money Paid Out', value: fmt(data.totalPaid), icon: ArrowUpRight, color: 'orange' },
+    { label: 'Customer Dues', value: fmt(data.outstandingCustomer), icon: Users, color: 'yellow' },
+    { label: 'Supplier Dues', value: fmt(data.supplierOutstanding), icon: Package, color: 'red' },
+    { label: 'Unpaid Expenses', value: fmt(data.pendingExpenses), icon: AlertCircle, color: 'purple' },
+    ...(data.estimatedProfit === undefined ? [] : [{ label: 'Estimated Operating Result (not profit)',
       value: fmt(data.estimatedProfit), icon: TrendingUp, color: 'blue' }]),
   ] : [];
 
   const quickActions = [
     { label: 'Record Payment', icon: ArrowDownLeft, path: '/finance/payments/new', permission: 'payments.create' },
     { label: 'Add Expense', icon: Receipt, path: '/finance/expenses/new', permission: 'expenses.create' },
-    { label: 'Add Cash/Bank Account', icon: Plus, path: '/finance/accounts/new', permission: 'payments.edit' },
+    { label: 'Add Cash or Bank', icon: Plus, path: '/finance/accounts/new', permission: 'payments.edit' },
     { label: 'Transfer Money', icon: ArrowLeftRight, path: '/finance/transfers/new', permission: 'payments.edit' },
-    { label: 'View Ledger', icon: List, path: '/finance/transactions', permission: 'payments.view' },
+    { label: 'View Transactions', icon: List, path: '/finance/transactions', permission: 'payments.view' },
     { label: 'Accounting & Reports', icon: List, path: '/finance/accounting', permission: 'payments.view' },
   ];
 
@@ -65,8 +65,8 @@ export function FinanceDashboard() {
       <header className="finance-dash-header">
         <div>
           <span className="finance-dash-kicker">FINANCE</span>
-          <h1>Finance Overview</h1>
-          <p>Bank balances, cash flow, outstanding payments and recent activity.</p>
+          <h1>Money Overview</h1>
+          <p>See money received, money paid, cash and bank balances, and pending dues.</p>
         </div>
         <button className="finance-refresh-btn" onClick={load} disabled={loading} aria-label="Refresh">
           <RefreshCw size={16} className={loading ? 'finance-spin' : ''} />
@@ -112,9 +112,9 @@ export function FinanceDashboard() {
       {data?.accounts?.length > 0 && (
         <section className="finance-accounts-section">
           <div className="finance-section-header">
-            <h2>Accounts</h2>
+            <h2>Cash &amp; Bank Accounts</h2>
             <button className="finance-link-btn" onClick={() => navigate('/finance/accounts')}>
-              Manage Accounts →
+              View Accounts
             </button>
           </div>
           <div className="finance-accounts-grid">
@@ -143,9 +143,9 @@ export function FinanceDashboard() {
       {data?.recentTransactions?.length > 0 && (
         <section className="finance-recent-section">
           <div className="finance-section-header">
-            <h2>Recent Transactions</h2>
+            <h2>Latest Money Movements</h2>
             <button className="finance-link-btn" onClick={() => navigate('/finance/transactions')}>
-              View All →
+              See All Transactions
             </button>
           </div>
           <div className="finance-txn-list">
@@ -168,8 +168,8 @@ export function FinanceDashboard() {
       {!loading && !error && (!data?.accounts || data.accounts.length === 0) && (
         <div className="finance-empty">
           <TrendingUp size={40} />
-          <h3>No accounts set up yet</h3>
-          <p>Add a bank or cash account to start tracking your finances.</p>
+          <h3>No cash or bank accounts yet</h3>
+          <p>Add your workshop's cash or bank account to track future money movements.</p>
           <button className="finance-primary-btn" onClick={() => navigate('/finance/accounts/new')}>
             Add First Account
           </button>
