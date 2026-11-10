@@ -164,7 +164,7 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
       // inspection JSON contains a server-verified reference, not Base64.
       const uploaded = await vehiclePhotoService.upload({
         jobId: job.id, file, category: 'damage', phase: 'before',
-        caption: file.name.slice(0, 255),
+        caption: file.name.slice(0, 255), published: true,
       });
       if (!uploaded?.id) throw new Error('Private photo upload was not confirmed.');
       await jobInspectionService.addInspectionPhoto(job.id, { photoId: uploaded.id });
