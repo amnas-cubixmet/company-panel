@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
+import '../../styles/finance-workspace-nav.css';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 
 // Finance is one navigation workspace. Each underlying operation keeps its
