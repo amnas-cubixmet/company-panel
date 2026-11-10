@@ -29,7 +29,7 @@ test('one product at a time with additional products, then post once', () => {
 });
 
 test('splits pay from Cash Bank or UPI with separate idempotency keys', () => {
-  assert.match(workflow, /Add Cash \/ Bank \/ UPI Payment/);
+  assert.match(workflow, /Add Cash \/ Bank Payment/);
   assert.match(workflow, /payments: splits\.map/);
   assert.match(workflow, /idempotencyKey: row\.id/);
   assert.match(workflow, /n\(account\.recordedBalance\)/);
