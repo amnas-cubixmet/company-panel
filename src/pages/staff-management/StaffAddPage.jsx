@@ -32,7 +32,7 @@ const consentSources = [
 const emptyStaff = (loginEnabled) => ({
   name: '', phone: '', branchId: '', roleId: '', role: '',
   employmentStatus: 'Active', loginAccessEnabled: loginEnabled,
-  whatsappConsent: true, whatsappConsentSource: DEFAULT_WHATSAPP_CONSENT_SOURCE,
+  whatsappConsent: false, whatsappConsentSource: '',
 });
 
 export const StaffAddPage = () => {
