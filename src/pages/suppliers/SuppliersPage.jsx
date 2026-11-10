@@ -402,26 +402,52 @@ export default function SuppliersPage({ section = 'all' }) {
     else navigate('/suppliers/'+encodeURIComponent(saved.id));
   }
 
-  return <div className="cg-suppliers-page">
+  return <div className="cg-suppliers-page cg-suppliers-ui">
     <div className="cg-suppliers-head">
       <div>
         {id&&<Link className="cg-suppliers-back" to="/suppliers"><ArrowLeft size={16}/> All Suppliers</Link>}
+        <span className="cg-suppliers-eyebrow">CUBIXGEAR · WORKSHOP SUPPLIERS</span>
         <h1 title={id ? (supplier?.name || 'Supplier Details') : undefined}>
-          {id ? (supplier?.name || 'Supplier Details') : purchaseView ? 'Purchase History' : 'Suppliers'}
+          {id ? (supplier?.name || 'Supplier Details') : purchaseView ? 'Supplier Purchases' : 'Supplier Management'}
         </h1>
+        <p className="cg-suppliers-subtitle">{id
+          ? 'View this supplier’s contacts, purchases, outstanding bills, returns and payments.'
+          : purchaseView
+            ? 'Review purchase orders separately from posted bills and supplier credit.'
+            : 'Manage supplier contacts and see the money still owed on posted purchase bills.'}</p>
       </div>
       {id ? canEdit && supplier && <button type="button" className="cg-supplier-button" onClick={()=>setEditor(supplier)}>Edit Supplier</button>
         : canCreate && <button type="button" className="cg-supplier-button primary" onClick={()=>setEditor({create:true})}><Plus size={17}/> Add Supplier</button>}
     </div>
 
 
-    {error&&<div className="cg-supplier-error" role="alert">{error} <button type="button" onClick={()=>window.location.reload()}>Retry</button></div>}
+    {!id && <nav className="cg-supplier-page-nav" aria-label="Supplier sections">
+      <Link to="/suppliers" aria-current={!purchaseView ? 'page' : undefined}
+        className={!purchaseView ? 'is-active' : ''}><Building2 size={17}/> All Suppliers</Link>
+      <Link to="/suppliers/purchases" aria-current={purchaseView ? 'page' : undefined}
+        className={purchaseView ? 'is-active' : ''}><ShoppingBag size={17}/> Purchase History</Link>
+    </nav>}
+    {id && <nav className="cg-supplier-details-nav" aria-label="Supplier details sections">
+      <a href="#supplier-profile"><Building2 size={16}/> Profile</a>
+      {(canCreatePurchase || canPaySupplier) && <a href="#supplier-purchase-form"><ShoppingBag size={16}/> Purchases</a>}
+      {canViewFinance && <a href="#supplier-returns"><Package size={16}/> Returns</a>}
+      {canViewFinance && <a href="#supplier-ledger"><Wallet size={16}/> Accounts &amp; Payments</a>}
+    </nav>}
+    {!id && <SupplierWorkspaceGuide purchaseView={purchaseView}/>}
+    {error&&<div className="cg-supplier-error cg-supplier-page-error" role="alert">
+      <span>{error}</span>
+      <button type="button" onClick={() => id ? window.location.reload() : setReloadList(x => x + 1)}><RefreshCw size={15}/> Retry</button>
+    </div>}
     {notice&&<p className="cg-supplier-success" role="status">{notice}</p>}
+    {!id && !purchaseView && !loading && !error && (
+      <SupplierOverviewCards suppliers={suppliers} balances={creditBalances}
+        canViewFinance={canViewFinance} purchaseBillsError={purchaseBillsError}/>
+    )}
 
     {!id&&!purchaseView&&<>
       <div className="cg-supplier-toolbar">
         <label className="cg-supplier-search"><Search size={18} aria-hidden="true"/>
-          <input aria-label="Search suppliers" value={search} placeholder="Search name, phone or GSTIN"
+          <input type="search" aria-label="Search suppliers" value={search} placeholder="Search supplier, phone, contact or GSTIN…"
             onChange={e=>{const p=new URLSearchParams(params);if(e.target.value)p.set('q',e.target.value);else p.delete('q');setParams(p,{replace:true});}}/>
         </label>
         <label className="cg-supplier-filter">
@@ -431,14 +457,14 @@ export default function SuppliersPage({ section = 'all' }) {
             if (event.target.value === 'all') p.delete('status'); else p.set('status', event.target.value);
             setParams(p, { replace: true });
           }}>
-            <option value="all">All</option><option value="active">Active</option><option value="inactive">Inactive</option>
+            <option value="all">All Suppliers</option><option value="active">Active Only</option><option value="inactive">Inactive Only</option>
           </select>
         </label>
-        <span>{matches.length} suppliers</span>
+        <span className="cg-supplier-toolbar-count">{matches.length} matching supplier{matches.length === 1 ? '' : 's'}</span>
       </div>
       <div className="cg-supplier-directory-heading">
-        <div><h2>All Suppliers</h2>
-          <span className="cg-supplier-directory-count">{loading ? '—' : matches.length + ' / ' + suppliers.length}</span>
+        <div><h2>Supplier Directory</h2>
+          <span className="cg-supplier-directory-count">{loading ? 'Loading…' : matches.length + ' of ' + suppliers.length + ' suppliers'}</span>
         </div>
       </div>
       {loading ? <p role="status" className="cg-supplier-empty">Loading suppliers…</p>
@@ -513,14 +539,30 @@ export default function SuppliersPage({ section = 'all' }) {
               </article>;
             })}
           </div>
-        </> : <p className="cg-supplier-empty">{search ? 'No suppliers match your search.' : 'No suppliers added yet.'}</p>}
+        </> : <div className="cg-supplier-empty cg-supplier-empty-state">
+          <Building2 size={26} aria-hidden="true"/>
+          <strong>{search || statusFilter !== 'all' ? 'No matching suppliers' : 'No suppliers added yet'}</strong>
+          <span>{search || statusFilter !== 'all'
+            ? 'Try another search or change the status filter.'
+            : 'Add a supplier to start recording parts purchases and payments.'}</span>
+          {canCreate && !search && statusFilter === 'all' && <button type="button"
+            className="cg-supplier-button primary" onClick={() => setEditor({ create: true })}>
+            <Plus size={16}/> Add Supplier
+          </button>}
+        </div>}
     </>}
 
     {!id&&purchaseView&&(
       <section className="cg-supplier-purchase-history" aria-label="Supplier purchase history">
+        <div className="cg-supplier-purchase-intro">
+          <ReceiptText size={18} aria-hidden="true"/>
+          <p><strong>Purchase orders and posted bills are different.</strong>
+            Only posted supplier bills contribute to outstanding supplier dues.
+            For payments and returns, open the supplier's profile.</p>
+        </div>
         <div className="cg-supplier-purchase-filters">
           <label>Search purchases
-            <input aria-label="Search purchases" placeholder="Purchase number, invoice or supplier"
+            <input type="search" aria-label="Search purchases" placeholder="Purchase order, invoice or supplier…"
               value={purchaseQuery} onChange={event => setPurchaseQuery(event.target.value)} />
           </label>
           <label>Supplier
@@ -547,7 +589,12 @@ export default function SuppliersPage({ section = 'all' }) {
               min={purchaseFrom || undefined} onChange={event => setPurchaseTo(event.target.value)} />
           </label>
         </div>
-        {purchaseHistoryError && <p role="alert" className="cg-supplier-error">{purchaseHistoryError}</p>}
+        {purchaseHistoryError && <div role="alert" className="cg-supplier-error cg-supplier-page-error">
+          <span>{purchaseHistoryError}</span>
+          <button type="button" onClick={() => setReloadPurchaseHistory(n => n + 1)}>
+            <RefreshCw size={15}/> Retry
+          </button>
+        </div>}
         {purchaseHistoryLoading ? <p role="status" className="cg-supplier-empty">Loading purchase history…</p> : !purchaseHistoryError && (
           <div className="cg-supplier-profile">
             <div className="cg-supplier-profile-head">
@@ -558,6 +605,9 @@ export default function SuppliersPage({ section = 'all' }) {
                 <div>
                   <strong>{order.purchaseNo || order.number || 'Purchase Order'}</strong>
                   <small>{suppliers.find(row => String(row.id) === supplierIdOf(order))?.name || order.supplierName || 'Supplier'} · {order.status || '—'}</small>
+                  {supplierIdOf(order) && <Link className="cg-supplier-record-link" to={'/suppliers/' + encodeURIComponent(supplierIdOf(order))}>
+                    View Supplier <ChevronRight size={14}/>
+                  </Link>}
                 </div>
                 <b>{money(order.total)}</b>
               </div>
@@ -575,7 +625,10 @@ export default function SuppliersPage({ section = 'all' }) {
               <div className="cg-supplier-record" key={'bill-'+bill.id}>
                 <div>
                   <strong>{bill.invoiceNumber}</strong>
-                  <small>{suppliers.find(row => String(row.id) === String(bill.supplierId))?.name || 'Supplier'} · {bill.status} · {bill.invoiceDate} · {bill.postingStatus === 'Posted' ? 'Posted liability' : 'Draft — not payable'}</small>
+                  <small>{suppliers.find(row => String(row.id) === String(bill.supplierId))?.name || 'Supplier'} · {bill.status} · {bill.invoiceDate} · {bill.postingStatus === 'Posted' ? 'Posted bill' : 'Draft — not payable'}</small>
+                  {bill.supplierId && <Link className="cg-supplier-record-link" to={'/suppliers/' + encodeURIComponent(bill.supplierId)}>
+                    Open Supplier &amp; Payments <ChevronRight size={14}/>
+                  </Link>}
                 </div>
                 <b>{bill.postingStatus === 'Posted' ? 'Due ' + money(bill.outstanding) : 'Draft ' + money(bill.total)}</b>
               </div>
@@ -587,7 +640,7 @@ export default function SuppliersPage({ section = 'all' }) {
     )}
 
     {id&&!detailsLoading&&supplier&&<>
-      <section className="cg-supplier-profile">
+      <section className="cg-supplier-profile" id="supplier-profile">
         <div className="cg-supplier-profile-head"><Building2 size={20}/><h2>Supplier Information</h2>
           <span className={supplier.is_active===false?'cg-supplier-status inactive':'cg-supplier-status'}>{status(supplier)}</span>
         </div>
@@ -598,14 +651,19 @@ export default function SuppliersPage({ section = 'all' }) {
           <div><span>GSTIN</span><strong>{supplier.gstNo||'—'}</strong></div>
           <div className="full"><span>Address</span><strong>{supplier.address||'—'}</strong></div>
         </div>
-        {canViewFinance && <div style={{ marginTop: 10, fontSize: 14 }}>
-          Credit outstanding: <strong>{supplierFinancials
-            ? money(supplierFinancials.outstanding)
-            : 'Loading / Unavailable'}</strong>
-          <a href="#supplier-pay-now" style={{ marginLeft: 12, color: 'var(--primary)' }}>Pay / Settle Credit</a>
+        {canViewFinance && <div className="cg-supplier-credit-highlight">
+          <div>
+            <span>Outstanding Supplier Credit</span>
+            <strong>{supplierFinancials ? money(supplierFinancials.outstanding) : 'Unavailable'}</strong>
+            <small>Unpaid balance on posted supplier bills only</small>
+          </div>
+          {canPaySupplier && <a href="#supplier-pay-now" className="cg-supplier-button primary">
+            <CreditCard size={16}/> Pay Supplier
+          </a>}
         </div>}
         <div className="cg-supplier-contacts">
-          {supplier.phone&&<a href={'tel:'+String(supplier.phone).replace(/[^\d+]/g,'')}><Phone size={15}/> Call</a>}
+          <SupplierContactActions supplier={supplier}/>
+          {false && supplier.phone&&<a href={'tel:'+String(supplier.phone).replace(/[^\d+]/g,'')}><Phone size={15}/> Call</a>}
           {supplier.email&&<a href={'mailto:'+supplier.email}><Mail size={15}/> Email</a>}
           <Link to={'/stock?supplier='+encodeURIComponent(supplier.id)}><Package size={15}/> Inventory</Link>
           {canCreatePurchase && <a href="#supplier-purchase-form">
@@ -629,6 +687,7 @@ export default function SuppliersPage({ section = 'all' }) {
         />
       )}
       {canViewFinance && (
+        <div id="supplier-returns" className="cg-supplier-return-section">
         <SupplierReturnsPanel
           supplier={supplier}
           bills={supplierBills}
@@ -637,11 +696,12 @@ export default function SuppliersPage({ section = 'all' }) {
           canPay={canPaySupplier}
           onChanged={refreshSupplierDetails}
         />
+        </div>
       )}
       {canViewFinance && (
-        <section className="cg-supplier-profile" aria-label="Supplier credit and settlement">
+        <section className="cg-supplier-profile" id="supplier-ledger" aria-label="Supplier credit and settlement">
           <div className="cg-supplier-profile-head">
-            <CreditCard size={20}/><h2>Supplier Accounts & Payments</h2>
+            <CreditCard size={20}/><h2>Supplier Accounts &amp; Payments</h2>
           </div>
           {supplierFinanceError && <p className="cg-supplier-error" role="alert">{supplierFinanceError}</p>}
           {supplierFinancials && (
@@ -654,7 +714,7 @@ export default function SuppliersPage({ section = 'all' }) {
               <div><span>Debit Note Credit Available</span><strong>{money(supplierFinancials.availableDebitCredit)}</strong></div>
             </div>
           )}
-          <p>Purchase and payment actions are available above on this Supplier page.</p>
+          <p className="cg-supplier-ledger-note">Use “Pay Supplier” above to settle a posted bill. Payments, advances and supplier returns remain separate accounting entries.</p>
           <h3>Purchase Bills</h3>
           {supplierBills.filter(b => b.postingStatus === 'Posted').map(bill => (
             <div key={bill.id} className="cg-supplier-record">
