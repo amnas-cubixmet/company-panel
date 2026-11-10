@@ -106,6 +106,7 @@ export function AccountsPage() {
 
   const loadAccounts = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const result = await financeService.listAccounts({ include_inactive: '1' });
       setAccounts(Array.isArray(result) ? result : []);
@@ -119,6 +120,7 @@ export function AccountsPage() {
   const loadAccount = useCallback(async () => {
     if (!id) return;
     setLoading(true);
+    setError('');
     try {
       const result = await financeService.getAccount(id);
       setAccount(result);
@@ -354,8 +356,8 @@ export function AccountsPage() {
       {error && <div className="finance-error" role="alert">{error}</div>}
 
       {loading ? (
-        <div className="finance-loading">Loading accounts…</div>
-      ) : accounts.length === 0 ? (
+        <div className="finance-loading" role="status">Loading accounts…</div>
+      ) : error ? null : accounts.length === 0 ? (
         <div className="finance-empty">
           <Building2 size={40} />
           <h3>No cash or bank accounts yet</h3>
@@ -373,7 +375,13 @@ export function AccountsPage() {
               onClick={() => navigate(`/finance/accounts/${acc.id}`)}
               role="button"
               tabIndex={0}
-              onKeyDown={e => e.key === 'Enter' && navigate(`/finance/accounts/${acc.id}`)}
+              aria-label={`View account ${acc.name}`}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  navigate(`/finance/accounts/${acc.id}`);
+                }
+              }
             >
               <div className="finance-account-row-left">
                 {acc.kind === 'Bank' ? <Building2 size={20} /> : <Wallet size={20} />}
