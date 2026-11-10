@@ -208,7 +208,9 @@ export const reportChartBuckets = (report, from, to) => {
   }
   for (const [rows, field, kind, amount] of [
     [report.invoiceRows, 'billed', 'invoice', (row) => invoiceAmounts(row).total],
-    [report.paymentRows, 'collected', 'payment', (row) => moneyNumber(row.amount) || 0],
+    [report.paymentRows, 'collected', 'payment', (row) =>
+      (String(row.direction || 'IN').toUpperCase() === 'OUT' ? -1 : 1) *
+      (moneyNumber(row.amount) || 0)],
     [report.expenseRows, 'expenses', 'expense', (row) => moneyNumber(row.amount) || 0],
   ]) {
     rows.forEach((row) => {
