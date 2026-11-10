@@ -20,7 +20,6 @@ import {
 import { stockService } from '../../services/stock.service';
 import { financeService } from '../../services/finance.service';
 import { jobPartsService } from '../../services/jobParts.service';
-import { financeService } from '../../services/finance.service';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
 
@@ -783,49 +782,30 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
   const [accountId, setAccountId] = useState('');
   const [accounts, setAccounts] = useState([]);
   const [accountsError, setAccountsError] = useState('');
-  useEffect(() => {
-    if (paymentType === 'Credit') {
-      setAccountsError('');
-      return;
-    }
-    let active = true;
-    setAccountsError('');
-    financeService.listAccounts().then(result => {
-      if (active) setAccounts(Array.isArray(result) ? result.filter(row => row.isActive !== false) : []);
-    }).catch(() => {
-      if (active) setAccountsError('Unable to load accounts. Check Finance permissions or choose Credit.');
-    });
-    return () => { active = false; };
-  }, [paymentType]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
   const [unitCost, setUnitCost] = useState(String(purchase.unitCost || ''));
   const [bill, setBill] = useState(null);
   const [uploadError, setUploadError] = useState('');
-  const [paymentType, setPaymentType] = useState('Cash');
-  const [accountId, setAccountId] = useState('');
-  const [accounts, setAccounts] = useState([]);
-  const [accountsError, setAccountsError] = useState('');
-  const [accountsLoading, setAccountsLoading] = useState(true);
   useEffect(() => {
+    if (paymentType === 'Credit') return;
     let active = true;
-    financeService.listAccounts().then(rows => {
-      if (active) {
-        setAccounts(Array.isArray(rows) ? rows : []);
-        setAccountsError('');
-      }
+    setAccountsLoading(true);
+    setAccountsError('');
+    financeService.listAccounts().then(result => {
+      if (active) setAccounts(Array.isArray(result) ? result : []);
     }).catch(err => {
-      if (active) setAccountsError(err?.message || 'Could not load workshop accounts.');
+      if (active) setAccountsError(err?.message || 'Unable to load accounts. Check Finance permissions or choose Credit.');
     }).finally(() => {
       if (active) setAccountsLoading(false);
     });
     return () => { active = false; };
-  }, []);
+  }, [paymentType]);
   const eligibleAccounts = accounts.filter(account => account.isActive !== false &&
     (paymentType === 'Cash' ? account.kind === 'Cash' :
       account.kind === 'Bank' || account.kind === 'UPI'));
   const quantity = Number(purchase.quantity);
   const gstRate = Number(purchase.purchaseGstRate || 0);
   const actualTotal = quantity * Number(unitCost) * (1 + gstRate / 100);
-  const availableAccounts = accounts.filter(row => row.kind === paymentType);
   const approvedTotal = Number(purchase.quotedTotal || 0);
   const withinApproval = Number.isFinite(actualTotal) &&
     Number(unitCost) >= 0 && actualTotal <= approvedTotal && Number(unitCost) <= 999999999.99;
