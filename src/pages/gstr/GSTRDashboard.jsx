@@ -318,7 +318,7 @@ export default function GSTRDashboard() {
           {[['Taxable Sales', sums.taxable], ['CGST', sums.cgst], ['SGST / UTGST', sums.sgst],
             ['IGST', sums.igst], ['Total Output GST', sums.outputGST],
             ['Recorded Purchase GST', sums.purchaseGST], ['Verified Purchase Tax Components', sums.verifiedPurchaseTax],
-            ['Expense GST Pending Verification', sums.unverifiedExpenseGST]]
+            ...(access.can('expenses.view') ? [['Expense GST Pending Verification', sums.unverifiedExpenseGST]] : [])]
             .map(([label, value]) => <div key={label}><span>{label}</span><strong>{currency(value)}</strong></div>)}
         </div>
         <p className="gstr-note">Purchase GST is not the same as eligible ITC. ITC reversals and sales credit notes are tracked separately. Cash liability and GST Portal utilization need independent verification.</p>
@@ -383,11 +383,11 @@ export default function GSTRDashboard() {
         {!reconciliation && <><h3 className="gstr-subheading">Posted Purchase Bills</h3>
           <div className="gstr-search"><Search size={17} /><input aria-label="Search purchase bills" placeholder="Search supplier bills" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
           <DataTable key={'purchases-' + period} rows={purchases} columns={purchaseColumns} search={search} /></>}
-        <div className="gstr-expense-gst-review">
+        {access.can('expenses.view') && <div className="gstr-expense-gst-review">
           <h3 className="gstr-subheading">Operational Expense GST · Review Required</h3>
           <p className="gstr-note">Finance Expenses may record a tax amount without a verified supplier GSTIN or CGST/SGST/IGST invoice breakdown. These amounts appear for investigation only; they are excluded from eligible ITC and GSTR-3B.</p>
           <DataTable key={'expense-gst-' + period} rows={expenseTaxReview} columns={expenseGSTColumns} />
-        </div>
+        </div>}
       </section>}
 
       {['itc', 'credits', 'ledger'].includes(tab) && (
@@ -420,9 +420,9 @@ export default function GSTRDashboard() {
           <div><FileSpreadsheet size={22} /><strong>Supplier Purchase GST Review</strong>
             <span>Recorded purchase bills with tax-component verification. Not an official GSTR-2B file.</span>
             <button type="button" disabled={busy || !access.can('gstr.export')} onClick={() => exportCsv('purchases')}><Download size={16} /> Download CSV</button></div>
-          <div><FileSpreadsheet size={22} /><strong>Operating Expense GST Exceptions</strong>
+          {access.can('expenses.view') && <div><FileSpreadsheet size={22} /><strong>Operating Expense GST Exceptions</strong>
             <span>Expense GST requiring invoice verification; excluded from eligible ITC.</span>
-            <button type="button" disabled={busy || !access.can('gstr.export')} onClick={() => exportCsv('expense-gst')}><Download size={16} /> Download CSV</button></div>
+            <button type="button" disabled={busy || !access.can('gstr.export')} onClick={() => exportCsv('expense-gst')}><Download size={16} /> Download CSV</button></div>}
         </div>
         <p className="gstr-note">These CSV files are preparation exports only, never GST Portal-compatible. PDF, XLSX and official portal filing are not connected.</p>
         <GSTPart15Workspace tab="exports" period={period} report={data}
