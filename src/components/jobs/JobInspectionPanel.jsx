@@ -244,7 +244,7 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
           </label>
         </div>
         {!isStarted && !isSkipped && canEdit && <p className="cg-inspection-hint">Choose Good, Attention, Critical or N/A to automatically start inspection and save your check.</p>}
-        {isSkipped && <p className="cg-inspection-hint">Skipped — saved results are preserved. {canReopen ? 'Choose Edit Skipped Inspection above to continue.' : 'If Estimate was also skipped, reopen Estimate first. Completed work cannot be rolled back.'}</p>}
+        {isSkipped && <p className="cg-inspection-hint">Skipped — saved results are preserved. No unchecked items were marked Good. {canReopen ? 'Choose Edit Skipped Inspection above to continue.' : 'If Estimate was also skipped, reopen Estimate first. Completed work cannot be rolled back.'}</p>}
         <div className="cg-inspection-category-row">
           <label htmlFor="cg-inspection-category">Category</label>
           <select
