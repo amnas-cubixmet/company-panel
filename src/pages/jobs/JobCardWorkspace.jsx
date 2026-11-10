@@ -1698,8 +1698,10 @@ export function JobCardWorkspace() {
           <div className="job-invoice-dashboard-stats">
             {[
               ['Invoice Total', invoiceTotal, 'total'],
-              ['Paid Amount', invoicePaid, 'paid'],
-              ['Balance Due', invoiceBalance, 'balance']
+              ...(canViewPayments ? [
+                ['Paid Amount', invoicePaid, 'paid'],
+                ['Balance Due', invoiceBalance, 'balance']
+              ] : [])
             ].map(([label, amount, tone]) => (
               <div className={'job-invoice-stat is-' + tone} key={label}>
                 <span>{label}</span>
@@ -1708,7 +1710,7 @@ export function JobCardWorkspace() {
             ))}
             <div className="job-invoice-stat is-status">
               <span>Payment Status</span>
-              <strong>{invoicePaymentStatus}</strong>
+              <strong>{canViewPayments ? invoicePaymentStatus : 'Restricted'}</strong>
             </div>
           </div>
 
@@ -1739,7 +1741,7 @@ export function JobCardWorkspace() {
                   onClick={() => navigate(financial.historyUrl)}>Finance Transactions</button>}
                 {canCreatePayment && financial.paymentUrl && !USE_MOCK_API && <button type="button"
                   className="is-primary" onClick={() => navigate(financial.paymentUrl)}>
-                  Collect {money.format(financial.outstanding)} through Cash / Bank
+                  Collect {canViewPayments ? money.format(financial.outstanding) : 'Payment'} through Cash / Bank
                 </button>}
               </div>
             </section>
@@ -1799,7 +1801,7 @@ export function JobCardWorkspace() {
                     ? <p className="job-invoice-inline-message">Invoice settled. No further payment is required.</p>
                     : canCreatePayment
                       ? <button type="button" className="job-payment-submit" onClick={() => navigate(financial.paymentUrl)}>
-                        Open Finance to Receive {money.format(invoiceBalance)}
+                        Open Finance to Receive {canViewPayments ? money.format(invoiceBalance) : 'Payment'}
                       </button>
                       : <p className="job-invoice-inline-message">Only authorized Finance staff can receive payments.</p>}
                 </div>
