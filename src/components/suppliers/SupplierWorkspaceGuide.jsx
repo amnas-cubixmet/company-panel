@@ -55,8 +55,9 @@ export function SupplierWorkspaceGuide({ purchaseView = false }) {
 }
 
 export function SupplierOverviewCards({ suppliers, balances, canViewFinance, purchaseBillsError }) {
-  const outstanding = balances
-    ? [...balances.values()].reduce((total, value) => total + Number(value || 0), 0)
+  const payableAmounts = balances ? [...balances.values()].map(Number) : null;
+  const outstanding = payableAmounts?.every(Number.isFinite)
+    ? payableAmounts.reduce((total, value) => total + value, 0)
     : null;
   const cards = [
     { title: 'Total Suppliers', value: String(suppliers.length), help: 'Supplier contacts saved', icon: PackageCheck },
@@ -66,7 +67,7 @@ export function SupplierOverviewCards({ suppliers, balances, canViewFinance, pur
   if (canViewFinance) {
     cards.push({
       title: 'Supplier Dues',
-      value: balances
+      value: outstanding !== null
         ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(outstanding)
         : 'Unavailable',
       help: purchaseBillsError ? 'Could not load posted purchase bills' : 'Unpaid portion of posted supplier bills only',
