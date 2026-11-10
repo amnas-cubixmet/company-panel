@@ -18,7 +18,8 @@ test('all nine GST sections remain available with labels and dynamic explanation
   }
   assert.match(page, /<GSTRGuide\/>/);
   assert.match(page, /aria-pressed=\{tab === value\}/);
-  assert.match(page, /setSearch\(''\); updateParams\(\{ tab: value \}\)/);
+  assert.match(page, /onClick=\{\(\) => changeTab\(value\)\}/);
+  assert.match(page, /next\.delete\('invoice'\)/);
   assert.match(page, /TAB_HELP\[tab\]/);
 });
 
@@ -36,7 +37,7 @@ test('bilingual help and export labels do not imply GST Portal filing', () => {
   assert.match(help, /വിൽപ്പന/);
   assert.match(help, /GST Portal/);
   assert.match(help, /A successful match does not approve tax credit automatically/);
-  assert.match(page, /Portal status unverified/);
+  assert.match(page, /Portal unverified/);
   assert.match(page, /Preparation only/);
   assert.match(page, /Not a GST Portal filing file/);
   assert.match(page, /PREPARATION\.csv/);
