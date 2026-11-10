@@ -48,6 +48,19 @@ test('N/A contributes to reviewed progress but is never counted as a Good check'
   assert.match(panel, /completed === 0/);
 });
 
+test('Start Inspection is visible above the checklist and uses the existing backend action', () => {
+  const header = panel.slice(panel.indexOf('className="cg-inspection-header-actions"'), panel.indexOf('className="cg-inspection-stats"'));
+  assert.match(header, /!isStarted && !isSkipped/);
+  assert.match(header, /className="cg-inspection-primary cg-inspection-start-action"/);
+  assert.match(header, /Start Inspection/);
+  assert.match(header, /onClick={handleStartInspection}/);
+  assert.match(header, /disabled={!canEdit \|\| !inspection \|\| !!busy}/);
+  assert.match(panel, /perform\('start', \(\) => jobInspectionService\.startInspection\(job\.id\)\)/);
+  assert.ok((panel.match(/handleStartInspection/g) || []).length >= 3);
+  assert.match(css, /\.cg-inspection-start-action/);
+  assert.match(css, /bottom: calc\(78px \+ env\(safe-area-inset-bottom/);
+});
+
 test('footer contains paired Skip and Start/Complete actions, disabled by policy and saved status', () => {
   assert.match(panel, /cg-inspection-footer-actions/);
   assert.match(panel, /Skip Inspection/);
