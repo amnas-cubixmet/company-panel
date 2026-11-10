@@ -21,7 +21,7 @@ const newFinding = () => ({
 
 const formatMoney = (number) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(number) || 0);
 
-export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit = false, startEditing = false, onDoneEditing }) {
+export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit = false, canReopen = false, startEditing = false, onDoneEditing }) {
   const [inspection, setInspection] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
@@ -192,6 +192,15 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
           </div>
           <div className="cg-inspection-header-actions">
             <button type="button" className="cg-inspection-icon-button" aria-label="Refresh inspection" disabled={!!busy} onClick={() => perform('refresh', async () => {})}><RefreshCcw size={16} /></button>
+            {isSkipped && canEdit && (
+              <button type="button" className="cg-inspection-primary cg-inspection-reopen"
+                disabled={!canReopen || !!busy}
+                title={!canReopen ? 'Reopen the skipped Estimate first, or return before later stages have been completed.' : 'Restore this skipped inspection to editing'}
+                onClick={() => perform('reopen', () => jobInspectionService.reopenInspection(job.id))}>
+                <ClipboardCheck size={16} aria-hidden="true" />
+                {busy === 'reopen' ? 'Reopening…' : 'Edit Skipped Inspection'}
+              </button>
+            )}
             {isCompleted && canCorrect && (
               <button type="button" className="cg-inspection-primary" disabled={!!busy}
                 onClick={() => {
@@ -235,7 +244,7 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
           </label>
         </div>
         {!isStarted && !isSkipped && canEdit && <p className="cg-inspection-hint">Choose Good, Attention, Critical or N/A to automatically start inspection and save your check.</p>}
-        {isSkipped && <p className="cg-inspection-hint">Skipped — checklist results are retained but locked. No unchecked items were marked Good.</p>}
+        {isSkipped && <p className="cg-inspection-hint">Skipped — saved results are preserved. No unchecked items were marked Good. {canReopen ? 'Choose Edit Skipped Inspection above to continue.' : 'If Estimate was also skipped, reopen Estimate first. Completed work cannot be rolled back.'}</p>}
         <div className="cg-inspection-category-row">
           <label htmlFor="cg-inspection-category">Category</label>
           <select

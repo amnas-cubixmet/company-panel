@@ -281,6 +281,13 @@ export const updateJobComplaintStatus = async (jobId, complaintId, { status, not
   );
 };
 
+export const reopenJobEstimate = async (id) => {
+  if (USE_MOCK_API) {
+    throw new Error('Reopening a skipped estimate requires the live Django backend.');
+  }
+  return apiClient.post(`${API_ENDPOINTS.JOBS}/${id}/estimate/reopen`);
+};
+
 export const skipJobEstimate = async (id, { reason, details = '' }) => {
   if (USE_MOCK_API) throw new Error('Skip Estimate requires the live backend audit workflow.');
   return apiClient.post(`${API_ENDPOINTS.JOBS}/${id}/estimate/skip`, { reason, details });
@@ -338,6 +345,7 @@ export const jobService = {
   addJobService,
   createJobEstimate,
   saveQuickJobEstimate,
+  reopenJobEstimate,
   skipJobEstimate,
   rejectJobEstimate,
   shareJobEstimate,
