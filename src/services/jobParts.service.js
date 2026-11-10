@@ -433,6 +433,8 @@ export const completeOutsideJobPart = async (jobId, purchaseId, form) => {
     const payload = new FormData();
     payload.append('invoiceNo', form.invoiceNo);
     payload.append('unitCost', String(form.unitCost));
+    payload.append('paymentType', form.paymentType);
+    if (form.paymentType !== 'Credit') payload.append('accountId', form.accountId);
     payload.append('bill', form.bill);
     return apiClient.post(`/job-cards/${jobId}/outside-parts/${purchaseId}/complete`, payload, {
       headers: { 'Content-Type': undefined }
@@ -443,6 +445,8 @@ export const completeOutsideJobPart = async (jobId, purchaseId, form) => {
   const purchase = old.outsideParts?.find((item) => item.id === purchaseId);
   if (!purchase || purchase.status !== 'Approved') throw new Error('Approval is required.');
   if (!form.bill) throw new Error('Supplier invoice file is required.');
+  if (!['Cash', 'Bank', 'Credit'].includes(form.paymentType)) throw new Error('Choose a payment type.');
+  if (form.paymentType !== 'Credit' && !form.accountId) throw new Error('Choose a Cash/Bank account.');
   const qty = Number(purchase.quantity);
   const actualCost = Number(form.unitCost);
   if (qty * actualCost > Number(purchase.quotedTotal)) throw new Error('Actual amount exceeds approved quote.');
@@ -450,7 +454,9 @@ export const completeOutsideJobPart = async (jobId, purchaseId, form) => {
     ...purchase, status: 'Purchased', invoiceNo: form.invoiceNo,
     unitCost: String(actualCost), totalCost: (qty * actualCost).toFixed(2),
     totalSelling: (qty * Number(purchase.sellingPrice)).toFixed(2),
-    usedAt: now(), billId: 'demo-upload'
+    paymentType: form.paymentType, accountId: form.accountId || '',
+    paidAmount: form.paymentType === 'Credit' ? '0.00' : (qty * actualCost).toFixed(2),
+    expenseId: 'demo-expense', usedAt: now(), billId: 'demo-upload'
   };
   await jobService.updateJob(jobId, {
     partsWorkflow: { ...old, outsideParts: old.outsideParts.map((item) => item.id === purchaseId ? result : item) }
