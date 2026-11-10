@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { stockCatalogService } from '../../services/stockCatalog.service';
 import { invoiceLineTaxChoices, invoiceTotalRateFromChoice, invoiceChoiceFromTotalRate } from '../../utils/invoiceTaxUi';
+import { FINANCE_CHANNELS, accountChannel, financeAccountsForChannel } from '../../utils/financeCashBank';
 import '../../styles/supplier-purchase-flow.css';
 
 const rupees = value => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(value || 0));
@@ -29,7 +31,7 @@ const choices = invoiceLineTaxChoices('unknown');
 const totalRate = row => row.gstChoice === 'none' ? 0 :
   row.gstChoice === 'custom' ? n(row.customTax) : n(invoiceTotalRateFromChoice(row.gstChoice));
 // Supplier bills use the same two Cash/Bank channels as Finance Management.
-const accountMethod = account => account?.kind === 'Cash' ? 'Cash' : 'Bank';
+const accountMethod = account => accountChannel(account?.kind);
 const getErrorText = error => {
   const data = error?.response?.data || error?.data || {};
   if (typeof data === 'string') return data;
@@ -44,6 +46,9 @@ export default function SupplierPurchaseFlow({
 }) {
   const [stock, setStock] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const accountBalanceShown = account => account.recordedBalance != null
+    ? ' · ' + rupees(account.recordedBalance) + ' available'
+    : '';
   const [states, setStates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -60,7 +65,7 @@ export default function SupplierPurchaseFlow({
   const [invoiceNumber, setInvoiceNumber] = useState(purchaseReference);
   const [placeOfSupply, setPlaceOfSupply] = useState('');
   const [splits, setSplits] = useState([]);
-  const [settlement, setSettlement] = useState({ amount: '', accountId: '', reference: '' });
+  const [settlement, setSettlement] = useState({ amount: '', channel: '', accountId: '', reference: '' });
   const [settling, setSettling] = useState(false);
   const settleKey = useRef(requestKey());
 
@@ -75,7 +80,8 @@ export default function SupplierPurchaseFlow({
       supplierFinanceService.getGSTOptions(),
     ]);
     setStock(items);
-    setAccounts(moneyAccounts.filter(account => account.isActive && ['Cash', 'Bank', 'UPI'].includes(account.kind)));
+    setAccounts(moneyAccounts.filter(account => account.isActive &&
+      accountChannel(account.kind)));
     setStates(gst.states || []);
   };
   useEffect(() => {
@@ -86,7 +92,7 @@ export default function SupplierPurchaseFlow({
       .then(([items, moneyAccounts, gst]) => {
         if (!alive) return;
         setStock(items);
-        setAccounts(moneyAccounts.filter(a => a.isActive && ['Cash', 'Bank', 'UPI'].includes(a.kind)));
+        setAccounts(moneyAccounts.filter(a => a.isActive && accountChannel(a.kind)));
         setStates(gst.states || []);
       })
       .catch(cause => { if (alive) setError(getErrorText(cause)); })
@@ -135,6 +141,15 @@ export default function SupplierPurchaseFlow({
   const total = costRows.reduce((sum, row) => sum + row.total, 0);
   const paidNow = splits.reduce((sum, row) => sum + n(row.amount), 0);
   const remaining = Math.max(0, total - paidNow);
+  const supplierStateCode = String(supplier.gstNo || supplier.gstin || '').slice(0, 2);
+  const gstBreakup = placeOfSupply && /^\d{2}$/.test(supplierStateCode)
+    ? (placeOfSupply === supplierStateCode
+      ? { mode: 'Intra-state', cgst: Math.round(tax * 50) / 100,
+          sgst: Math.round(tax * 100 - Math.round(tax * 50)) / 100, igst: 0 }
+      : { mode: 'Inter-state', cgst: 0, sgst: 0, igst: tax })
+    : null;
+  // Preview only. The backend validates and persists the official supplier
+  // purchase GST components when the posted bill is created.
 
   const selectItem = value => {
     const item = stock.find(row => String(row.id) === String(value));
@@ -222,6 +237,14 @@ export default function SupplierPurchaseFlow({
   };
 
   const changeSplit = (index, changes) => setSplits(rows => rows.map((row, i) => i === index ? { ...row, ...changes } : row));
+  const addPaymentChannel = channel => {
+    if (!FINANCE_CHANNELS.includes(channel) || splits.length >= 5) return;
+    const matching = financeAccountsForChannel(accounts, channel);
+    setSplits(existing => [...existing, {
+      id: requestKey(), channel, accountId: matching.length === 1 ? String(matching[0].id) : '',
+      amount: '', reference: '',
+    }]);
+  };
 
   const finishPurchase = async () => {
     if (posting || parts.length === 0) return;
@@ -254,7 +277,9 @@ export default function SupplierPurchaseFlow({
     const accountTotals = new Map();
     for (const row of splits) {
       const account = accounts.find(a => String(a.id) === row.accountId);
-      if (!account || !Number.isFinite(Number(row.amount)) ||
+      if (!account || !FINANCE_CHANNELS.includes(row.channel) ||
+        accountChannel(account.kind) !== row.channel ||
+        !Number.isFinite(Number(row.amount)) ||
         n(row.amount) <= 0 || !/^\d+(?:\.\d{1,2})?$/.test(String(row.amount))) {
         setError('Every Cash/Bank split needs a valid account and amount.'); return;
       }
@@ -262,7 +287,7 @@ export default function SupplierPurchaseFlow({
     }
     for (const [id, value] of accountTotals.entries()) {
       const account = accounts.find(a => String(a.id) === id);
-      if (n(account.recordedBalance) + 0.0001 < value) {
+      if (account.recordedBalance != null && n(account.recordedBalance) + 0.0001 < value) {
         setError('Insufficient recorded balance in ' + account.name + '.'); return;
       }
     }
@@ -307,12 +332,14 @@ export default function SupplierPurchaseFlow({
     setError('');
     const amount = Number(settlement.amount);
     const account = accounts.find(a => String(a.id) === String(settlement.accountId));
-    if (!account || !Number.isFinite(amount) || amount <= 0 ||
+    if (!account || !FINANCE_CHANNELS.includes(settlement.channel) ||
+      accountChannel(account.kind) !== settlement.channel ||
+      !Number.isFinite(amount) || amount <= 0 ||
       !/^\d+(?:\.\d{1,2})?$/.test(String(settlement.amount)) ||
       amount > remainingSupplier + 0.001) {
       setError('Select an account and amount within the outstanding supplier credit.'); return;
     }
-    if (amount > n(account.recordedBalance) + 0.001) {
+    if (account.recordedBalance != null && amount > n(account.recordedBalance) + 0.001) {
       setError('Insufficient recorded account balance.'); return;
     }
     let toAllocate = Math.round(amount * 100);
@@ -334,7 +361,7 @@ export default function SupplierPurchaseFlow({
         allocations, idempotencyKey: settleKey.current,
       });
       settleKey.current = requestKey();
-      setSettlement({ amount: '', accountId: '', reference: '' });
+      setSettlement({ amount: '', channel: '', accountId: '', reference: '' });
       await Promise.resolve(onChanged());
       await reload();
     } catch (cause) { setError(getErrorText(cause)); }
@@ -484,16 +511,45 @@ export default function SupplierPurchaseFlow({
                   <div><span>Pay Now</span><strong>{rupees(paidNow)}</strong></div>
                   <div><span>Supplier Credit (Due)</span><strong>{rupees(remaining)}</strong></div>
                 </div>
+                {gstBreakup && <div className="cg-supplier-gst-breakup" role="status">
+                  <strong>{gstBreakup.mode} GST estimate</strong>
+                  <span>CGST {rupees(gstBreakup.cgst)}</span>
+                  <span>{['04', '26', '31', '35', '38'].includes(placeOfSupply) ? 'UTGST' : 'SGST'} {rupees(gstBreakup.sgst)}</span>
+                  <span>IGST {rupees(gstBreakup.igst)}</span>
+                  <small>Final statutory GST is calculated and verified by Django when the purchase bill is posted.</small>
+                </div>}
                 <h3>How are you paying the supplier?</h3>
-                <p className="cg-supplier-purchase-muted">No payment = full credit. Choose Cash or Bank accounts below; multiple payments are supported.</p>
+                <p className="cg-supplier-purchase-muted">No payment = full credit. Choose Cash in Hand or Bank accounts below; multiple payments and partial credit are supported.</p>
+                <div className="cg-supplier-payment-channel-actions" aria-label="Choose payment method">
+                  <button type="button" onClick={() => setSplits([])} disabled={!splits.length || posting}>
+                    Full Credit · Pay Later
+                  </button>
+                  <button type="button" onClick={() => addPaymentChannel('Cash')} disabled={splits.length >= 5 || posting}>
+                    + Cash in Hand
+                  </button>
+                  <button type="button" onClick={() => addPaymentChannel('Bank')} disabled={splits.length >= 5 || posting}>
+                    + Bank Payment
+                  </button>
+                </div>
+                {splits.length > 0 && <p className="cg-supplier-purchase-muted">
+                  Pay full or partial now. Outstanding credit after these payments: <strong>{rupees(remaining)}</strong>
+                </p>}
                 {splits.map((row, index) => (
                   <div className="cg-supplier-purchase-split" key={row.id}>
-                    <label>Payment account
+                    <label>Payment method *
+                      <select className={fieldClass} value={row.channel || ''}
+                        onChange={e => changeSplit(index, { channel: e.target.value, accountId: '' })}>
+                        <option value="">Select method</option>
+                        <option value="Cash">Cash in Hand</option>
+                        <option value="Bank">Bank</option>
+                      </select>
+                    </label>
+                    <label>Cash / Bank account *
                       <select className={fieldClass} value={row.accountId}
                         onChange={e => changeSplit(index, { accountId: e.target.value })}>
-                        <option value="">Select account</option>
-                        {accounts.map(account => <option key={account.id} value={account.id}>
-                          {account.name} ({accountMethod(account)}) · {rupees(account.recordedBalance)}
+                        <option value="">Select {row.channel === 'Cash' ? 'Cash in Hand' : row.channel === 'Bank' ? 'Bank' : 'payment method'} account</option>
+                        {financeAccountsForChannel(accounts, row.channel).map(account => <option key={account.id} value={account.id}>
+                          {account.name} ({accountMethod(account)}){accountBalanceShown(account)}
                         </option>)}
                       </select>
                     </label>
@@ -510,7 +566,7 @@ export default function SupplierPurchaseFlow({
                 ))}
                 <div className="cg-supplier-purchase-actions">
                   <button type="button" disabled={splits.length >= 5}
-                    onClick={() => setSplits(existing => [...existing, { id: requestKey(), accountId: '', amount: '', reference: '' }])}>
+                    onClick={() => addPaymentChannel('Cash')}>
                     + Add Cash / Bank Payment
                   </button>
                   <button type="button" className="primary" disabled={posting || parts.length === 0}
@@ -518,6 +574,10 @@ export default function SupplierPurchaseFlow({
                     {posting ? 'Posting…' : 'Confirm Purchase & Payment'}
                   </button>
                 </div>
+                {!accounts.length && <p role="alert" className="cg-supplier-purchase-muted">
+                  No active Cash/Bank account found. <Link to="/finance/accounts">Create a Cash or Bank account</Link>,
+                  or record this purchase as supplier credit.
+                </p>}
                 <p className="cg-supplier-purchase-muted">
                   Confirm posts stock, supplier bill, payment splits and remaining credit together.
                   Do not enter the same supplier purchase again under Expenses or generic Payments.
@@ -541,12 +601,20 @@ export default function SupplierPurchaseFlow({
                 <input className={fieldClass} type="number" min="0.01" max={fixed(remainingSupplier)} step="0.01"
                   value={settlement.amount} onChange={e => setSettlement(old => ({ ...old, amount: e.target.value }))}/>
               </label>
+              <label>Payment method *
+                <select className={fieldClass} value={settlement.channel}
+                  onChange={e => setSettlement(old => ({ ...old, channel: e.target.value, accountId: '' }))}>
+                  <option value="">Select method</option>
+                  <option value="Cash">Cash in Hand</option>
+                  <option value="Bank">Bank</option>
+                </select>
+              </label>
               <label>Cash / Bank account *
                 <select className={fieldClass} value={settlement.accountId}
                   onChange={e => setSettlement(old => ({ ...old, accountId: e.target.value }))}>
-                  <option value="">Select account</option>
-                  {accounts.map(account => <option key={account.id} value={account.id}>
-                    {account.name} ({accountMethod(account)}) · {rupees(account.recordedBalance)}
+                  <option value="">Select {settlement.channel || 'payment method'} account</option>
+                  {financeAccountsForChannel(accounts, settlement.channel).map(account => <option key={account.id} value={account.id}>
+                    {account.name} ({accountMethod(account)}){accountBalanceShown(account)}
                   </option>)}
                 </select>
               </label>
@@ -559,7 +627,7 @@ export default function SupplierPurchaseFlow({
                 Remaining credit after this payment: {rupees(Math.max(0, remainingSupplier - n(settlement.amount)))}
               </p>
               <div className="wide cg-supplier-purchase-actions">
-                <button type="submit" className="primary" disabled={settling || !settlement.amount || !settlement.accountId}>
+                <button type="submit" className="primary" disabled={settling || !settlement.amount || !settlement.accountId || !settlement.channel}>
                   {settling ? 'Recording…' : 'Confirm Supplier Payment'}
                 </button>
               </div>
