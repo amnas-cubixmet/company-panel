@@ -309,7 +309,7 @@ export default function SuppliersPage({ section = 'all' }) {
       setBalancesError(cause?.message || 'Unable to load supplier credit balances.');
     });
     return () => { active = false; };
-  }, [canViewFinance]);
+  }, [canViewFinance, id]);
 
   useEffect(() => {
     if (!canViewFinance || !purchaseView || USE_MOCK_API) {
@@ -328,6 +328,18 @@ export default function SuppliersPage({ section = 'all' }) {
     });
     return () => { active = false; };
   }, [canViewFinance, purchaseView]);
+
+  const supplierBalanceTotals = useMemo(() => {
+    if (!creditBalances) return null;
+    const rows = [...creditBalances.values()];
+    return {
+      totalOutstanding: rows.reduce((sum, row) => sum + Number(row.outstanding || 0), 0),
+      overdue: rows.reduce((sum, row) => sum + Number(row.overdue || 0), 0),
+      availableCredits: rows.reduce((sum, row) =>
+        sum + Number(row.availableAdvance || 0) + Number(row.availableDebitCredit || 0), 0),
+      supplierCountWithDue: rows.filter(row => Number(row.outstanding || 0) > 0).length,
+    };
+  }, [creditBalances]);
 
   const matches = useMemo(() => {
     const needle=search.trim().toLowerCase();
@@ -446,6 +458,13 @@ export default function SuppliersPage({ section = 'all' }) {
         </label>
         <span>{matches.length} suppliers</span>
       </div>
+      {canViewFinance && <section className="cg-supplier-credit-overview" aria-label="Supplier outstanding and credits">
+        <div><span>Total Supplier Credit Due</span><strong>{supplierBalanceTotals ? money(supplierBalanceTotals.totalOutstanding) : 'Unavailable'}</strong></div>
+        <div><span>Overdue</span><strong>{supplierBalanceTotals ? money(supplierBalanceTotals.overdue) : 'Unavailable'}</strong></div>
+        <div><span>Available Advances & Debit Credits</span><strong>{supplierBalanceTotals ? money(supplierBalanceTotals.availableCredits) : 'Unavailable'}</strong></div>
+        <div><span>Suppliers With Outstanding</span><strong>{supplierBalanceTotals ? supplierBalanceTotals.supplierCountWithDue : 'Unavailable'}</strong></div>
+      </section>}
+      {canViewFinance && balancesError && <p role="alert" className="cg-supplier-error">{balancesError}</p>}
       <div className="cg-supplier-directory-heading">
         <div><h2>All Suppliers</h2>
           <span className="cg-supplier-directory-count">{loading ? '—' : matches.length + ' / ' + suppliers.length}</span>
@@ -460,7 +479,8 @@ export default function SuppliersPage({ section = 'all' }) {
                 <th scope="col">Phone / WhatsApp</th>
                 <th scope="col">Contact Person</th>
                 <th scope="col">GSTIN</th>
-                {canViewFinance && <th scope="col">Outstanding</th>}
+                {canViewFinance && <th scope="col">Credit Outstanding</th>}
+                {canViewFinance && <th scope="col">Available Credits</th>}
                 <th scope="col">Status</th>
                 <th scope="col" className="cg-supplier-actions-col">Actions</th>
               </tr></thead>
@@ -470,6 +490,12 @@ export default function SuppliersPage({ section = 'all' }) {
                 const gstin = asText(row.gstNo || row.gstin);
                 const person = asText(row.contact_person || row.contactPerson);
                 const balance = creditBalances?.get(String(row.id));
+              const availableCredit = balance
+                ? Number(balance.availableAdvance || 0) + Number(balance.availableDebitCredit || 0)
+                : null;
+                const availableCredit = balance
+                  ? Number(balance.availableAdvance || 0) + Number(balance.availableDebitCredit || 0)
+                  : null;
                 return <tr key={row.id}>
                   <td><Link className="cg-supplier-name-link" to={'/suppliers/' + encodeURIComponent(row.id)} title={name}>{name}</Link>
                     {row.email && <span className="cg-supplier-secondary-text" title={row.email}>{row.email}</span>}
@@ -479,12 +505,16 @@ export default function SuppliersPage({ section = 'all' }) {
                   </td>
                   <td>{person || '—'}</td>
                   <td><span className="cg-supplier-gstin-cell" title={gstin || undefined}>{gstin || '—'}</span></td>
-                  {canViewFinance && <td><strong className={'cg-supplier-balance' + (creditBalances && Number(balance ?? 0) > 0 ? ' has-due' : '')}>
-                    {creditBalances ? money(balance ?? 0) : 'Unavailable'}
+                  {canViewFinance && <td><strong className={'cg-supplier-balance' + (Number(balance?.outstanding || 0) > 0 ? ' has-due' : '')}>
+                    {money(balance?.outstanding)}
+                  </strong></td>}
+                  {canViewFinance && <td><strong className="cg-supplier-balance">
+                    {money(availableCredit)}
                   </strong></td>}
                   <td><span className={row.is_active === false ? 'cg-supplier-directory-status inactive' : 'cg-supplier-directory-status'}>{status(row)}</span></td>
                   <td><span className="cg-supplier-row-actions">
                     <Link className="cg-supplier-row-view" to={'/suppliers/' + encodeURIComponent(row.id)}>View</Link>
+                    {canViewFinance && <Link className="cg-supplier-row-view" to={'/suppliers/' + encodeURIComponent(row.id) + '#supplier-transactions'}>Transactions</Link>}
                     {canEdit && <button type="button" className="cg-supplier-row-edit" aria-label={'Edit ' + name}
                       title={'Edit ' + name} onClick={() => setEditor(row)}><Pencil size={15} aria-hidden="true"/></button>}
                   </span></td>
@@ -498,6 +528,9 @@ export default function SuppliersPage({ section = 'all' }) {
               const gstin = asText(row.gstNo || row.gstin);
               const person = asText(row.contact_person || row.contactPerson);
               const balance = creditBalances?.get(String(row.id));
+              const availableCredit = balance
+                ? Number(balance.availableAdvance || 0) + Number(balance.availableDebitCredit || 0)
+                : null;
               return <article className="cg-supplier-mobile-entry" key={row.id}>
                 <header className="cg-supplier-mobile-head">
                   <div><Link className="cg-supplier-name-link" to={'/suppliers/' + encodeURIComponent(row.id)}>{name}</Link>
@@ -507,15 +540,17 @@ export default function SuppliersPage({ section = 'all' }) {
                 <div className="cg-supplier-mobile-details">
                   <div><span>Contact Person</span><strong>{person || '—'}</strong></div>
                   <div><span>GSTIN</span><strong>{gstin || '—'}</strong></div>
-                  {canViewFinance && <div><span>Outstanding</span><strong className={'cg-supplier-balance' + (creditBalances && Number(balance ?? 0) > 0 ? ' has-due' : '')}>
-                    {creditBalances ? money(balance ?? 0) : 'Unavailable'}
+                  {canViewFinance && <div><span>Credit Outstanding</span><strong className={'cg-supplier-balance' + (Number(balance?.outstanding || 0) > 0 ? ' has-due' : '')}>
+                    {money(balance?.outstanding)}
                   </strong></div>}
+                  {canViewFinance && <div><span>Available Credits</span><strong className="cg-supplier-balance">{money(availableCredit)}</strong></div>}
                 </div>
                 <div className="cg-supplier-mobile-bottom">
                   <div><span className="cg-supplier-directory-phone">{asText(row.phone) || 'No phone number'}</span>
                     <SupplierContactActions supplier={row}/></div>
                   <span className="cg-supplier-row-actions">
                     <Link className="cg-supplier-row-view" to={'/suppliers/' + encodeURIComponent(row.id)}>View</Link>
+                    {canViewFinance && <Link className="cg-supplier-row-view" to={'/suppliers/' + encodeURIComponent(row.id) + '#supplier-transactions'}>Transactions</Link>}
                     {canEdit && <button type="button" className="cg-supplier-row-edit" aria-label={'Edit ' + name}
                       title={'Edit ' + name} onClick={() => setEditor(row)}><Pencil size={15} aria-hidden="true"/></button>}
                   </span>
@@ -612,7 +647,8 @@ export default function SuppliersPage({ section = 'all' }) {
           Credit outstanding: <strong>{supplierFinancials
             ? money(supplierFinancials.outstanding)
             : 'Loading / Unavailable'}</strong>
-          <a href="#supplier-pay-now" style={{ marginLeft: 12, color: 'var(--primary)' }}>Pay / Settle Credit</a>
+          {canPaySupplier && <a href="#supplier-pay-now" style={{ marginLeft: 12, color: 'var(--primary)' }}>Pay / Settle Credit</a>}
+          <a href="#supplier-transactions" style={{ marginLeft: 12, color: 'var(--primary)' }}>View Transactions</a>
         </div>}
         <div className="cg-supplier-contacts">
           {supplier.phone&&<a href={'tel:'+String(supplier.phone).replace(/[^\d+]/g,'')}><Phone size={15}/> Call</a>}
