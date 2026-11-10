@@ -401,10 +401,14 @@ export const ServiceList = () => {
 
   const saveService = async (event) => {
     event.preventDefault();
+    if (submitting || !canCreate && !isEdit || isEdit && !canEdit) return;
+    setFormError('');
     setSubmitting(true);
     try {
       const payload = {
         ...form,
+        code: form.code.trim().toUpperCase(),
+        name: form.name.trim(),
         price: Number(form.price || 0),
         durationMinutes: Number(form.durationMinutes || 0),
         checklist: form.checklistText
@@ -412,22 +416,44 @@ export const ServiceList = () => {
           .map((item)=>item.trim())
           .filter(Boolean)
       };
-
+      if (!payload.code || !payload.name || !payload.categoryId) {
+        setFormError('Enter a service code, name and category before saving.');
+        return;
+      }
+      if (!Number.isFinite(payload.price) || payload.price < 0 ||
+          !Number.isFinite(payload.durationMinutes) || payload.durationMinutes < 0) {
+        setFormError('Charge and duration must be valid, non-negative numbers.');
+        return;
+      }
       if (isEdit && id) {
         await serviceService.updateService(id, payload);
-        navigate(`/services/${id}`);
       } else {
-        const created = await serviceService.createService(payload);
-        navigate(created?.id ? `/services/${created.id}` : '/services');
+        await serviceService.createService(payload);
       }
+      setFormDirty(false);
+      await load();
+      navigate('/services', { state: { serviceNotice: isEdit ? 'Service updated successfully.' : 'New service added successfully.' } });
+    } catch (error) {
+      setFormError(error?.message || 'Unable to save the service. Review the details and retry.');
     } finally {
       setSubmitting(false);
     }
   };
 
+  const openCategoryDialog = (category = null, parentId = '') => {
+    setEditingCategoryId(category?.id || null);
+    setCategoryForm(category
+      ? { name: category.name || '', description: category.description || '',
+          parentId: category.parentId || '', status: category.status || 'active' }
+      : { ...emptyCategory, parentId: parentId || '' });
+    setCategoryError('');
+    setCategoryDialogOpen(true);
+  };
+
   const closeCategoryDialog = () => {
     if (categorySaving) return;
     setCategoryDialogOpen(false);
+    setEditingCategoryId(null);
     setCategoryForm(emptyCategory);
     setCategoryError('');
   };
@@ -438,14 +464,25 @@ export const ServiceList = () => {
     setCategoryError('');
     setCategorySaving(true);
     try {
-      await serviceService.createServiceCategory({
+      const payload = {
         ...categoryForm,
         name: categoryForm.name.trim(),
         parentId: categoryForm.parentId || '',
-      });
+      };
+      if (!payload.name) {
+        setCategoryError('Please enter a category name.');
+        return;
+      }
+      if (editingCategoryId) {
+        await serviceService.updateServiceCategory(editingCategoryId, payload);
+      } else {
+        await serviceService.createServiceCategory(payload);
+      }
       setCategories(await serviceService.getServiceCategories());
       setCategoryDialogOpen(false);
+      setEditingCategoryId(null);
       setCategoryForm(emptyCategory);
+      setNotice(editingCategoryId ? 'Category updated.' : 'Category created.');
     } catch (error) {
       setCategoryError(error?.message || 'Unable to add category.');
     } finally {
@@ -454,9 +491,34 @@ export const ServiceList = () => {
   };
 
   const deleteService = async (service) => {
-    if (!await appConfirm(`Delete service ${service.name}?`)) return;
-    await serviceService.deleteService(service.id);
-    await load();
+    if (!service || deleting || !canDelete) return;
+    setActionError('');
+    setDeleting(true);
+    try {
+      await serviceService.deleteService(service.id);
+      await load();
+      navigate('/services', { state: { serviceNotice: `${service.name} deleted.` } });
+    } catch (error) {
+      setActionError(error?.message || 'Could not delete this service. It may be used on an existing job.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const deleteCategory = async (category) => {
+    if (!canDelete || !await appConfirm(`Delete category "${category.name}"? Categories with services or subcategories cannot be deleted.`, {
+      title: 'Delete category?',
+      confirmLabel: 'Delete category',
+      tone: 'danger',
+    })) return;
+    try {
+      await serviceService.deleteServiceCategory(category.id);
+      setCategories(await serviceService.getServiceCategories());
+      setNotice('Category deleted.');
+      setActionError('');
+    } catch (error) {
+      setActionError(error?.message || 'Could not delete this category.');
+    }
   };
 
 
