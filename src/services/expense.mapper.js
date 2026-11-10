@@ -74,7 +74,9 @@ export const expenseToApiPayload = (values = {}) => {
     attachment: receiptUrl,
     status: values.status || 'approved',
     ...(values.accountId ? { account: values.accountId } : {}),
-    budget_item: values.budgetItemId || null,
+    ...(Object.prototype.hasOwnProperty.call(values, 'budgetItemId')
+      ? { budget_item: values.budgetItemId || null }
+      : {}),
     ...(values.requestKey ? { idempotencyKey: values.requestKey } : {}),
   };
 };
