@@ -17,6 +17,14 @@ const team = read('src/components/staff-management/StaffTeamsSection.jsx');
 const shift = read('src/pages/staff-management/StaffShiftCrud.jsx');
 const validation = read('src/utils/formValidation.js');
 
+test('Add Staff defaults WhatsApp consent on and selects In person for new staff', () => {
+  assert.match(add, /DEFAULT_WHATSAPP_CONSENT_SOURCE = 'Staff consented in person during onboarding'/);
+  assert.match(add, /whatsappConsent: true, whatsappConsentSource: DEFAULT_WHATSAPP_CONSENT_SOURCE/);
+  assert.match(add, /whatsappConsent: event\.target\.checked/);
+  assert.match(add, /current\.whatsappConsentSource \|\| DEFAULT_WHATSAPP_CONSENT_SOURCE/);
+  assert.match(add, /setForm\(emptyStaff\(canManageLogins\)\)/);
+});
+
 test('Add Staff has only essential workshop fields and a compact consent control', () => {
   assert.match(add, /Full Name \*/);
   assert.match(add, /Mobile Number with Country Code \*/);

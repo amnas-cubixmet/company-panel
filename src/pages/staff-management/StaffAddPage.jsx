@@ -21,9 +21,10 @@ const staffCountryCodes = [
   { code: '+973', country: 'Bahrain', flag: '🇧🇭', digits: 8 },
 ];
 const statuses = ['Active', 'Probation', 'Notice Period', 'Inactive', 'Suspended', 'Resigned', 'Terminated'];
+const DEFAULT_WHATSAPP_CONSENT_SOURCE = 'Staff consented in person during onboarding';
 const consentSources = [
   { value: '', label: 'Choose consent source' },
-  { value: 'Staff consented in person during onboarding', label: 'In person' },
+  { value: DEFAULT_WHATSAPP_CONSENT_SOURCE, label: 'In person' },
   { value: 'Signed staff WhatsApp consent form', label: 'Signed consent form' },
   { value: 'Staff consented through approved digital form', label: 'Approved digital form' },
 ];
@@ -31,7 +32,7 @@ const consentSources = [
 const emptyStaff = (loginEnabled) => ({
   name: '', phone: '', branchId: '', roleId: '', role: '',
   employmentStatus: 'Active', loginAccessEnabled: loginEnabled,
-  whatsappConsent: false, whatsappConsentSource: '',
+  whatsappConsent: true, whatsappConsentSource: DEFAULT_WHATSAPP_CONSENT_SOURCE,
 });
 
 export const StaffAddPage = () => {
@@ -283,7 +284,8 @@ export const StaffAddPage = () => {
               <input type="checkbox" checked={form.whatsappConsent} onChange={event => setForm(current => ({
                 ...current,
                 whatsappConsent: event.target.checked,
-                whatsappConsentSource: event.target.checked ? current.whatsappConsentSource : '',
+                whatsappConsentSource: event.target.checked
+                  ? (current.whatsappConsentSource || DEFAULT_WHATSAPP_CONSENT_SOURCE) : '',
               }))}/>
               Staff agreed to receive manual WhatsApp setup links
             </label>
