@@ -125,7 +125,13 @@ export function FinanceDashboard() {
                 onClick={() => navigate(`/finance/accounts/${acc.id}`)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={e => e.key === 'Enter' && navigate(`/finance/accounts/${acc.id}`)}
+                aria-label={`View account ${acc.name}`}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate(`/finance/accounts/${acc.id}`);
+                  }
+                }
               >
                 <div className="finance-account-top">
                   <span className={`finance-account-badge finance-account-${String(acc.kind || 'Other').toLowerCase()}`}>{acc.kind || 'Other'}</span>
