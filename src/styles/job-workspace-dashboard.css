@@ -2291,3 +2291,41 @@
     min-height:44px;flex:1 1 120px;
   }
 }
+
+/* Customer selling charges are shown separately from real costs. */
+.cg-job-detail.job-workspace-dashboard .job-total-customer-service {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:12px;
+  padding:12px 14px;
+  border:1px solid var(--border);
+  border-radius:11px;
+  background:var(--surface-2);
+  color:var(--text-primary);
+}
+.cg-job-detail.job-workspace-dashboard .job-total-customer-service > div {
+  display:grid;
+  gap:3px;
+  min-width:0;
+}
+.cg-job-detail.job-workspace-dashboard .job-total-customer-service > div > strong {
+  font-size:14px;
+}
+.cg-job-detail.job-workspace-dashboard .job-total-customer-service small {
+  font-size:12px;
+  line-height:1.45;
+  color:var(--text-secondary);
+}
+.cg-job-detail.job-workspace-dashboard .job-total-customer-service > strong {
+  font-size:20px;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+@media(max-width:600px) {
+  .cg-job-detail.job-workspace-dashboard .job-total-customer-service {
+    padding:11px;
+  }
+  .cg-job-detail.job-workspace-dashboard .job-total-customer-service > strong {font-size:18px}
+}
