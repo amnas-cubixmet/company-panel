@@ -490,9 +490,6 @@ export default function SuppliersPage({ section = 'all' }) {
                 const gstin = asText(row.gstNo || row.gstin);
                 const person = asText(row.contact_person || row.contactPerson);
                 const balance = creditBalances?.get(String(row.id));
-              const availableCredit = balance
-                ? Number(balance.availableAdvance || 0) + Number(balance.availableDebitCredit || 0)
-                : null;
                 const availableCredit = balance
                   ? Number(balance.availableAdvance || 0) + Number(balance.availableDebitCredit || 0)
                   : null;
@@ -664,6 +661,49 @@ export default function SuppliersPage({ section = 'all' }) {
             onClick={() => setDeleteConfirmOpen(true)} className="cg-supplier-button">Delete Supplier</button>}
         </div>
       </section>
+      {canViewFinance && (
+        <section className="cg-supplier-profile" aria-label="Supplier credit and settlement">
+          <div className="cg-supplier-profile-head">
+            <CreditCard size={20}/><h2>Supplier Credit, Balance & Transactions</h2>
+          </div>
+          {supplierFinanceError && <p className="cg-supplier-error" role="alert">{supplierFinanceError}</p>}
+          {supplierFinancials && (
+            <div className="cg-supplier-fields">
+              <div><span>Total Posted Purchases</span><strong>{money(supplierFinancials.totalPurchases)}</strong></div>
+              <div><span>Paid Against Bills</span><strong>{money(supplierFinancials.totalPaymentsApplied)}</strong></div>
+              <div><span>Remaining Credit</span><strong>{money(supplierFinancials.outstanding)}</strong></div>
+              <div><span>Overdue Payable</span><strong>{money(supplierFinancials.overdue)}</strong></div>
+              <div><span>Unapplied Advances</span><strong>{money(supplierFinancials.availableAdvance)}</strong></div>
+              <div><span>Purchase Returns</span><strong>{money(supplierFinancials.totalReturns)}</strong></div>
+              <div><span>Debit Note Credit Available</span><strong>{money(supplierFinancials.availableDebitCredit)}</strong></div>
+              <div><span>Net After Available Credits</span><strong>{money(supplierFinancials.netExposureAfterAvailableCredits)}</strong></div>
+            </div>
+          )}
+          <p>Supplier credit comes from posted purchase bills, not draft purchase orders. Each payment posts once to the selected Cash or Bank account.</p>
+          <SupplierAccountStatement
+            supplier={supplier}
+            ledger={supplierLedger}
+            loading={supplierLedgerLoading}
+            error={supplierFinanceError}
+            onRefresh={() => refreshSupplierDetails().catch(error =>
+              setSupplierFinanceError(error?.message || 'Unable to refresh supplier transactions.'))}
+          />
+          <h3>Purchase Bills</h3>
+          {supplierBills.filter(b => b.postingStatus === 'Posted').map(bill => (
+            <div key={bill.id} className="cg-supplier-record">
+              <div><strong>{bill.invoiceNumber}</strong>
+                <small>{bill.postedAt
+                  ? new Date(bill.postedAt).toLocaleString('en-IN')
+                  : bill.invoiceDate} · Paid {money(bill.paid)} · {bill.status}</small>
+                <small>{bill.items?.map(item => item.description).join(', ') || 'Supplier purchase'} · Bought by {bill.purchasedBy || 'Workshop staff'}</small>
+              </div>
+              <b>Due {money(bill.outstanding)}</b>
+            </div>
+          ))}
+          {!supplierBills.length && <p className="cg-supplier-empty">No supplier purchase bills recorded.</p>}
+
+        </section>
+      )}
       {(canCreatePurchase || canPaySupplier) && (
         <SupplierPurchaseFlow
           supplier={supplier}
@@ -683,49 +723,6 @@ export default function SuppliersPage({ section = 'all' }) {
           canPay={canPaySupplier}
           onChanged={refreshSupplierDetails}
         />
-      )}
-      {canViewFinance && (
-        <section className="cg-supplier-profile" aria-label="Supplier credit and settlement">
-          <div className="cg-supplier-profile-head">
-            <CreditCard size={20}/><h2>Supplier Accounts & Payments</h2>
-          </div>
-          {supplierFinanceError && <p className="cg-supplier-error" role="alert">{supplierFinanceError}</p>}
-          {supplierFinancials && (
-            <div className="cg-supplier-fields">
-              <div><span>Total Posted Purchases</span><strong>{money(supplierFinancials.totalPurchases)}</strong></div>
-              <div><span>Paid Against Bills</span><strong>{money(supplierFinancials.totalPaymentsApplied)}</strong></div>
-              <div><span>Remaining Credit</span><strong>{money(supplierFinancials.outstanding)}</strong></div>
-              <div><span>Unapplied Advances</span><strong>{money(supplierFinancials.availableAdvance)}</strong></div>
-              <div><span>Purchase Returns</span><strong>{money(supplierFinancials.totalReturns)}</strong></div>
-              <div><span>Debit Note Credit Available</span><strong>{money(supplierFinancials.availableDebitCredit)}</strong></div>
-            </div>
-          )}
-          <p>Purchase and payment actions are available above on this Supplier page.</p>
-          <h3>Purchase Bills</h3>
-          {supplierBills.filter(b => b.postingStatus === 'Posted').map(bill => (
-            <div key={bill.id} className="cg-supplier-record">
-              <div><strong>{bill.invoiceNumber}</strong>
-                <small>{bill.postedAt
-                  ? new Date(bill.postedAt).toLocaleString('en-IN')
-                  : bill.invoiceDate} · Paid {money(bill.paid)} · {bill.status}</small>
-                <small>{bill.items?.map(item => item.description).join(', ') || 'Supplier purchase'} · Bought by {bill.purchasedBy || 'Workshop staff'}</small>
-              </div>
-              <b>Due {money(bill.outstanding)}</b>
-            </div>
-          ))}
-          {!supplierBills.length && <p className="cg-supplier-empty">No supplier purchase bills recorded.</p>}
-          <h3>Payment History</h3>
-          {supplierPayments.map(payment => (
-            <div key={payment.id} className="cg-supplier-record">
-              <div><strong>{payment.kind} · {payment.method}</strong>
-                <small>{payment.createdAt
-                  ? new Date(payment.createdAt).toLocaleString('en-IN')
-                  : payment.paidOn} · {payment.billReferences?.join(', ') || payment.reference || 'Advance / Unallocated'}</small>
-              </div><b>{money(payment.amount)}</b>
-            </div>
-          ))}
-          {!supplierPayments.length && <p className="cg-supplier-empty">No supplier payments recorded.</p>}
-        </section>
       )}
       <div className="cg-supplier-details-grid">
         <section className="cg-supplier-profile">
