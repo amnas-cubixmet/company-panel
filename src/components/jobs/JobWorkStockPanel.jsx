@@ -15,10 +15,10 @@ const available = item => Math.max(0, num(item.available ?? (num(item.onHand) - 
 /** Stock entries are issued through Django's atomic Job.issue_part action.
  * Selecting/searching a part never deducts inventory.
  */
-export function JobWorkStockPanel({ jobId, issuedParts = [], onChanged, focusSearchToken = 0 }) {
+export function JobWorkStockPanel({ jobId, issuedParts = [], canEdit = true, onChanged, focusSearchToken = 0 }) {
   const { user } = useAuth();
   const canView = hasPermission(user, 'stock.view');
-  const canIssue = hasPermission(user, 'stock.edit') && hasPermission(user, 'jobs.edit');
+  const canIssue = canEdit && hasPermission(user, 'stock.edit') && hasPermission(user, 'jobs.edit');
   const [inventory, setInventory] = useState([]);
   const searchInputRef = useRef(null);
   useEffect(() => {
@@ -56,10 +56,12 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], onChanged, focusSea
 
   const matches = useMemo(() => {
     const term = lookup.trim().toLowerCase();
-    if (!term) return [];
-    return inventory.filter(item => [
+    const list = inventory.filter(item => !term || [
       item.partName, item.name, item.sku, item.barcode, item.brand,
-    ].some(value => String(value || '').toLowerCase().includes(term))).slice(0, 8);
+    ].some(value => String(value || '').toLowerCase().includes(term)));
+    // Make the add form useful without requiring a search first.
+    // The server remains authoritative for branch-specific stock on issue.
+    return (term ? list : [...list].sort((a, b) => Number(available(b) > 0) - Number(available(a) > 0))).slice(0, 8);
   }, [inventory, lookup]);
 
   const selected = inventory.find(item => String(item.id) === String(selectedId));
@@ -114,7 +116,7 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], onChanged, focusSea
           <span className="job-work-stock-icon" aria-hidden="true"><PackagePlus size={18}/></span>
           <div>
             <h3>Stock & Parts Used</h3>
-            
+            <p>Add parts from existing inventory and review stock issued to this job.</p>
           </div>
         </div>
         <button type="button" className="job-work-stock-refresh" onClick={refresh} disabled={loading || busy}>
@@ -125,8 +127,19 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], onChanged, focusSea
       {error && <p className="job-work-stock-error" role="alert">{error}</p>}
       {success && <p className="job-work-stock-success" role="status"><CheckCircle2 size={16} aria-hidden="true"/>{success}</p>}
 
+      {!canIssue && (
+        <p className="job-work-stock-note" role="status">
+          {canEdit
+            ? 'To add a part, your role needs both Jobs Edit and Stock Edit permissions.'
+            : 'Parts are read-only after the Work stage is locked or completed.'}
+        </p>
+      )}
       {canIssue && (
         <form className="job-work-stock-form" onSubmit={issue}>
+          <div className="job-work-stock-history-head">
+            <h4>Add Part to Job</h4>
+            <span>Select inventory item, enter quantity, then confirm stock issue.</span>
+          </div>
           <div className="job-work-stock-search-wrap">
             <label htmlFor="job-work-stock-search">Find Stock Item</label>
             <div className="job-work-stock-search">
@@ -135,7 +148,7 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], onChanged, focusSea
                 disabled={busy} placeholder="Search part name, SKU, barcode or brand"
                 onChange={event => { setLookup(event.target.value); setSelectedId(''); setSuccess(''); }}/>
             </div>
-            {lookup.trim() && !selected && (
+            {!selected && !loading && (
               <div className="job-work-stock-results" aria-label="Matching stock items">
                 {matches.length ? matches.map(item => (
                   <button type="button" key={item.id} disabled={busy}
@@ -147,7 +160,9 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], onChanged, focusSea
                       {available(item)} {item.unit || 'units'} available
                     </span>
                   </button>
-                )) : <p>No matching stock product. Add it on the Stock page first.</p>}
+                )) : <p>{lookup.trim()
+                  ? 'No matching stock product. Add it on the Stock page first.'
+                  : 'No stock items available. Create a product in Stock before adding parts to a job.'}</p>}
               </div>
             )}
           </div>
@@ -176,7 +191,7 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], onChanged, focusSea
               <PackageCheck size={17} aria-hidden="true"/> {busy ? 'Issuing…' : 'Issue Stock to Job'}
             </button>
           </div>
-          <p className="job-work-stock-note">Stock is deducted only after confirming Issue Stock.</p>
+          <p className="job-work-stock-note">Stock is deducted only after confirming Issue Stock. Available quantity is checked against this job's branch again when you issue.</p>
         </form>
       )}
 
