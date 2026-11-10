@@ -20,7 +20,7 @@ test('Supplier bill completion picks cash, bank or credit with actual account po
   assert.match(parts, /Payment Type/);
   assert.match(parts, /Pay From Account/);
   assert.match(parts, /financeService\.listAccounts/);
-  assert.match(parts, /account\.kind === paymentType/);
+  assert.match(parts, /row\.kind === paymentType/);
   assert.match(parts, /paymentType === 'Credit'/);
   assert.match(parts, /accountId/);
   assert.match(service, /payload\.append\('paymentType'/);
