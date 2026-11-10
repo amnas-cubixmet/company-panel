@@ -22,6 +22,7 @@ import { financeService } from '../../services/finance.service';
 import { jobPartsService } from '../../services/jobParts.service';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
+import { financeAccountsForChannel } from '../../utils/financeCashBank';
 
 const money = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -35,6 +36,7 @@ export function JobPartsWorkflow({ jobId, assignedTo = '', initialPanel = null }
   const { user } = useAuth();
   const canApproveOutside = hasPermission(user, 'jobs.view') && hasPermission(user, 'expenses.edit');
   const canCompleteOutside = hasPermission(user, 'jobs.edit') && hasPermission(user, 'expenses.edit');
+  const canPayOutside = hasPermission(user, 'payments.edit');
   const [data, setData] = useState({ lines: [], transactions: [], purchaseOrders: [], canComplete: true, blockingReasons: [] });
   const [stock, setStock] = useState([]);
   const [outsideParts, setOutsideParts] = useState([]);
@@ -410,10 +412,12 @@ export function JobPartsWorkflow({ jobId, assignedTo = '', initialPanel = null }
                     <span>{row.vendor} · Qty {row.quantity} {row.sku ? `· ${row.sku}` : ''}</span>
                     <small>{purchased ? (row.invoiceNo ? `Bill ${row.invoiceNo} · ` : '') + 'Purchased' : 'Supplier quotation pending workflow'} · Quoted {money.format(quotedTotal)}</small>
                     {purchased && row.expenseId && (
-                      <small>
-                        Purchase Expense: {money.format(row.totalCost)} · {row.paymentType === 'Credit' ?
-                          'Unpaid credit' : `Paid from ${row.paymentType === 'Bank' ? 'Bank / UPI' : 'Cash'}`}
-                        {' · '}<Link to={`/expenses/${row.expenseId}`}>View Expense</Link>
+                      <small className="job-outside-finance-record">
+                        Job Purchase: {money.format(row.totalCost)} · GST included {money.format(Number(row.purchaseGstAmount || 0))}
+                        {' · '}Paid {money.format(Number(row.paidAmount || 0))}
+                        {' · '}Credit Due {money.format(Number(row.balanceDue ??
+                          Math.max(0, Number(row.totalCost || 0) - Number(row.paidAmount || 0))))}
+                        {' · '}<Link to={`/finance/expenses/${row.expenseId}`}>Open Finance Expense</Link>
                       </small>
                     )}
                     <div className="job-parts-outside-controls">
@@ -480,6 +484,7 @@ export function JobPartsWorkflow({ jobId, assignedTo = '', initialPanel = null }
       {panel?.type === 'outsideComplete' && (
         <OutsidePartCompletionPanel
           purchase={panel.purchase}
+          canPayNow={canPayOutside}
           busy={busy === 'completeOutside'}
           error={error}
           onClose={() => setPanel(null)}
@@ -765,6 +770,8 @@ function OutsidePartPurchasePanel({ initial, onClose, onSave, busy, error }) {
         <p className="job-parts-modal-stock-note job-parts-modal-full">
           Submitting this request does not purchase the part or affect Total Cost.
           Manager approval and a supplier bill are required. Workshop inventory stays unchanged.
+          For parts that must enter workshop stock, use the <Link to="/stock">Stock → Supplier Purchase</Link>
+          {' '}flow instead; it handles supplier bills, verified GST, Cash in Hand/Bank and credit without duplicating this Job Expense.
         </p>
         {error && <p className="job-parts-modal-warning job-parts-modal-full" role="alert">{error}</p>}
         <button type="button" className="secondary-button" onClick={onClose} disabled={busy}>Cancel</button>
@@ -776,10 +783,11 @@ function OutsidePartPurchasePanel({ initial, onClose, onSave, busy, error }) {
   );
 }
 
-function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) {
+function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error, canPayNow = false }) {
   const [invoiceNo, setInvoiceNo] = useState('');
   const [paymentType, setPaymentType] = useState('Credit');
   const [accountId, setAccountId] = useState('');
+  const [paidAmount, setPaidAmount] = useState('');
   const [accounts, setAccounts] = useState([]);
   const [accountsError, setAccountsError] = useState('');
   const [accountsLoading, setAccountsLoading] = useState(false);
@@ -800,17 +808,25 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
     });
     return () => { active = false; };
   }, [paymentType]);
-  const eligibleAccounts = accounts.filter(row => row.isActive !== false &&
-    (row.kind === paymentType || (paymentType === 'Bank' && row.kind === 'UPI')));
+  const eligibleAccounts = financeAccountsForChannel(accounts, paymentType);
   const quantity = Number(purchase.quantity);
   const gstRate = Number(purchase.purchaseGstRate || 0);
-  const actualTotal = quantity * Number(unitCost) * (1 + gstRate / 100);
+  // Approximate display only; Django validates the authoritative Decimal amount.
+  const purchaseBase = Math.round(quantity * Number(unitCost) * 100) / 100;
+  const purchaseGST = Math.round(purchaseBase * gstRate) / 100;
+  const actualTotal = purchaseBase + purchaseGST;
+  const payNow = paymentType === 'Credit' ? 0
+    : paidAmount.trim() === '' ? actualTotal : Number(paidAmount);
+  const remainingCredit = Math.max(0, Math.round((actualTotal - payNow) * 100) / 100);
+  const validPaidAmount = paymentType === 'Credit' ||
+    (Number.isFinite(payNow) && payNow > 0 && payNow <= actualTotal &&
+      (paidAmount === '' || /^\d+(?:\.\d{1,2})?$/.test(paidAmount)));
   const approvedTotal = Number(purchase.quotedTotal || 0);
   const withinApproval = Number.isFinite(actualTotal) &&
     Number(unitCost) >= 0 && actualTotal <= approvedTotal && Number(unitCost) <= 999999999.99;
   const valid = invoiceNo.trim().length > 0 && invoiceNo.trim().length <= 120 &&
-    bill && withinApproval && unitCost !== '' && Number(unitCost) > 0 &&
-    (paymentType === 'Credit' || (accountId && !accountsLoading && !accountsError &&
+    bill && withinApproval && unitCost !== '' && Number(unitCost) > 0 && validPaidAmount &&
+    (paymentType === 'Credit' || (canPayNow && accountId && !accountsLoading && !accountsError &&
       eligibleAccounts.some(account => String(account.id) === String(accountId))));
   const chooseFile = (file) => {
     setBill(null);
@@ -836,6 +852,7 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
         if (valid && !busy) onSave({
           invoiceNo: invoiceNo.trim(), unitCost, bill, paymentType,
           accountId: paymentType === 'Credit' ? '' : accountId,
+          paidAmount: paymentType === 'Credit' ? '0.00' : payNow.toFixed(2),
         });
       }}>
         <div className="job-parts-approval-note job-parts-modal-full">
@@ -855,9 +872,9 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
         </label>
         <label className="form-label">Payment Type *
           <select className="cubegears-select" required value={paymentType}
-            onChange={event => { setPaymentType(event.target.value); setAccountId(''); }}>
-            <option value="Cash">Cash — Paid Now</option>
-            <option value="Bank">Bank / UPI — Paid Now</option>
+            onChange={event => { setPaymentType(event.target.value); setAccountId(''); setPaidAmount(''); }}>
+            {canPayNow && <option value="Cash">Cash in Hand — Pay Now</option>}
+            {canPayNow && <option value="Bank">Bank — Pay Now</option>}
             <option value="Credit">Credit — Pay Later</option>
           </select>
         </label>
@@ -871,8 +888,15 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
             ))}
           </select>
         </label>}
+        {paymentType !== 'Credit' && <label className="form-label">Pay Now (₹) *
+          <input className="cubegears-input" type="number" inputMode="decimal"
+            min="0.01" max={actualTotal.toFixed(2)} step="0.01"
+            value={paidAmount} placeholder={actualTotal.toFixed(2)}
+            onChange={event => setPaidAmount(event.target.value)}/>
+          <small>Leave empty to pay the whole bill. Enter a smaller amount for part payment.</small>
+        </label>}
         {paymentType === 'Credit' && <p className="job-parts-modal-stock-note">
-          Recorded as unpaid Expense. Pay the supplier later from Expenses.
+          Full credit: no money is debited. Pay the remaining expense later in <Link to="/finance/expenses">Finance → Expenses</Link>.
         </p>}
         {paymentType !== 'Credit' && !accountsLoading && !eligibleAccounts.length &&
           <p className="job-parts-modal-warning job-parts-modal-full" role="alert">
@@ -888,12 +912,21 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
         </label>
         <div className="job-parts-outside-calculation job-parts-modal-full">
           <div><span>Approved Quote</span><strong>{money.format(approvedTotal)}</strong></div>
+          <div><span>Purchase Before GST</span><strong>{money.format(Number.isFinite(purchaseBase) ? purchaseBase : 0)}</strong></div>
+          <div><span>Purchase GST ({gstRate}%)</span><strong>{money.format(Number.isFinite(purchaseGST) ? purchaseGST : 0)}</strong></div>
           <div><span>Actual Purchase Total / Job Expense</span><strong>{money.format(Number.isFinite(actualTotal) ? actualTotal : 0)}</strong></div>
+          <div><span>Cash / Bank Paid Now</span><strong>{money.format(Number.isFinite(payNow) ? payNow : 0)}</strong></div>
+          <div><span>Remaining Supplier Credit</span><strong>{money.format(Number.isFinite(remainingCredit) ? remainingCredit : 0)}</strong></div>
         </div>
+        {!validPaidAmount && <p className="job-parts-modal-warning job-parts-modal-full" role="alert">
+          Pay Now must be greater than zero and no more than the purchase total, with at most two decimals.
+        </p>}
         <p className="job-parts-modal-stock-note job-parts-modal-full">
           Purchase price is recorded as Job Cost and in Expenses. Customer invoice uses the separate selling price only.
           {paymentType === 'Credit' ? ' No money is debited until settlement.' :
-            ' Payment debits only the selected workshop Cash/Bank account.'} No GST is added here.
+            ' Only the entered payment debits the selected workshop Cash/Bank account.'}
+          Purchase GST is included in the supplier total, not added to the payment again.
+          Outside-part GST is for cost tracking, not automatically verified as input tax credit.
         </p>
         {!withinApproval && <p className="job-parts-modal-warning job-parts-modal-full" role="alert">
           Actual purchase total exceeds the approved quotation. Request a revised approval.
@@ -902,7 +935,7 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
           Credit is recorded as an unpaid workshop expense. No bank or cash balance changes until settled.
         </p>}
         {paymentType !== 'Credit' && <p className="job-parts-modal-stock-note job-parts-modal-full">
-          After confirming this supplier bill, the selected account is debited by the purchase total including GST.
+          After confirming, only Pay Now is debited. Any remaining credit stays on the same Finance Expense until settled.
         </p>}
         {uploadError && <p className="job-parts-modal-warning job-parts-modal-full" role="alert">{uploadError}</p>}
         {error && <p className="job-parts-modal-warning job-parts-modal-full" role="alert">{error}</p>}
