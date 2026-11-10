@@ -417,6 +417,12 @@ export default function GSTRDashboard() {
           <div><FileSpreadsheet size={22} /><strong>ITC Approval Audit</strong>
             <span>Claims reviewed against official GSTR-2B evidence.</span>
             <button type="button" disabled={busy || !access.can('gstr.export')} onClick={() => exportCsv('itc')}><Download size={16} /> Download CSV</button></div>
+          <div><FileSpreadsheet size={22} /><strong>Supplier Purchase GST Review</strong>
+            <span>Recorded purchase bills with tax-component verification. Not an official GSTR-2B file.</span>
+            <button type="button" disabled={busy || !access.can('gstr.export')} onClick={() => exportCsv('purchases')}><Download size={16} /> Download CSV</button></div>
+          <div><FileSpreadsheet size={22} /><strong>Operating Expense GST Exceptions</strong>
+            <span>Expense GST requiring invoice verification; excluded from eligible ITC.</span>
+            <button type="button" disabled={busy || !access.can('gstr.export')} onClick={() => exportCsv('expense-gst')}><Download size={16} /> Download CSV</button></div>
         </div>
         <p className="gstr-note">These CSV files are preparation exports only, never GST Portal-compatible. PDF, XLSX and official portal filing are not connected.</p>
         <GSTPart15Workspace tab="exports" period={period} report={data}
