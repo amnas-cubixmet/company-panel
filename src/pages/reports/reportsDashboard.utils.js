@@ -141,7 +141,10 @@ export const buildReportSummary = ({
   // Recognized operating expenses and paid cash expenses are different metrics.
   const expenseTotal = round(expenseRows.reduce((sum, item) => sum + (moneyNumber(item.amount) || 0), 0));
   const expensePaidTotal = round(expenseRows.reduce((sum, item) =>
-    sum + (moneyNumber(item.paidAmount ?? item.paid_amount) || 0), 0));
+    // Live Django sends paidAmount explicitly, including zero. Only legacy
+    // demo records with no paid field use their historical Paid status.
+    sum + (moneyNumber(item.paidAmount ?? item.paid_amount ??
+      (String(item.status || '').toLowerCase() === 'paid' ? item.amount : 0)) || 0), 0));
   const stockRows = available.stock && branch === 'All' && staff === 'All' ? stock : [];
   // Stock is a current snapshot, not a historical date-scoped financial series.
   const stockValue = round(stockRows.reduce((sum, row) =>
