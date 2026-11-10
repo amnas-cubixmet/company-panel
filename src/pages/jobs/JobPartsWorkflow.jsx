@@ -1,6 +1,7 @@
 import { appConfirm } from '../../components/common/appDialogs';
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from 'react-dom';
+import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowDownToLine,
@@ -19,6 +20,7 @@ import {
 import { stockService } from '../../services/stock.service';
 import { financeService } from '../../services/finance.service';
 import { jobPartsService } from '../../services/jobParts.service';
+import { financeService } from '../../services/finance.service';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
 
@@ -408,6 +410,13 @@ export function JobPartsWorkflow({ jobId, assignedTo = '', initialPanel = null }
                     </div>
                     <span>{row.vendor} · Qty {row.quantity} {row.sku ? `· ${row.sku}` : ''}</span>
                     <small>{purchased ? (row.invoiceNo ? `Bill ${row.invoiceNo} · ` : '') + 'Purchased' : 'Supplier quotation pending workflow'} · Quoted {money.format(quotedTotal)}</small>
+                    {purchased && row.expenseId && (
+                      <small>
+                        Purchase Expense: {money.format(row.totalCost)} · {row.paymentType === 'Credit' ?
+                          'Unpaid credit' : `Paid from ${row.paymentType === 'Bank' ? 'Bank / UPI' : 'Cash'}`}
+                        {' · '}<Link to={`/expenses/${row.expenseId}`}>View Expense</Link>
+                      </small>
+                    )}
                     <div className="job-parts-outside-controls">
                       {purchaseStatus === 'Pending Approval' && canApproveOutside && (
                         <>
@@ -791,6 +800,28 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
   const [unitCost, setUnitCost] = useState(String(purchase.unitCost || ''));
   const [bill, setBill] = useState(null);
   const [uploadError, setUploadError] = useState('');
+  const [paymentType, setPaymentType] = useState('Cash');
+  const [accountId, setAccountId] = useState('');
+  const [accounts, setAccounts] = useState([]);
+  const [accountsError, setAccountsError] = useState('');
+  const [accountsLoading, setAccountsLoading] = useState(true);
+  useEffect(() => {
+    let active = true;
+    financeService.listAccounts().then(rows => {
+      if (active) {
+        setAccounts(Array.isArray(rows) ? rows : []);
+        setAccountsError('');
+      }
+    }).catch(err => {
+      if (active) setAccountsError(err?.message || 'Could not load workshop accounts.');
+    }).finally(() => {
+      if (active) setAccountsLoading(false);
+    });
+    return () => { active = false; };
+  }, []);
+  const eligibleAccounts = accounts.filter(account => account.isActive !== false &&
+    (paymentType === 'Cash' ? account.kind === 'Cash' :
+      account.kind === 'Bank' || account.kind === 'UPI'));
   const quantity = Number(purchase.quantity);
   const gstRate = Number(purchase.purchaseGstRate || 0);
   const actualTotal = quantity * Number(unitCost) * (1 + gstRate / 100);
@@ -799,8 +830,9 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
   const withinApproval = Number.isFinite(actualTotal) &&
     Number(unitCost) >= 0 && actualTotal <= approvedTotal && Number(unitCost) <= 999999999.99;
   const valid = invoiceNo.trim().length > 0 && invoiceNo.trim().length <= 120 &&
-    bill && withinApproval && unitCost !== '' &&
-    (paymentType === 'Credit' || (availableAccounts.some(account => String(account.id) === accountId)));
+    bill && withinApproval && unitCost !== '' && Number(unitCost) > 0 &&
+    (paymentType === 'Credit' || (accountId && !accountsLoading && !accountsError &&
+      eligibleAccounts.some(account => String(account.id) === String(accountId))));
   const chooseFile = (file) => {
     setBill(null);
     if (!file) {
@@ -822,7 +854,10 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
     <Sheet title="Complete Outside Purchase" subtitle="Approved quotation → supplier invoice → actual Job Cost" onClose={onClose}>
       <form className="job-parts-modal-form job-parts-outside-form" onSubmit={(event) => {
         event.preventDefault();
-        if (valid && !busy) onSave({ invoiceNo: invoiceNo.trim(), unitCost, bill, paymentType, accountId });
+        if (valid && !busy) onSave({
+          invoiceNo: invoiceNo.trim(), unitCost, bill, paymentType,
+          accountId: paymentType === 'Credit' ? '' : accountId,
+        });
       }}>
         <div className="job-parts-approval-note job-parts-modal-full">
           <strong>{purchase.partName}</strong>
@@ -839,30 +874,34 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
             min="0" max="999999999.99" step="0.01" required
             value={unitCost} onChange={(event) => setUnitCost(event.target.value)} />
         </label>
-        <div className="job-parts-approval-note job-parts-modal-full">
-          Purchase GST: {gstRate}% · Customer invoice uses the separate selling price only.
-        </div>
         <label className="form-label">Payment Type *
-          <select className="cubegears-select" value={paymentType} onChange={event => {
-            setPaymentType(event.target.value); setAccountId('');
-          }}>
-            <option value="Cash">Cash — pay from cash account</option>
-            <option value="Bank">Bank — pay from bank account</option>
-            <option value="Credit">Credit — pay supplier later</option>
+          <select className="cubegears-select" required value={paymentType}
+            onChange={event => { setPaymentType(event.target.value); setAccountId(''); }}>
+            <option value="Cash">Cash — Paid Now</option>
+            <option value="Bank">Bank / UPI — Paid Now</option>
+            <option value="Credit">Credit — Pay Later</option>
           </select>
         </label>
-        {paymentType !== 'Credit' && (
-          <label className="form-label">Pay From Account *
-            <select className="cubegears-select" required value={accountId}
-              onChange={event => setAccountId(event.target.value)}>
-              <option value="">Choose {paymentType.toLowerCase()} account</option>
-              {availableAccounts.map(account => (
-                <option key={account.id} value={account.id}>{account.name}</option>
-              ))}
-            </select>
-          </label>
-        )}
-        {accountsError && <p className="job-parts-modal-warning job-parts-modal-full" role="status">{accountsError}</p>}
+        {paymentType !== 'Credit' && <label className="form-label">
+          Pay From Account *
+          <select className="cubegears-select" required value={accountId}
+            onChange={event => setAccountId(event.target.value)} disabled={accountsLoading}>
+            <option value="">{accountsLoading ? 'Loading accounts…' : 'Choose Cash/Bank account'}</option>
+            {eligibleAccounts.map(account => (
+              <option key={account.id} value={account.id}>{account.name} ({account.kind})</option>
+            ))}
+          </select>
+        </label>}
+        {paymentType === 'Credit' && <p className="job-parts-modal-stock-note">
+          Recorded as unpaid Expense. You can pay later from Expenses.
+        </p>}
+        {paymentType !== 'Credit' && !accountsLoading && !eligibleAccounts.length &&
+          <p className="job-parts-modal-warning job-parts-modal-full" role="alert">
+            No matching active Cash/Bank account. Create one under Finance → Accounts before paying.
+          </p>}
+        {accountsError && <p className="job-parts-modal-warning job-parts-modal-full" role="alert">
+          {accountsError}
+        </p>}
         <label className="form-label job-parts-modal-full">Supplier Bill (PDF or Image, max 8 MB) *
           <input className="cubegears-input job-parts-file-input" type="file" required
             accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
@@ -870,8 +909,13 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
         </label>
         <div className="job-parts-outside-calculation job-parts-modal-full">
           <div><span>Approved Quote</span><strong>{money.format(approvedTotal)}</strong></div>
-          <div><span>Purchase Cost + GST</span><strong>{money.format(Number.isFinite(actualTotal) ? actualTotal : 0)}</strong></div>
+          <div><span>Actual Purchase Total / Job Expense</span><strong>{money.format(Number.isFinite(actualTotal) ? actualTotal : 0)}</strong></div>
         </div>
+        <p className="job-parts-modal-stock-note job-parts-modal-full">
+          Purchase price is recorded as Job Cost and in Expenses. Customer invoice uses only the selling rate.
+          {paymentType === 'Credit' ? ' No money is debited until settlement.' :
+            ' Payment debits only the selected workshop Cash/Bank account.'} No GST is added here.
+        </p>
         {!withinApproval && <p className="job-parts-modal-warning job-parts-modal-full" role="alert">
           Actual purchase total exceeds the approved quotation. Request a revised approval.
         </p>}
