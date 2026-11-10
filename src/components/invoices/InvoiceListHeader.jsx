@@ -1,9 +1,9 @@
 
-import { Plus, ReceiptText } from 'lucide-react';
+import { Plus, ReceiptText, Wallet, FileCheck2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
 
-export const InvoiceListHeader = ({ activeTab, onCreate }) => {
+export const InvoiceListHeader = ({ activeTab, onCreate, onFinance, onGSTR }) => {
   const { user } = useAuth();
 
   return (
@@ -21,6 +21,16 @@ export const InvoiceListHeader = ({ activeTab, onCreate }) => {
           <span>Billing & Sales</span>
         </div>
 
+        {hasPermission(user, 'gstr.view') && activeTab === 'invoice' && (
+          <button type="button" className="bill-btn secondary" onClick={onGSTR}>
+            <FileCheck2 size={15} /> GST Returns
+          </button>
+        )}
+        {hasPermission(user, 'payments.view') && activeTab === 'invoice' && (
+          <button type="button" className="bill-btn secondary" onClick={onFinance}>
+            <Wallet size={15} /> Finance
+          </button>
+        )}
         {hasPermission(user, 'invoices.create') && (
           <button type="button" className="bill-btn" onClick={onCreate}>
             <Plus size={14} />
