@@ -32,7 +32,9 @@ const CRUD_PREFIXES = {
   '/invoices': 'invoices',
   '/quotations': 'invoices',
   '/payments': 'payments',
+  '/finance/payments': 'payments',
   '/expenses': 'expenses',
+  '/finance/expenses': 'expenses',
 };
 
 const SPECIAL_PATH_PERMISSIONS = [
