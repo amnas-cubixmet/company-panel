@@ -105,6 +105,16 @@ const purchaseColumns = [
   { key: 'taxable', label: 'Taxable', money: true }, { key: 'tax', label: 'Purchase GST', money: true },
   { key: 'itcEligibility', label: 'ITC Eligibility' }
 ];
+const expenseGSTColumns = [
+  { key: 'date', label: 'Expense Date' },
+  { key: 'description', label: 'Expense', render: (r) =>
+    <Link to={'/finance/expenses/' + r.id}>{fmt(r.description)}</Link> },
+  { key: 'vendor', label: 'Vendor' },
+  { key: 'category', label: 'Category' },
+  { key: 'amount', label: 'Expense Total', money: true },
+  { key: 'tax', label: 'Recorded GST', money: true },
+  { key: 'itcEligibility', label: 'ITC Status' },
+];
 const hsnColumns = [
   { key: 'classification', label: 'Category' }, { key: 'hsnSac', label: 'HSN / SAC' },
   { key: 'description', label: 'Description' }, { key: 'unit', label: 'Unit' },
@@ -245,6 +255,7 @@ export default function GSTRDashboard() {
   const sums = data?.overview;
   const invoices = data?.gstr1?.rows || [];
   const purchases = data?.gstr2b?.purchases || [];
+  const expenseTaxReview = data?.gstr2b?.expenseGSTReview || [];
   const validations = data?.issues || [];
 
   return <main className="gstr-page">
@@ -306,7 +317,8 @@ export default function GSTRDashboard() {
         <div className="gstr-breakdown">
           {[['Taxable Sales', sums.taxable], ['CGST', sums.cgst], ['SGST / UTGST', sums.sgst],
             ['IGST', sums.igst], ['Total Output GST', sums.outputGST],
-            ['Recorded Purchase GST', sums.purchaseGST], ['Verified Purchase Tax Components', sums.verifiedPurchaseTax]]
+            ['Recorded Purchase GST', sums.purchaseGST], ['Verified Purchase Tax Components', sums.verifiedPurchaseTax],
+            ['Expense GST Pending Verification', sums.unverifiedExpenseGST]]
             .map(([label, value]) => <div key={label}><span>{label}</span><strong>{currency(value)}</strong></div>)}
         </div>
         <p className="gstr-note">Purchase GST is not the same as eligible ITC. ITC reversals and sales credit notes are tracked separately. Cash liability and GST Portal utilization need independent verification.</p>
@@ -371,7 +383,12 @@ export default function GSTRDashboard() {
         {!reconciliation && <><h3 className="gstr-subheading">Posted Purchase Bills</h3>
           <div className="gstr-search"><Search size={17} /><input aria-label="Search purchase bills" placeholder="Search supplier bills" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
           <DataTable key={'purchases-' + period} rows={purchases} columns={purchaseColumns} search={search} /></>}
-      </section>}
+        <div className="gstr-expense-gst-review">
+          <h3 className="gstr-subheading">Operational Expense GST · Review Required</h3>
+          <p className="gstr-note">Finance Expenses may record a tax amount without a verified supplier GSTIN or CGST/SGST/IGST invoice breakdown. These amounts appear for investigation only; they are excluded from eligible ITC and GSTR-3B.</p>
+          <DataTable key={'expense-gst-' + period} rows={expenseTaxReview} columns={expenseGSTColumns} />
+        </div>
+      </section>
 
       {['itc', 'credits', 'ledger'].includes(tab) && (
         <GSTPart15Workspace tab={tab} period={period} report={data}
