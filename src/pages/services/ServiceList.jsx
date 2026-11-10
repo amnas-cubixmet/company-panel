@@ -272,6 +272,7 @@ export const ServiceList = () => {
 
   const load = async () => {
     setLoading(true);
+    setLoadError('');
     try {
       const [serviceRows, categoryRows] = await Promise.all([
         serviceService.getServices(),
@@ -279,19 +280,37 @@ export const ServiceList = () => {
       ]);
       setServices(serviceRows);
       setCategories(categoryRows);
+      return true;
+    } catch (error) {
+      setLoadError(error?.message || 'Unable to load workshop services. Please try again.');
+      return false;
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    load();
+    void load();
   }, []);
 
   useEffect(() => {
+    if (location.state?.serviceNotice) {
+      setNotice(location.state.serviceNotice);
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    if (isNew) {
+      setForm(emptyService);
+      setFormDirty(false);
+      setFormError('');
+    }
+  }, [isNew]);
+
+  useEffect(() => {
     if (!isEdit || !id || !services.length) return;
-    const service = services.find((item)=>item.id===id);
-    if (!service) return;
+    const service = services.find((item)=>String(item.id)===String(id)) || focusedService;
+    if (!service || String(service.id) !== String(id)) return;
     setForm({
       code: service.code || '',
       name: service.name || '',
@@ -308,7 +327,9 @@ export const ServiceList = () => {
       hsnSac: service.hsnSac || '', taxRate: service.taxRate ?? '18',
       taxTreatment: service.taxTreatment || 'taxable', unit: service.unit || 'Job'
     });
-  }, [isEdit, id, services, categories]);
+    setFormError('');
+    setFormDirty(false);
+  }, [isEdit, id, services, categories, focusedService]);
 
   useEffect(() => {
     if (isNew && !form.categoryId && categories.length) {
@@ -323,9 +344,40 @@ export const ServiceList = () => {
   const categoryTree = useMemo(() => buildCategoryTreeRows(categories), [categories]);
 
   const selectedService = useMemo(
-    () => services.find((service)=>service.id===id) || null,
-    [services, id]
+    () => services.find((service)=>String(service.id)===String(id)) ||
+      (String(focusedService?.id) === String(id) ? focusedService : null),
+    [services, id, focusedService]
   );
+
+  useEffect(() => {
+    if (!id || !serviceModalOpen || services.some((row) => String(row.id) === String(id))) return;
+    let active = true;
+    serviceService.getServiceById(id).then((row) => {
+      if (active) setFocusedService(row);
+    }).catch((error) => {
+      if (active) setActionError(error?.message || 'Unable to load this service.');
+    });
+    return () => { active = false; };
+  }, [id, serviceModalOpen, services]);
+
+  const changeForm = (value) => {
+    setForm(value);
+    setFormDirty(true);
+    setFormError('');
+  };
+
+  const closeServiceModal = async () => {
+    if (submitting || deleting) return;
+    if ((isEdit || isNew) && formDirty &&
+        !await appConfirm('Discard your unsaved service changes?', {
+          title: 'Discard changes?',
+          confirmLabel: 'Discard',
+          tone: 'danger',
+        })) return;
+    setActionError('');
+    setFormError('');
+    navigate('/services');
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
