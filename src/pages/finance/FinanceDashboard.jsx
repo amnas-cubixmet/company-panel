@@ -131,7 +131,7 @@ export function FinanceDashboard() {
                     e.preventDefault();
                     navigate(`/finance/accounts/${acc.id}`);
                   }
-                }
+                }}
               >
                 <div className="finance-account-top">
                   <span className={`finance-account-badge finance-account-${String(acc.kind || 'Other').toLowerCase()}`}>{acc.kind || 'Other'}</span>
