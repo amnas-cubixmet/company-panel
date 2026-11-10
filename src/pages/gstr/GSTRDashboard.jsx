@@ -137,6 +137,10 @@ export default function GSTRDashboard() {
   const [search, setSearch] = useState('');
   const [upload, setUpload] = useState(null);
   const [reconciliation, setReconciliation] = useState(null);
+  const [savedImports, setSavedImports] = useState([]);
+  const [activeImportId, setActiveImportId] = useState('');
+  const [loadingImports, setLoadingImports] = useState(false);
+  const [importError, setImportError] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
 
@@ -151,6 +155,7 @@ export default function GSTRDashboard() {
     setIssue('');
     setData(null);
     setReconciliation(null);
+    setActiveImportId('');
     setUpload(null);
     setSearch('');
     apiClient.get('/gstr/overview', { params: { period } })
@@ -159,6 +164,39 @@ export default function GSTRDashboard() {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [period, reload]);
+
+  // Persisted GSTR-2B matching can be inspected again after a page refresh.
+  // This is evidence only; GET never approves input tax or modifies stock.
+  useEffect(() => {
+    if (tab !== 'gstr2b') return undefined;
+    let active = true;
+    setLoadingImports(true);
+    setImportError('');
+    apiClient.get('/gstr/imports', { params: { period } })
+      .then((rows) => { if (active) setSavedImports(Array.isArray(rows) ? rows : []); })
+      .catch((error) => {
+        if (active) { setSavedImports([]); setImportError(error.message || 'Unable to load saved 2B imports.'); }
+      })
+      .finally(() => { if (active) setLoadingImports(false); });
+    return () => { active = false; };
+  }, [tab, period, reload]);
+
+  const openSavedImport = async (importId) => {
+    setActiveImportId(importId);
+    setReconciliation(null);
+    if (!importId) return;
+    setBusy(true);
+    setIssue('');
+    try {
+      const result = await apiClient.get('/gstr/reconcile', {
+        params: { period, importId },
+      });
+      setReconciliation(result);
+      setNotice('Saved 2B matching evidence loaded. ITC still requires separate approval.');
+    } catch (error) {
+      setIssue(error.message || 'Unable to open the selected reconciliation.');
+    } finally { setBusy(false); }
+  };
 
   const financialYear = fiscalStart(period);
   const years = [financialYear - 2, financialYear - 1, financialYear, financialYear + 1, financialYear + 2];
@@ -181,12 +219,21 @@ export default function GSTRDashboard() {
   const reconcile = async (event) => {
     event.preventDefault();
     if (!upload) return;
+    if (!/\.json$/i.test(upload.name) || upload.size > 5 * 1024 * 1024) {
+      setIssue('Choose a GST Portal JSON file up to 5 MB.');
+      return;
+    }
     setBusy(true); setIssue(''); setReconciliation(null);
     try {
       const form = new FormData();
       form.append('file', upload);
       const result = await apiClient.post('/gstr/reconcile', form, { params: { period, save: '1' } });
       setReconciliation(result);
+      setActiveImportId(result.importId || '');
+      const history = await apiClient.get('/gstr/imports', {
+        params: { period },
+      }).catch(() => null);
+      if (Array.isArray(history)) setSavedImports(history);
       setNotice(result.importId
         ? 'Official GSTR-2B match evidence saved. Supplier invoices remain unchanged.'
         : 'GSTR-2B reconciled. No source records changed.');
@@ -225,7 +272,13 @@ export default function GSTRDashboard() {
       <label>GST Registration
         <div className="gstr-readonly">{data?.company?.gstin || 'Not registered / unavailable'}</div>
       </label>
-      <span className="gstr-status">Preparation only · Not filed</span>
+      <span className="gstr-status">
+        {data?.filing?.status === 'Reported Filed'
+          ? 'Reported filed internally · Portal unverified'
+          : data?.filing?.status === 'Reviewed'
+            ? 'Internally reviewed · Not submitted by CubixGear'
+            : 'Preparation only · Filing not verified'}
+      </span>
     </div>
 
     {issue && <div className="gstr-alert is-error" role="alert"><AlertCircle size={18} /> <span>{issue}</span><button type="button" onClick={() => setIssue('')} aria-label="Dismiss error">×</button></div>}
@@ -244,7 +297,7 @@ export default function GSTRDashboard() {
         {TABS.map(([value, label]) =>
           <button key={value} type="button" className={tab === value ? 'is-active' : ''}
             aria-current={tab === value ? 'page' : undefined}
-            onClick={() => updateParams({ tab: value })}>{label}</button>
+            onClick={() => { setSearch(''); updateParams({ tab: value }); }}>{label}</button>
         )}
       </nav>
 
@@ -281,10 +334,28 @@ export default function GSTRDashboard() {
       {tab === 'gstr2b' && <section className="gstr-panel">
         <div className="gstr-panel-heading"><h2>GSTR-2B · Purchase ITC Reconciliation</h2><span>{purchases.length} posted supplier bills</span></div>
         <p className="gstr-note">Upload the official GST Portal GSTR-2B JSON. Matching B2B invoice evidence is now saved by upload fingerprint, but purchase bills remain unchanged. ITC must still be reviewed and approved separately.</p>
+        <div className="gstr-saved-imports">
+          <label>Saved GSTR-2B reconciliation
+            <select aria-label="Open saved GSTR-2B reconciliation" value={activeImportId}
+              disabled={loadingImports || busy}
+              onChange={(event) => openSavedImport(event.target.value)}>
+              <option value="">Choose an earlier upload</option>
+              {savedImports.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {entry.importedAt?.slice(0, 10) || entry.period} · {entry.matchedCount} matched
+                </option>
+              ))}
+            </select>
+          </label>
+          {loadingImports && <span role="status">Loading saved uploads…</span>}
+          {importError && <p className="gstr-alert is-error" role="alert">{importError}</p>}
+          {!loadingImports && !importError && !savedImports.length &&
+            <p className="gstr-note">No saved 2B upload for this period. Upload a GST Portal JSON to start matching.</p>}
+        </div>
         {access.can('gstr.reconcile') && <form className="gstr-upload" onSubmit={reconcile}>
           <label><UploadCloud size={18} /> Official GSTR-2B JSON
             <input type="file" accept=".json,application/json" onChange={(e) => setUpload(e.target.files?.[0] || null)} /></label>
-          <button type="submit" disabled={busy || !upload}>{busy ? 'Matching…' : 'Reconcile & Save Evidence'}</button>
+          <button type="submit" disabled={busy || !upload || !data.company?.registered}>{busy ? 'Matching…' : 'Reconcile & Save Evidence'}</button>
         </form>}
         {reconciliation && <>
           <div className="gstr-reconcile-counts">
@@ -295,7 +366,7 @@ export default function GSTRDashboard() {
             <AlertCircle size={18} /> Unsupported statement sections: {reconciliation.unsupportedSections.join(', ')}. Reconcile separately.
           </div>}
           <div className="gstr-search"><Search size={17} /><input aria-label="Search reconciliation" placeholder="Search reconciliation" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
-          <DataTable key={'match-' + period} rows={reconciliation.rows} columns={reconcileColumns} search={search} />
+          <DataTable key={'match-' + period + '-' + (reconciliation.importId || '')} rows={reconciliation.rows} columns={reconcileColumns} search={search} />
         </>}
         {!reconciliation && <><h3 className="gstr-subheading">Posted Purchase Bills</h3>
           <div className="gstr-search"><Search size={17} /><input aria-label="Search purchase bills" placeholder="Search supplier bills" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
