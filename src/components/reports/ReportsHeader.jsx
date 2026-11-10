@@ -19,7 +19,7 @@ export const ReportsHeader = ({ onRefresh, onCsv, onPrint, loading = false, expo
       <button type="button" onClick={onPrint} disabled={loading || exportDisabled}>
         <Printer size={16}/> Print
       </button>
-      <button type="button" className="is-primary" onClick={onPrint} disabled={loading}
+      <button type="button" className="is-primary" onClick={onPrint} disabled={loading || exportDisabled}
         title="Opens your browser Print dialog. Choose Save as PDF to export all report sections.">
         <Download size={16}/> Save as PDF
       </button>
