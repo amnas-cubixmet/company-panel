@@ -8,8 +8,8 @@ export const ServicesHeader = ({ onAdd, onAddCategory }) => {
   return (
     <header className="service-dashboard-header">
       <div>
-        <h1>Services Catalog</h1>
-        <p>Workshop labour services, categories, pricing, duration and technician checklists.</p>
+        <h1>Workshop Services</h1>
+        <p>Manage service names, labour charges, categories and checklists in one place.</p>
       </div>
       <div className="service-dashboard-header-actions">
         <div className="service-dashboard-header-badge"><Wrench size={13}/><span>Workshop Services</span></div>
