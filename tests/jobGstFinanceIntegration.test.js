@@ -67,7 +67,7 @@ test('job card live payments use Finance account selection instead of legacy acc
   const records = read('src/components/jobs/JobRecordsPanel.jsx');
 
   assert.doesNotMatch(details, /await paymentService\.createPayment/);
-  assert.match(details, /\/finance\/payments\/new\?invoiceId=/); // through helper usage checked below
+  assert.match(read('src/utils/jobGstFinance.js'), /\/finance\/payments\/new\?invoiceId=/);
   assert.match(details, /jobInvoiceFinance\(linkedInvoice\)/);
   assert.match(details, /navigate\(financial\.paymentUrl\)/);
   assert.match(details, /canCreatePayment && financial\.paymentUrl/);
