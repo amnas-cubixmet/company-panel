@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, AlertCircle, RefreshCw } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import apiClient from '../../api/apiClient';
+import { USE_MOCK_API } from '../../api/apiConfig';
 import { billingService } from '../../services/billing.service';
 import { expenseService } from '../../services/expense.service';
 import { stockCatalogService } from '../../services/stockCatalog.service';
@@ -13,6 +16,7 @@ import { ReportPerformanceChart, ReportExpenseCategoryChart } from '../../compon
 import { ReportPeriodFilter, ReportStats, ReportTabs, ReportsHeader } from '../../components/reports';
 import '../../styles/reports-dashboard.css';
 import '../../styles/reports-dashboard-polished.css';
+import '../../styles/reports-print.css';
 
 const paymentService = resourceConfigs.payments.service;
 const MONTHS = ['January','February','March','April','May','June',
@@ -27,6 +31,7 @@ const noRecords = (columns, text = 'No records for this selection.') =>
   <tr className="report-empty-row"><td colSpan={columns}>{text}</td></tr>;
 
 export function Reports() {
+  const { user } = useAuth();
   const [params, setParams] = useSearchParams();
   const now = new Date();
   const defaultYear = String(now.getFullYear());
@@ -50,6 +55,8 @@ export function Reports() {
   const [stock, setStock] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dataIssues, setDataIssues] = useState({});
+  const [truncatedSources, setTruncatedSources] = useState([]);
+  const [reportWorkshop, setReportWorkshop] = useState(null);
   const [availability, setAvailability] = useState({
     invoices: false, payments: false, expenses: false, stock: false,
   });
@@ -57,6 +64,61 @@ export function Reports() {
   const load = async () => {
     setLoading(true);
     const names = ['invoices', 'payments', 'expenses', 'stock'];
+    if (!USE_MOCK_API) {
+      try {
+        // Dedicated Django report endpoint returns only the sources this role
+        // can access. Do not bypass Expenses/Payments permissions via reports.view.
+        const payload = await apiClient.get('/reports/workspace', {
+          params: { ...(from ? { from } : {}), ...(to ? { to } : {}) },
+        });
+        if (!payload || !payload.sources) throw new Error('Invalid report API response.');
+        const issues = {};
+        const availabilityBySource = {};
+        const truncated = [];
+        const data = {};
+        for (const name of names) {
+          const source = payload.sources[name];
+          if (source?.available === false) {
+            issues[name] = source.reason === 'permission'
+              ? 'Access restricted. Ask the workshop owner to enable the module and View permission.'
+              : source.reason || 'Report source unavailable.';
+            availabilityBySource[name] = false;
+            data[name] = [];
+          } else if (!source || !Array.isArray(payload[name])) {
+            issues[name] = 'Unexpected response from reports API.';
+            availabilityBySource[name] = false;
+            data[name] = [];
+          } else {
+            data[name] = payload[name];
+            availabilityBySource[name] = true;
+            if (source.truncated) truncated.push(name);
+          }
+        }
+        setInvoices(data.invoices.filter((row) =>
+          String(row.kind || 'invoice').toLowerCase() === 'invoice'));
+        setPayments(data.payments);
+        setExpenses(data.expenses);
+        setStock(data.stock);
+        setReportWorkshop(payload.company || null);
+        setDataIssues(issues);
+        setTruncatedSources(truncated);
+        setAvailability(availabilityBySource);
+      } catch (error) {
+        setInvoices([]);
+        setPayments([]);
+        setExpenses([]);
+        setStock([]);
+        setDataIssues({ reports: error?.message || 'Report API unavailable.' });
+        setTruncatedSources([]);
+        setAvailability({ invoices: false, payments: false, expenses: false, stock: false });
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Demo mode keeps the old explicit mock adapters; production never
+    // silently substitutes demo rows for a failed finance API.
     const results = await Promise.allSettled([
       billingService.list(), paymentService.list(),
       expenseService.getExpenses(), stockCatalogService.getItems(),
@@ -77,11 +139,12 @@ export function Reports() {
     setPayments(data[1]);
     setExpenses(data[2]);
     setStock(data[3]);
+    setTruncatedSources([]);
     setDataIssues(issues);
     setAvailability(Object.fromEntries(names.map((name) => [name, !issues[name]])));
     setLoading(false);
   };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { void load(); }, [from, to]);
 
   const filterOptions = useMemo(() =>
     reportFilterOptions([invoices, payments, expenses]),
