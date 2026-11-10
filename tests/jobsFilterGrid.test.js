@@ -49,8 +49,10 @@ test('filters preserve other URL parameters and reset page; count, pagination an
   assert.match(jobs, /new URLSearchParams\(searchParams\)/);
   assert.match(jobs, /next\.delete\('page'\)/);
   assert.match(jobs, /setSearchParams\(next\)/);
-  assert.match(jobs, /resetFilters = \(\) => setSearchParams\(new URLSearchParams\(\)\)/);
-  assert.match(jobs, /filteredJobs\.slice\(/);
+  assert.match(jobs, /const resetFilters = \(\) => \{/);
+  assert.match(jobs, /if \(layout === 'cards'\) next\.set\('layout', 'cards'\)/);
+  assert.match(jobs, /const sortedJobs = useMemo\(\(\) => sortJobsForDisplay\(filteredJobs, sortMode\)/);
+  assert.match(jobs, /sortedJobs\.slice\(/);
   assert.match(jobs, /resultCount=\{filteredJobs\.length\}/);
   assert.match(jobs, /hasActiveFilters=\{/);
   assert.match(records, /hasActiveFilters \|\| searchTerm/);
