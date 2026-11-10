@@ -46,7 +46,8 @@ test('cards and category forms have accessible controls and mobile-sized fields'
   assert.match(grid, /aria-label=\{'View service ' \+ service\.name\}/);
   assert.doesNotMatch(grid, /role="button"/);
   assert.match(modal, /aria-modal="true"/);
-  assert.match(modal, /onClose=\{onClose\}/);
+  assert.match(modal, /useDialogAccessibility\(isOpen, onClose, modalRef\)/);
+  assert.match(modal, /onClick=\{onClose\}/);
   assert.match(page, /onAddCategory=\{canCreate/);
   assert.match(page, /aria-expanded=\{showCategories\}/);
   assert.match(css, /@media\(max-width:767px\)/);
