@@ -147,7 +147,9 @@ export default function StaffSetPasswordPage() {
                     onChange={(event) => setPassword(event.target.value)} required/>
                   <button type="button" className="login-password-toggle"
                     onClick={() => setShowPassword((value) => !value)}
-                    aria-label={showPassword ? 'Hide new password' : 'Show new password'}>
+                    aria-label={showPassword ? 'Hide new password' : 'Show new password'}
+                    aria-pressed={showPassword}
+                    title={showPassword ? 'Hide new password' : 'Show new password'}>
                     {showPassword ? <EyeOff size={17}/> : <Eye size={17}/>}
                   </button>
                 </div>
@@ -160,7 +162,9 @@ export default function StaffSetPasswordPage() {
                     onChange={(event) => setConfirm(event.target.value)} required/>
                   <button type="button" className="login-password-toggle"
                     onClick={() => setShowConfirm((value) => !value)}
-                    aria-label={showConfirm ? 'Hide confirmation' : 'Show confirmation'}>
+                    aria-label={showConfirm ? 'Hide confirmation' : 'Show confirmation'}
+                    aria-pressed={showConfirm}
+                    title={showConfirm ? 'Hide confirmation' : 'Show confirmation'}>
                     {showConfirm ? <EyeOff size={17}/> : <Eye size={17}/>}
                   </button>
                 </div>
