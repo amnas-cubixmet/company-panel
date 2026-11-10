@@ -10,6 +10,7 @@ const profile = read('src/pages/staff-management/staff/StaffProfile.jsx');
 const profileEdit = read('src/components/staff-management/StaffProfileEditSheet.jsx');
 const service = read('src/services/staff.service.js');
 const setup = read('src/pages/auth/StaffSetPasswordPage.jsx');
+const recoveryCss = read('src/styles/auth-recovery.css');
 const login = read('src/pages/auth/Login.jsx');
 const forgot = read('src/pages/auth/ForgotPassword.jsx');
 const roleForm = read('src/components/staff-management/RoleEditorForm.jsx');
@@ -136,6 +137,15 @@ test('WhatsApp consent remains editable without the removed information panel', 
   assert.match(profile, /staffService\.sendLoginInvite\(staff\.id, \{/);
   assert.doesNotMatch(profile, /staff-setup-link-panel|handleRecordWhatsAppConsent|Copy Secure Setup Link/);
   assert.doesNotMatch(profile, /queue_staff_whatsapp_invitation|send_template_message/);
+});
+
+test('password setup provides one app eye toggle per input without a native duplicate', () => {
+  assert.equal((setup.match(/className="login-password-toggle"/g) || []).length, 2);
+  assert.match(setup, /aria-label=\{showPassword \? 'Hide new password' : 'Show new password'\}/);
+  assert.match(setup, /aria-label=\{showConfirm \? 'Hide confirmation' : 'Show confirmation'\}/);
+  assert.match(setup, /aria-pressed=\{showPassword\}/);
+  assert.match(setup, /aria-pressed=\{showConfirm\}/);
+  assert.match(recoveryCss, /input\[type="password"\]::-ms-reveal/);
 });
 
 test('login and recovery remain staff mobile-first without OTP and automatic reset claims', () => {
