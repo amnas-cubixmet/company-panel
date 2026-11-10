@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { useLocation } from 'react-router-dom';
 import { Header } from './Header';
+import { FinanceNavigation } from './FinanceNavigation';
 import { Sidebar } from './Sidebar';
 import { MobileBottomNav } from './MobileBottomNav';
 import { Footer } from './Footer';
@@ -35,6 +36,7 @@ export const DashboardLayout = ({ children }) => {
         <main className="app-scroll-area" ref={scrollAreaRef}>
           <div className={`app-content ${useDashboardSpacing ? 'is-dashboard-content' : ''}`}>
             {!useDashboardSpacing && <AppBreadcrumbs />}
+            <FinanceNavigation />
             {children}
           </div>
 
