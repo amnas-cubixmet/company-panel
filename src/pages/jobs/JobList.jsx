@@ -10,6 +10,8 @@ import {
 } from '../../components/jobs';
 import { normalizeRegistration } from '../../components/jobs/jobs.utils';
 import { JobBreadcrumbs } from '../../components/jobs/JobBreadcrumbs';
+import { JobCardsGuide } from '../../components/jobs/JobCardsGuide';
+import { RefreshCw, AlertCircle } from 'lucide-react';
 import { jobService } from '../../services/job.service';
 import { billingService } from '../../services/billing.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
@@ -17,6 +19,7 @@ import { jobInvoiceFor } from '../../utils/jobGstFinance';
 import { USE_MOCK_API } from '../../api/apiConfig';
 import '../../styles/job-gst-finance.css';
 import '../../styles/jobs-dashboard.css';
+import '../../styles/jobs-unified-ui.css';
 
 export const JobList = () => {
   const navigate = useNavigate();
@@ -73,7 +76,10 @@ export const JobList = () => {
         const data = await jobService.getJobs();
         if (active) setJobs(Array.isArray(data) ? data : data?.results || []);
       } catch (err) {
-        if (active) setLoadError(err?.message || 'Could not load Job Cards. Please try again.');
+        if (active) {
+          setJobs([]);
+          setLoadError(err?.message || 'Could not load Job Cards. Check the server and try again.');
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -234,17 +240,18 @@ export const JobList = () => {
   const openJob = (id) => navigate(`/jobs/${id}`);
 
   return (
-    <div className="jobs-dashboard">
+    <div className="jobs-dashboard jobs-unified-ui">
       <JobBreadcrumbs />
       <JobsHeader onNavigate={navigate} />
+      <JobCardsGuide/>
       {(canViewGST || canViewPayments) && <nav className="jobs-gst-finance-nav" aria-label="Job GST and finance links">
-        <span>Linked workshop finances</span>
+        <span>Related Billing &amp; Finance</span>
         {canViewGST && <button type="button" onClick={() => navigate('/gstr')}>GST Returns</button>}
         {canViewPayments && <button type="button" onClick={() => navigate('/finance/payments')}>Customer Payments</button>}
         {canViewPayments && <button type="button" onClick={() => navigate('/finance')}>Finance Overview</button>}
       </nav>}
 
-      <JobsStats counts={counts} selectedStatus={status} onFilter={setStatus} />
+      {!loadError && <JobsStats counts={counts} selectedStatus={status} onFilter={setStatus} />}
 
       <JobsToolbar
         query={query}
@@ -274,8 +281,11 @@ export const JobList = () => {
 
       {loadError && (
         <div className="jobs-load-error" role="alert">
+          <AlertCircle size={19} aria-hidden="true"/>
           <span>{loadError}</span>
-          <button type="button" onClick={() => setReloadKey((value) => value + 1)}>Retry</button>
+          <button type="button" onClick={() => setReloadKey((value) => value + 1)} disabled={loading}>
+            <RefreshCw size={15} aria-hidden="true"/> Retry
+          </button>
         </div>
       )}
       {invoicesError && canViewInvoices && <div className="jobs-load-error" role="alert">
@@ -285,6 +295,7 @@ export const JobList = () => {
       <JobRecordsPanel
         jobs={pagedJobs}
         invoiceByJob={invoiceByJob}
+        hasError={Boolean(loadError)}
         showBilling={canViewInvoices && !USE_MOCK_API}
         invoicesLoading={invoicesLoading}
         canViewGST={canViewGST}
@@ -297,12 +308,12 @@ export const JobList = () => {
         hasActiveFilters={Boolean(query || status !== 'All' || branch !== 'all' || technician !== 'all' || priority !== 'all' || from || to)}
         onOpenJob={openJob}
       />
-      {!loading && filteredJobs.length > pageSize && (
+      {!loading && !loadError && filteredJobs.length > pageSize && (
         <nav className="jobs-filter-pagination" aria-label="Job list pagination">
           <span>Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredJobs.length)} of {filteredJobs.length}</span>
-          <button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>Previous</button>
+          <button type="button" aria-label="Previous Job Cards page" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>Previous</button>
           <span>Page {currentPage} of {pageCount}</span>
-          <button type="button" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)}>Next</button>
+          <button type="button" aria-label="Next Job Cards page" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)}>Next</button>
         </nav>
       )}
     </div>
