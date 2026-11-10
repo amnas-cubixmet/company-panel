@@ -57,6 +57,12 @@ test('job invoice matching uses tenant-scoped invoice reference and excludes can
   const estimate = { ...posted, id: 'estimate', kind: 'estimate' };
   const job = { id: 'job-123', jobNumber: 'JOB-001' };
   assert.equal(jobInvoiceFor([cancelled, wrong, estimate, posted], job)?.id, posted.id);
+  // Older invoices may retain only their FK relation, without sourceJobId.
+  const legacyInvoice = {
+    ...posted, id: 'legacy-invoice', jobId: job.id,
+    sourceJobId: '', jobCardNo: '', status: 'Finalized',
+  };
+  assert.equal(jobInvoiceFor([legacyInvoice], job)?.id, 'legacy-invoice');
   assert.equal(jobInvoiceFor([cancelled], job), null);
   assert.equal(jobInvoiceFor([], job), null);
 });
@@ -69,6 +75,7 @@ test('job card live payments use Finance account selection instead of legacy acc
   assert.doesNotMatch(details, /await paymentService\.createPayment/);
   assert.match(read('src/utils/jobGstFinance.js'), /\/finance\/payments\/new\?invoiceId=/);
   assert.match(details, /jobInvoiceFinance\(linkedInvoice\)/);
+  assert.match(details, /row\.jobId \|\| row\.job_id/);
   assert.match(details, /navigate\(financial\.paymentUrl\)/);
   assert.match(details, /canCreatePayment && financial\.paymentUrl/);
   assert.match(details, /canViewPayments && \(USE_MOCK_API/);
