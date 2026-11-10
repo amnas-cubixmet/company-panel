@@ -44,6 +44,7 @@ const expenseCategories = [
   'Miscellaneous'
 ];
 
+// UPI / Card / Cheque can be transaction methods; money settles into Cash or Bank.
 const paymentMethods = ['Cash', 'UPI', 'Bank Transfer', 'Company Card', 'Cheque'];
 
 const today = () => localDate();
@@ -199,7 +200,7 @@ const ExpenseForm = ({
               <option value="">Select account {values.status === 'paid' ? '*' : '(optional until paid)'}</option>
               {accounts.filter((account) => account.isActive).map((account) => (
                 <option key={account.id} value={account.id}>
-                  {account.name} ({account.kind}) — {money.format(Number(account.currentBalance || 0))}
+                  {account.name} ({account.kind}) — {account.currentBalance == null ? 'Balance restricted' : money.format(Number(account.currentBalance))}
                 </option>
               ))}
             </select>
@@ -259,9 +260,9 @@ export const ExpenseList = () => {
   const canEdit = hasPermission(user, 'expenses.edit');
   const canDelete = hasPermission(user, 'expenses.delete');
 
-  const isNew = location.pathname === '/expenses/new';
+  const isNew = location.pathname === '/finance/expenses/new';
   const isEdit = Boolean(id && location.pathname.endsWith('/edit'));
-  const isDetail = Boolean(id && !isEdit && location.pathname !== '/expenses');
+  const isDetail = Boolean(id && !isEdit && location.pathname !== '/finance/expenses');
 
   const [expenses, setExpenses] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -422,12 +423,12 @@ export const ExpenseList = () => {
             String(item.id) === String(id) ? updated : item
           ));
         }
-        navigate(`/expenses/${id}`);
+        navigate(`/finance/expenses/${id}`);
       } else {
         const created = await expenseService.createExpense(payload);
         if (created?.id) setExpenses((current) => [created, ...current]);
         setForm(freshExpenseForm());
-        navigate(created?.id ? `/expenses/${created.id}` : '/expenses');
+        navigate(created?.id ? `/finance/expenses/${created.id}` : '/finance/expenses');
       }
     } catch (error) {
       setActionError(error?.message || 'Could not save expense. Please try again.');
@@ -479,7 +480,7 @@ export const ExpenseList = () => {
     setActionError('');
     try {
       await expenseService.deleteExpense(expense.id);
-      if (isDetail) navigate('/expenses');
+      if (isDetail) navigate('/finance/expenses');
       else await load();
     } catch (error) {
       setActionError(error?.message || 'Could not delete expense. Please retry.');
@@ -501,7 +502,7 @@ export const ExpenseList = () => {
         values={form}
         setValues={setForm}
         onSubmit={saveExpense}
-        onCancel={()=>navigate('/expenses')}
+        onCancel={()=>navigate('/finance/expenses')}
         submitting={submitting}
         error={actionError}
         accounts={accounts}
@@ -519,7 +520,7 @@ export const ExpenseList = () => {
         values={form}
         setValues={setForm}
         onSubmit={saveExpense}
-        onCancel={()=>navigate(`/expenses/${id}`)}
+        onCancel={()=>navigate(`/finance/expenses/${id}`)}
         submitting={submitting}
         error={actionError}
         accounts={accounts}
@@ -543,7 +544,7 @@ export const ExpenseList = () => {
           </div>
 
           <div className="expense-detail-actions">
-            {canEdit ? <button type="button" onClick={()=>navigate(`/expenses/${selectedExpense.id}/edit`)}><Edit3 size={16}/> Edit</button> : null}
+            {canEdit ? <button type="button" onClick={()=>navigate(`/finance/expenses/${selectedExpense.id}/edit`)}><Edit3 size={16}/> Edit</button> : null}
             {canDelete ? <button type="button" className="is-danger" onClick={()=>removeExpense(selectedExpense)}><Trash2 size={16}/> Delete</button> : null}
           </div>
         </header>
@@ -584,7 +585,7 @@ export const ExpenseList = () => {
                     onChange={(event) => setSettlement((prev) => ({ ...prev, account: event.target.value }))}>
                     <option value="">Choose account</option>
                     {accounts.filter((item) => item.isActive).map((item) => (
-                      <option value={item.id} key={item.id}>{item.name} — {money.format(Number(item.currentBalance || 0))}</option>
+                      <option value={item.id} key={item.id}>{item.name} — {item.currentBalance == null ? 'Balance restricted' : money.format(Number(item.currentBalance))}</option>
                     ))}
                   </select>
                 </Field>
@@ -691,7 +692,7 @@ export const ExpenseList = () => {
   return (
     <div className="expense-management-page cg-expenses">
       {actionError ? <div className="expense-alert" role="alert">{actionError}</div> : null}
-      <ExpensesHeader onAdd={()=>navigate('/expenses/new')} />
+      <ExpensesHeader onAdd={()=>navigate('/finance/expenses/new')} />
       {canViewSupplierAccounting && (
         <section className="expense-panel" aria-label="Linked supplier purchase accounting">
           <div className="expense-section-header">
@@ -738,7 +739,7 @@ export const ExpenseList = () => {
           expenses={expenses}
           categoryTotals={categoryTotals}
           formatMoney={(value)=>money.format(value || 0)}
-          onOpen={(expense)=>navigate(`/expenses/${expense.id}`)}
+          onOpen={(expense)=>navigate(`/finance/expenses/${expense.id}`)}
         />
       ) : null}
 
@@ -753,8 +754,8 @@ export const ExpenseList = () => {
           onStatusChange={setStatusFilter}
           categories={expenseCategories}
           formatMoney={(value)=>money.format(value || 0)}
-          onView={(expense)=>navigate(`/expenses/${expense.id}`)}
-          onEdit={(expense)=>navigate(`/expenses/${expense.id}/edit`)}
+          onView={(expense)=>navigate(`/finance/expenses/${expense.id}`)}
+          onEdit={(expense)=>navigate(`/finance/expenses/${expense.id}/edit`)}
           onDelete={removeExpense}
         />
       ) : null}
