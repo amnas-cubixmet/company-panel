@@ -10,6 +10,7 @@ const profile = read('src/pages/staff-management/staff/StaffProfile.jsx');
 const profileEdit = read('src/components/staff-management/StaffProfileEditSheet.jsx');
 const service = read('src/services/staff.service.js');
 const setup = read('src/pages/auth/StaffSetPasswordPage.jsx');
+const recoveryCss = read('src/styles/auth-recovery.css');
 const login = read('src/pages/auth/Login.jsx');
 const forgot = read('src/pages/auth/ForgotPassword.jsx');
 const roleForm = read('src/components/staff-management/RoleEditorForm.jsx');
@@ -17,9 +18,9 @@ const team = read('src/components/staff-management/StaffTeamsSection.jsx');
 const shift = read('src/pages/staff-management/StaffShiftCrud.jsx');
 const validation = read('src/utils/formValidation.js');
 
-test('Add Staff defaults WhatsApp consent on and selects In person for new staff', () => {
+test('Add Staff selects In person only after consent is explicitly checked', () => {
   assert.match(add, /DEFAULT_WHATSAPP_CONSENT_SOURCE = 'Staff consented in person during onboarding'/);
-  assert.match(add, /whatsappConsent: true, whatsappConsentSource: DEFAULT_WHATSAPP_CONSENT_SOURCE/);
+  assert.match(add, /whatsappConsent: false, whatsappConsentSource: ''/);
   assert.match(add, /whatsappConsent: event\.target\.checked/);
   assert.match(add, /current\.whatsappConsentSource \|\| DEFAULT_WHATSAPP_CONSENT_SOURCE/);
   assert.match(add, /setForm\(emptyStaff\(canManageLogins\)\)/);
@@ -136,6 +137,15 @@ test('WhatsApp consent remains editable without the removed information panel', 
   assert.match(profile, /staffService\.sendLoginInvite\(staff\.id, \{/);
   assert.doesNotMatch(profile, /staff-setup-link-panel|handleRecordWhatsAppConsent|Copy Secure Setup Link/);
   assert.doesNotMatch(profile, /queue_staff_whatsapp_invitation|send_template_message/);
+});
+
+test('password setup provides one app eye toggle per input without a native duplicate', () => {
+  assert.equal((setup.match(/className="login-password-toggle"/g) || []).length, 2);
+  assert.match(setup, /aria-label=\{showPassword \? 'Hide new password' : 'Show new password'\}/);
+  assert.match(setup, /aria-label=\{showConfirm \? 'Hide confirmation' : 'Show confirmation'\}/);
+  assert.match(setup, /aria-pressed=\{showPassword\}/);
+  assert.match(setup, /aria-pressed=\{showConfirm\}/);
+  assert.match(recoveryCss, /input\[type="password"\]::-ms-reveal/);
 });
 
 test('login and recovery remain staff mobile-first without OTP and automatic reset claims', () => {
