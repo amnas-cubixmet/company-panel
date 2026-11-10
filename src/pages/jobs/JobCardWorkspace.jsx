@@ -1395,6 +1395,7 @@ export function JobCardWorkspace() {
           <JobInspectionPanel
           job={job}
           canEdit={can('jobs.edit') && !activeTabLocked}
+          canReopen={can('jobs.edit') && inspectionWasSkipped && currentStage === 'estimate' && !activeTabLocked}
           canCorrect={currentStage === 'estimate' && !activeTabLocked}
           startEditing={new URLSearchParams(location.search).get('edit') === '1'}
           onDoneEditing={() => navigate('/jobs/' + job.id + '/estimate')}
@@ -1556,6 +1557,14 @@ export function JobCardWorkspace() {
           estimates={estimates}
           findings={findings}
           canEdit={can('jobs.edit') && currentStage === 'estimate' && !activeTabLocked}
+          wasSkipped={estimateWasSkipped}
+          canReopen={can('jobs.edit') && estimateWasSkipped && currentStage === 'work' && !activeTabLocked}
+          onReopen={async () => {
+            const result = await jobService.reopenJobEstimate(job.id);
+            if (result.job) setJob(result.job);
+            await refreshJobWorkflow();
+            navigate('/jobs/' + job.id + '/estimate', { replace: true });
+          }}
           onSaved={() => refreshJobWorkflow()}
           onShare={async (estimateId, action) => {
             await jobService.shareJobEstimate(job.id, estimateId, action);
