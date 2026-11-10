@@ -520,3 +520,28 @@
   }
   .cg-job-detail .cg-inspection-two-fields {grid-template-columns:1fr}
 }
+
+/* Visible inspection start action at the top of a long checklist. */
+.cg-job-detail .cg-inspection-header-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.cg-job-detail .cg-inspection-start-action {
+  min-height: 44px;
+  white-space: normal;
+  flex: 0 1 auto;
+}
+@media (max-width: 767px) {
+  /* The floating mobile navigation occupies the bottom ~72px. */
+  .cg-job-detail .cg-inspection {
+    padding-bottom: calc(192px + env(safe-area-inset-bottom, 0px));
+  }
+  .cg-job-detail .cg-inspection-footer {
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+  }
+  .cg-job-detail .cg-inspection-start-action {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}

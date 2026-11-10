@@ -99,6 +99,13 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
   const visibleGroup = activeGroups.find((group) => group.id === selectedGroup) || activeGroups[0];
   const groupPosition = activeGroups.findIndex((group) => group.id === visibleGroup?.id);
 
+  // Keep the primary action visible above the long checklist. The footer
+  // reuses this handler so both entry points save the same backend state.
+  const handleStartInspection = () => {
+    if (!canEdit || !inspection || isStarted || isSkipped || busy) return;
+    return perform('start', () => jobInspectionService.startInspection(job.id));
+  };
+
   const submitSkip = async (event) => {
     event.preventDefault();
     if (skipInFlight.current || busy || !maySkip) return;
@@ -184,6 +191,16 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
             </div>}
           </div>
           <div className="cg-inspection-header-actions">
+            {!isStarted && !isSkipped && (
+              <button type="button" className="cg-inspection-primary cg-inspection-start-action"
+                disabled={!canEdit || !inspection || !!busy}
+                aria-busy={busy === 'start'}
+                title={!canEdit ? 'Your role or workflow stage cannot start inspection.' : 'Begin the inspection checklist'}
+                onClick={handleStartInspection}>
+                <ClipboardCheck size={16} aria-hidden="true" />
+                {busy === 'start' ? 'Starting…' : 'Start Inspection'}
+              </button>
+            )}
             <button type="button" className="cg-inspection-icon-button" aria-label="Refresh inspection" disabled={!!busy} onClick={() => perform('refresh', async () => {})}><RefreshCcw size={16} /></button>
             {isCompleted && canCorrect && (
               <button type="button" className="cg-inspection-primary" disabled={!!busy}
@@ -212,6 +229,9 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
       </section>
 
       {error && <div className="cg-inspection-error" role="alert">{error}</div>}
+      {!isStarted && !isSkipped && !canEdit && (
+        <p className="cg-inspection-hint" role="status">Inspection is read-only for your role or the current job stage.</p>
+      )}
 
       <section className="cg-inspection-checklist">
         <div className="cg-inspection-section-heading">
@@ -382,11 +402,10 @@ export function JobInspectionPanel({ job, onChanged, canCorrect = false, canEdit
               <SkipForward size={16} aria-hidden="true" /> Skip Inspection
             </button>
             <button type="button" className="cg-inspection-primary"
-              disabled={!canEdit || !!busy || (isStarted && completed === 0)}
-              onClick={() => perform(isStarted ? 'complete' : 'start',
-                () => isStarted
-                  ? jobInspectionService.completeInspection(job.id, true)
-                  : jobInspectionService.startInspection(job.id))}>
+              disabled={!canEdit || !inspection || !!busy || (isStarted && completed === 0)}
+              onClick={() => isStarted
+                ? perform('complete', () => jobInspectionService.completeInspection(job.id, true))
+                : handleStartInspection()}>
               <CheckCircle2 size={16} aria-hidden="true"/>
               {busy === 'complete' ? 'Finishing…' : busy === 'start' ? 'Starting…' : isStarted ? 'Complete Inspection' : 'Start Inspection'}
             </button>
