@@ -4,7 +4,7 @@ import { hasPermission } from '../../utils/permissions';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Activity, Clock3, Edit3, IndianRupee, Layers3, Trash2, AlertCircle, FolderTree, ListFilter, Plus, RefreshCw } from "lucide-react";
+import { Activity, Clock3, Edit3, IndianRupee, Layers3, Trash2, AlertCircle, FolderTree, Plus, RefreshCw } from "lucide-react";
 import {
   ServiceCatalogGrid,
   ServiceFilterToolbar,
@@ -532,8 +532,8 @@ export const ServiceList = () => {
         onAddCategory={()=>openCategoryDialog()}
       />
 
-      {location.state?.serviceNotice && (
-        <div className="service-workspace-success" role="status">{location.state.serviceNotice}</div>
+      {(location.state?.serviceNotice || notice) && (
+        <div className="service-workspace-success" role="status">{location.state?.serviceNotice || notice}</div>
       )}
       {loadError && (
         <div className="service-workspace-error" role="alert">
