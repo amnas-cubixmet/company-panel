@@ -7,6 +7,7 @@ import { JobCustomerContactActions } from './JobCustomerContactActions';
 
 export const JobRecordsPanel = ({
   jobs,
+  layout = 'auto',
   totalCount = jobs.length,
   loading,
   hasError = false,
@@ -22,7 +23,7 @@ export const JobRecordsPanel = ({
   canCollectPayments = false,
   onOpenJob,
 }) => (
-  <section className="jobs-records-panel" aria-label="Workshop Job Card records">
+  <section className={'jobs-records-panel' + (layout === 'cards' ? ' is-card-layout' : '')} aria-label="Workshop Job Card records">
     <header className="jobs-records-head">
       <div>
         <span>Workshop Jobs</span>
