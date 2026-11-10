@@ -20,13 +20,13 @@ test('Supplier bill completion picks cash, bank or credit with actual account po
   assert.match(parts, /Payment Type/);
   assert.match(parts, /Pay From Account/);
   assert.match(parts, /financeService\.listAccounts/);
-  assert.match(parts, /row\.kind === paymentType/);
+  assert.match(parts, /financeAccountsForChannel\(accounts, paymentType\)/);
   assert.match(parts, /paymentType === 'Credit'/);
   assert.match(parts, /accountId/);
   assert.match(service, /payload\.append\('paymentType'/);
   assert.match(service, /payload\.append\('accountId'/);
-  assert.match(parts, /selected account is debited/);
-  assert.match(parts, /supplier later/);
+  assert.match(parts, /only Pay Now is debited/);
+  assert.match(parts, /remaining expense later/);
 });
 
 test('Modal retains actual scrolling while hiding visual scrollbar', () => {
