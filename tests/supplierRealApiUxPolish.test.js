@@ -20,8 +20,10 @@ test('supplier credit summary, payments and product details come from live APIs'
   assert.match(profile, /supplierFinanceService\.getBills/);
   assert.match(profile, /supplierFinanceService\.getPayments/);
   assert.match(profile, /supplierService\.products/);
-  assert.match(profile, /Supplier Accounts & Payments/);
+  assert.match(profile, /Supplier Credit, Balance & Transactions/);
   assert.match(profile, /Credit outstanding/);
+  assert.match(profile, /supplierFinanceService\.getSupplierLedger/);
+  assert.match(profile, /<SupplierAccountStatement/);
   assert.match(purchase, /supplierFinanceService\.recordPayment/);
 });
 
