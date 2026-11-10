@@ -277,7 +277,7 @@ export function PaymentList() {
           <div>
             <span className="payments-kicker">FINANCIAL PAYMENTS</span>
             <h1>Record Customer Payment</h1>
-            <p>Receive a partial invoice payment or a customer advance into a real Cash, UPI or Bank account. Adjust unused advances on the customer's ledger.</p>
+            <p>Record money received for a customer invoice, or record a customer advance. Choose the Cash, Bank or UPI account that actually received the money.</p>
             <div className="payment-form-actions">
               <button type="button" className="payments-secondary-btn" onClick={() => navigate('/finance/expenses')}>
                 Pay Workshop Expense
@@ -295,8 +295,8 @@ export function PaymentList() {
           !canCreate ? <p className="payments-empty">You do not have permission to record payments.</p> :
           <form className="payment-form-card" onSubmit={save}>
             <div className="payment-form-intro">
-              <h2>Payment Details</h2>
-              <p>Invoice receipts reduce the unpaid balance. Advances remain customer credit until explicitly applied or refunded. Outgoing payments debit the selected account.</p>
+              <h2>Customer Payment Details</h2>
+              <p>Payments against invoices reduce the customer's balance. Advance money stays as customer credit until applied or refunded. Refunds take money out of the selected account.</p>
             </div>
             <div className="payment-form-grid">
               <label className="payment-wide">
@@ -509,7 +509,7 @@ export function PaymentList() {
         <section className="payments-dashboard-records" aria-label="Supplier purchase accounting">
           <header className="payments-dashboard-section-title">
             <div>
-              <h2>Spare Parts Purchase & Supplier Credit</h2>
+              <h2>Supplier Purchases &amp; Money Due</h2>
               <p>Confirmed purchases create a supplier payable. Only money actually paid appears as an outgoing payment.</p>
             </div>
           </header>
