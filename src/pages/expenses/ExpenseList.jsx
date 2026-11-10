@@ -109,7 +109,7 @@ const ExpenseForm = ({
     <header className="expense-form-header">
       <div>
         <h1>{title}</h1>
-        <p>Record real operational expenses. Spare Parts Purchases and Supplier Settlements are managed through the linked Supplier Bill workflow to prevent double counting.</p>
+        <p>Enter workshop running costs such as utilities, rent or maintenance. Record parts purchased from suppliers in the Supplier Purchase workflow instead.</p>
       </div>
     </header>
 
@@ -176,7 +176,7 @@ const ExpenseForm = ({
       <section className="expense-form-section">
         <div className="expense-section-header">
           <div>
-            <h2>Payment & Amount</h2>
+            <h2>Amount &amp; Payment</h2>
             <p>Expense value, tax, payment method and bill reference.</p>
           </div>
         </div>
@@ -235,7 +235,7 @@ const ExpenseForm = ({
       <section className="expense-form-section">
         <div className="expense-section-header">
           <div>
-            <h2>Receipt & Notes</h2>
+            <h2>Bill / Receipt &amp; Notes</h2>
             <p>Attach bill metadata and store additional accounting notes.</p>
           </div>
         </div>
@@ -583,7 +583,7 @@ export const ExpenseList = () => {
         <section className="expense-panel">
           <div className="expense-section-header">
             <div>
-              <h2>Account Settlement</h2>
+              <h2>Pay This Expense</h2>
               <p>Posted settlements debit your internal Cash/Bank ledger; unpaid expenses do not.</p>
             </div>
           </div>
@@ -721,8 +721,8 @@ export const ExpenseList = () => {
         <section className="expense-panel" aria-label="Linked supplier purchase accounting">
           <div className="expense-section-header">
             <div>
-              <h2>Supplier Purchases & Credit — linked accounting</h2>
-              <p>Spare parts purchases are recorded against supplier bills and stock;
+              <h2>Supplier Purchases &amp; Pending Payments</h2>
+              <p>Parts purchases are recorded against supplier bills and inventory;
                 they are not counted again as operational expense payments.</p>
             </div>
           </div>

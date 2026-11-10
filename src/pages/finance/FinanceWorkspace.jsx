@@ -1,20 +1,28 @@
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, ArrowDownLeft, Receipt, Wallet, ArrowLeftRight,
-  List, BookOpen, UserRound, Truck, Wrench, FileText
+  List, BookOpen, UserRound, Truck, Wrench, FileText, Info, ChevronRight
 } from 'lucide-react';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/finance-workspace.css';
+import '../../styles/finance-unified-ui.css';
 
 // One workspace; each existing financial workflow remains the sole source of truth.
 const sections = [
-  { label: 'Overview', to: '/finance', icon: LayoutDashboard, access: 'payments.view', end: true },
-  { label: 'Payments', to: '/finance/payments', icon: ArrowDownLeft, access: 'payments.view' },
-  { label: 'Expenses', to: '/finance/expenses', icon: Receipt, access: 'expenses.view' },
-  { label: 'Cash & Bank', to: '/finance/accounts', icon: Wallet, access: 'payments.view' },
-  { label: 'Transfers', to: '/finance/transfers', icon: ArrowLeftRight, access: 'payments.view' },
-  { label: 'Transactions', to: '/finance/transactions', icon: List, access: 'payments.view' },
-  { label: 'Accounting', to: '/finance/accounting', icon: BookOpen, access: 'payments.view' },
+  { label: 'Overview', to: '/finance', icon: LayoutDashboard, access: 'payments.view', end: true,
+    description: 'Understand how much has come in, how much has been paid and what is still due.' },
+  { label: 'Payments', to: '/finance/payments', icon: ArrowDownLeft, access: 'payments.view',
+    description: 'Record and review money received from customers and their invoices.' },
+  { label: 'Expenses', to: '/finance/expenses', icon: Receipt, access: 'expenses.view',
+    description: 'Record workshop costs, then pay outstanding expenses from a selected account.' },
+  { label: 'Cash & Bank', to: '/finance/accounts', icon: Wallet, access: 'payments.view',
+    description: 'Manage cash, bank and UPI accounts. Account balances follow your role permissions.' },
+  { label: 'Transfers', to: '/finance/transfers', icon: ArrowLeftRight, access: 'payments.view',
+    description: 'Move money between workshop accounts without recording it as income or expense.' },
+  { label: 'Transactions', to: '/finance/transactions', icon: List, access: 'payments.view',
+    description: 'Review the posted money movements and download the account transaction ledger.' },
+  { label: 'Accounting', to: '/finance/accounting', icon: BookOpen, access: 'payments.view',
+    description: 'Review journals, trial balance, profit and loss, and bank reconciliation.' },
 ];
 
 const workflows = [
@@ -42,11 +50,11 @@ export default function FinanceWorkspace() {
   return <main className="finance-workspace">
     <div className="finance-workspace-top">
       <div>
-        <span className="finance-workspace-eyebrow">CUBIXGEAR · FINANCIAL CONTROL</span>
-        <h1>Finance Management</h1>
-        <p>One place for collections, costs, Cash/Bank accounts, transfers and audit records.</p>
+        <span className="finance-workspace-eyebrow">CUBIXGEAR · WORKSHOP FINANCE</span>
+        <h1>Finance</h1>
+        <p>Track the money your workshop receives, pays and keeps in its accounts.</p>
       </div>
-      <span className="finance-workspace-context">{current?.label || 'Overview'}</span>
+      <span className="finance-workspace-context"><ChevronRight size={15} aria-hidden="true"/>{current?.label || 'Overview'}</span>
     </div>
     <nav className="finance-workspace-tabs" aria-label="Finance sections">
       {sections.filter(item => access.can(item.access)).map(({ label, to, icon: Icon, end }) =>
@@ -57,11 +65,15 @@ export default function FinanceWorkspace() {
         </NavLink>
       )}
     </nav>
+    <div className="finance-workspace-intro" role="note">
+      <Info size={17} aria-hidden="true"/>
+      <span>{current?.description || 'Select a finance section to view its records.'}</span>
+    </div>
     <Outlet />
     <section className="finance-workspace-related" aria-label="Linked finance workflows">
       <div>
-        <h2>Related finance workflows</h2>
-        <p>Open the original transaction to record its payment once. All posted money movements appear in the same ledger.</p>
+        <h2>Other workshop payments</h2>
+        <p>Supplier purchases and staff wages start from their own records. Record each payment once; posted movements appear in the Finance transaction ledger.</p>
       </div>
       <div className="finance-workspace-links">
         {workflows.filter(item => access.can(item.access)).map(({ label, to, icon: Icon }) =>
