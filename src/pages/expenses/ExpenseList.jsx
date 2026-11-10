@@ -7,6 +7,9 @@ import { BarChart3, Calendar, CheckCircle2, CircleDollarSign, Edit3, FileText, I
 import { expenseService } from '../../services/expense.service';
 import { ExpenseBudgetPanel } from '../../components/expenses/ExpenseBudgetPanel';
 import { financeService } from '../../services/finance.service';
+import { FINANCE_CHANNELS, financeAccountsForChannel, assertFinanceAccount } from '../../utils/financeCashBank';
+import { gstPresetRatesForMode } from '../../utils/gstRatePresets';
+import { expenseIncludedGst } from '../../utils/expenseGst';
 import { localDate } from '../../services/expense.mapper';
 import {
   ExpenseListView,
@@ -44,7 +47,7 @@ const expenseCategories = [
   'Miscellaneous'
 ];
 
-const paymentMethods = ['Cash', 'UPI', 'Bank Transfer', 'Company Card', 'Cheque'];
+const paymentMethods = FINANCE_CHANNELS;
 
 const today = () => localDate();
 
@@ -54,9 +57,10 @@ const emptyForm = {
   amount: '',
   expenseDate: today(),
   vendor: '',
-  paymentMethod: 'UPI',
+  paymentMethod: 'Cash',
   referenceNo: '',
   taxAmount: '',
+  gstRate: '',
   status: 'approved',
   notes: '',
   receiptUrl: '',
@@ -179,15 +183,31 @@ const ExpenseForm = ({
 
         <div className="expense-form-grid">
           <Field label="Expense Amount">
-            <input type="number" min="0.01" step="0.01" required value={values.amount} onChange={(e)=>setValues({...values,amount:e.target.value})}/>
+            <input type="number" min="0.01" step="0.01" required value={values.amount}
+              onChange={(e)=>setValues({...values,amount:e.target.value,
+                taxAmount: values.gstRate !== '' ? expenseIncludedGst(e.target.value, values.gstRate) : values.taxAmount})}/>
           </Field>
 
-          <Field label="Tax / GST Amount">
-            <input type="number" min="0" step="0.01" value={values.taxAmount} onChange={(e)=>setValues({...values,taxAmount:e.target.value})}/>
+          <Field label="GST Rate (included in amount)">
+            <select aria-label="Expense GST percentage" value={values.gstRate ?? ''}
+              onChange={(e) => setValues({...values, gstRate: e.target.value,
+                taxAmount: e.target.value === '' ? values.taxAmount :
+                  expenseIncludedGst(values.amount, e.target.value)})}>
+              <option value="">Previously saved / enter GST amount</option>
+              <option value="0">None — 0%</option>
+              {gstPresetRatesForMode('unknown').map((rate) =>
+                <option key={rate} value={rate}>{rate}%</option>)}
+            </select>
+          </Field>
+          <Field label="Tax / GST Amount (included)">
+            <input type="number" min="0" step="0.01" value={values.taxAmount}
+              readOnly={values.gstRate !== ''}
+              onChange={(e)=>setValues({...values,taxAmount:e.target.value})}/>
+            <small>The GST component is included, not charged twice. Input tax credit must follow the supplier tax invoice.</small>
           </Field>
 
           <Field label="Payment Method">
-            <select value={values.paymentMethod} onChange={(e)=>setValues({...values,paymentMethod:e.target.value})}>
+            <select value={values.paymentMethod} onChange={(e)=>setValues({...values,paymentMethod:e.target.value,accountId:''})}>
               {paymentMethods.map((method)=><option key={method}>{method}</option>)}
             </select>
           </Field>
@@ -197,7 +217,7 @@ const ExpenseForm = ({
               onChange={(e) => setValues({ ...values, accountId: e.target.value })}
               disabled={submitting}>
               <option value="">Select account {values.status === 'paid' ? '*' : '(optional until paid)'}</option>
-              {accounts.filter((account) => account.isActive).map((account) => (
+              {financeAccountsForChannel(accounts, values.paymentMethod).map((account) => (
                 <option key={account.id} value={account.id}>
                   {account.name} ({account.kind}) — {money.format(Number(account.currentBalance || 0))}
                 </option>
@@ -259,9 +279,9 @@ export const ExpenseList = () => {
   const canEdit = hasPermission(user, 'expenses.edit');
   const canDelete = hasPermission(user, 'expenses.delete');
 
-  const isNew = location.pathname === '/expenses/new';
+  const isNew = location.pathname.endsWith('/new');
   const isEdit = Boolean(id && location.pathname.endsWith('/edit'));
-  const isDetail = Boolean(id && !isEdit && location.pathname !== '/expenses');
+  const isDetail = Boolean(id && !isEdit);
 
   const [expenses, setExpenses] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -348,9 +368,10 @@ export const ExpenseList = () => {
       amount: expense.amount || '',
       expenseDate: expense.expenseDate || today(),
       vendor: expense.vendor || '',
-      paymentMethod: expense.paymentMethod || 'Cash',
+      paymentMethod: expense.paymentMethod === 'Cash' ? 'Cash' : 'Bank',
       referenceNo: expense.referenceNo || '',
       taxAmount: expense.taxAmount || '',
+      gstRate: '',
       status: expense.status || 'approved',
       notes: expense.notes || '',
       receiptUrl: expense.receiptUrl || '',
@@ -413,6 +434,9 @@ export const ExpenseList = () => {
     setSubmitting(true);
     setActionError('');
     try {
+      if (form.status === 'paid') {
+        assertFinanceAccount(accounts, form.accountId, form.paymentMethod);
+      }
       const payload = { ...form };
 
       if (isEdit && id) {
@@ -422,12 +446,12 @@ export const ExpenseList = () => {
             String(item.id) === String(id) ? updated : item
           ));
         }
-        navigate(`/expenses/${id}`);
+        navigate(`/finance/expenses/${id}`);
       } else {
         const created = await expenseService.createExpense(payload);
         if (created?.id) setExpenses((current) => [created, ...current]);
         setForm(freshExpenseForm());
-        navigate(created?.id ? `/expenses/${created.id}` : '/expenses');
+        navigate(created?.id ? `/finance/expenses/${created.id}` : '/finance/expenses');
       }
     } catch (error) {
       setActionError(error?.message || 'Could not save expense. Please try again.');
@@ -442,6 +466,7 @@ export const ExpenseList = () => {
     setSubmitting(true);
     setActionError('');
     try {
+      assertFinanceAccount(accounts, settlement.account, settlement.method);
       await expenseService.settleExpense(selectedExpense.id, settlement);
       await load();
       setSettlement({
@@ -479,7 +504,7 @@ export const ExpenseList = () => {
     setActionError('');
     try {
       await expenseService.deleteExpense(expense.id);
-      if (isDetail) navigate('/expenses');
+      if (isDetail) navigate('/finance/expenses');
       else await load();
     } catch (error) {
       setActionError(error?.message || 'Could not delete expense. Please retry.');
@@ -501,7 +526,7 @@ export const ExpenseList = () => {
         values={form}
         setValues={setForm}
         onSubmit={saveExpense}
-        onCancel={()=>navigate('/expenses')}
+        onCancel={()=>navigate('/finance/expenses')}
         submitting={submitting}
         error={actionError}
         accounts={accounts}
@@ -519,7 +544,7 @@ export const ExpenseList = () => {
         values={form}
         setValues={setForm}
         onSubmit={saveExpense}
-        onCancel={()=>navigate(`/expenses/${id}`)}
+        onCancel={()=>navigate(`/finance/expenses/${id}`)}
         submitting={submitting}
         error={actionError}
         accounts={accounts}
@@ -543,7 +568,7 @@ export const ExpenseList = () => {
           </div>
 
           <div className="expense-detail-actions">
-            {canEdit ? <button type="button" onClick={()=>navigate(`/expenses/${selectedExpense.id}/edit`)}><Edit3 size={16}/> Edit</button> : null}
+            {canEdit ? <button type="button" onClick={()=>navigate(`/finance/expenses/${selectedExpense.id}/edit`)}><Edit3 size={16}/> Edit</button> : null}
             {canDelete ? <button type="button" className="is-danger" onClick={()=>removeExpense(selectedExpense)}><Trash2 size={16}/> Delete</button> : null}
           </div>
         </header>
@@ -583,14 +608,14 @@ export const ExpenseList = () => {
                   <select required value={settlement.account} disabled={submitting}
                     onChange={(event) => setSettlement((prev) => ({ ...prev, account: event.target.value }))}>
                     <option value="">Choose account</option>
-                    {accounts.filter((item) => item.isActive).map((item) => (
+                    {financeAccountsForChannel(accounts, settlement.method).map((item) => (
                       <option value={item.id} key={item.id}>{item.name} — {money.format(Number(item.currentBalance || 0))}</option>
                     ))}
                   </select>
                 </Field>
                 <Field label="Payment Method">
                   <select value={settlement.method} disabled={submitting}
-                    onChange={(event) => setSettlement((prev) => ({ ...prev, method: event.target.value }))}>
+                    onChange={(event) => setSettlement((prev) => ({ ...prev, method: event.target.value, account: '' }))}>
                     {paymentMethods.map((method) => <option key={method}>{method}</option>)}
                   </select>
                 </Field>
@@ -691,7 +716,7 @@ export const ExpenseList = () => {
   return (
     <div className="expense-management-page cg-expenses">
       {actionError ? <div className="expense-alert" role="alert">{actionError}</div> : null}
-      <ExpensesHeader onAdd={()=>navigate('/expenses/new')} />
+      <ExpensesHeader onAdd={()=>navigate('/finance/expenses/new')} />
       {canViewSupplierAccounting && (
         <section className="expense-panel" aria-label="Linked supplier purchase accounting">
           <div className="expense-section-header">
@@ -738,7 +763,7 @@ export const ExpenseList = () => {
           expenses={expenses}
           categoryTotals={categoryTotals}
           formatMoney={(value)=>money.format(value || 0)}
-          onOpen={(expense)=>navigate(`/expenses/${expense.id}`)}
+          onOpen={(expense)=>navigate(`/finance/expenses/${expense.id}`)}
         />
       ) : null}
 
@@ -753,8 +778,8 @@ export const ExpenseList = () => {
           onStatusChange={setStatusFilter}
           categories={expenseCategories}
           formatMoney={(value)=>money.format(value || 0)}
-          onView={(expense)=>navigate(`/expenses/${expense.id}`)}
-          onEdit={(expense)=>navigate(`/expenses/${expense.id}/edit`)}
+          onView={(expense)=>navigate(`/finance/expenses/${expense.id}`)}
+          onEdit={(expense)=>navigate(`/finance/expenses/${expense.id}/edit`)}
           onDelete={removeExpense}
         />
       ) : null}
