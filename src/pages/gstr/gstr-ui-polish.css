@@ -388,3 +388,24 @@
     transition:none!important;animation:none!important;
   }
 }
+
+
+.gstr15-workspace .gstr15-error{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;
+  padding:12px 14px;border:1px solid var(--danger,#c93636);
+  border-radius:10px;background:var(--gstr-surface);
+  color:var(--danger,#a61b28);
+  font-size:14px;line-height:1.5;
+}
+.gstr15-workspace .gstr15-error span{flex:1;min-width:0}
+.gstr15-workspace .gstr15-error button{
+  background:transparent;border:1px solid currentColor;
+  color:inherit;padding:8px 13px;min-height:40px;
+}
+.gstr15-workspace .gstr15-loading{
+  display:flex;align-items:center;justify-content:center;
+  min-height:65px;margin:0;padding:12px 15px;
+  color:var(--gstr-muted);background:var(--gstr-surface-alt);
+  border-radius:10px;font-size:14px;line-height:1.5;
+}
