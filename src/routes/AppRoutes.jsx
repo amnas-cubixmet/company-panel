@@ -219,7 +219,7 @@ export const AppRoutes = () => (
 
       <Route path="/suppliers" element={<SuppliersPage />} />
       <Route path="/suppliers/credits" element={<LegacySupplierRouteRedirect />} />
-      <Route path="/suppliers/purchases" element={<LegacySupplierRouteRedirect />} />
+      <Route path="/suppliers/purchases" element={<SuppliersPage section="purchases" />} />
       <Route path="/suppliers/payments" element={<LegacySupplierRouteRedirect />} />
       <Route path="/suppliers/:id" element={<SuppliersPage />} />
       <Route path="/stock" element={<StockEasyPage />} />
