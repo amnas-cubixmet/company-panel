@@ -22,6 +22,7 @@ import { financeService } from '../../services/finance.service';
 import { jobPartsService } from '../../services/jobParts.service';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
+import { financeAccountsForChannel } from '../../utils/financeCashBank';
 
 const money = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -35,6 +36,7 @@ export function JobPartsWorkflow({ jobId, assignedTo = '', initialPanel = null }
   const { user } = useAuth();
   const canApproveOutside = hasPermission(user, 'jobs.view') && hasPermission(user, 'expenses.edit');
   const canCompleteOutside = hasPermission(user, 'jobs.edit') && hasPermission(user, 'expenses.edit');
+  const canPayOutside = hasPermission(user, 'payments.edit');
   const [data, setData] = useState({ lines: [], transactions: [], purchaseOrders: [], canComplete: true, blockingReasons: [] });
   const [stock, setStock] = useState([]);
   const [outsideParts, setOutsideParts] = useState([]);
@@ -480,6 +482,7 @@ export function JobPartsWorkflow({ jobId, assignedTo = '', initialPanel = null }
       {panel?.type === 'outsideComplete' && (
         <OutsidePartCompletionPanel
           purchase={panel.purchase}
+          canPayNow={canPayOutside}
           busy={busy === 'completeOutside'}
           error={error}
           onClose={() => setPanel(null)}
@@ -776,10 +779,11 @@ function OutsidePartPurchasePanel({ initial, onClose, onSave, busy, error }) {
   );
 }
 
-function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) {
+function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error, canPayNow = false }) {
   const [invoiceNo, setInvoiceNo] = useState('');
   const [paymentType, setPaymentType] = useState('Credit');
   const [accountId, setAccountId] = useState('');
+  const [paidAmount, setPaidAmount] = useState('');
   const [accounts, setAccounts] = useState([]);
   const [accountsError, setAccountsError] = useState('');
   const [accountsLoading, setAccountsLoading] = useState(false);
@@ -800,17 +804,25 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
     });
     return () => { active = false; };
   }, [paymentType]);
-  const eligibleAccounts = accounts.filter(row => row.isActive !== false &&
-    (row.kind === paymentType || (paymentType === 'Bank' && row.kind === 'UPI')));
+  const eligibleAccounts = financeAccountsForChannel(accounts, paymentType);
   const quantity = Number(purchase.quantity);
   const gstRate = Number(purchase.purchaseGstRate || 0);
-  const actualTotal = quantity * Number(unitCost) * (1 + gstRate / 100);
+  // Approximate display only; Django validates the authoritative Decimal amount.
+  const purchaseBase = Math.round(quantity * Number(unitCost) * 100) / 100;
+  const purchaseGST = Math.round(purchaseBase * gstRate) / 100;
+  const actualTotal = purchaseBase + purchaseGST;
+  const payNow = paymentType === 'Credit' ? 0
+    : paidAmount.trim() === '' ? actualTotal : Number(paidAmount);
+  const remainingCredit = Math.max(0, Math.round((actualTotal - payNow) * 100) / 100);
+  const validPaidAmount = paymentType === 'Credit' ||
+    (Number.isFinite(payNow) && payNow > 0 && payNow <= actualTotal &&
+      (paidAmount === '' || /^\d+(?:\.\d{1,2})?$/.test(paidAmount)));
   const approvedTotal = Number(purchase.quotedTotal || 0);
   const withinApproval = Number.isFinite(actualTotal) &&
     Number(unitCost) >= 0 && actualTotal <= approvedTotal && Number(unitCost) <= 999999999.99;
   const valid = invoiceNo.trim().length > 0 && invoiceNo.trim().length <= 120 &&
-    bill && withinApproval && unitCost !== '' && Number(unitCost) > 0 &&
-    (paymentType === 'Credit' || (accountId && !accountsLoading && !accountsError &&
+    bill && withinApproval && unitCost !== '' && Number(unitCost) > 0 && validPaidAmount &&
+    (paymentType === 'Credit' || (canPayNow && accountId && !accountsLoading && !accountsError &&
       eligibleAccounts.some(account => String(account.id) === String(accountId))));
   const chooseFile = (file) => {
     setBill(null);
@@ -836,6 +848,7 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
         if (valid && !busy) onSave({
           invoiceNo: invoiceNo.trim(), unitCost, bill, paymentType,
           accountId: paymentType === 'Credit' ? '' : accountId,
+          paidAmount: paymentType === 'Credit' ? '0.00' : payNow.toFixed(2),
         });
       }}>
         <div className="job-parts-approval-note job-parts-modal-full">
