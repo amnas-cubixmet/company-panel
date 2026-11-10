@@ -56,7 +56,7 @@ const scoreMatch = (item, query) => {
   if (label === query) return 400;
   if (label.startsWith(query)) return 300;
   if (label.includes(query)) return 200;
-  if (keywords.split(/\\s+/).some(word => word === query)) return 160;
+  if (keywords.split(/\s+/).some(word => word === query)) return 160;
   if (keywords.includes(query)) return 110;
   if (details.includes(query)) return 70;
   if (path.includes(query)) return 30;
