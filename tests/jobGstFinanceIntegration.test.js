@@ -75,7 +75,7 @@ test('job card live payments use Finance account selection instead of legacy acc
   assert.match(details, /canViewPayments \? invoicePaymentStatus : 'Restricted'/);
   assert.match(details, /canViewGST && financial\.gstrUrl/);
   assert.match(list, /billingService\.list\(\{ kind: 'invoice' \}\)/);
-  assert.match(list, /canViewInvoices && !USE_MOCK_API/);
+  assert.match(list, /!canViewInvoices \|\| USE_MOCK_API/);
   assert.match(records, /canCollectPayments && finance\.paymentUrl/);
   assert.match(records, /canViewGST && finance\.gstrUrl/);
   assert.match(records, /canViewPayments && finance\.historyUrl/);
