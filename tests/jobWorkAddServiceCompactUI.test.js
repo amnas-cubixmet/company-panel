@@ -55,3 +55,19 @@ test('Service picker and pricing controls fit narrow screens while retaining 16p
   assert.match(css, /var\(--surface\)/);
   assert.match(css, /var\(--text-primary\)/);
 });
+
+test('Search Service renders as one field despite global Job Workspace input styles', () => {
+  assert.match(ui, /className="job-service-quick-search"/);
+  assert.match(ui, /type="search"/);
+  assert.match(ui, /aria-label="Search service catalogue"/);
+  const scoped = css.match(/\.cg-job-detail\.job-workspace-dashboard \.job-service-quick \.job-service-quick-search input\[type="search"\] \{([^}]+)\}/);
+  assert.ok(scoped, 'specific override must beat the global .job-panel input rule');
+  const rules = scoped[1];
+  assert.match(rules, /border:0 !important/);
+  assert.match(rules, /background:transparent !important/);
+  assert.match(rules, /border-radius:0 !important/);
+  assert.match(rules, /box-shadow:none !important/);
+  assert.match(rules, /font-size:16px !important/);
+  assert.match(css, /\.cg-job-detail \.job-service-quick-search:focus-within/);
+  assert.match(css, /min-height:46px/);
+});
