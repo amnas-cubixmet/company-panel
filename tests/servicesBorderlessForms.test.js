@@ -33,8 +33,8 @@ test('Add and Edit Service/Category editors use borderless accessible 16px field
   for (const label of [
     'Add Service', 'Edit Service', 'Service Code', 'Service Name', 'Category',
     'Pricing Type', 'Default Selling Rate (₹)', 'Estimated Duration (minutes)',
-    'Description', 'Checklist — one item per line', 'Save Service',
-    'Add Category', 'Save Category', 'Main Category (root)',
+    'Description', 'Checklist — one item per line', 'Save Changes',
+    'Add Category', 'Save Changes', 'Main Category (root)',
   ]) assert.ok(page.includes(label), label);
 });
 
@@ -47,10 +47,11 @@ test('Services directory search field uses one focus outline and no double borde
   assert.match(css, /height:48px !important/);
 });
 
-test('All existing save and price calculations remain untouched', () => {
+test('All service and category API mappings and price calculations remain intact', () => {
   assert.match(page, /serviceService\.createService\(payload\)/);
   assert.match(page, /serviceService\.updateService\(id, payload\)/);
-  assert.ok(page.includes('serviceService.createServiceCategory({'));
+  assert.ok(page.includes('serviceService.createServiceCategory(payload)'));
+  assert.ok(page.includes('serviceService.updateServiceCategory(editingCategoryId, payload)'));
   assert.ok(page.includes('onSubmit={saveCategory}'));
   assert.match(page, /price: Number\(form\.price \|\| 0\)/);
 });
