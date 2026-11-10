@@ -33,6 +33,8 @@ const CRUD_PREFIXES = {
   '/quotations': 'invoices',
   '/payments': 'payments',
   '/expenses': 'expenses',
+  '/finance/payments': 'payments',
+  '/finance/expenses': 'expenses',
 };
 
 const SPECIAL_PATH_PERMISSIONS = [
@@ -54,7 +56,9 @@ const SPECIAL_PATH_PERMISSIONS = [
   ['/payroll', 'payroll.view'],
   ['/gstr', 'gstr.view'],
   ['/finance/accounting', 'payments.view'],
-  ['/finance', 'payments.view'],
+  ['/finance/accounts', 'payments.view'],
+  ['/finance/transfers', 'payments.view'],
+  ['/finance/transactions', 'payments.view'],
   ['/reports', 'reports.view'],
   ['/notifications', 'notifications.view'],
   ['/settings/customer-website', 'company.manage'],
@@ -83,7 +87,7 @@ const actionForCrudPath = (pathname, prefix) => {
 };
 
 export const getPermissionForPath = (pathname = '') => {
-  if (!pathname || pathname === '/profile' || pathname === '/access-denied') {
+  if (!pathname || pathname === '/profile' || pathname === '/access-denied' || pathname === '/finance') {
     return null;
   }
   // A Job Card has cross-module sections; its invoice screen is NOT covered
