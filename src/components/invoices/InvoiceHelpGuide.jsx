@@ -24,7 +24,7 @@ export default function InvoiceHelpGuide({ mode = 'invoice' }) {
         </summary>
         <div className="invoice-reading-details">
           <p><BookOpen size={16} aria-hidden="true"/>
-            <span><strong>Draft:</strong> Keep your details editable. A draft is not a finalized customer invoice.</span></p>
+            <span><strong>Draft:</strong> Keep your details editable. {eway ? 'This is only a local transport document, not an NIC-issued E-Way Bill.' : 'This is not a finalized customer invoice.'}</span></p>
           {!eway && <p><FileCheck2 size={16} aria-hidden="true"/>
             <span><strong>{estimate ? 'Issue estimate:' : 'Finalize:'}</strong> Save the official workshop billing record. Review GST, customer and totals first.</span></p>}
           {!eway && <p><Wallet size={16} aria-hidden="true"/>
