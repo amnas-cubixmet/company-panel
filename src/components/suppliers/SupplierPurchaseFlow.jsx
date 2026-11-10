@@ -507,15 +507,44 @@ export default function SupplierPurchaseFlow({
                   <div><span>Pay Now</span><strong>{rupees(paidNow)}</strong></div>
                   <div><span>Supplier Credit (Due)</span><strong>{rupees(remaining)}</strong></div>
                 </div>
+                {gstBreakup && <div className="cg-supplier-gst-breakup" role="status">
+                  <strong>{gstBreakup.mode} GST estimate</strong>
+                  <span>CGST {rupees(gstBreakup.cgst)}</span>
+                  <span>{['04', '26', '31', '35', '38'].includes(placeOfSupply) ? 'UTGST' : 'SGST'} {rupees(gstBreakup.sgst)}</span>
+                  <span>IGST {rupees(gstBreakup.igst)}</span>
+                  <small>Final statutory GST is calculated and verified by Django when the purchase bill is posted.</small>
+                </div>}
                 <h3>How are you paying the supplier?</h3>
-                <p className="cg-supplier-purchase-muted">No payment = full credit. Choose Cash or Bank accounts below; multiple payments are supported.</p>
+                <p className="cg-supplier-purchase-muted">No payment = full credit. Choose Cash in Hand or Bank accounts below; multiple payments and partial credit are supported.</p>
+                <div className="cg-supplier-payment-channel-actions" aria-label="Choose payment method">
+                  <button type="button" onClick={() => setSplits([])} disabled={!splits.length || posting}>
+                    Full Credit · Pay Later
+                  </button>
+                  <button type="button" onClick={() => addPaymentChannel('Cash')} disabled={splits.length >= 5 || posting}>
+                    + Cash in Hand
+                  </button>
+                  <button type="button" onClick={() => addPaymentChannel('Bank')} disabled={splits.length >= 5 || posting}>
+                    + Bank Payment
+                  </button>
+                </div>
+                {splits.length > 0 && <p className="cg-supplier-purchase-muted">
+                  Pay full or partial now. Outstanding credit after these payments: <strong>{rupees(remaining)}</strong>
+                </p>}
                 {splits.map((row, index) => (
                   <div className="cg-supplier-purchase-split" key={row.id}>
-                    <label>Payment account
+                    <label>Payment method *
+                      <select className={fieldClass} value={row.channel || ''}
+                        onChange={e => changeSplit(index, { channel: e.target.value, accountId: '' })}>
+                        <option value="">Select method</option>
+                        <option value="Cash">Cash in Hand</option>
+                        <option value="Bank">Bank</option>
+                      </select>
+                    </label>
+                    <label>Cash / Bank account *
                       <select className={fieldClass} value={row.accountId}
                         onChange={e => changeSplit(index, { accountId: e.target.value })}>
-                        <option value="">Select account</option>
-                        {accounts.map(account => <option key={account.id} value={account.id}>
+                        <option value="">Select {row.channel === 'Cash' ? 'Cash in Hand' : row.channel === 'Bank' ? 'Bank' : 'payment method'} account</option>
+                        {financeAccountsForChannel(accounts, row.channel).map(account => <option key={account.id} value={account.id}>
                           {account.name} ({accountMethod(account)}) · {rupees(account.recordedBalance)}
                         </option>)}
                       </select>
@@ -533,7 +562,7 @@ export default function SupplierPurchaseFlow({
                 ))}
                 <div className="cg-supplier-purchase-actions">
                   <button type="button" disabled={splits.length >= 5}
-                    onClick={() => setSplits(existing => [...existing, { id: requestKey(), accountId: '', amount: '', reference: '' }])}>
+                    onClick={() => addPaymentChannel('Cash')}>
                     + Add Cash / Bank Payment
                   </button>
                   <button type="button" className="primary" disabled={posting || parts.length === 0}
@@ -541,6 +570,10 @@ export default function SupplierPurchaseFlow({
                     {posting ? 'Posting…' : 'Confirm Purchase & Payment'}
                   </button>
                 </div>
+                {!accounts.length && <p role="alert" className="cg-supplier-purchase-muted">
+                  No active Cash/Bank account found. <Link to="/finance/accounts">Create a Cash or Bank account</Link>,
+                  or record this purchase as supplier credit.
+                </p>}
                 <p className="cg-supplier-purchase-muted">
                   Confirm posts stock, supplier bill, payment splits and remaining credit together.
                   Do not enter the same supplier purchase again under Expenses or generic Payments.
@@ -564,11 +597,19 @@ export default function SupplierPurchaseFlow({
                 <input className={fieldClass} type="number" min="0.01" max={fixed(remainingSupplier)} step="0.01"
                   value={settlement.amount} onChange={e => setSettlement(old => ({ ...old, amount: e.target.value }))}/>
               </label>
+              <label>Payment method *
+                <select className={fieldClass} value={settlement.channel}
+                  onChange={e => setSettlement(old => ({ ...old, channel: e.target.value, accountId: '' }))}>
+                  <option value="">Select method</option>
+                  <option value="Cash">Cash in Hand</option>
+                  <option value="Bank">Bank</option>
+                </select>
+              </label>
               <label>Cash / Bank account *
                 <select className={fieldClass} value={settlement.accountId}
                   onChange={e => setSettlement(old => ({ ...old, accountId: e.target.value }))}>
-                  <option value="">Select account</option>
-                  {accounts.map(account => <option key={account.id} value={account.id}>
+                  <option value="">Select {settlement.channel || 'payment method'} account</option>
+                  {financeAccountsForChannel(accounts, settlement.channel).map(account => <option key={account.id} value={account.id}>
                     {account.name} ({accountMethod(account)}) · {rupees(account.recordedBalance)}
                   </option>)}
                 </select>
@@ -582,7 +623,7 @@ export default function SupplierPurchaseFlow({
                 Remaining credit after this payment: {rupees(Math.max(0, remainingSupplier - n(settlement.amount)))}
               </p>
               <div className="wide cg-supplier-purchase-actions">
-                <button type="submit" className="primary" disabled={settling || !settlement.amount || !settlement.accountId}>
+                <button type="submit" className="primary" disabled={settling || !settlement.amount || !settlement.accountId || !settlement.channel}>
                   {settling ? 'Recording…' : 'Confirm Supplier Payment'}
                 </button>
               </div>
