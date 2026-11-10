@@ -82,7 +82,8 @@ const ServiceForm = ({
   onCancel,
   submitting,
   title,
-  error
+  error,
+  onAddCategory
 }) => (
   <div className="service-form-page cg-services">
     <header className="service-form-header">
@@ -121,23 +122,27 @@ const ServiceForm = ({
             />
           </Field>
 
-          <Field label="Category">
-            <select
-              required
-              value={values.categoryId}
-              onChange={(e)=>{
-                const category=categories.find((item)=>item.id===e.target.value);
-                setValues({
-                  ...values,
-                  categoryId:e.target.value,
-                  category:category?.name || ''
-                });
-              }}
-            >
-              <option value="">Select category</option>
-              {categories.map((category)=><option key={category.id} value={category.id}>{'— '.repeat(Math.min(category.depth || 0, 10)) + category.name}</option>)}
-            </select>
-          </Field>
+          <div className="service-category-select-field">
+            <Field label="Category">
+              <select
+                required
+                value={values.categoryId}
+                onChange={(e)=>{
+                  const category=categories.find((item)=>String(item.id)===String(e.target.value));
+                  setValues({
+                    ...values,
+                    categoryId:e.target.value,
+                    category:category?.name || ''
+                  });
+                }}
+              >
+                <option value="">Select category</option>
+                {categories.map((category)=><option key={category.id} value={category.id}>{'— '.repeat(Math.min(category.depth || 0, 10)) + category.name}</option>)}
+              </select>
+            </Field>
+            {onAddCategory && <button type="button" className="service-add-category-inline"
+              onClick={onAddCategory}><Plus size={15}/> Add a new category</button>}
+          </div>
 
           <Field label="Status">
             <select value={values.status} onChange={(e)=>setValues({...values,status:e.target.value})}>
@@ -269,6 +274,7 @@ export const ServiceList = () => {
   const [categoryError, setCategoryError] = useState('');
   const [categorySaving, setCategorySaving] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [categoryOpenedFromService, setCategoryOpenedFromService] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -440,7 +446,8 @@ export const ServiceList = () => {
     }
   };
 
-  const openCategoryDialog = (category = null, parentId = '') => {
+  const openCategoryDialog = (category = null, parentId = '', fromService = false) => {
+    setCategoryOpenedFromService(fromService);
     setEditingCategoryId(category?.id || null);
     setCategoryForm(category
       ? { name: category.name || '', description: category.description || '',
@@ -454,6 +461,7 @@ export const ServiceList = () => {
     if (categorySaving) return;
     setCategoryDialogOpen(false);
     setEditingCategoryId(null);
+    setCategoryOpenedFromService(false);
     setCategoryForm(emptyCategory);
     setCategoryError('');
   };
@@ -473,14 +481,19 @@ export const ServiceList = () => {
         setCategoryError('Please enter a category name.');
         return;
       }
+      let saved;
       if (editingCategoryId) {
-        await serviceService.updateServiceCategory(editingCategoryId, payload);
+        saved = await serviceService.updateServiceCategory(editingCategoryId, payload);
       } else {
-        await serviceService.createServiceCategory(payload);
+        saved = await serviceService.createServiceCategory(payload);
       }
       setCategories(await serviceService.getServiceCategories());
+      if (categoryOpenedFromService && saved?.id) {
+        changeForm({ ...form, categoryId: saved.id, category: saved.name || payload.name });
+      }
       setCategoryDialogOpen(false);
       setEditingCategoryId(null);
+      setCategoryOpenedFromService(false);
       setCategoryForm(emptyCategory);
       setNotice(editingCategoryId ? 'Category updated.' : 'Category created.');
     } catch (error) {
@@ -614,6 +627,7 @@ export const ServiceList = () => {
             submitting={submitting}
             title={isEdit ? 'Edit Service' : 'Add Service'}
             error={formError}
+            onAddCategory={canCreate ? ()=>openCategoryDialog(null, '', true) : undefined}
           />
         ) : isDetail && selectedService ? (
                 <div className="service-management-page service-detail-page cg-services">
