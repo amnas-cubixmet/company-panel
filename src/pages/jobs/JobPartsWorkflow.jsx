@@ -800,9 +800,8 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
     });
     return () => { active = false; };
   }, [paymentType]);
-  const eligibleAccounts = accounts.filter(account => account.isActive !== false &&
-    (paymentType === 'Cash' ? account.kind === 'Cash' :
-      account.kind === 'Bank' || account.kind === 'UPI'));
+  const eligibleAccounts = accounts.filter(row => row.isActive !== false &&
+    (row.kind === paymentType || (paymentType === 'Bank' && row.kind === 'UPI')));
   const quantity = Number(purchase.quantity);
   const gstRate = Number(purchase.purchaseGstRate || 0);
   const actualTotal = quantity * Number(unitCost) * (1 + gstRate / 100);
@@ -873,7 +872,7 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
           </select>
         </label>}
         {paymentType === 'Credit' && <p className="job-parts-modal-stock-note">
-          Recorded as unpaid Expense. You can pay later from Expenses.
+          Recorded as unpaid Expense. Pay the supplier later from Expenses.
         </p>}
         {paymentType !== 'Credit' && !accountsLoading && !eligibleAccounts.length &&
           <p className="job-parts-modal-warning job-parts-modal-full" role="alert">
@@ -892,7 +891,7 @@ function OutsidePartCompletionPanel({ purchase, onClose, onSave, busy, error }) 
           <div><span>Actual Purchase Total / Job Expense</span><strong>{money.format(Number.isFinite(actualTotal) ? actualTotal : 0)}</strong></div>
         </div>
         <p className="job-parts-modal-stock-note job-parts-modal-full">
-          Purchase price is recorded as Job Cost and in Expenses. Customer invoice uses only the selling rate.
+          Purchase price is recorded as Job Cost and in Expenses. Customer invoice uses the separate selling price only.
           {paymentType === 'Credit' ? ' No money is debited until settlement.' :
             ' Payment debits only the selected workshop Cash/Bank account.'} No GST is added here.
         </p>
