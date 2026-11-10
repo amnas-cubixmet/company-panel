@@ -522,43 +522,101 @@ export const ServiceList = () => {
   };
 
 
-  if (loading) return <div className="service-empty">Loading services...</div>;
+  const checklist = Array.isArray(selectedService?.checklist) ? selectedService.checklist : [];
+  const editingService = isNew || isEdit;
 
-  if (isNew) {
-    return (
-      <ServiceForm
-        values={form}
-        setValues={setForm}
-        categories={categoryTree}
-        onSubmit={saveService}
-        onCancel={()=>navigate('/services')}
-        submitting={submitting}
-        title="Add Service"
+  return (
+    <div className="service-management-page cg-services service-dashboard">
+      <ServicesHeader
+        onAdd={()=>navigate('/services/new')}
+        onAddCategory={()=>openCategoryDialog()}
       />
-    );
-  }
 
-  if (isEdit) {
-    if (!selectedService) return <div className="service-empty">Service not found.</div>;
-    return (
-      <ServiceForm
-        values={form}
-        setValues={setForm}
-        categories={categoryTree}
-        onSubmit={saveService}
-        onCancel={()=>navigate(`/services/${id}`)}
-        submitting={submitting}
-        title="Edit Service"
+      {location.state?.serviceNotice && (
+        <div className="service-workspace-success" role="status">{location.state.serviceNotice}</div>
+      )}
+      {loadError && (
+        <div className="service-workspace-error" role="alert">
+          <AlertCircle size={18}/>
+          <span>{loadError}</span>
+          <button type="button" onClick={()=>void load()}><RefreshCw size={16}/> Retry</button>
+        </div>
+      )}
+      {actionError && (
+        <div className="service-workspace-error" role="alert">
+          <AlertCircle size={18}/><span>{actionError}</span>
+          <button type="button" onClick={()=>setActionError('')}>Dismiss</button>
+        </div>
+      )}
+      {loading && <div className="service-workspace-loading" role="status">
+        <RefreshCw size={18} className="service-spinning"/> Loading workshop services…
+      </div>}
+
+      <ServiceOverviewStats
+        metrics={metrics}
+        formatMoney={(value)=>money.format(value || 0)}
       />
-    );
-  }
 
-  if (isDetail) {
-    if (!selectedService) return <div className="service-empty">Service not found.</div>;
-    const checklist = Array.isArray(selectedService.checklist) ? selectedService.checklist : [];
+      <ServiceFilterToolbar
+        query={query}
+        onQueryChange={setQuery}
+        categoryFilter={categoryFilter}
+        onCategoryChange={setCategoryFilter}
+        statusFilter={statusFilter}
+        onStatusChange={setStatusFilter}
+        categories={categoryTree}
+      />
 
-    return (
-      <div className="service-management-page service-detail-page cg-services">
+      <div className="service-workspace-list-head">
+        <div><h2>Workshop Services</h2>
+          <p>{filtered.length} of {services.length} services · Select a card to view details</p>
+        </div>
+        <button type="button" className="service-workspace-manage"
+          aria-expanded={showCategories} aria-controls="service-categories-section"
+          onClick={()=>setShowCategories((open)=>!open)}>
+          <FolderTree size={17}/>{showCategories ? 'Hide Categories' : 'Manage Categories'}
+        </button>
+      </div>
+      {!loading && <ServiceCatalogGrid
+        services={filtered}
+        formatMoney={(value)=>money.format(value || 0)}
+        durationLabel={durationLabel}
+        onView={(service)=>navigate(`/services/${service.id}`)}
+        onEdit={(service)=>navigate(`/services/${service.id}/edit`)}
+        onDelete={(service)=>navigate(`/services/${service.id}/delete`)}
+      />}
+      {!loading && !services.length && canCreate && !loadError && (
+        <button type="button" className="service-workspace-empty-add" onClick={()=>navigate('/services/new')}>
+          <Plus size={18}/> Add your first workshop service
+        </button>
+      )}
+      {showCategories && (
+        <div id="service-categories-section" className="service-workspace-categories">
+          <ServiceCategoriesPanel
+            categories={categories} services={services}
+            onAdd={(parentId)=>openCategoryDialog(null,parentId)}
+            onEdit={(category)=>openCategoryDialog(category)}
+            onDelete={deleteCategory}
+          />
+        </div>
+      )}
+
+      <ResponsiveModalSheet
+        isOpen={serviceModalOpen}
+        onClose={closeServiceModal}
+        title={isNew ? 'Add Service' : isEdit ? 'Edit Service' : isDelete ? 'Delete Service' : 'Service Details'}
+        maxWidth={editingService ? '900px' : '840px'}
+      >
+        {(editingService && (!isEdit || selectedService)) ? (
+          <ServiceForm
+            values={form} setValues={changeForm} categories={categoryTree}
+            onSubmit={saveService} onCancel={closeServiceModal}
+            submitting={submitting}
+            title={isEdit ? 'Edit Service' : 'Add Service'}
+            error={formError}
+          />
+        ) : isDetail && selectedService ? (
+                <div className="service-management-page service-detail-page cg-services">
         <header className="service-detail-header">
           <div>
             <span>{selectedService.code}</span>
@@ -566,8 +624,8 @@ export const ServiceList = () => {
             <p>{selectedService.category} · {selectedService.pricingType || 'Fixed'}</p>
           </div>
           <div className="service-detail-actions">
-            <button onClick={()=>navigate(`/services/${selectedService.id}/edit`)}><Edit3 size={14}/> Edit</button>
-            <button className="is-danger" onClick={async()=>{await deleteService(selectedService);navigate('/services');}}><Trash2 size={14}/> Delete</button>
+            {canEdit && <button type="button" onClick={()=>navigate(`/services/${selectedService.id}/edit`)}><Edit3 size={14}/> Edit</button>}
+            {canDelete && <button type="button" className="is-danger" onClick={()=>navigate(`/services/${selectedService.id}/delete`)}><Trash2 size={14}/> Delete</button>}
           </div>
         </header>
 
@@ -619,48 +677,31 @@ export const ServiceList = () => {
           </section>
         </div>
       </div>
-    );
-  }
-
-  return (
-    <div className="service-management-page cg-services service-dashboard">
-      <ServicesHeader
-        onAdd={()=>navigate('/services/new')}
-        onAddCategory={()=>{
-          setCategoryForm(emptyCategory);
-          setCategoryError('');
-          setCategoryDialogOpen(true);
-        }}
-      />
-
-      <ServiceOverviewStats
-        metrics={metrics}
-        formatMoney={(value)=>money.format(value || 0)}
-      />
-
-      <ServiceFilterToolbar
-        query={query}
-        onQueryChange={setQuery}
-        categoryFilter={categoryFilter}
-        onCategoryChange={setCategoryFilter}
-        statusFilter={statusFilter}
-        onStatusChange={setStatusFilter}
-        categories={categoryTree}
-      />
-
-      <ServiceCatalogGrid
-        services={filtered}
-        formatMoney={(value)=>money.format(value || 0)}
-        durationLabel={durationLabel}
-        onView={(service)=>navigate(`/services/${service.id}`)}
-        onEdit={(service)=>navigate(`/services/${service.id}/edit`)}
-        onDelete={deleteService}
-      />
+        ) : isDelete && selectedService ? (
+          <div className="service-workspace-delete">
+            <div className="service-workspace-delete-icon"><Trash2 size={24}/></div>
+            <h3>Delete “{selectedService.name}”?</h3>
+            <p>This will remove the service from the catalog. Services used in job records may not be removable.</p>
+            <div className="service-workspace-delete-actions">
+              <button type="button" disabled={deleting} onClick={closeServiceModal}>Keep Service</button>
+              <button type="button" disabled={deleting || !canDelete} className="is-danger"
+                onClick={()=>void deleteService(selectedService)}>
+                {deleting ? 'Deleting…' : 'Delete Service'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="service-workspace-loading" role="status">
+            {actionError || (loading ? 'Loading service details…' : 'Service not found. Close this window and refresh the list.')}
+          </div>
+        )}
+        {actionError && <div role="alert" className="service-form-error">{actionError}</div>}
+      </ResponsiveModalSheet>
 
       <ResponsiveModalSheet
         isOpen={categoryDialogOpen}
         onClose={closeCategoryDialog}
-        title="Add Category"
+        title={editingCategoryId ? 'Edit Category' : 'Add Category'}
         maxWidth="560px"
       >
         <form className="service-category-form" onSubmit={saveCategory}>
@@ -707,7 +748,7 @@ export const ServiceList = () => {
           <div className="service-form-actions">
             <button type="button" onClick={closeCategoryDialog} disabled={categorySaving}>Cancel</button>
             <button type="submit" className="is-primary" disabled={categorySaving || !categoryForm.name.trim()}>
-              {categorySaving ? 'Saving...' : 'Save Category'}
+              {categorySaving ? 'Saving...' : editingCategoryId ? 'Save Changes' : 'Add Category'}
             </button>
           </div>
         </form>
