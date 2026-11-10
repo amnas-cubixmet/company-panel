@@ -46,6 +46,9 @@ export default function SupplierPurchaseFlow({
 }) {
   const [stock, setStock] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const accountBalanceShown = account => account.recordedBalance != null
+    ? ' · ' + rupees(account.recordedBalance) + ' available'
+    : '';
   const [states, setStates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -77,7 +80,8 @@ export default function SupplierPurchaseFlow({
       supplierFinanceService.getGSTOptions(),
     ]);
     setStock(items);
-    setAccounts(moneyAccounts.filter(account => account.isActive && ['Cash', 'Bank', 'UPI'].includes(account.kind)));
+    setAccounts(moneyAccounts.filter(account => account.isActive &&
+      accountChannel(account.kind)));
     setStates(gst.states || []);
   };
   useEffect(() => {
@@ -88,7 +92,7 @@ export default function SupplierPurchaseFlow({
       .then(([items, moneyAccounts, gst]) => {
         if (!alive) return;
         setStock(items);
-        setAccounts(moneyAccounts.filter(a => a.isActive && ['Cash', 'Bank', 'UPI'].includes(a.kind)));
+        setAccounts(moneyAccounts.filter(a => a.isActive && accountChannel(a.kind)));
         setStates(gst.states || []);
       })
       .catch(cause => { if (alive) setError(getErrorText(cause)); })
@@ -283,7 +287,7 @@ export default function SupplierPurchaseFlow({
     }
     for (const [id, value] of accountTotals.entries()) {
       const account = accounts.find(a => String(a.id) === id);
-      if (n(account.recordedBalance) + 0.0001 < value) {
+      if (account.recordedBalance != null && n(account.recordedBalance) + 0.0001 < value) {
         setError('Insufficient recorded balance in ' + account.name + '.'); return;
       }
     }
@@ -335,7 +339,7 @@ export default function SupplierPurchaseFlow({
       amount > remainingSupplier + 0.001) {
       setError('Select an account and amount within the outstanding supplier credit.'); return;
     }
-    if (amount > n(account.recordedBalance) + 0.001) {
+    if (account.recordedBalance != null && amount > n(account.recordedBalance) + 0.001) {
       setError('Insufficient recorded account balance.'); return;
     }
     let toAllocate = Math.round(amount * 100);
@@ -545,7 +549,7 @@ export default function SupplierPurchaseFlow({
                         onChange={e => changeSplit(index, { accountId: e.target.value })}>
                         <option value="">Select {row.channel === 'Cash' ? 'Cash in Hand' : row.channel === 'Bank' ? 'Bank' : 'payment method'} account</option>
                         {financeAccountsForChannel(accounts, row.channel).map(account => <option key={account.id} value={account.id}>
-                          {account.name} ({accountMethod(account)}) · {rupees(account.recordedBalance)}
+                          {account.name} ({accountMethod(account)}){accountBalanceShown(account)}
                         </option>)}
                       </select>
                     </label>
@@ -610,7 +614,7 @@ export default function SupplierPurchaseFlow({
                   onChange={e => setSettlement(old => ({ ...old, accountId: e.target.value }))}>
                   <option value="">Select {settlement.channel || 'payment method'} account</option>
                   {financeAccountsForChannel(accounts, settlement.channel).map(account => <option key={account.id} value={account.id}>
-                    {account.name} ({accountMethod(account)}) · {rupees(account.recordedBalance)}
+                    {account.name} ({accountMethod(account)}){accountBalanceShown(account)}
                   </option>)}
                 </select>
               </label>
