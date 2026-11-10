@@ -485,7 +485,7 @@ export default function SupplierPurchaseFlow({
                   <div><span>Supplier Credit (Due)</span><strong>{rupees(remaining)}</strong></div>
                 </div>
                 <h3>How are you paying the supplier?</h3>
-                <p className="cg-supplier-purchase-muted">No payment = supplier credit. Choose Cash or Bank accounts below; multiple payments are supported.</p>
+                <p className="cg-supplier-purchase-muted">No payment = full credit. Choose Cash or Bank accounts below; multiple payments are supported.</p>
                 {splits.map((row, index) => (
                   <div className="cg-supplier-purchase-split" key={row.id}>
                     <label>Payment account
