@@ -193,6 +193,11 @@ export function Reports() {
     [report, chartFrom, chartTo]);
   const periodLabel = month === 'Custom' ? (from || 'Beginning') + ' – ' + (to || 'Today')
     : month === 'All' ? 'All time' : month + ' ' + year;
+  const workshopName = reportWorkshop?.name || user?.company?.name || 'Workshop';
+  const workshopAddress = reportWorkshop?.address || user?.company?.address || '';
+  const workshopPhone = reportWorkshop?.phone || user?.company?.phone || '';
+  const workshopGstin = reportWorkshop?.gstin || user?.company?.gstin || '';
+  const incompleteSources = Object.keys(dataIssues);
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return !q ? report.invoiceRows : report.invoiceRows.filter((item) =>
@@ -247,11 +252,21 @@ export function Reports() {
       {loading && <div className="reports-inline-loading" role="status">
         <RefreshCw size={16} className="reports-spinning"/> Loading live report data…
       </div>}
-      {Object.keys(dataIssues).length > 0 && (
+      {incompleteSources.length > 0 && (
         <div role="alert" className="reports-error no-print">
-          <AlertCircle size={16}/> Some sources could not load: {Object.keys(dataIssues).join(', ')}.
-          Missing figures are shown as — instead of ₹0.
+          <AlertCircle size={16}/>
+          <span>Reports are incomplete. Missing figures are shown as —, not ₹0.
+            {Object.entries(dataIssues).map(([source, reason]) =>
+              <span key={source} className="report-source-error"><strong>{source}:</strong> {reason}</span>)}
+          </span>
           <button type="button" onClick={load}><RefreshCw size={14}/> Retry</button>
+        </div>
+      )}
+      {truncatedSources.length > 0 && (
+        <div role="alert" className="reports-error no-print">
+          <AlertCircle size={16}/>
+          The report reached the API row limit for {truncatedSources.join(', ')}.
+          Narrow the date range before relying on totals or exporting.
         </div>
       )}
       {(staff !== 'All' || branch !== 'All') && (
@@ -263,10 +278,29 @@ export function Reports() {
 
       <div className="report-print-sheet">
         <header className="report-print-head">
-          <div><span>CUBIXGEAR</span><h2>Business Report</h2>
-            <p>{periodLabel} · {from || 'Beginning'} — {to || 'Today'}</p></div>
-          <div><strong>Generated</strong><span>{new Date().toLocaleString('en-IN')}</span></div>
+          <div className="report-print-identity">
+            <span>CUBIXGEAR / BUSINESS REPORT</span>
+            <h2>{workshopName}</h2>
+            {workshopAddress && <p>{workshopAddress}</p>}
+            {(workshopGstin || workshopPhone) &&
+              <p>{[workshopGstin && 'GSTIN: ' + workshopGstin,
+                workshopPhone && 'Phone: ' + workshopPhone].filter(Boolean).join(' · ')}</p>}
+            <strong>Financial & Operations Report</strong>
+          </div>
+          <div className="report-print-meta">
+            <strong>{periodLabel}</strong>
+            <span>{from || 'Beginning'} — {to || 'Today'}</span>
+            <span>Generated: {new Date().toLocaleString('en-IN')}</span>
+          </div>
         </header>
+        {incompleteSources.length > 0 && <div className="report-print-warning">
+          INCOMPLETE REPORT — {incompleteSources.join(', ')} data unavailable.
+          Missing figures display as —.
+        </div>}
+        {truncatedSources.length > 0 && <div className="report-print-warning">
+          INCOMPLETE REPORT — row limit reached: {truncatedSources.join(', ')}.
+          Narrow the date range.
+        </div>
         <ReportStats report={report} formatMoney={reportMoney}/>
         <ReportTabs active={tab} onChange={setTab}/>
         {tab === 'overview' && (
