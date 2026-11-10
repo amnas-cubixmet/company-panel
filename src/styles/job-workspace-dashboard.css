@@ -2292,40 +2292,13 @@
   }
 }
 
-/* Customer selling charges are shown separately from real costs. */
+/* Customer selling amount is distinct from direct cost. */
 .cg-job-detail.job-workspace-dashboard .job-total-customer-service {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  flex-wrap:wrap;
-  gap:12px;
-  padding:12px 14px;
-  border:1px solid var(--border);
-  border-radius:11px;
-  background:var(--surface-2);
-  color:var(--text-primary);
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  padding:11px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)
 }
-.cg-job-detail.job-workspace-dashboard .job-total-customer-service > div {
-  display:grid;
-  gap:3px;
-  min-width:0;
-}
-.cg-job-detail.job-workspace-dashboard .job-total-customer-service > div > strong {
-  font-size:14px;
-}
+.cg-job-detail.job-workspace-dashboard .job-total-customer-service > div {display:grid;gap:3px}
 .cg-job-detail.job-workspace-dashboard .job-total-customer-service small {
-  font-size:12px;
-  line-height:1.45;
-  color:var(--text-secondary);
+  color:var(--text-secondary);font-size:12px
 }
-.cg-job-detail.job-workspace-dashboard .job-total-customer-service > strong {
-  font-size:20px;
-  font-variant-numeric:tabular-nums;
-  white-space:nowrap;
-}
-@media(max-width:600px) {
-  .cg-job-detail.job-workspace-dashboard .job-total-customer-service {
-    padding:11px;
-  }
-  .cg-job-detail.job-workspace-dashboard .job-total-customer-service > strong {font-size:18px}
-}
+.cg-job-detail.job-workspace-dashboard .job-total-customer-service > strong {font-size:19px}
