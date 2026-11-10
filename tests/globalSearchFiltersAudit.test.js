@@ -40,7 +40,8 @@ test('job combined filters are URL-backed, preserve browser navigation and reset
   assert.match(jobs, /searchParams\.get\('technician'\)/);
   assert.match(jobs, /searchParams\.get\('priority'\)/);
   assert.match(jobs, /next\.delete\('page'\)/);
-  assert.match(jobs, /filteredJobs\.slice\(/);
+  assert.match(jobs, /const sortedJobs = useMemo\(\(\) => sortJobsForDisplay\(filteredJobs, sortMode\)/);
+  assert.match(jobs, /sortedJobs\.slice\(/);
   assert.match(jobs, /setSearchParams\(next\)/);
   for (const key of ['Filter job cards by status', 'Filter job cards by branch',
     'Filter job cards by technician', 'Filter job cards by priority',
