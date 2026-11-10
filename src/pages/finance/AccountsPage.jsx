@@ -381,7 +381,7 @@ export function AccountsPage() {
                   e.preventDefault();
                   navigate(`/finance/accounts/${acc.id}`);
                 }
-              }
+              }}
             >
               <div className="finance-account-row-left">
                 {acc.kind === 'Bank' ? <Building2 size={20} /> : <Wallet size={20} />}
