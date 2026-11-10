@@ -1,12 +1,15 @@
 import { appConfirm } from '../../components/common/appDialogs';
+import { useAuth } from '../../hooks/useAuth';
+import { hasPermission } from '../../utils/permissions';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Activity, Clock3, Edit3, IndianRupee, Layers3, Trash2 } from "lucide-react";
+import { Activity, Clock3, Edit3, IndianRupee, Layers3, Trash2, AlertCircle, FolderTree, ListFilter, Plus, RefreshCw } from "lucide-react";
 import {
   ServiceCatalogGrid,
   ServiceFilterToolbar,
   ServiceOverviewStats,
+  ServiceCategoriesPanel,
   ServicesHeader,
 } from '../../components/services';
 import { serviceService } from '../../services/service.service';
@@ -14,6 +17,7 @@ import { buildCategoryTreeRows } from '../../utils/serviceHierarchy';
 import '../../styles/service-management.css';
 import '../../styles/service-borderless-forms.css';
 import '../../styles/service-hierarchy.css';
+import '../../styles/services-modal-workspace.css';
 
 const money = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -77,17 +81,19 @@ const ServiceForm = ({
   onSubmit,
   onCancel,
   submitting,
-  title
+  title,
+  error
 }) => (
   <div className="service-form-page cg-services">
     <header className="service-form-header">
       <div>
         <h1>{title}</h1>
-        
+        <p>Enter the service details below. Fields marked required must be filled.</p>
       </div>
     </header>
 
     <form className="service-form" onSubmit={onSubmit}>
+      {error && <div className="service-form-error" role="alert"><AlertCircle size={17}/>{error}</div>}
       <section className="service-form-section">
         <div className="service-section-header">
           <div>
@@ -218,9 +224,9 @@ const ServiceForm = ({
       </section>
 
       <div className="service-form-actions">
-        <button type="button" onClick={onCancel}>Cancel</button>
-        <button className="is-primary" disabled={submitting}>
-          {submitting ? 'Saving...' : 'Save Service'}
+        <button type="button" onClick={onCancel} disabled={submitting}>Cancel</button>
+        <button type="submit" className="is-primary" disabled={submitting}>
+          {submitting ? 'Saving...' : title === 'Edit Service' ? 'Save Changes' : 'Add Service'}
         </button>
       </div>
     </form>
@@ -231,15 +237,29 @@ export const ServiceList = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user } = useAuth();
+  const canCreate = hasPermission(user, 'services.create');
+  const canEdit = hasPermission(user, 'services.edit');
+  const canDelete = hasPermission(user, 'services.delete');
 
   const isNew = location.pathname === '/services/new';
   const isEdit = Boolean(id && location.pathname.endsWith('/edit'));
-  const isDetail = Boolean(id && !isEdit && location.pathname !== '/services');
+  const isDelete = Boolean(id && location.pathname.endsWith('/delete'));
+  const isDetail = Boolean(id && !isEdit && !isDelete && location.pathname !== '/services');
+  const serviceModalOpen = isNew || isEdit || isDetail || isDelete;
 
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [formDirty, setFormDirty] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [showCategories, setShowCategories] = useState(false);
+  const [focusedService, setFocusedService] = useState(null);
+  const [notice, setNotice] = useState('');
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -248,6 +268,7 @@ export const ServiceList = () => {
   const [categoryForm, setCategoryForm] = useState(emptyCategory);
   const [categoryError, setCategoryError] = useState('');
   const [categorySaving, setCategorySaving] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
 
   const load = async () => {
     setLoading(true);
