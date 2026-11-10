@@ -13,6 +13,7 @@ import {
   reportFilterOptions, reportChartBuckets, reportDate,
 } from './reportsDashboard.utils';
 import { ReportPerformanceChart, ReportExpenseCategoryChart } from '../../components/reports/ReportCharts';
+import { ReportFiscalPrint } from '../../components/reports/ReportFiscalPrint';
 import { ReportPeriodFilter, ReportStats, ReportTabs, ReportsHeader } from '../../components/reports';
 import '../../styles/reports-dashboard.css';
 import '../../styles/reports-dashboard-polished.css';
@@ -57,6 +58,11 @@ export function Reports() {
   const [dataIssues, setDataIssues] = useState({});
   const [truncatedSources, setTruncatedSources] = useState([]);
   const [reportWorkshop, setReportWorkshop] = useState(null);
+  const [fiscalComparison, setFiscalComparison] = useState(null);
+  const referenceDate = from || to || new Date().toISOString().slice(0, 10);
+  const referenceYear = Number(referenceDate.slice(0, 4));
+  const referenceMonth = Number(referenceDate.slice(5, 7));
+  const fiscalYearStart = referenceYear - (referenceMonth < 4 ? 1 : 0);
   const [availability, setAvailability] = useState({
     invoices: false, payments: false, expenses: false, stock: false,
   });
@@ -69,7 +75,7 @@ export function Reports() {
         // Dedicated Django report endpoint returns only the sources this role
         // can access. Do not bypass Expenses/Payments permissions via reports.view.
         const payload = await apiClient.get('/reports/workspace', {
-          params: { ...(from ? { from } : {}), ...(to ? { to } : {}) },
+          params: { ...(from ? { from } : {}), ...(to ? { to } : {}), fiscalYear: fiscalYearStart },
         });
         if (!payload || !payload.sources) throw new Error('Invalid report API response.');
         const issues = {};
@@ -100,6 +106,7 @@ export function Reports() {
         setExpenses(data.expenses);
         setStock(data.stock);
         setReportWorkshop(payload.company || null);
+        setFiscalComparison(payload.fiscalComparison || null);
         setDataIssues(issues);
         setTruncatedSources(truncated);
         setAvailability(availabilityBySource);
@@ -108,6 +115,7 @@ export function Reports() {
         setPayments([]);
         setExpenses([]);
         setStock([]);
+        setFiscalComparison(null);
         setDataIssues({ reports: error?.message || 'Report API unavailable.' });
         setTruncatedSources([]);
         setAvailability({ invoices: false, payments: false, expenses: false, stock: false });
@@ -139,6 +147,7 @@ export function Reports() {
     setPayments(data[1]);
     setExpenses(data[2]);
     setStock(data[3]);
+    setFiscalComparison(null);
     setTruncatedSources([]);
     setDataIssues(issues);
     setAvailability(Object.fromEntries(names.map((name) => [name, !issues[name]])));
@@ -313,6 +322,17 @@ export function Reports() {
       )}
 
       <div className="report-print-sheet">
+        <ReportFiscalPrint
+          fiscalComparison={fiscalComparison}
+          companyName={workshopName}
+          periodLabel={periodLabel}
+          from={from}
+          to={to}
+          branch={branch}
+          staff={staff}
+          missingSources={incompleteSources}
+          truncatedSources={truncatedSources}
+        />
         <header className="report-print-head">
           <div className="report-print-identity">
             <span>CUBIXGEAR / BUSINESS REPORT</span>
