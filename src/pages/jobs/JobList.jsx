@@ -11,6 +11,8 @@ import {
 import { normalizeRegistration } from '../../components/jobs/jobs.utils';
 import { JobBreadcrumbs } from '../../components/jobs/JobBreadcrumbs';
 import { JobCardsGuide } from '../../components/jobs/JobCardsGuide';
+import { JobDirectoryControls } from '../../components/jobs/JobDirectoryControls';
+import { sortJobsForDisplay, JOB_SORT_OPTIONS } from '../../components/jobs/jobDirectorySort';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 import { jobService } from '../../services/job.service';
 import { billingService } from '../../services/billing.service';
@@ -20,6 +22,7 @@ import { USE_MOCK_API } from '../../api/apiConfig';
 import '../../styles/job-gst-finance.css';
 import '../../styles/jobs-dashboard.css';
 import '../../styles/jobs-unified-ui.css';
+import '../../styles/jobs-directory-controls.css';
 
 export const JobList = () => {
   const navigate = useNavigate();
@@ -37,6 +40,9 @@ export const JobList = () => {
   const branch = searchParams.get('branch') || 'all';
   const technician = searchParams.get('technician') || 'all';
   const priority = searchParams.get('priority') || 'all';
+  const requestedSort = searchParams.get('sort');
+  const sortMode = JOB_SORT_OPTIONS.some(option => option.value === requestedSort) ? requestedSort : 'recent';
+  const layout = searchParams.get('layout') === 'cards' ? 'cards' : 'auto';
   const from = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get('from') || '') ? searchParams.get('from') : '';
   const to = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get('to') || '') ? searchParams.get('to') : '';
   // Directly edited URLs can contain a reversed date range. Correct the
@@ -58,6 +64,13 @@ export const JobList = () => {
   };
   const setQuery = (value) => changeFilter('q', value);
   const setStatus = (value) => changeFilter('status', value);
+  const setLayout = (value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === 'cards') next.set('layout', 'cards');
+    else next.delete('layout');
+    setSearchParams(next);
+  };
+  const setSort = (value) => changeFilter('sort', value === 'recent' ? '' : value);
   const [jobs, setJobs] = useState([]);
   const [jobInvoiceRows, setJobInvoiceRows] = useState([]);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
@@ -153,12 +166,13 @@ export const JobList = () => {
     }])
   ).values()].sort((a, b) => a.label.localeCompare(b.label)), [jobs]);
   const priorityOptions = useMemo(() => [...new Set(jobs.map((job) => job.priority).filter(Boolean))].sort(), [jobs]);
+  const sortedJobs = useMemo(() => sortJobsForDisplay(filteredJobs, sortMode), [filteredJobs, sortMode]);
   const pageSize = 15;
-  const pageCount = Math.max(1, Math.ceil(filteredJobs.length / pageSize));
+  const pageCount = Math.max(1, Math.ceil(sortedJobs.length / pageSize));
   const requestedPage = Number(searchParams.get('page'));
   const currentPage = Number.isSafeInteger(requestedPage) && requestedPage > 0
     ? Math.min(requestedPage, pageCount) : 1;
-  const pagedJobs = filteredJobs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const pagedJobs = sortedJobs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const invoiceByJob = useMemo(
     () => new Map(pagedJobs.map(job => [String(job.id), jobInvoiceFor(jobInvoiceRows, job)])),
     [pagedJobs, jobInvoiceRows]
@@ -169,7 +183,12 @@ export const JobList = () => {
     else next.set('page', String(Math.min(pageCount, value)));
     setSearchParams(next);
   };
-  const resetFilters = () => setSearchParams(new URLSearchParams());
+  const resetFilters = () => {
+    const next = new URLSearchParams();
+    if (layout === 'cards') next.set('layout', 'cards');
+    if (sortMode !== 'recent') next.set('sort', sortMode);
+    setSearchParams(next);
+  };
 
   const vehicleLookup = useMemo(() => {
     const registrationQuery = normalizeRegistration(query);
@@ -237,6 +256,16 @@ export const JobList = () => {
     [jobs],
   );
 
+  const activeFilters = [
+    query && { key: 'q', name: 'Search', value: query },
+    status !== 'All' && { key: 'status', name: 'Status', value: status },
+    branch !== 'all' && { key: 'branch', name: 'Branch', value: branchOptions.find(option => option.id === branch)?.label || branch },
+    technician !== 'all' && { key: 'technician', name: 'Technician', value: technicianOptions.find(option => option.id === technician)?.label || 'Selected technician' },
+    priority !== 'all' && { key: 'priority', name: 'Priority', value: priority },
+    from && { key: 'from', name: 'From', value: from },
+    to && { key: 'to', name: 'To', value: to },
+  ].filter(Boolean);
+
   const openJob = (id) => navigate(`/jobs/${id}`);
 
   return (
@@ -270,6 +299,14 @@ export const JobList = () => {
         onReset={resetFilters}
       />
 
+      <JobDirectoryControls
+        layout={layout} onLayoutChange={setLayout}
+        sort={sortMode} onSortChange={setSort}
+        activeFilters={activeFilters}
+        onClearFilter={key => changeFilter(key, 'all')}
+        onClearAll={resetFilters}
+      />
+
       <VehicleLookupPanel
         lookup={vehicleLookup}
         canViewTotals={canViewPayments}
@@ -295,6 +332,7 @@ export const JobList = () => {
       </div>}
       <JobRecordsPanel
         jobs={pagedJobs}
+        layout={layout}
         invoiceByJob={invoiceByJob}
         hasError={Boolean(loadError)}
         showBilling={canViewInvoices && !USE_MOCK_API}
