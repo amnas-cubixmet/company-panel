@@ -33,7 +33,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 export function JobPartsWorkflow({ jobId, assignedTo = '', initialPanel = null }) {
   const { user } = useAuth();
   const canApproveOutside = hasPermission(user, 'jobs.view') && hasPermission(user, 'expenses.edit');
-  const canCompleteOutside = hasPermission(user, 'jobs.edit') && hasPermission(user, 'expenses.view');
+  const canCompleteOutside = hasPermission(user, 'jobs.edit') && hasPermission(user, 'expenses.edit');
   const [data, setData] = useState({ lines: [], transactions: [], purchaseOrders: [], canComplete: true, blockingReasons: [] });
   const [stock, setStock] = useState([]);
   const [outsideParts, setOutsideParts] = useState([]);
