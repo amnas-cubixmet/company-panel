@@ -336,7 +336,7 @@ export function Reports() {
         {truncatedSources.length > 0 && <div className="report-print-warning">
           INCOMPLETE REPORT — row limit reached: {truncatedSources.join(', ')}.
           Narrow the date range.
-        </div>
+        </div>}
         <ReportStats report={report} formatMoney={reportMoney}/>
         <ReportTabs active={tab} onChange={setTab}/>
         <div className={`reports-charts-grid ${tab === 'overview' ? '' : 'report-section-screen-hidden'}`}>
