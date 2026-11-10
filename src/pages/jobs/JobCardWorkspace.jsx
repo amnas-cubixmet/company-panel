@@ -1435,9 +1435,17 @@ export function JobCardWorkspace() {
                 aria-pressed={workQuickSection === key}
                 aria-controls={'work-quick-' + key}
                 onClick={() => {
+                  if (key === 'stock') {
+                    // The stock form is always visible on Work now: this action
+                    // jumps directly to it instead of hiding the other panels.
+                    setStockQuickToken((value) => value + 1);
+                    document.getElementById('work-quick-stock')?.scrollIntoView({
+                      behavior: 'smooth', block: 'start',
+                    });
+                    return;
+                  }
                   setWorkQuickSection(key);
                   if (key === 'outside') setOutsideQuickToken((value) => value + 1);
-                  if (key === 'stock') setStockQuickToken((value) => value + 1);
                   if (key === 'assign') setAssignQuickToken((value) => value + 1);
                 }}
               >
@@ -1498,14 +1506,16 @@ export function JobCardWorkspace() {
           </div>
 
           {hasStockAccess && (
-            <div id="work-quick-stock" hidden={workQuickSection !== 'stock'}>
+            <div id="work-quick-stock">
               <JobWorkStockPanel
                 jobId={job.id}
                 issuedParts={job.parts || []}
+                canEdit={can('jobs.edit') && currentStage === 'work' && !activeTabLocked}
                 focusSearchToken={stockQuickToken}
                 onChanged={async () => {
                   const updated = await jobService.getJobById(job.id);
                   if (updated) setJob(updated);
+                  setTimerRefreshVersion((version) => version + 1);
                 }}
               />
             </div>
