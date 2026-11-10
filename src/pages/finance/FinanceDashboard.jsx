@@ -33,7 +33,7 @@ export function FinanceDashboard() {
 
   useEffect(() => { load(); }, []);
 
-  const fmt = (v) => money.format(parseFloat(v || 0));
+  const fmt = (v) => v == null ? 'Restricted' : money.format(parseFloat(v || 0));
 
   const stats = data ? [
     { label: 'Bank Balance', value: fmt(data.bankBalance), icon: Building2, color: 'blue' },
@@ -46,8 +46,8 @@ export function FinanceDashboard() {
   ] : [];
 
   const quickActions = [
-    { label: 'Add Payment', icon: ArrowDownLeft, path: '/payments/new' },
-    { label: 'Add Expense', icon: Receipt, path: '/expenses/new' },
+    { label: 'Add Payment', icon: ArrowDownLeft, path: '/finance/payments/new' },
+    { label: 'Add Expense', icon: Receipt, path: '/finance/expenses/new' },
     { label: 'Add Account', icon: Plus, path: '/finance/accounts/new' },
     { label: 'Transfer Money', icon: ArrowLeftRight, path: '/finance/transfers/new' },
     { label: 'View Ledger', icon: List, path: '/finance/transactions' },
@@ -59,8 +59,8 @@ export function FinanceDashboard() {
       <header className="finance-dash-header">
         <div>
           <span className="finance-dash-kicker">FINANCE</span>
-          <h1>Finance Overview</h1>
-          <p>Bank balances, cash flow, outstanding payments and recent activity.</p>
+          <h1>Finance Control Center</h1>
+          <p>Manage customer collections, staff and supplier outflows, operating expenses, real Cash / Bank accounts and the auditable ledger in one place.</p>
         </div>
         <button className="finance-refresh-btn" onClick={load} disabled={loading} aria-label="Refresh">
           <RefreshCw size={16} className={loading ? 'finance-spin' : ''} />
