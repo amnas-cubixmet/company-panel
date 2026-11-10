@@ -67,12 +67,15 @@ test('advanced job filters are mobile-collapsible but retain active URL values',
   assert.match(css, /display:contents/);
 });
 
-test('job cards, create, and detail share accessible screen-only presentation', () => {
-  assert.match(list, /<JobCardsGuide\/>/);
+test('job directory removes the help block while create/detail keep accessible guidance', () => {
+  assert.doesNotMatch(list, /<JobCardsGuide\/>/);
+  assert.doesNotMatch(list, /import \{ JobCardsGuide \}/);
   assert.match(create, /<JobCreateGuide\/>/);
   assert.match(detail, /<JobDetailGuide\/>/);
   assert.match(header, /Create Job Card/);
-  assert.match(guide, /ജോബ് കാർഡ് സഹായം/);
+  assert.doesNotMatch(guide, /ജോബ് കാർഡ് സഹായം/);
+  assert.match(guide, /export function JobCreateGuide/);
+  assert.match(guide, /export function JobDetailGuide/);
   assert.match(css, /^\/\*[\s\S]*?@media screen \{/);
   assert.doesNotMatch(css, /@media print/);
   assert.match(css, /font-size:16px!important/);

@@ -10,7 +10,6 @@ import {
 } from '../../components/jobs';
 import { normalizeRegistration } from '../../components/jobs/jobs.utils';
 import { JobBreadcrumbs } from '../../components/jobs/JobBreadcrumbs';
-import { JobCardsGuide } from '../../components/jobs/JobCardsGuide';
 import { JobDirectoryControls } from '../../components/jobs/JobDirectoryControls';
 import { sortJobsForDisplay, JOB_SORT_OPTIONS } from '../../components/jobs/jobDirectorySort';
 import { RefreshCw, AlertCircle } from 'lucide-react';
@@ -23,6 +22,7 @@ import '../../styles/job-gst-finance.css';
 import '../../styles/jobs-dashboard.css';
 import '../../styles/jobs-unified-ui.css';
 import '../../styles/jobs-directory-controls.css';
+import '../../styles/jobs-list-compact.css';
 
 export const JobList = () => {
   const navigate = useNavigate();
@@ -269,17 +269,9 @@ export const JobList = () => {
   const openJob = (id) => navigate(`/jobs/${id}`);
 
   return (
-    <div className="jobs-dashboard jobs-unified-ui">
+    <div className="jobs-dashboard jobs-unified-ui jobs-list-compact">
       <JobBreadcrumbs />
       <JobsHeader onNavigate={navigate} />
-      <JobCardsGuide/>
-      {(canViewGST || canViewPayments) && <nav className="jobs-gst-finance-nav" aria-label="Job GST and finance links">
-        <span>Related Billing &amp; Finance</span>
-        {canViewGST && <button type="button" onClick={() => navigate('/gstr')}>GST Returns</button>}
-        {canViewPayments && <button type="button" onClick={() => navigate('/finance/payments')}>Customer Payments</button>}
-        {canViewPayments && <button type="button" onClick={() => navigate('/finance')}>Finance Overview</button>}
-      </nav>}
-
       {!loadError && <JobsStats counts={counts} selectedStatus={status} onFilter={setStatus} />}
 
       <JobsToolbar
@@ -356,6 +348,12 @@ export const JobList = () => {
           <button type="button" aria-label="Next Job Cards page" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)}>Next</button>
         </nav>
       )}
+      {(canViewGST || canViewPayments) && <nav className="jobs-gst-finance-nav" aria-label="Job GST and finance links">
+        <span>Related Billing &amp; Finance</span>
+        {canViewGST && <button type="button" onClick={() => navigate('/gstr')}>GST Returns</button>}
+        {canViewPayments && <button type="button" onClick={() => navigate('/finance/payments')}>Customer Payments</button>}
+        {canViewPayments && <button type="button" onClick={() => navigate('/finance')}>Finance Overview</button>}
+      </nav>}
     </div>
   );
 };
