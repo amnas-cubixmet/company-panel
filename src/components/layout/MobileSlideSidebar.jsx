@@ -48,6 +48,8 @@ export const MobileSlideSidebar = ({ isOpen, onClose }) => {
     (route.id !== 'credits' || featureAccess.isCompanyOwner));
   const isRouteActive = (route) => {
     if (route.path === '/dashboard') return location.pathname === '/dashboard';
+    // Customer Website has its own menu item, separate from Settings.
+    if (route.path === '/settings' && location.pathname.startsWith('/settings/customer-website')) return false;
     return location.pathname === route.path || location.pathname.startsWith(`${route.path}/`);
   };
 
@@ -117,6 +119,7 @@ export const MobileSlideSidebar = ({ isOpen, onClose }) => {
                       <NavLink
                         key={route.id}
                         to={route.path}
+                        end={route.path === '/settings'}
                         onClick={onClose}
                         ref={isActive ? activeItemRef : null}
                         className={`mobile-drawer-item ${isActive ? 'is-active' : ''}`}
