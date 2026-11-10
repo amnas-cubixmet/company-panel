@@ -6,6 +6,7 @@ import {
   Receipt, List, RefreshCw, TrendingUp
 } from 'lucide-react';
 import { financeService } from '../../services/finance.service';
+import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/finance-dashboard.css';
 
 const money = new Intl.NumberFormat('en-IN', {
@@ -14,6 +15,7 @@ const money = new Intl.NumberFormat('en-IN', {
 
 export function FinanceDashboard() {
   const navigate = useNavigate();
+  const { can } = useFeatureAccess();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -33,25 +35,29 @@ export function FinanceDashboard() {
 
   useEffect(() => { load(); }, []);
 
-  const fmt = (v) => money.format(parseFloat(v || 0));
+  // Balance fields are redacted by Django for staff without balance access.
+  // Never present hidden balances as a real zero.
+  const fmt = (v) => v === undefined || v === null ? 'Restricted' : money.format(parseFloat(v || 0));
 
   const stats = data ? [
     { label: 'Bank Balance', value: fmt(data.bankBalance), icon: Building2, color: 'blue' },
-    { label: 'Cash & Wallet', value: fmt(data.cashBalance), icon: Wallet, color: 'green' },
+    { label: 'Cash Balance', value: fmt(data.cashBalance), icon: Wallet, color: 'green' },
     { label: 'Total Received', value: fmt(data.totalReceived), icon: ArrowDownLeft, color: 'emerald' },
     { label: 'Total Paid', value: fmt(data.totalPaid), icon: ArrowUpRight, color: 'orange' },
     { label: 'Customer Outstanding', value: fmt(data.outstandingCustomer), icon: Users, color: 'yellow' },
     { label: 'Supplier Outstanding', value: fmt(data.supplierOutstanding), icon: Package, color: 'red' },
     { label: 'Pending Expenses', value: fmt(data.pendingExpenses), icon: AlertCircle, color: 'purple' },
+    ...(data.estimatedProfit === undefined ? [] : [{ label: 'Estimated Operating Result',
+      value: fmt(data.estimatedProfit), icon: TrendingUp, color: 'blue' }]),
   ] : [];
 
   const quickActions = [
-    { label: 'Add Payment', icon: ArrowDownLeft, path: '/payments/new' },
-    { label: 'Add Expense', icon: Receipt, path: '/expenses/new' },
-    { label: 'Add Account', icon: Plus, path: '/finance/accounts/new' },
-    { label: 'Transfer Money', icon: ArrowLeftRight, path: '/finance/transfers/new' },
-    { label: 'View Ledger', icon: List, path: '/finance/transactions' },
-    { label: 'Accounting & Reports', icon: List, path: '/finance/accounting' },
+    { label: 'Record Payment', icon: ArrowDownLeft, path: '/finance/payments/new', permission: 'payments.create' },
+    { label: 'Add Expense', icon: Receipt, path: '/finance/expenses/new', permission: 'expenses.create' },
+    { label: 'Add Cash/Bank Account', icon: Plus, path: '/finance/accounts/new', permission: 'payments.edit' },
+    { label: 'Transfer Money', icon: ArrowLeftRight, path: '/finance/transfers/new', permission: 'payments.edit' },
+    { label: 'View Ledger', icon: List, path: '/finance/transactions', permission: 'payments.view' },
+    { label: 'Accounting & Reports', icon: List, path: '/finance/accounting', permission: 'payments.view' },
   ];
 
   return (
@@ -72,7 +78,7 @@ export function FinanceDashboard() {
 
       {/* Quick Actions */}
       <section className="finance-quick-actions">
-        {quickActions.map(({ label, icon: Icon, path }) => (
+        {quickActions.filter(({ permission }) => can(permission)).map(({ label, icon: Icon, path }) => (
           <button key={label} className="finance-action-btn" onClick={() => navigate(path)}>
             <Icon size={18} aria-hidden="true" />
             <span>{label}</span>
@@ -83,7 +89,7 @@ export function FinanceDashboard() {
       {/* Stats Grid */}
       <section className="finance-stats-grid">
         {loading ? (
-          Array.from({ length: 7 }).map((_, i) => (
+          Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="finance-stat-card finance-stat-skeleton" />
           ))
         ) : (
@@ -98,6 +104,9 @@ export function FinanceDashboard() {
           ))
         )}
       </section>
+
+      {data?.profitNote && <p className="finance-dash-note">{data.profitNote}</p>}
+      {data?.accountBalanceNote && <p className="finance-dash-note">{data.accountBalanceNote}</p>}
 
       {/* Accounts */}
       {data?.accounts?.length > 0 && (

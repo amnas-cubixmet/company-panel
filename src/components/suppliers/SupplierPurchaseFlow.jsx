@@ -28,8 +28,8 @@ const zeroClasses = [
 const choices = invoiceLineTaxChoices('unknown');
 const totalRate = row => row.gstChoice === 'none' ? 0 :
   row.gstChoice === 'custom' ? n(row.customTax) : n(invoiceTotalRateFromChoice(row.gstChoice));
-const accountMethod = account => account?.kind === 'Cash' ? 'Cash' :
-  account?.kind === 'UPI' ? 'UPI' : 'Bank Transfer';
+// Supplier bills use the same two Cash/Bank channels as Finance Management.
+const accountMethod = account => account?.kind === 'Cash' ? 'Cash' : 'Bank';
 const getErrorText = error => {
   const data = error?.response?.data || error?.data || {};
   if (typeof data === 'string') return data;
@@ -485,7 +485,7 @@ export default function SupplierPurchaseFlow({
                   <div><span>Supplier Credit (Due)</span><strong>{rupees(remaining)}</strong></div>
                 </div>
                 <h3>How are you paying the supplier?</h3>
-                <p className="cg-supplier-purchase-muted">No payment = full credit. Add Cash, Bank or UPI payments below. Multiple accounts are supported.</p>
+                <p className="cg-supplier-purchase-muted">No payment = full credit. Choose Cash or Bank accounts below; multiple payments are supported.</p>
                 {splits.map((row, index) => (
                   <div className="cg-supplier-purchase-split" key={row.id}>
                     <label>Payment account
@@ -493,7 +493,7 @@ export default function SupplierPurchaseFlow({
                         onChange={e => changeSplit(index, { accountId: e.target.value })}>
                         <option value="">Select account</option>
                         {accounts.map(account => <option key={account.id} value={account.id}>
-                          {account.name} ({account.kind}) · {rupees(account.recordedBalance)}
+                          {account.name} ({accountMethod(account)}) · {rupees(account.recordedBalance)}
                         </option>)}
                       </select>
                     </label>
@@ -511,7 +511,7 @@ export default function SupplierPurchaseFlow({
                 <div className="cg-supplier-purchase-actions">
                   <button type="button" disabled={splits.length >= 5}
                     onClick={() => setSplits(existing => [...existing, { id: requestKey(), accountId: '', amount: '', reference: '' }])}>
-                    + Add Cash / Bank / UPI Payment
+                    + Add Cash / Bank Payment
                   </button>
                   <button type="button" className="primary" disabled={posting || parts.length === 0}
                     onClick={finishPurchase}>
@@ -541,12 +541,12 @@ export default function SupplierPurchaseFlow({
                 <input className={fieldClass} type="number" min="0.01" max={fixed(remainingSupplier)} step="0.01"
                   value={settlement.amount} onChange={e => setSettlement(old => ({ ...old, amount: e.target.value }))}/>
               </label>
-              <label>Cash / Bank / UPI account *
+              <label>Cash / Bank account *
                 <select className={fieldClass} value={settlement.accountId}
                   onChange={e => setSettlement(old => ({ ...old, accountId: e.target.value }))}>
                   <option value="">Select account</option>
                   {accounts.map(account => <option key={account.id} value={account.id}>
-                    {account.name} ({account.kind}) · {rupees(account.recordedBalance)}
+                    {account.name} ({accountMethod(account)}) · {rupees(account.recordedBalance)}
                   </option>)}
                 </select>
               </label>

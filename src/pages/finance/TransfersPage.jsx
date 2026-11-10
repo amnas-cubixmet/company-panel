@@ -2,15 +2,19 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowLeftRight, Plus } from 'lucide-react';
 import { financeService } from '../../services/finance.service';
+import { isFinanceAccount, assertFinanceAccount, accountChannel } from '../../utils/financeCashBank';
+import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/finance-transfers.css';
 
 const money = new Intl.NumberFormat('en-IN', {
   style: 'currency', currency: 'INR', maximumFractionDigits: 2
 });
-const fmt = (v) => money.format(parseFloat(v || 0));
+const fmt = (v) => v === undefined || v === null ? 'Restricted' : money.format(parseFloat(v || 0));
 
 export function TransfersPage() {
   const navigate = useNavigate();
+  const { can } = useFeatureAccess();
+  const canManage = can('payments.edit');
   const location = useLocation();
   const isNew = location.pathname.endsWith('/new');
 
@@ -32,7 +36,7 @@ export function TransfersPage() {
         financeService.listAccounts(),
       ]);
       setTransfers(Array.isArray(t) ? t : []);
-      setAccounts(Array.isArray(a) ? a : []);
+      setAccounts((Array.isArray(a) ? a : []).filter(isFinanceAccount));
     } catch {
       setError('Unable to load transfer data.');
     } finally {
@@ -44,6 +48,13 @@ export function TransfersPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canManage) return;
+    try {
+      assertFinanceAccount(accounts, form.fromAccountId,
+        accountChannel(accounts.find(x => x.id === form.fromAccountId)?.kind));
+      assertFinanceAccount(accounts, form.toAccountId,
+        accountChannel(accounts.find(x => x.id === form.toAccountId)?.kind));
+    } catch (cause) { setError(cause.message); return; }
     if (!form.fromAccountId || !form.toAccountId) {
       setError('Please select both accounts.');
       return;
@@ -66,6 +77,7 @@ export function TransfersPage() {
     }
   };
 
+  if (isNew && !canManage) return <div role="alert">Transfer permission required.</div>;
   if (isNew) {
     return (
       <div className="finance-page">
@@ -137,9 +149,9 @@ export function TransfersPage() {
           <h1>Money Transfers</h1>
           <p>Internal account-to-account fund movements.</p>
         </div>
-        <button className="finance-primary-btn" onClick={() => navigate('/finance/transfers/new')}>
+        {canManage && <button className="finance-primary-btn" onClick={() => navigate('/finance/transfers/new')}>
           <Plus size={16} /> New Transfer
-        </button>
+        </button>}
       </header>
       {error && <div className="finance-error" role="alert">{error}</div>}
       {loading ? (
