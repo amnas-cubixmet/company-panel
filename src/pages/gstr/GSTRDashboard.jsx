@@ -174,6 +174,14 @@ export default function GSTRDashboard() {
     Object.entries(updates).forEach(([key, value]) => next.set(key, value));
     setParams(next, { replace: true });
   };
+  const changeTab = (value) => {
+    const next = new URLSearchParams(params);
+    next.set('tab', value);
+    // Invoice-targeted GSTR-1 links must not keep filtering unrelated tabs.
+    next.delete('invoice');
+    setSearch('');
+    setParams(next, { replace: true });
+  };
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -300,7 +308,7 @@ export default function GSTRDashboard() {
       <label>Workshop GSTIN
         <div className="gstr-readonly">{data?.company?.gstin || 'Not registered / unavailable'}</div>
       </label>
-      <span className="gstr-status"><AlertTriangle size={16} aria-hidden="true"/> Preparation only · Portal status unverified</span>
+      <span className="gstr-status"><AlertTriangle size={16} aria-hidden="true"/> Preparation only · Portal unverified · Not submitted by CubixGear</span>
     </div>
     <GSTRGuide/>
 
@@ -325,7 +333,7 @@ export default function GSTRDashboard() {
         {TABS.map(([value, label]) =>
           <button key={value} type="button" className={tab === value ? 'is-active' : ''}
             aria-pressed={tab === value}
-            onClick={() => { setSearch(''); updateParams({ tab: value }); }}>{label}</button>
+            onClick={() => changeTab(value)}>{label}</button>
         )}
       </nav>
       <p className="gstr-tab-help"><Info size={17} aria-hidden="true"/>{TAB_HELP[tab]}</p>
@@ -353,7 +361,7 @@ export default function GSTRDashboard() {
       </section>}
 
       {tab === 'gstr3b' && <section className="gstr-panel">
-        <div className="gstr-panel-heading"><h2>GSTR-3B · Preparation Summary</h2><span>Portal status unverified</span></div>
+        <div className="gstr-panel-heading"><h2>GSTR-3B · Preparation Summary</h2><span>Portal unverified</span></div>
         <div className="gstr-breakdown">
           {[['Outward Taxable Supplies', sums.taxable], ['Output IGST', sums.igst],
             ['Output CGST', sums.cgst], ['Output SGST / UTGST', sums.sgst],
