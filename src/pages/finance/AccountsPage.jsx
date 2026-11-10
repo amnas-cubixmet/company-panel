@@ -4,17 +4,18 @@ import {
   ArrowLeft, Building2, Wallet, Plus, Power
 } from 'lucide-react';
 import { financeService } from '../../services/finance.service';
+import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/finance-accounts.css';
 
 const money = new Intl.NumberFormat('en-IN', {
   style: 'currency', currency: 'INR', maximumFractionDigits: 2
 });
-const fmt = (v) => money.format(parseFloat(v || 0));
+const fmt = (v) => v === undefined || v === null ? 'Restricted' : money.format(parseFloat(v || 0));
 
-const KINDS = ['Cash', 'Bank', 'UPI', 'Wallet', 'Other'];
+const KINDS = ['Cash', 'Bank'];
 
 const emptyForm = {
-  name: '', kind: 'Bank', bankName: '', accountNumber: '',
+  name: '', kind: 'Cash', bankName: '', accountNumber: '',
   ifsc: '', branchName: '', openingBalance: '0',
   openingDate: new Date().toISOString().slice(0, 10), description: ''
 };
@@ -87,6 +88,8 @@ function AccountForm({ initial, onSave, onCancel, saving, error }) {
 
 export function AccountsPage() {
   const navigate = useNavigate();
+  const { can } = useFeatureAccess();
+  const canManage = can('payments.edit');
   const { id } = useParams();
   const location = useLocation();
   const isNew = location.pathname.endsWith('/new');
@@ -133,6 +136,7 @@ export function AccountsPage() {
   }, [id, isNew, loadAccount, loadAccounts]);
 
   const handleCreate = async (form) => {
+    if (!canManage) { setFormError('Account management permission required.'); return; }
     setSaving(true);
     setFormError('');
     try {
@@ -164,6 +168,7 @@ export function AccountsPage() {
 
   const handleAdjust = async (e) => {
     e.preventDefault();
+    if (!canManage) return;
     setAdjusting(true);
     try {
       await financeService.adjustBalance(id, adjustForm);
@@ -180,7 +185,7 @@ export function AccountsPage() {
   };
 
   const toggleActive = async () => {
-    if (!account) return;
+    if (!account || !canManage) return;
     try {
       await financeService.updateAccount(id, { isActive: !account.isActive });
       loadAccount();
@@ -189,6 +194,7 @@ export function AccountsPage() {
     }
   };
 
+  if (isNew && !canManage) return <div className="finance-form-error" role="alert">Account management permission required.</div>;
   if (isNew) {
     return (
       <div className="finance-page">
@@ -220,14 +226,14 @@ export function AccountsPage() {
               </span>
             </div>
           </div>
-          <div className="finance-account-actions">
+          {canManage && <div className="finance-account-actions">
             <button className="finance-secondary-btn" onClick={() => setShowAdjust(!showAdjust)}>
               Adjust Balance
             </button>
             <button className="finance-secondary-btn" onClick={toggleActive}>
               <Power size={15} /> {account.isActive ? 'Deactivate' : 'Activate'}
             </button>
-          </div>
+          </div>}
         </header>
 
         {error && <div className="finance-error" role="alert">{error}</div>}
@@ -340,9 +346,9 @@ export function AccountsPage() {
           <h1>Bank &amp; Cash Accounts</h1>
           <p>Manage your internal financial accounts.</p>
         </div>
-        <button className="finance-primary-btn" onClick={() => navigate('/finance/accounts/new')}>
+        {canManage && <button className="finance-primary-btn" onClick={() => navigate('/finance/accounts/new')}>
           <Plus size={16} /> Add Account
-        </button>
+        </button>}
       </header>
 
       {error && <div className="finance-error" role="alert">{error}</div>}
@@ -354,9 +360,9 @@ export function AccountsPage() {
           <Building2 size={40} />
           <h3>No accounts yet</h3>
           <p>Add a bank or cash account to start tracking balances.</p>
-          <button className="finance-primary-btn" onClick={() => navigate('/finance/accounts/new')}>
+          {canManage && <button className="finance-primary-btn" onClick={() => navigate('/finance/accounts/new')}>
             Add First Account
-          </button>
+          </button>}
         </div>
       ) : (
         <div className="finance-accounts-list">
