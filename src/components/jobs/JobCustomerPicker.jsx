@@ -5,7 +5,6 @@ import { PhoneInput } from '../common/PhoneInput';
 import { JOB_PHONE_COUNTRIES, splitInternationalPhone, joinInternationalPhone, validInternationalPhone } from '../../utils/jobCreateAdapters';
 
 const resultsOf = (data) => Array.isArray(data) ? data : data?.results || [];
-const numberOnly = (value) => String(value || '').replace(/\D/g, '');
 
 export function JobCustomerPicker({ selectedCustomer, onSelect, onCreated, disabled = false }) {
   const [query, setQuery] = useState('');
