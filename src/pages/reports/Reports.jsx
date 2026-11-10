@@ -269,7 +269,8 @@ export function Reports() {
   return (
     <div className="reports-page reports-page-polished">
       <ReportsHeader onRefresh={load} onCsv={exportCsv} onPrint={() => window.print()}
-        loading={loading} periodLabel={periodLabel}/>
+        loading={loading} exportDisabled={!dateRangeValid || truncatedSources.length > 0}
+        periodLabel={periodLabel}/>
       <ReportPeriodFilter from={from} to={to}
         month={month} year={year} years={years}
         branch={branch} staff={staff}
