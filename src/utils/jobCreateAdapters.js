@@ -15,7 +15,7 @@ const JOB_COUNTRY_FLAGS = {
 };
 export const JOB_PHONE_COUNTRIES = JOB_COUNTRY_CODES.map(([code, label]) => ({
   code,
-  label: label.replace(/\s*\(\+\d+\)$, ''),
+  label: label.replace(/\s*\(\+\d+\)$/, ''),
   flag: JOB_COUNTRY_FLAGS[code] || '🌐',
 }));
 
