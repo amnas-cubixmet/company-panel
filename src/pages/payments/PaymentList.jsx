@@ -80,7 +80,11 @@ export function PaymentList() {
   const prefilledCustomerQuery = useRef('');
   const prefilledInvoiceQuery = useRef('');
   const [accounts, setAccounts] = useState([]);
-  const [query, setQuery] = useState('');
+  // When opened from an invoice, show only the matching receipt history.
+  // The user can still clear this search; no payment is created by navigation.
+  const [query, setQuery] = useState(
+    () => new URLSearchParams(location.search).get('invoice') || ''
+  );
   const [statusFilter, setStatusFilter] = useState('All');
   const [methodFilter, setMethodFilter] = useState('All');
   const [loading, setLoading] = useState(true);
@@ -116,6 +120,13 @@ export function PaymentList() {
   }, [isNew, canCreate, canViewInvoices, canViewCustomers, canViewPayments]);
 
   useEffect(() => { load(); }, [load, refreshKey]);
+
+  useEffect(() => {
+    if (!isNew && !isView) {
+      const invoiceNumber = new URLSearchParams(location.search).get('invoice');
+      if (invoiceNumber) setQuery(invoiceNumber);
+    }
+  }, [isNew, isView, location.search]);
 
   useEffect(() => {
     if (isNew || isView || !canViewPayments || USE_MOCK_API) return undefined;
