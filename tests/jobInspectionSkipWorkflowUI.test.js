@@ -30,7 +30,7 @@ test('skip confirmation offers real reason choices including custom Other text',
 
 test('no item is marked Good by skipping; status Skipped is a separate read-only terminal state', () => {
   assert.match(panel, /const isSkipped = inspection\?\.status === 'Skipped'/);
-  assert.match(panel, /isStarted && !isSkipped/);
+  assert.match(panel, /const editable = canEdit && Boolean\(inspection\) && !isSkipped/);
   assert.match(panel, /skippedAt/);
   assert.match(panel, /skipReason/);
   assert.match(panel, /No unchecked items were marked Good/);
@@ -48,24 +48,25 @@ test('N/A contributes to reviewed progress but is never counted as a Good check'
   assert.match(panel, /completed === 0/);
 });
 
-test('Start Inspection is visible above the checklist and uses the existing backend action', () => {
-  const header = panel.slice(panel.indexOf('className="cg-inspection-header-actions"'), panel.indexOf('className="cg-inspection-stats"'));
-  assert.match(header, /!isStarted && !isSkipped/);
-  assert.match(header, /className="cg-inspection-primary cg-inspection-start-action"/);
-  assert.match(header, /Start Inspection/);
-  assert.match(header, /onClick={handleStartInspection}/);
-  assert.match(header, /disabled={!canEdit \|\| !inspection \|\| !!busy}/);
-  assert.match(panel, /perform\('start', \(\) => jobInspectionService\.startInspection\(job\.id\)\)/);
-  assert.ok((panel.match(/handleStartInspection/g) || []).length >= 3);
-  assert.match(css, /\.cg-inspection-start-action/);
+test('inspection auto-starts on the first authorized checklist edit, then saves the chosen result', () => {
+  assert.match(panel, /\['check', 'finding', 'diagnostic', 'photo'\]\.includes\(label\)/);
+  const start = panel.indexOf('await jobInspectionService.startInspection(job.id);');
+  const save = panel.indexOf('await operation();');
+  assert.ok(start > 0 && save > start, 'start must succeed before updating a checklist item');
+  assert.match(panel, /const editable = canEdit && Boolean\(inspection\) && !isSkipped/);
+  assert.match(panel, /onClick=\{\(\) => perform\('check', \(\) => jobInspectionService\.updateChecklistItem/);
+  assert.match(panel, /disabled=\{!editable \|\| !!busy\}/);
+  assert.match(panel, /automatically start inspection and save your check/);
+  assert.doesNotMatch(panel, /onClick=\{handleStartInspection\}/);
   assert.match(css, /bottom: calc\(78px \+ env\(safe-area-inset-bottom/);
 });
 
-test('footer contains paired Skip and Start/Complete actions, disabled by policy and saved status', () => {
+test('footer contains Skip and Complete, locked until a real inspection check is saved', () => {
   assert.match(panel, /cg-inspection-footer-actions/);
   assert.match(panel, /Skip Inspection/);
   assert.match(panel, /Complete Inspection/);
-  assert.match(panel, /Start Inspection/);
+  assert.doesNotMatch(panel, /'Start Inspection'/);
+  assert.match(panel, /!isStarted \|\| completed === 0/);
   assert.match(panel, /!maySkip \|\| !!busy/);
   assert.match(panel, /inspection\?\.skipAllowed !== false/);
   assert.match(panel, /role="alert"/);
