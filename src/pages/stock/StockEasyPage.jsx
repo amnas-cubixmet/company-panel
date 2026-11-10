@@ -205,7 +205,9 @@ export default function StockEasyPage() {
     }
   };
 
-  useEffect(() => { reload(); }, []);
+  // Feature access loads asynchronously. Reload supplier balances when the
+  // logged-in role is resolved without ever querying restricted Finance data.
+  useEffect(() => { reload(); }, [canViewSupplierFinance]);
 
   // Query the persisted backend catalogue rather than only the currently loaded page.
   useEffect(() => {
