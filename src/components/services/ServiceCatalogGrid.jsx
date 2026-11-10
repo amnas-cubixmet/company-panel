@@ -17,14 +17,13 @@ export const ServiceCatalogGrid = ({ services, formatMoney, durationLabel, onVie
       {services.map(service=>(
         <article
           key={service.id}
-          className="service-catalog-card is-clickable"
-          role="button"
-          tabIndex={0}
-          onClick={()=>onView(service)}
-          onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();onView(service);}}}
+          className="service-catalog-card"
         >
           <div className="service-catalog-card__head">
-            <div><span>{service.code}</span><strong>{service.name}</strong></div>
+            <div><span>{service.code}</span>
+              <button type="button" className="service-catalog-card__title" onClick={()=>onView(service)}
+                aria-label={'View service ' + service.name}>{service.name}</button>
+            </div>
             <b className={'service-status '+statusClass(service.status)}>{service.status||'active'}</b>
           </div>
           <div className="service-category-chip"><Tag size={12}/>{service.category}</div>
@@ -33,7 +32,7 @@ export const ServiceCatalogGrid = ({ services, formatMoney, durationLabel, onVie
             <div><span>Duration</span><strong>{durationLabel(service.durationMinutes)}</strong></div>
             <div><span>Pricing</span><strong>{service.pricingType||'Fixed'}</strong></div>
           </div>
-          <p>{service.description||'Workshop service with configurable labour pricing and checklist.'}</p>
+          <p>{service.description||'No description added. Open the service for pricing and checklist details.'}</p>
           <div className="service-card-actions">
             <button onClick={e=>{e.stopPropagation();onView(service);}}><Eye size={13}/> View</button>
             {canEdit&&<button onClick={e=>{e.stopPropagation();onEdit(service);}}><Edit3 size={13}/> Edit</button>}
