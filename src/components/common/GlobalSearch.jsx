@@ -50,13 +50,14 @@ export const GlobalSearch = () => {
   // Local navigation suggestions never require reading tenant data. Live
   // Django results remain separately tenant-scoped and permission-gated.
   const pages = useMemo(() => searchWorkspacePages(query, routeConfig, can), [query, can]);
-  const permitted = useMemo(() => [...pages, ...results].filter((item) => {
+  const permittedRecords = useMemo(() => results.filter((item) => {
     const path = item?.route;
     if (typeof path !== 'string' || !path.startsWith('/') ||
         path.startsWith('//') || path.includes('\\')) return false;
     const permission = getPermissionForPath(path.split(/[?#]/)[0]);
     return Boolean(permission && can(permission));
-  }), [pages, results, can]);
+  }), [results, can]);
+  const permitted = useMemo(() => [...pages, ...permittedRecords], [pages, permittedRecords]);
 
   const groups = useMemo(() => {
     const map = new Map();
