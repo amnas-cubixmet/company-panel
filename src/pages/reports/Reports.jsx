@@ -291,7 +291,7 @@ export function Reports() {
       {incompleteSources.length > 0 && (
         <div role="alert" className="reports-error no-print">
           <AlertCircle size={16}/>
-          <span>Reports are incomplete. Missing figures are shown as —, not ₹0.
+          <span>Reports are incomplete. Missing figures are shown as — instead of ₹0.
             {Object.entries(dataIssues).map(([source, reason]) =>
               <span key={source} className="report-source-error"><strong>{source}:</strong> {reason}</span>)}
           </span>
