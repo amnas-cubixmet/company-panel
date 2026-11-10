@@ -336,7 +336,7 @@ export function Reports() {
                       <td>{reportMoney(t.total)}</td><td>{reportMoney(t.balance)}</td>
                     </tr>;
                   })}
-                  {!filteredRows.length && noRecords(7)}
+                  {!filteredRows.length && noRecords(7, availability.invoices ? 'No invoices for this selection.' : 'Invoice data unavailable.')}
                 </tbody>
               </table>
             </div>
@@ -345,7 +345,8 @@ export function Reports() {
         <section className={`report-panel ${tab === 'overview' || tab === 'payments' ? '' : 'report-section-screen-hidden'}`}>
             <div className="report-section-head">
               <div><span>COLLECTIONS</span><h3>Payment Report</h3>
-                <p>{report.paymentRows.length} completed payments</p></div>
+                <p>{report.paymentRows.length} posted payment records</p></div>
+              <Link className="report-related-link no-print" to="/payments">Open Payments</Link>
             </div>
             <div className="report-table-wrap">
               <table className="report-table">
@@ -361,7 +362,7 @@ export function Reports() {
                     <td>{item.status || 'Completed'}</td>
                     <td>{reportMoney(item.amount)}</td>
                   </tr>)}
-                  {!report.paymentRows.length && noRecords(7)}
+                  {!report.paymentRows.length && noRecords(7, availability.payments ? 'No payments for this selection.' : 'Payment data unavailable.')}
                 </tbody>
               </table>
             </div>
@@ -370,7 +371,8 @@ export function Reports() {
         <section className={`report-panel ${tab === 'overview' || tab === 'expenses' ? '' : 'report-section-screen-hidden'}`}>
             <div className="report-section-head">
               <div><span>SPENDING</span><h3>Expense Report</h3>
-                <p>{report.expenseRows.length} recorded expenses</p></div>
+                <p>{report.expenseRows.length} operating expenses</p></div>
+              <Link className="report-related-link no-print" to="/expenses">Open Expenses</Link>
             </div>
             <div className="report-table-wrap">
               <table className="report-table">
@@ -383,7 +385,7 @@ export function Reports() {
                     <td>{item.category || '—'}</td><td>{item.vendor || '—'}</td>
                     <td>{item.status || '—'}</td><td>{reportMoney(item.amount)}</td>
                   </tr>)}
-                  {!report.expenseRows.length && noRecords(6)}
+                  {!report.expenseRows.length && noRecords(6, availability.expenses ? 'No expenses for this selection.' : 'Expense data unavailable.')}
                 </tbody>
               </table>
             </div>
