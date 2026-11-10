@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle, CheckCircle2, Download, FileSpreadsheet, FileText,
-  RefreshCw, Search, ShieldCheck, UploadCloud
+  RefreshCw, Search, ShieldCheck, UploadCloud, Info, CalendarDays, AlertTriangle
 } from 'lucide-react';
 import apiClient from '../../api/apiClient';
 import GSTPart15Workspace from './GSTPart15Workspace';
+import GSTRGuide from './GSTRGuide';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import './gstr.css';
+import './gstr-ui-polish.css';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -20,6 +22,17 @@ const TABS = [
   ['credits', 'GST Credit Notes'], ['ledger', 'Tax Ledger'],
   ['exports', 'Exports & Filing']
 ];
+const TAB_HELP = {
+  overview: 'Summary of recorded GST invoice tax and purchase tax for the selected month. Figures may need review.',
+  gstr1: 'Customer GST invoices included in your outward sales preparation. Open an invoice to review it.',
+  gstr3b: 'A preparation view of recorded output tax and reviewed ITC. Not a GST Portal return or final tax due.',
+  gstr2b: 'Compare your supplier bills with the official GSTR-2B JSON. A matched bill still needs a separate ITC eligibility decision.',
+  hsn: 'Provisional product and service classification totals. These are not a ready-to-file HSN return.',
+  itc: 'Review documented GST input-credit eligibility for purchases, separately from the GSTR-2B match.',
+  credits: 'Record sales GST credit notes linked to finalized invoices; this does not issue a customer refund.',
+  ledger: 'Review internal GST tax-head entries. This is not the GST Portal electronic cash or credit ledger.',
+  exports: 'Download preparation CSV files and record internal review evidence. You must verify filing separately on the GST Portal.',
+};
 const todayPeriod = () => {
   const now = new Date();
   return String(now.getFullYear()) + '-' + String(now.getMonth() + 1).padStart(2, '0');
@@ -41,7 +54,7 @@ const csvDownload = async (report, period) => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'cubegears-' + report + '-' + period + '-PREPARATION.csv';
+  link.download = 'cubixgear-' + report + '-' + period + '-PREPARATION.csv';
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -56,11 +69,11 @@ function DataTable({ rows, columns, search = '', pageSize = 20 }) {
   const max = Math.max(1, Math.ceil(filtered.length / pageSize));
   const current = Math.min(page, max);
   const visible = filtered.slice((current - 1) * pageSize, current * pageSize);
-  if (!filtered.length) return <div className="gstr-empty">No matching records for this period.</div>;
+  if (!filtered.length) return <div className="gstr-empty" role="status">No records match the selected month or search. Check the period or try another search.</div>;
   return <>
     <div className="gstr-table-scroll">
-      <table className="gstr-table">
-        <thead><tr>{columns.map((column) => <th key={column.key} className={column.money ? 'is-money' : ''}>{column.label}</th>)}</tr></thead>
+      <table className="gstr-table" aria-label="GST records for selected return period">
+        <thead><tr>{columns.map((column) => <th scope="col" key={column.key} className={column.money ? 'is-money' : ''}>{column.label}</th>)}</tr></thead>
         <tbody>{visible.map((row, i) =>
           <tr key={row.id || row.bookId || row.number + ':' + i}>
             {columns.map((column) =>
@@ -84,8 +97,8 @@ function DataTable({ rows, columns, search = '', pageSize = 20 }) {
     )}</div>
     {max > 1 && <div className="gstr-pagination">
       <span>{filtered.length} records · Page {current} of {max}</span>
-      <div><button type="button" disabled={current === 1} onClick={() => setPage(current - 1)}>Previous</button>
-        <button type="button" disabled={current === max} onClick={() => setPage(current + 1)}>Next</button></div>
+      <div><button type="button" aria-label="Previous records page" disabled={current === 1} onClick={() => setPage(current - 1)}>Previous</button>
+        <button type="button" aria-label="Next records page" disabled={current === max} onClick={() => setPage(current + 1)}>Next</button></div>
     </div>}
   </>;
 }
@@ -174,7 +187,7 @@ export default function GSTRDashboard() {
     );
     apiClient.get('/gstr/overview', { params: { period } })
       .then((value) => { if (active) setData(value); })
-      .catch((error) => { if (active) setIssue(error.message || 'Unable to load GSTR data.'); })
+      .catch((error) => { if (active) setIssue(error.message || 'Unable to load GST records. Check the server and try again.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [period, reload]);
@@ -265,65 +278,60 @@ export default function GSTRDashboard() {
   return <main className="gstr-page">
     <header className="gstr-header">
       <div><div className="gstr-eyebrow"><ShieldCheck size={15} /> GST Returns Management</div>
-        <h1>GST Returns</h1>
-        <p>Tax preparation and reconciliation from existing workshop records.</p>
+        <h1>GST Reports &amp; Returns</h1>
+        <p>Review sales GST, supplier GST, tax credits and return preparation for your workshop.</p>
       </div>
       <div className="gstr-header-actions">
-        <button type="button" onClick={() => setReload((n) => n + 1)} disabled={loading}><RefreshCw size={16} /> Refresh</button>
-        {access.can('gstr.export') && <button type="button" disabled={busy || loading} onClick={() => exportCsv('gstr1')}><Download size={16} /> Export CSV</button>}
+        <button type="button" onClick={() => setReload((n) => n + 1)} disabled={loading} aria-label="Refresh GST data"><RefreshCw size={16} /> Refresh</button>
+        {access.can('gstr.export') && <button type="button" disabled={busy || loading} onClick={() => exportCsv('gstr1')} title="Download GSTR-1 preparation data, not a filed return"><Download size={16} /> Sales CSV</button>}
       </div>
     </header>
     <div className="gstr-filter-panel">
-      <label>Financial Year
+      <label><CalendarDays size={15} aria-hidden="true"/> Financial Year
         <select value={financialYear} onChange={(event) => setFinancialYear(event.target.value)}>
           {years.map((year) => <option key={year} value={year}>{year}–{String(year + 1).slice(-2)}</option>)}
         </select>
       </label>
-      <label>Return Period
+      <label>Return Month
         <select value={month} onChange={(event) => setMonth(event.target.value)}>
           {MONTHS.map((label, i) => <option value={i + 1} key={label}>{label}</option>)}
         </select>
       </label>
-      <label>GST Registration
+      <label>Workshop GSTIN
         <div className="gstr-readonly">{data?.company?.gstin || 'Not registered / unavailable'}</div>
       </label>
-      <span className="gstr-status">
-        {data?.filing?.status === 'Reported Filed'
-          ? 'Reported filed internally · Portal unverified'
-          : data?.filing?.status === 'Reviewed'
-            ? 'Internally reviewed · Not submitted by CubixGear'
-            : 'Preparation only · Filing not verified'}
-      </span>
+      <span className="gstr-status"><AlertTriangle size={16} aria-hidden="true"/> Preparation only · Portal status unverified</span>
     </div>
+    <GSTRGuide/>
 
-    {issue && <div className="gstr-alert is-error" role="alert"><AlertCircle size={18} /> <span>{issue}</span><button type="button" onClick={() => setIssue('')} aria-label="Dismiss error">×</button></div>}
+    {issue && <div className="gstr-alert is-error" role="alert">
+      <AlertCircle size={18} aria-hidden="true"/>
+      <span>{issue}</span>
+      <button type="button" onClick={() => setReload(n => n + 1)} disabled={loading} aria-label="Retry loading GST records">Retry</button>
+      <button type="button" onClick={() => setIssue('')} aria-label="Dismiss error">×</button>
+    </div>}
     {notice && <div className="gstr-alert is-success" role="status"><CheckCircle2 size={18} /> {notice}</div>}
-    {loading && <div className="gstr-empty" role="status">Loading verified workshop records…</div>}
+    {loading && <div className="gstr-empty" role="status"><RefreshCw size={17} aria-hidden="true" className="gstr-spinning"/> Loading workshop GST records…</div>}
     {!loading && !data && !issue && <div className="gstr-empty">No GSTR information available.</div>}
 
     {data && <>
       <section className="gstr-stats" aria-label="GST figures">
-        <Stat label="Taxable Sales" value={sums.taxable} detail={sums.invoiceCount + ' finalized invoices'} />
-        <Stat label="Output GST" value={sums.outputGST} detail="Recorded invoice tax" />
-        <Stat label="Eligible ITC" value={sums.eligibleITC} detail="Only separately reviewed, approved purchase GST" />
-        <Stat label="Net GST Liability" value={sums.estimatedNetLiability} detail="Not final until ITC review" />
+        <Stat label="Taxable Sales" value={sums.taxable} detail={sums.invoiceCount + ' finalized customer invoices'} />
+        <Stat label="Sales GST" value={sums.outputGST} detail="Tax recorded on finalized invoices" />
+        <Stat label="Reviewed ITC" value={sums.eligibleITC} detail="Internally reviewed purchase tax credits only" />
+        <Stat label="Estimated GST (not final)" value={sums.estimatedNetLiability} detail="Not confirmed payable GST; portal reconciliation needed" />
       </section>
       <nav className="gstr-tabs" aria-label="GSTR sections">
         {TABS.map(([value, label]) =>
           <button key={value} type="button" className={tab === value ? 'is-active' : ''}
-            aria-current={tab === value ? 'page' : undefined}
-            onClick={() => {
-              setSearch('');
-              const next = new URLSearchParams(params);
-              next.set('tab', value);
-              next.delete('invoice');
-              setParams(next, { replace: true });
-            }}>{label}</button>
+            aria-pressed={tab === value}
+            onClick={() => { setSearch(''); updateParams({ tab: value }); }}>{label}</button>
         )}
       </nav>
+      <p className="gstr-tab-help"><Info size={17} aria-hidden="true"/>{TAB_HELP[tab]}</p>
 
       {tab === 'overview' && <section className="gstr-panel">
-        <div className="gstr-panel-heading"><h2>Period Overview</h2><span>{period}</span></div>
+        <div className="gstr-panel-heading"><h2>Monthly GST Overview</h2><span>{period}</span></div>
         <div className="gstr-breakdown">
           {[['Taxable Sales', sums.taxable], ['CGST', sums.cgst], ['SGST / UTGST', sums.sgst],
             ['IGST', sums.igst], ['Total Output GST', sums.outputGST],
@@ -345,7 +353,7 @@ export default function GSTRDashboard() {
       </section>}
 
       {tab === 'gstr3b' && <section className="gstr-panel">
-        <div className="gstr-panel-heading"><h2>GSTR-3B · Preparation Summary</h2><span>{data.filing?.status === 'Reported Filed' ? 'Reported filed internally · Unverified' : 'Not filed by CubixGear'}</span></div>
+        <div className="gstr-panel-heading"><h2>GSTR-3B · Preparation Summary</h2><span>Portal status unverified</span></div>
         <div className="gstr-breakdown">
           {[['Outward Taxable Supplies', sums.taxable], ['Output IGST', sums.igst],
             ['Output CGST', sums.cgst], ['Output SGST / UTGST', sums.sgst],
@@ -415,7 +423,7 @@ export default function GSTRDashboard() {
       </section>}
 
       {tab === 'exports' && <section className="gstr-panel">
-        <div className="gstr-panel-heading"><h2>Exports & Filing Review</h2><span>{data.filing?.status || 'Not Reviewed'} · Portal unverified</span></div>
+        <div className="gstr-panel-heading"><h2>Exports &amp; Filing Review</h2><span>Preparation only</span></div>
         <div className="gstr-export-actions">
           <div><FileSpreadsheet size={22} /><strong>GSTR-1 Preparation CSV</strong><span>Original recorded invoice tax totals.</span>
             <button type="button" disabled={busy || !access.can('gstr.export')} onClick={() => exportCsv('gstr1')}><Download size={16} /> Download CSV</button></div>
@@ -443,7 +451,7 @@ export default function GSTRDashboard() {
       </section>}
 
       <section className="gstr-panel" aria-label="Review alerts">
-        <div className="gstr-panel-heading"><h2>Validation & Compliance Review</h2>
+        <div className="gstr-panel-heading"><h2>Checks Before Filing</h2>
           <span>{validations.length} source issues</span></div>
         {validations.length ? <div className="gstr-issues">
           {validations.slice(0, 100).map((entry, i) =>
