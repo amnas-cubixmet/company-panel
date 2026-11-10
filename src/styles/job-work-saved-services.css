@@ -1,0 +1,124 @@
+/* Job Card Work — saved service charges, separate from direct costs. */
+.cg-job-detail .job-work-saved-services {
+  display:grid;
+  gap:12px;
+  min-width:0;
+  padding:15px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:var(--surface);
+  color:var(--text-primary);
+}
+.cg-job-detail .job-work-saved-header {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:10px;
+}
+.cg-job-detail .job-work-saved-header h3 {
+  margin:0;
+  font-size:16px;
+  font-weight:750;
+}
+.cg-job-detail .job-work-saved-header p {
+  margin:4px 0 0;
+  font-size:12px;
+  line-height:1.5;
+  color:var(--text-secondary);
+}
+.cg-job-detail .job-work-saved-count {
+  padding:6px 10px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background:var(--surface-2);
+  font-size:12px;
+  white-space:nowrap;
+}
+.cg-job-detail .job-work-saved-list {
+  display:grid;
+  gap:7px;
+}
+.cg-job-detail .job-work-saved-row {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:11px;
+  background:var(--surface-2);
+}
+.cg-job-detail .job-work-saved-info {
+  display:grid;
+  flex:1;
+  min-width:0;
+  gap:4px;
+}
+.cg-job-detail .job-work-saved-info strong {
+  font-size:14px;
+  overflow-wrap:anywhere;
+}
+.cg-job-detail .job-work-saved-info small {
+  font-size:12px;
+  line-height:1.45;
+  color:var(--text-secondary);
+  overflow-wrap:anywhere;
+}
+.cg-job-detail .job-work-saved-actions {
+  display:grid;
+  justify-items:end;
+  flex:0 0 auto;
+  gap:9px;
+}
+.cg-job-detail .job-work-saved-actions > strong {
+  font-size:16px;
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.cg-job-detail .job-work-saved-remove {
+  display:inline-flex;
+  justify-content:center;
+  align-items:center;
+  gap:6px;
+  min-height:44px;
+  padding:9px 11px;
+  border:1px solid var(--border);
+  border-radius:9px;
+  background:var(--surface);
+  color:var(--danger, #b91c1c);
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+.cg-job-detail .job-work-saved-remove:disabled {opacity:.55;cursor:not-allowed}
+.cg-job-detail .job-work-saved-remove:focus-visible {outline:2px solid var(--primary);outline-offset:2px}
+.cg-job-detail .job-work-saved-total {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  min-width:0;
+  padding-top:12px;
+  border-top:1px solid var(--border);
+}
+.cg-job-detail .job-work-saved-total span {font-size:13px;font-weight:700;}
+.cg-job-detail .job-work-saved-total small {display:block;font-size:11px;font-weight:400;color:var(--text-secondary);margin-top:4px}
+.cg-job-detail .job-work-saved-total strong {font-size:19px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.cg-job-detail .job-work-saved-notice,
+.cg-job-detail .job-work-saved-error {
+  margin:0;
+  padding:10px 12px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  font-size:13px;
+  background:var(--surface-2);
+}
+.cg-job-detail .job-work-saved-error {color:var(--danger);border-color:var(--danger)}
+.cg-job-detail .job-work-saved-empty {margin:0;padding:14px;color:var(--text-secondary);font-size:13px;line-height:1.5}
+@media(max-width:600px) {
+  .cg-job-detail .job-work-saved-services {padding:12px;}
+  .cg-job-detail .job-work-saved-row {align-items:flex-start;flex-wrap:wrap;}
+  .cg-job-detail .job-work-saved-actions {flex:1 1 100%;display:flex;justify-content:space-between;align-items:center}
+  .cg-job-detail .job-work-saved-total strong {font-size:17px}
+}
