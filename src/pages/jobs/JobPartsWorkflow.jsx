@@ -770,6 +770,8 @@ function OutsidePartPurchasePanel({ initial, onClose, onSave, busy, error }) {
         <p className="job-parts-modal-stock-note job-parts-modal-full">
           Submitting this request does not purchase the part or affect Total Cost.
           Manager approval and a supplier bill are required. Workshop inventory stays unchanged.
+          For parts that must enter workshop stock, use the <Link to="/stock">Stock → Supplier Purchase</Link>
+          {' '}flow instead; it handles supplier bills, verified GST, Cash in Hand/Bank and credit without duplicating this Job Expense.
         </p>
         {error && <p className="job-parts-modal-warning job-parts-modal-full" role="alert">{error}</p>}
         <button type="button" className="secondary-button" onClick={onClose} disabled={busy}>Cancel</button>
