@@ -134,7 +134,7 @@ export default function SupplierSelectField({
       <label>
         <span>{label}{required ? ' *' : ''}</span>
         <select className={className} name={selectName} required={required && !selectedValue}
-          disabled={disabled || loading}
+          disabled={disabled}
           aria-label={label} value={selectedValue} onChange={event => choose(event.target.value)}>
           <option value="">Select supplier</option>
           {available.map(row =>
