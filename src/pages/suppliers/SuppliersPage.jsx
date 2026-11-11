@@ -192,6 +192,7 @@ export default function SuppliersPage({ section = 'all' }) {
   const [purchaseHistory, setPurchaseHistory] = useState([]);
   const [purchaseQuery, setPurchaseQuery] = useState('');
   const [purchaseSupplier, setPurchaseSupplier] = useState(() => params.get('supplier') || '');
+  const [newPurchaseSupplier, setNewPurchaseSupplier] = useState('');
   const [purchaseStatus, setPurchaseStatus] = useState('');
   const [purchaseFrom, setPurchaseFrom] = useState('');
   const [purchaseTo, setPurchaseTo] = useState('');
@@ -642,6 +643,35 @@ export default function SuppliersPage({ section = 'all' }) {
             Only posted supplier bills contribute to outstanding supplier dues.
             For payments and returns, open the supplier's profile.</p>
         </div>
+        {canCreatePurchase && (
+          <form className="cg-supplier-purchase-start" onSubmit={event => {
+            event.preventDefault();
+            if (newPurchaseSupplier && suppliers.some(row =>
+              String(row.id) === newPurchaseSupplier && row.is_active !== false)) {
+              navigate('/suppliers/' + encodeURIComponent(newPurchaseSupplier) + '#supplier-purchase-form');
+            }
+          }}>
+            <div className="cg-supplier-purchase-start-copy">
+              <strong>New Supplier Bill / Receive Stock</strong>
+              <span>Choose a supplier to record purchase GST, Cash in Hand / Bank payment and remaining credit in one transaction.</span>
+            </div>
+            <label>
+              Supplier *
+              <select value={newPurchaseSupplier} required
+                onChange={event => setNewPurchaseSupplier(event.target.value)}>
+                <option value="">Select supplier</option>
+                {suppliers.filter(row => row.is_active !== false).map(row => (
+                  <option key={row.id} value={String(row.id)}>{row.name}</option>
+                ))}
+              </select>
+            </label>
+            <button className="cg-supplier-button primary" type="submit"
+              disabled={!newPurchaseSupplier || !suppliers.some(row =>
+                String(row.id) === newPurchaseSupplier && row.is_active !== false)}>
+              Continue to GST &amp; Payment
+            </button>
+          </form>
+        )}
         <div className="cg-supplier-purchase-filters">
           <label>Search purchases
             <input type="search" aria-label="Search purchases" placeholder="Purchase order, invoice or supplier…"
