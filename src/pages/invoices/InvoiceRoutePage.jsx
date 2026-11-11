@@ -20,6 +20,7 @@ import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { InvoicePdfShareSheet } from '../../components/invoices/InvoicePdfShareSheet';
 import InvoiceHelpGuide from '../../components/invoices/InvoiceHelpGuide';
 import '../../styles/invoice-unified-ui.css';
+import '../../styles/invoice-directory-refined.css';
 import { WhatsAppManualShareButton } from '../../components/common/WhatsAppManualShareButton';
 import {
   InvoiceFilterToolbar,
@@ -68,6 +69,8 @@ export function InvoiceRoutePage() {
   const [activeTab, setActiveTab] = useState(kindFromUrl);
   const [listQuery, setListQuery] = useState('');
   const [listStatus, setListStatus] = useState('All');
+  const hasListFilters = Boolean(listQuery.trim() || listStatus !== 'All');
+  const resetListFilters = () => { setListQuery(''); setListStatus('All'); };
   const [form, setForm] = useState(() => blankBillingDocument(kindFromUrl, {
     emptyInputs: mode === 'create',
     jobId: new URLSearchParams(location.search).get('jobId'),
@@ -672,7 +675,7 @@ export function InvoiceRoutePage() {
   ) : null;
 
   if (mode === 'list') return (
-    <div className="billing-page billing-ui-unified billing-list-dashboard invoice-dashboard">
+    <div className="billing-page billing-ui-unified billing-list-dashboard invoice-dashboard cg-invoice-refined">
       <InvoiceListHeader
         activeTab={activeTab}
         onCreate={() => navigate(`/invoices/new?kind=${activeTab}`)}
@@ -705,6 +708,7 @@ export function InvoiceRoutePage() {
         onStatusChange={setListStatus}
         statuses={listStatuses}
         resultCount={filteredDocs.length}
+        onReset={resetListFilters}
       />
 
       <InvoiceRecordsPanel
@@ -719,6 +723,8 @@ export function InvoiceRoutePage() {
         onCreate={() => navigate(`/invoices/new?kind=${activeTab}`)}
         onRetry={() => void loadList()}
         loadError={error}
+        hasFilters={hasListFilters}
+        onReset={resetListFilters}
       />
       {shareSheet}
     </div>
