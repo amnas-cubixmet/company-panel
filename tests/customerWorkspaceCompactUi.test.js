@@ -29,7 +29,7 @@ test('customer list has concise header and compact real-data search/filter bar',
   assert.match(list, /onClick=\{resetFilters\}/);
   assert.match(list, /customer\.__vehicles\?\.some/);
   assert.match(list, /customer\.__jobs\?\.some/);
-  assert.match(list, /\[customers, search, statusFilter, branchFilter, typeFilter\]/);
+  assert.match(list, /\[customers, search, statusFilter, branchFilter, typeFilter, remoteSearchIds\]/);
   assert.match(list, /Job Cards<\/th>/);
   assert.match(list, /c\.vehicleCount \?\? '—'/);
   assert.match(list, /c\.jobsCount \?\? '—'/);
