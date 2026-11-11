@@ -10,6 +10,8 @@ import '../../styles/customer-workshop-form.css';
 import '../../styles/customer-workspace-compact.css';
 import { customerService } from '../../services/customer.service';
 import { customerInvoiceMoney, customerStatusLabel, formatCustomerMoney } from './customerDirectoryMoney';
+import { USE_MOCK_API } from '../../api/apiConfig';
+import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { CustomerContactActions } from '../../components/customers/CustomerContactActions';
 import { Users, Plus, Filter, Edit, Phone, MessageSquare, Mail, AlertTriangle, ChevronRight } from "lucide-react";
 
@@ -21,6 +23,10 @@ const backendCustomerType = (value) =>
 
 export const CustomerList = () => {
   const navigate = useNavigate();
+  const { can } = useFeatureAccess();
+  const canCreateCustomer = can('customers.create');
+  const canEditCustomer = can('customers.edit');
+  const canViewCustomerMoney = can('invoices.view');
   const [searchParams, setSearchParams] = useSearchParams();
   const search = (searchParams.get('q') || '').slice(0, 120);
   const statusFilter = searchParams.get('status') || 'All';
@@ -42,6 +48,7 @@ export const CustomerList = () => {
 
   // Core Data State
   const [customers, setCustomers] = useState([]);
+  const [remoteSearchIds, setRemoteSearchIds] = useState(null);
   const [branchChoices, setBranchChoices] = useState([]);
   const [branchLoadError, setBranchLoadError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -103,7 +110,11 @@ export const CustomerList = () => {
       const data = Array.isArray(response) ? response : (response?.results || []);
 
       let partialErrors = 0;
-      const enriched = await Promise.all(data.map(async (customer) => {
+      let enriched = [];
+      if (USE_MOCK_API) {
+        // Preserve existing rich local demo fixtures; the live app never
+        // issues three subresource requests per customer.
+        enriched = await Promise.all(data.map(async (customer) => {
         // Optional vehicle/job permissions or endpoint errors should never hide
         // the entire customer directory or misrepresent unpaid invoice amounts as zero.
         const [vehicleResult, jobResult, invoiceResult] = await Promise.allSettled([
@@ -146,6 +157,36 @@ export const CustomerList = () => {
         };
       }));
 
+
+      } else {
+        let summary = null;
+        try {
+          const result = await customerService.getCustomerDirectorySummary();
+          if (!Array.isArray(result?.results)) throw new Error('Invalid directory summary.');
+          summary = new Map(result.results.map(row => [String(row.customerId), row]));
+        } catch {
+          partialErrors += 1;
+        }
+        enriched = data.map(customer => {
+          const details = summary?.get(String(customer.id));
+          const spent = details?.moneyAvailable && details.totalSpent != null
+            ? Number(details.totalSpent) : null;
+          const due = details?.moneyAvailable && details.outstanding != null
+            ? Number(details.outstanding) : null;
+          const moneyAvailable = Boolean(details?.moneyAvailable &&
+            Number.isFinite(spent) && Number.isFinite(due));
+          return {
+            ...customer,
+            status: customerStatusLabel(customer.status),
+            customerType: customer.customerType || customer.customer_type || 'Individual',
+            vehicleCount: details?.vehiclesAvailable ? details.vehicleCount : null,
+            jobsCount: details?.jobsAvailable ? details.jobsCount : null,
+            totalSpent: moneyAvailable ? spent : null,
+            outstanding: moneyAvailable ? Math.max(0, due) : null,
+            moneyAvailable,
+          };
+        });
+      }
       setCustomers(enriched);
       setLoadError(partialErrors
         ? 'Some linked customer records could not load. Missing invoice balances are shown as — instead of ₹0. Please check permissions or retry.'
@@ -157,6 +198,24 @@ export const CustomerList = () => {
       setLoading(false);
     }
   };
+
+  // Registration/VIN and job-number matches are resolved by Django with
+  // vehicles.view / jobs.view permissions, not by leaking subresource data.
+  useEffect(() => {
+    if (!search.trim() || USE_MOCK_API) { setRemoteSearchIds(null); return undefined; }
+    let active = true;
+    setRemoteSearchIds(null);
+    const timer = setTimeout(() => {
+      customerService.getCustomers({ search: search.trim() })
+        .then(value => {
+          if (!active) return;
+          const rows = Array.isArray(value) ? value : value?.results || [];
+          setRemoteSearchIds(new Set(rows.map(item => String(item.id))));
+        })
+        .catch(() => { if (active) setRemoteSearchIds(null); });
+    }, 250);
+    return () => { active = false; clearTimeout(timer); };
+  }, [search]);
 
   const availableBranches = useMemo(() => [...new Set(
     branchChoices.map((item) => item.name).filter(Boolean)
@@ -179,9 +238,10 @@ export const CustomerList = () => {
         customer.__vehicles?.some((vehicle) =>
           [vehicle.regNo, vehicle.vin].some((value) => String(value || '').toLowerCase().includes(q))) ||
         customer.__jobs?.some((job) =>
-          [job.jobNumber, job.id, job.vehicleReg].some((value) => String(value || '').toLowerCase().includes(q)));
+          [job.jobNumber, job.id, job.vehicleReg].some((value) => String(value || '').toLowerCase().includes(q))) ||
+        remoteSearchIds?.has(String(customer.id));
     });
-  }, [customers, search, statusFilter, branchFilter, typeFilter]);
+  }, [customers, search, statusFilter, branchFilter, typeFilter, remoteSearchIds]);
 
   const showToast = (msg) => {
     setToastMsg(msg);
@@ -355,7 +415,8 @@ export const CustomerList = () => {
           <h1 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Customers</h1>
         </div>
         <button
-          onClick={openAddModal}
+          onClick={openAddModal} disabled={!canCreateCustomer}
+          title={!canCreateCustomer ? 'Customer creation permission required' : undefined}
           style={{
             height: '44px',
             padding: '0 18px',
@@ -442,7 +503,8 @@ export const CustomerList = () => {
         <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '40px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
           <Users size={36} style={{ color: 'var(--text-muted)' }} />
           <strong style={{ fontSize: '15px', color: 'var(--text-primary)' }}>No customers found.</strong>
-          <button onClick={openAddModal} style={{ padding: '8px 16px', borderRadius: '10px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none', fontWeight: '700', fontSize: '12.5px', cursor: 'pointer', marginTop: '6px' }}>
+          <button onClick={openAddModal} disabled={!canCreateCustomer}
+          title={!canCreateCustomer ? 'Customer creation permission required' : undefined} style={{ padding: '8px 16px', borderRadius: '10px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none', fontWeight: '700', fontSize: '12.5px', cursor: 'pointer', marginTop: '6px' }}>
             + Add First Customer
           </button>
         </div>
@@ -482,7 +544,7 @@ export const CustomerList = () => {
                     <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>{c.jobsCount ?? '—'}</td>
                     <td title={!c.moneyAvailable ? 'Invoice balance unavailable' : undefined}
                       style={{ padding: '12px 14px', fontWeight: '700', color: c.outstanding === null ? 'var(--text-muted)' : c.outstanding > 0 ? 'var(--warning)' : 'var(--success)' }}>
-                      {formatCustomerMoney(c.outstanding)}
+                      {canViewCustomerMoney ? formatCustomerMoney(c.outstanding) : 'Restricted'}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '6px', backgroundColor: c.status === 'Active' ? 'var(--success-soft)' : 'var(--surface-2)', color: c.status === 'Active' ? 'var(--success)' : 'var(--text-muted)' }}>
@@ -498,6 +560,8 @@ export const CustomerList = () => {
                       </button>
                       <button
                         onClick={(event) => { event.stopPropagation(); openEditModal(c); }}
+                        disabled={!canEditCustomer}
+                        title={!canEditCustomer ? 'Customer edit permission required' : undefined}
                         style={{ padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--surface-2)', color: 'var(--text-primary)', cursor: 'pointer' }}
                       >
                         <Edit size={14} />
@@ -532,7 +596,7 @@ export const CustomerList = () => {
                   <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px' }}>Last Visit</span><strong>{c.lastVisit || '—'}</strong></div>
                   <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px' }}>Customer Type</span><strong>{c.customerType || 'Individual'}</strong></div>
                   <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px' }}>Outstanding</span><strong title={!c.moneyAvailable ? 'Invoice balance unavailable' : undefined}
-                    style={{ color: c.outstanding === null ? 'var(--text-muted)' : c.outstanding > 0 ? 'var(--warning)' : 'var(--success)' }}>{formatCustomerMoney(c.outstanding)}</strong></div>
+                    style={{ color: c.outstanding === null ? 'var(--text-muted)' : c.outstanding > 0 ? 'var(--warning)' : 'var(--success)' }}>{canViewCustomerMoney ? formatCustomerMoney(c.outstanding) : 'Restricted'}</strong></div>
                 </div>
 
                 <CustomerContactActions customer={c} />
@@ -545,6 +609,8 @@ export const CustomerList = () => {
                   </button>
                   <button
                     onClick={(event) => { event.stopPropagation(); openEditModal(c); }}
+                        disabled={!canEditCustomer}
+                        title={!canEditCustomer ? 'Customer edit permission required' : undefined}
                     style={{ width: '38px', height: '38px', borderRadius: '10px', border: '1px solid var(--border)', backgroundColor: 'var(--surface-2)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                   >
                     <Edit size={16} />

@@ -39,7 +39,9 @@ test('customer search and status filters do not re-fetch all linked resources on
   assert.match(directory, /useMemo\(\(\) =>/);
   assert.match(directory, /customer\.__vehicles\?\.some/);
   assert.match(directory, /customer\.__jobs\?\.some/);
-  assert.match(directory, /\[customers, search, statusFilter, branchFilter, typeFilter\]/);
+  assert.match(directory, /\[customers, search, statusFilter, branchFilter, typeFilter, remoteSearchIds\]/);
+  assert.match(directory, /getCustomerDirectorySummary\(\)/);
+  assert.match(directory, /getCustomers\(\{ search: search\.trim\(\) \}\)/);
   assert.match(directory, /useEffect\(\(\) => \{\s*fetchCustomers\(\);/);
   assert.match(directory, /customerService\.getCustomerBranches\(\)/);
   assert.match(directory, /return \(\) => \{ active = false; \};\s*}, \[\]\);/);
