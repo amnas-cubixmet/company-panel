@@ -14,7 +14,8 @@ test('supplier directory and existing purchase history have distinct accessible 
   assert.match(routes, /<Route path="\/suppliers" element=\{<SuppliersPage \/>\} \/>/);
   assert.match(routes, /<Route path="\/suppliers\/purchases" element=\{<SuppliersPage section="purchases" \/>\} \/>/);
   assert.match(routes, /<Route path="\/suppliers\/:id" element=\{<SuppliersPage \/>\} \/>/);
-  assert.match(page, /aria-label="Supplier sections"/);
+  assert.doesNotMatch(page, /aria-label="Supplier sections"/);
+  assert.match(page, /cg-supplier-purchase-history-link/);
   assert.match(page, /to="\/suppliers\/purchases"/);
   assert.match(page, /<SupplierWorkspaceGuide purchaseView=\{purchaseView\}\/>/);
 });
