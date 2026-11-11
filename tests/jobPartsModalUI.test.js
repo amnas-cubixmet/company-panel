@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../src/pages/jobs/JobPartsWorkflow.jsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../src/styles/job-parts-ui.css', import.meta.url), 'utf8');
+const gstDropdown = readFileSync(new URL('../src/components/common/GstRateDropdown.jsx', import.meta.url), 'utf8');
 
 test('Add Required Part, Purchase Order and Inward use the same explicit dialog form grid', () => {
   assert.equal((source.match(/className="job-parts-modal-form"/g) || []).length, 3);
@@ -64,7 +65,9 @@ test('purchase order form guides the receipt workflow and validates numeric fiel
   assert.match(source, /Stock updates after you record the delivery in Inward \/ Goods Receipt/);
   assert.match(source, /name="orderedQty"[^>]*type="number"[^>]*min="0\.01"[^>]*required/);
   assert.match(source, /name="unitCost"[^>]*type="number"[^>]*min="0"[^>]*required/);
-  assert.match(source, /name="tax"[^>]*max="100"/);
+  assert.match(source, /<GstRateDropdown name="tax"/);
+  assert.match(source, /selectLabel="Purchase Order GST Rate \(%\)"/);
+  assert.match(gstDropdown, /min="0" max="100" step="0\.01"/);
   assert.match(source, /Create Purchase Order/);
   assert.match(source, /errorRef\.current\?\.scrollIntoView/);
   assert.match(source, /function OrderPanel\(\{ line, error, onClose, onSave, busy \}\)/);
