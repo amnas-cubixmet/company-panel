@@ -83,7 +83,7 @@ export default function FinanceSupplierPurchases({
     <p className="finance-supplier-purchases-info">
       Select a supplier to receive stock and enter purchase GST. Choose Cash in Hand,
       Bank / UPI, split payment or full credit there. Posting creates one supplier bill,
-      one stock receipt and the selected financial entries atomically.
+      its stock movements and the selected financial entries atomically.
       Paying an existing bill changes its outstanding amount, not its original purchase GST.
       Recorded purchase GST is not automatically eligible ITC.
     </p>
