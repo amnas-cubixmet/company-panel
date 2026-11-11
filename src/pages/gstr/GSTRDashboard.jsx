@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle, CheckCircle2, Download, FileSpreadsheet, FileText,
-  RefreshCw, Search, ShieldCheck, UploadCloud, Info, CalendarDays, AlertTriangle
+  RefreshCw, Search, ShieldCheck, UploadCloud, Info, CalendarDays, AlertTriangle, ShoppingBag
 } from 'lucide-react';
 import apiClient from '../../api/apiClient';
 import GSTPart15Workspace from './GSTPart15Workspace';
@@ -118,6 +118,22 @@ const purchaseColumns = [
   { key: 'taxable', label: 'Taxable', money: true }, { key: 'tax', label: 'Purchase GST', money: true },
   { key: 'itcEligibility', label: 'ITC Eligibility' }
 ];
+// This is a live supplier-ledger cross-reference, not an official GSTR-2B
+// field and not a substitute for the independent ITC eligibility review.
+const purchaseSettlementColumns = [
+  { key: 'invoiceNumber', label: 'Supplier Bill', render: row =>
+    <Link to={'/suppliers/' + encodeURIComponent(row.supplierId) + '#supplier-transactions'}>{fmt(row.invoiceNumber)}</Link> },
+  { key: 'supplier', label: 'Supplier' },
+  { key: 'invoiceDate', label: 'Invoice Date' },
+  { key: 'purchaseGST', label: 'Purchase GST', money: true },
+  { key: 'purchaseTotal', label: 'Bill Total', money: true },
+  { key: 'allocatedCash', label: 'Cash Allocated', money: true },
+  { key: 'allocatedBank', label: 'Bank / UPI Allocated', money: true },
+  { key: 'paidAllocated', label: 'Total Paid / Allocated', money: true },
+  { key: 'creditsApplied', label: 'Returns / Credits Applied', money: true },
+  { key: 'remainingCredit', label: 'Current Supplier Due', money: true },
+];
+
 const expenseGSTColumns = [
   { key: 'date', label: 'Expense Date' },
   { key: 'description', label: 'Expense', render: (r) =>
@@ -168,6 +184,10 @@ export default function GSTRDashboard() {
   const [importError, setImportError] = useState('');
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const canSeePurchaseFinance = access.can('stock.view') && access.can('payments.view');
+  const [purchaseSettlements, setPurchaseSettlements] = useState([]);
+  const [settlementLoading, setSettlementLoading] = useState(false);
+  const [settlementError, setSettlementError] = useState('');
 
   const updateParams = (updates) => {
     const next = new URLSearchParams(params);
@@ -199,6 +219,30 @@ export default function GSTRDashboard() {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [period, reload]);
+
+  // This is READ-ONLY. Never call supplier posting endpoints from the GST UI:
+  // a supplier bill's original GST is fixed even if it is paid in another month.
+  useEffect(() => {
+    if (tab !== 'gstr2b' || !canSeePurchaseFinance) {
+      setPurchaseSettlements([]);
+      setSettlementError('');
+      setSettlementLoading(false);
+      return undefined;
+    }
+    let active = true;
+    setPurchaseSettlements([]);
+    setSettlementError('');
+    setSettlementLoading(true);
+    apiClient.get('/gstr/purchase-settlements', { params: { period } })
+      .then(value => {
+        if (active) setPurchaseSettlements(Array.isArray(value?.rows) ? value.rows : []);
+      })
+      .catch(cause => {
+        if (active) setSettlementError(cause?.message || 'Unable to load supplier settlement details.');
+      })
+      .finally(() => { if (active) setSettlementLoading(false); });
+    return () => { active = false; };
+  }, [tab, period, reload, canSeePurchaseFinance]);
 
   // Persisted GSTR-2B matching can be inspected again after a page refresh.
   // This is evidence only; GET never approves input tax or modifies stock.
@@ -290,6 +334,7 @@ export default function GSTRDashboard() {
         <p>Review sales GST, supplier GST, tax credits and return preparation for your workshop.</p>
       </div>
       <div className="gstr-header-actions">
+        {canSeePurchaseFinance && <Link to="/suppliers/purchases" className="gstr-source-link"><ShoppingBag size={16} /> Supplier Purchases</Link>}
         <button type="button" onClick={() => setReload((n) => n + 1)} disabled={loading} aria-label="Refresh GST data"><RefreshCw size={16} /> Refresh</button>
         {access.can('gstr.export') && <button type="button" disabled={busy || loading} onClick={() => exportCsv('gstr1')} title="Download GSTR-1 preparation data, not a filed return"><Download size={16} /> Sales CSV</button>}
       </div>
@@ -412,6 +457,27 @@ export default function GSTRDashboard() {
         {!reconciliation && <><h3 className="gstr-subheading">Posted Purchase Bills</h3>
           <div className="gstr-search"><Search size={17} /><input aria-label="Search purchase bills" placeholder="Search supplier bills" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
           <DataTable key={'purchases-' + period} rows={purchases} columns={purchaseColumns} search={search} /></>}
+        {canSeePurchaseFinance && <div className="gstr-purchase-settlements" aria-label="Supplier purchase payment allocation summary">
+          <div className="gstr-panel-heading">
+            <h3>Purchase Bill Payments &amp; Remaining Credit</h3>
+            <Link to="/suppliers/purchases" className="gstr-source-link">Open Supplier Purchases</Link>
+          </div>
+          <p className="gstr-note">
+            These amounts come from posted supplier bill allocations. Cash in Hand, Bank and UPI
+            are recorded in the Supplier Purchase workflow, not here. Remaining supplier credit
+            is the CURRENT ledger balance, including any later payments, advances and purchase
+            return credits; it is not the return-month closing balance. Payment does not change
+            the purchase GST or automatically approve ITC.
+          </p>
+          {settlementLoading && <p className="gstr-note" role="status">Loading supplier Cash / Bank allocations…</p>}
+          {settlementError && <div className="gstr-alert is-error" role="alert">
+            <AlertCircle size={17} /> {settlementError}
+            <button type="button" onClick={() => setReload(n => n + 1)}>Retry</button>
+          </div>}
+          {!settlementLoading && !settlementError &&
+            <DataTable key={'settlements-' + period} rows={purchaseSettlements}
+              columns={purchaseSettlementColumns} />}
+        </div>}
         {access.can('expenses.view') && <div className="gstr-expense-gst-review">
           <h3 className="gstr-subheading">Operational Expense GST · Review Required</h3>
           <p className="gstr-note">Finance Expenses may record a tax amount without a verified supplier GSTIN or CGST/SGST/IGST invoice breakdown. These amounts appear for investigation only; they are excluded from eligible ITC and GSTR-3B.</p>
