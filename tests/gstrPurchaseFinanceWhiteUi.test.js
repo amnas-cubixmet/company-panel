@@ -18,7 +18,7 @@ test('GSTR Purchase GST and Finance source links never bypass workshop staff per
   assert.match(gstr,/\{access\.can\('expenses\.view'\) && <Link to="\/finance\/expenses"/);
   assert.match(gstr,/\{access\.can\('expenses\.view'\) && <div className="gstr-expense-gst-review"/);
   assert.match(gstr,/className="cg-gstr-purchase-quick-links"/);
-  assert.match(gstr,/Purchase GST &amp; FINANCE/);
+  assert.match(gstr,/PURCHASE GST &amp; FINANCE/);
 });
 
 test('tax and payments remain separate source records and no payment is posted from GSTR',()=>{
