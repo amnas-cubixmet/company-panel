@@ -10,6 +10,8 @@ import '../../styles/customer-workshop-form.css';
 import '../../styles/customer-workspace-compact.css';
 import { customerService } from '../../services/customer.service';
 import { customerInvoiceMoney, customerStatusLabel, formatCustomerMoney } from './customerDirectoryMoney';
+import { USE_MOCK_API } from '../../api/apiConfig';
+import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { CustomerContactActions } from '../../components/customers/CustomerContactActions';
 import { Users, Plus, Filter, Edit, Phone, MessageSquare, Mail, AlertTriangle, ChevronRight } from "lucide-react";
 
@@ -21,6 +23,10 @@ const backendCustomerType = (value) =>
 
 export const CustomerList = () => {
   const navigate = useNavigate();
+  const { can } = useFeatureAccess();
+  const canCreateCustomer = can('customers.create');
+  const canEditCustomer = can('customers.edit');
+  const canViewCustomerMoney = can('invoices.view');
   const [searchParams, setSearchParams] = useSearchParams();
   const search = (searchParams.get('q') || '').slice(0, 120);
   const statusFilter = searchParams.get('status') || 'All';
@@ -42,6 +48,7 @@ export const CustomerList = () => {
 
   // Core Data State
   const [customers, setCustomers] = useState([]);
+  const [remoteSearchIds, setRemoteSearchIds] = useState(null);
   const [branchChoices, setBranchChoices] = useState([]);
   const [branchLoadError, setBranchLoadError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -103,7 +110,11 @@ export const CustomerList = () => {
       const data = Array.isArray(response) ? response : (response?.results || []);
 
       let partialErrors = 0;
-      const enriched = await Promise.all(data.map(async (customer) => {
+      let enriched = [];
+      if (USE_MOCK_API) {
+        // Preserve existing rich local demo fixtures; the live app never
+        // issues three subresource requests per customer.
+        enriched = await Promise.all(data.map(async (customer) => {
         // Optional vehicle/job permissions or endpoint errors should never hide
         // the entire customer directory or misrepresent unpaid invoice amounts as zero.
         const [vehicleResult, jobResult, invoiceResult] = await Promise.allSettled([
@@ -146,6 +157,36 @@ export const CustomerList = () => {
         };
       }));
 
+
+      } else {
+        let summary = null;
+        try {
+          const result = await customerService.getCustomerDirectorySummary();
+          if (!Array.isArray(result?.results)) throw new Error('Invalid directory summary.');
+          summary = new Map(result.results.map(row => [String(row.customerId), row]));
+        } catch {
+          partialErrors += 1;
+        }
+        enriched = data.map(customer => {
+          const details = summary?.get(String(customer.id));
+          const spent = details?.moneyAvailable && details.totalSpent != null
+            ? Number(details.totalSpent) : null;
+          const due = details?.moneyAvailable && details.outstanding != null
+            ? Number(details.outstanding) : null;
+          const moneyAvailable = Boolean(details?.moneyAvailable &&
+            Number.isFinite(spent) && Number.isFinite(due));
+          return {
+            ...customer,
+            status: customerStatusLabel(customer.status),
+            customerType: customer.customerType || customer.customer_type || 'Individual',
+            vehicleCount: details?.vehiclesAvailable ? details.vehicleCount : null,
+            jobsCount: details?.jobsAvailable ? details.jobsCount : null,
+            totalSpent: moneyAvailable ? spent : null,
+            outstanding: moneyAvailable ? Math.max(0, due) : null,
+            moneyAvailable,
+          };
+        });
+      }
       setCustomers(enriched);
       setLoadError(partialErrors
         ? 'Some linked customer records could not load. Missing invoice balances are shown as — instead of ₹0. Please check permissions or retry.'
@@ -157,6 +198,24 @@ export const CustomerList = () => {
       setLoading(false);
     }
   };
+
+  // Registration/VIN and job-number matches are resolved by Django with
+  // vehicles.view / jobs.view permissions, not by leaking subresource data.
+  useEffect(() => {
+    if (!search.trim() || USE_MOCK_API) { setRemoteSearchIds(null); return undefined; }
+    let active = true;
+    setRemoteSearchIds(null);
+    const timer = setTimeout(() => {
+      customerService.getCustomers({ search: search.trim() })
+        .then(value => {
+          if (!active) return;
+          const rows = Array.isArray(value) ? value : value?.results || [];
+          setRemoteSearchIds(new Set(rows.map(item => String(item.id))));
+        })
+        .catch(() => { if (active) setRemoteSearchIds(null); });
+    }, 250);
+    return () => { active = false; clearTimeout(timer); };
+  }, [search]);
 
   const availableBranches = useMemo(() => [...new Set(
     branchChoices.map((item) => item.name).filter(Boolean)
@@ -179,9 +238,10 @@ export const CustomerList = () => {
         customer.__vehicles?.some((vehicle) =>
           [vehicle.regNo, vehicle.vin].some((value) => String(value || '').toLowerCase().includes(q))) ||
         customer.__jobs?.some((job) =>
-          [job.jobNumber, job.id, job.vehicleReg].some((value) => String(value || '').toLowerCase().includes(q)));
+          [job.jobNumber, job.id, job.vehicleReg].some((value) => String(value || '').toLowerCase().includes(q))) ||
+        remoteSearchIds?.has(String(customer.id));
     });
-  }, [customers, search, statusFilter, branchFilter, typeFilter]);
+  }, [customers, search, statusFilter, branchFilter, typeFilter, remoteSearchIds]);
 
   const showToast = (msg) => {
     setToastMsg(msg);
