@@ -4,6 +4,7 @@ import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { stockCatalogService } from '../../services/stockCatalog.service';
 import { invoiceLineTaxChoices, invoiceTotalRateFromChoice, invoiceChoiceFromTotalRate } from '../../utils/invoiceTaxUi';
 import { FINANCE_CHANNELS, accountChannel, financeAccountsForChannel } from '../../utils/financeCashBank';
+import { findPostedSupplierBillReplay } from '../../utils/supplierPurchaseReplay';
 import '../../styles/supplier-purchase-flow.css';
 
 const rupees = value => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(value || 0));
@@ -52,6 +53,7 @@ export default function SupplierPurchaseFlow({
   const [states, setStates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const errorRef = useRef(null);
   const prefilled = useRef('');
   const [activePart, setActivePart] = useState(emptyPart);
@@ -291,37 +293,75 @@ export default function SupplierPurchaseFlow({
         setError('Insufficient recorded balance in ' + account.name + '.'); return;
       }
     }
+    // Keep the same bill reference and payment keys during a network retry.
+    // Django posts the supplier bill, stock receipt and money splits atomically.
+    const purchasePayload = {
+      supplierId: String(supplier.id), invoiceNumber: invoiceNumber.trim(),
+      invoiceDate: purchaseDate, placeOfSupply: placeOfSupply || undefined,
+      receiveIntoStock: true, postNow: true,
+      items: parts.map(row => ({
+        itemId: row.itemId, description: row.description,
+        quantity: row.quantity, purchaseRate: row.purchaseRate, gstRate: row.gstRate,
+        gstTreatment: row.gstTreatment,
+        ...(row.updateItemPrices
+          ? { updateItemPrices: true, sellingPrice: row.sellingPrice }
+          : {}),
+      })),
+      ...(splits.length ? {
+        payments: splits.map(row => {
+          const account = accounts.find(a => String(a.id) === row.accountId);
+          return {
+            accountId: row.accountId, amount: fixed(row.amount),
+            paidOn: purchaseDate, method: accountMethod(account),
+            kind: 'Payment', reference: row.reference.trim(),
+            idempotencyKey: row.id,
+          };
+        }),
+      } : {}),
+    };
     setPosting(true);
+    setNotice('');
     try {
-      await supplierFinanceService.createBill({
-        supplierId: String(supplier.id), invoiceNumber: invoiceNumber.trim(),
-        invoiceDate: purchaseDate, placeOfSupply: placeOfSupply || undefined,
-        receiveIntoStock: true, postNow: true,
-        items: parts.map(row => ({
-          itemId: row.itemId, description: row.description,
-          quantity: row.quantity, purchaseRate: row.purchaseRate, gstRate: row.gstRate,
-          gstTreatment: row.gstTreatment,
-          ...(row.updateItemPrices
-            ? { updateItemPrices: true, sellingPrice: row.sellingPrice }
-            : {}),
-        })),
-        ...(splits.length ? {
-          payments: splits.map(row => {
-            const account = accounts.find(a => String(a.id) === row.accountId);
-            return {
-              accountId: row.accountId, amount: fixed(row.amount),
-              paidOn: purchaseDate, method: accountMethod(account),
-              kind: 'Payment', reference: row.reference.trim(),
-              idempotencyKey: row.id,
-            };
-          }),
-        } : {}),
-      });
+      let recovered = false;
+      try {
+        await supplierFinanceService.createBill(purchasePayload);
+      } catch (cause) {
+        // A timeout can occur AFTER Django has committed. Never re-post stock
+        // or payments to find out: read the supplier ledger and match the bill.
+        const responseStatus = Number(cause?.response?.status || cause?.status || 0);
+        const duplicate = /supplier invoice already exists/i.test(String(getErrorText(cause)));
+        if (responseStatus && responseStatus < 500 && !duplicate) throw cause;
+        let posted = null;
+        try {
+          posted = findPostedSupplierBillReplay(
+            await supplierFinanceService.getBills(supplier.id), {
+              supplierId: purchasePayload.supplierId,
+              invoiceNumber: purchasePayload.invoiceNumber,
+              invoiceDate: purchasePayload.invoiceDate,
+              placeOfSupply,
+              items: purchasePayload.items,
+              total,
+              paidNow,
+            },
+          );
+        } catch {
+          // Do not mask the original error when the readback also fails.
+        }
+        if (!posted) throw cause;
+        recovered = true;
+      }
       setParts([]); setSplits([]); setStep('part');
       setInvoiceNumber(purchaseReference()); setPurchaseDate(localDate());
       setPurchaseOpenedAt(new Date().toISOString());
       setPlaceOfSupply(''); setActivePart(emptyPart());
-      await Promise.resolve(onChanged());
+      setNotice(recovered
+        ? 'Purchase was already posted. Stock and payment records were verified; nothing was charged twice.'
+        : 'Purchase posted. Stock, GST, Cash/Bank payment and remaining credit were recorded together.');
+      try {
+        await Promise.resolve(onChanged());
+      } catch {
+        setError('Purchase was posted, but the summary could not refresh. Reload this page to see updated balances.');
+      }
     } catch (cause) { setError(getErrorText(cause)); }
     finally { setPosting(false); }
   };
@@ -371,6 +411,7 @@ export default function SupplierPurchaseFlow({
   return (
     <div className="cg-supplier-purchase-wrap">
       {error && <p ref={errorRef} className="cg-supplier-purchase-error" role="alert">{error}</p>}
+      {notice && <p className="cg-supplier-purchase-muted" role="status">{notice}</p>}
       {canPurchase && (
         <section id="supplier-purchase-form" className="cg-supplier-purchase-card">
           <header>
