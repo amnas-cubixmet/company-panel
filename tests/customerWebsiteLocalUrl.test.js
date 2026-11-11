@@ -48,19 +48,27 @@ test('production never exposes local URLs and inactive wildcard remains unclicka
   assert.equal(enabled.displayUrl, production.displayUrl);
 });
 
-test('verified custom domain takes production priority but localhost still stays local', () => {
+test('default workshop subdomain remains authoritative on local and production URLs', () => {
   const config = {
     subdomain: slug + '.cubegears.com',
     subdomainLabel: slug,
-    primaryDomain: { hostname: 'service.example.com' },
     wildcardReady: false,
   };
-  const prod = customerWebsiteAddresses(config);
-  assert.equal(prod.displayUrl, 'https://service.example.com/');
-  assert.equal(prod.canOpen, true);
+  const production = customerWebsiteAddresses(config);
+  assert.equal(production.displayUrl, 'https://mendoza-and-chang-traders.cubegears.com/');
+  assert.equal(production.canOpen, false);
   const dev = customerWebsiteAddresses({ ...config, localDevelopment: true });
   assert.equal(dev.displayUrl, 'http://mendoza-and-chang-traders.localhost:5174/');
-  assert.equal(dev.productionUrl, 'https://service.example.com/');
+  assert.equal(dev.productionUrl, production.displayUrl);
+
+  // A stale custom-domain property never overrides the platform default.
+  const staleConfig = customerWebsiteAddresses({
+    ...config,
+    primaryDomain: { hostname: 'disabled.example.com' },
+    wildcardReady: true,
+  });
+  assert.equal(staleConfig.displayUrl, 'https://mendoza-and-chang-traders.cubegears.com/');
+  assert.equal(staleConfig.canOpen, true);
 });
 
 test('dev-only localhost detection never activates on remote hosts or bad labels', () => {
