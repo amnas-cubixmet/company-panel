@@ -37,7 +37,7 @@ test('tax and payments remain separate source records and no payment is posted f
 });
 
 test('Finance workspace includes permission-scoped GSTR review without exposing balances',()=>{
-  assert.match(finance,/label: 'Purchase GST / GSTR-2B', to: '\/gstr\?tab=gstr2b', icon: FileText, access: 'gstr\.view'/);
+  assert.match(finance,/label: 'Purchase GST \/ GSTR-2B', to: '\/gstr\?tab=gstr2b', icon: FileText, access: 'gstr\.view'/);
   assert.match(finance,/workflows\.filter\(item => access\.can\(item\.access\)\)/);
   assert.match(finance,/sections\.filter\(item => access\.can\(item\.access\)\)/);
   assert.match(finance,/canView = access\.can\('payments\.view'\) \|\| access\.can\('expenses\.view'\)/);
