@@ -477,17 +477,17 @@ export default function SuppliersPage({ section = 'all' }) {
             ? 'Review purchase orders separately from posted bills and supplier credit.'
             : 'Manage supplier contacts and see the money still owed on posted purchase bills.'}</p>
       </div>
-      {id ? canEdit && supplier && <button type="button" className="cg-supplier-button" onClick={()=>setEditor(supplier)}>Edit Supplier</button>
-        : canCreate && <button type="button" className="cg-supplier-button primary" onClick={()=>setEditor({create:true})}><Plus size={17}/> Add Supplier</button>}
+      <div className="cg-supplier-header-actions">
+        {id ? canEdit && supplier && <button type="button" className="cg-supplier-button" onClick={()=>setEditor(supplier)}>Edit Supplier</button>
+          : <>
+            {purchaseView
+              ? <Link className="cg-supplier-button cg-supplier-purchase-history-link" to="/suppliers"><Building2 size={17}/> All Suppliers</Link>
+              : <Link className="cg-supplier-button cg-supplier-purchase-history-link" to="/suppliers/purchases"><ShoppingBag size={17}/> Purchase History</Link>}
+            {canCreate && <button type="button" className="cg-supplier-button primary" onClick={()=>setEditor({create:true})}><Plus size={17}/> Add Supplier</button>}
+          </>}
+      </div>
     </div>
 
-
-    {!id && <nav className="cg-supplier-page-nav" aria-label="Supplier sections">
-      <Link to="/suppliers" aria-current={!purchaseView ? 'page' : undefined}
-        className={!purchaseView ? 'is-active' : ''}><Building2 size={17}/> All Suppliers</Link>
-      <Link to="/suppliers/purchases" aria-current={purchaseView ? 'page' : undefined}
-        className={purchaseView ? 'is-active' : ''}><ShoppingBag size={17}/> Purchase History</Link>
-    </nav>}
     {id && <nav className="cg-supplier-details-nav" aria-label="Supplier details sections">
       <a href="#supplier-profile"><Building2 size={16}/> Profile</a>
       {canCreatePurchase && <a href="#supplier-purchase-form"><ShoppingBag size={16}/> Purchases</a>}
