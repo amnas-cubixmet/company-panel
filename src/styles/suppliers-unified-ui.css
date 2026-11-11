@@ -568,3 +568,19 @@
 @media(prefers-reduced-motion:reduce){
   .cg-suppliers-ui .cg-supplier-guide-chevron{transform:none!important;transition:none!important}
 }
+
+/* Purchase history remains reachable without obsolete directory page tabs. */
+.cg-suppliers-ui .cg-supplier-header-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:9px;min-width:0}
+.cg-suppliers-ui .cg-supplier-purchase-history-link{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--supplier-surface);color:var(--supplier-text);
+  text-decoration:none;border:1px solid var(--supplier-border);
+  font-size:14px;font-weight:700;
+}
+.cg-suppliers-ui .cg-supplier-purchase-history-link:hover{
+  background:var(--supplier-soft);color:var(--primary,#2563eb);
+}
+@media(max-width:767px){
+  .cg-suppliers-ui .cg-supplier-header-actions{width:100%;justify-content:stretch}
+  .cg-suppliers-ui .cg-supplier-header-actions>.cg-supplier-button{flex:1 1 140px;min-height:44px}
+}
