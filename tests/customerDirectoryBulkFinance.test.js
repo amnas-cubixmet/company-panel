@@ -15,7 +15,7 @@ test('live Customer Directory loads one permission-scoped summary instead of N+1
   assert.match(directory, /outstanding: moneyAvailable \? Math\.max\(0, due\) : null/);
   assert.match(directory, /vehicleCount: details\?\.vehiclesAvailable \? details\.vehicleCount : null/);
   assert.match(directory, /jobsCount: details\?\.jobsAvailable \? details\.jobsCount : null/);
-  assert.match(directory, /moneyAvailable: Boolean\(details\?\.moneyAvailable/);
+  assert.match(directory, /const moneyAvailable = Boolean\(details\?\.moneyAvailable/);
   assert.match(directory, /totalSpent: moneyAvailable \? spent : null/);
 });
 
