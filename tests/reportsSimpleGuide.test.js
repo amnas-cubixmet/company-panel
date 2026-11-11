@@ -14,18 +14,14 @@ test('missing API and permissions show helpful nontechnical next steps', () => {
   assert.equal(reportLoadErrorMessage(new Error('Connection issue')), 'Connection issue');
 });
 
-test('simple explanation includes what customer and workshop amounts mean', () => {
-  const guide = read('src/components/reports/ReportHelpGuide.jsx');
+test('reports retain useful financial figures and PDF actions without help panels', () => {
   const page = read('src/pages/reports/Reports.jsx');
   const stats = read('src/components/reports/ReportStats.jsx');
-  assert.match(guide, /Invoice amount/);
-  assert.match(guide, /Money received/);
-  assert.match(guide, /Customer dues/);
-  assert.match(guide, /ബിൽ തുക/);
-  assert.match(guide, /not business profit/);
-  assert.match(page, /<ReportHelpGuide\/>/);
+  assert.doesNotMatch(page, /<ReportHelpGuide/);
+  assert.doesNotMatch(page, /report-pdf-guide/);
+  assert.match(page, /onPrint=\{\(\) => window\.print\(\)\}/);
   assert.match(stats, /Collections After Paid Expenses/);
-  assert.match(page, /the following pages show the dates you selected/);
+  assert.match(page, /Missing figures are shown as — instead of ₹0/);
 });
 
 test('vehicle registration search includes field used by real Django report API', () => {

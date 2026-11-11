@@ -17,7 +17,7 @@ test('supplier directory and existing purchase history have distinct accessible 
   assert.doesNotMatch(page, /aria-label="Supplier sections"/);
   assert.match(page, /cg-supplier-purchase-history-link/);
   assert.match(page, /to="\/suppliers\/purchases"/);
-  assert.match(page, /<SupplierWorkspaceGuide purchaseView=\{purchaseView\}\/>/);
+  assert.doesNotMatch(page, /<SupplierWorkspaceGuide/);
 });
 
 test('finance totals are permission-scoped, derive only from posted bills and fail as unavailable', () => {
@@ -78,5 +78,5 @@ test('responsive supplier UI has readable cards and keyboard-accessible actions'
   assert.match(styles, /font-size:16px/);
   assert.match(styles, /:focus-visible/);
   assert.match(styles, /@media\(max-width:767px\)/);
-  assert.match(guide, /സപ്ലയർ/);
+  assert.doesNotMatch(page, /How does Supplier Management work\?/);
 });

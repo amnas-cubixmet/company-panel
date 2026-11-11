@@ -16,7 +16,6 @@ import { EWayBillPdfShareSheet } from '../../components/invoices/EWayBillPdfShar
 import { validateEWayForPreparation, parseEWayApiErrors } from '../../utils/eWayFormValidation';
 import '../../styles/e-way-input-validation.css';
 import { InvoiceTabs, InvoiceFilterToolbar } from '../../components/invoices';
-import InvoiceHelpGuide from '../../components/invoices/InvoiceHelpGuide';
 import '../../styles/invoice-unified-ui.css';
 
 const money = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
@@ -385,7 +384,6 @@ export function EWayBillPage() {
           onEWayBills={() => navigate('/invoices/e-way-bills')}
         />
 
-        <InvoiceHelpGuide mode="eway"/>
         <section className="invoice-dashboard-stats" aria-label="E-Way Bill overview">
           {[
             { label: 'Total Documents', value: rows.length, meta: 'saved transport records', Icon: Truck },
@@ -546,7 +544,6 @@ export function EWayBillPage() {
         }
       />
 
-      <InvoiceHelpGuide mode="eway"/>
       {error && <div className="billing-error no-print" role="alert">{error}</div>}
 
       <div className="no-print grid gap-4">

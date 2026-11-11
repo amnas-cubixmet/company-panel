@@ -5,22 +5,20 @@ import { readFileSync } from 'node:fs';
 const read = (name) => readFileSync(new URL('../' + name, import.meta.url), 'utf8');
 const page = read('src/pages/gstr/GSTRDashboard.jsx');
 const review = read('src/pages/gstr/GSTPart15Workspace.jsx');
-const help = read('src/pages/gstr/GSTRGuide.jsx');
 const css = read('src/pages/gstr/gstr-ui-polish.css');
 
-test('all nine GST sections remain available with labels and dynamic explanation', () => {
+test('all nine GST sections remain available after removing help panels', () => {
   for (const section of [
     'overview', 'gstr1', 'gstr3b', 'gstr2b', 'hsn',
     'itc', 'credits', 'ledger', 'exports',
   ]) {
     assert.ok(page.includes("'" + section + "'"), 'Missing ' + section);
-    assert.match(page, new RegExp('(?:^|\\n)\\s*' + section + ': ', 'm'));
   }
-  assert.match(page, /<GSTRGuide\/>/);
+  assert.doesNotMatch(page, /<GSTRGuide/);
   assert.match(page, /aria-pressed=\{tab === value\}/);
   assert.match(page, /onClick=\{\(\) => changeTab\(value\)\}/);
   assert.match(page, /next\.delete\('invoice'\)/);
-  assert.match(page, /TAB_HELP\[tab\]/);
+  assert.doesNotMatch(page, /TAB_HELP|gstr-tab-help/);
 });
 
 test('financial year, return period and company GSTIN still use verified API', () => {
@@ -33,10 +31,7 @@ test('financial year, return period and company GSTIN still use verified API', (
   assert.match(page, /<Stat label="Sales GST"/);
 });
 
-test('bilingual help and export labels do not imply GST Portal filing', () => {
-  assert.match(help, /വിൽപ്പന/);
-  assert.match(help, /GST Portal/);
-  assert.match(help, /A successful match does not approve tax credit automatically/);
+test('critical GST preparation and filing warnings remain when help panels are removed', () => {
   assert.match(page, /Portal unverified/);
   assert.match(page, /Preparation only/);
   assert.match(page, /Not a GST Portal filing file/);

@@ -7,7 +7,6 @@ const page = read('src/pages/invoices/InvoiceRoutePage.jsx');
 const eway = read('src/pages/invoices/EWayBillPage.jsx');
 const table = read('src/components/invoices/InvoiceRecordsPanel.jsx');
 const tabs = read('src/components/invoices/InvoiceTabs.jsx');
-const guide = read('src/components/invoices/InvoiceHelpGuide.jsx');
 const stats = read('src/components/invoices/InvoiceOverviewStats.jsx');
 const css = read('src/styles/invoice-unified-ui.css');
 
@@ -16,9 +15,8 @@ test('all invoice, estimate and E-Way Bill routes share mobile UI while print st
   assert.match(eway, /import '\.\.\/\.\.\/styles\/invoice-unified-ui\.css'/);
   assert.match(page, /billing-page billing-ui-unified billing-list-dashboard/);
   assert.match(eway, /billing-page billing-ui-unified billing-list-dashboard/);
-  assert.match(page, /<InvoiceHelpGuide mode=\{activeTab\}\/>/);
-  assert.match(page, /<InvoiceHelpGuide mode=\{form\.kind\}\/>/);
-  assert.match(eway, /<InvoiceHelpGuide mode="eway"\/>/);
+  assert.doesNotMatch(page, /<InvoiceHelpGuide/);
+  assert.doesNotMatch(eway, /<InvoiceHelpGuide/);
   assert.match(css, /@media screen \{/);
   assert.doesNotMatch(css, /@media print/);
   assert.match(css, /@media\(max-width:700px\)/);
@@ -55,7 +53,6 @@ test('invoice mobile edit is draft-only, same as desktop', () => {
 });
 
 test('transport drafts do not imply official E-Way Bill generation', () => {
-  assert.match(guide, /not an NIC-issued E-Way Bill/);
   assert.match(eway, /not official GST portal E-Way Bills/);
   assert.match(eway, /row\.status === 'Draft' && <button/);
   assert.match(eway, /disabled=\{saving \|\| form\.status !== 'Draft'\}/);
@@ -69,6 +66,5 @@ test('invoice/estimate/E-Way Bill navigation stays screen-reader accessible', ()
   assert.match(tabs, /aria-pressed=\{activeTab === 'eway'\}/);
   assert.match(css, /focus-visible/);
   assert.match(css, /min-height:46px/);
-  assert.match(guide, /ബില്ലിംഗ് സഹായം/);
   assert.match(page, /Back to List/);
 });

@@ -9,7 +9,7 @@ import { USE_MOCK_API } from '../../api/apiConfig';
 import SupplierPurchaseFlow from '../../components/suppliers/SupplierPurchaseFlow';
 import SupplierAccountStatement from '../../components/suppliers/SupplierAccountStatement';
 import SupplierReturnsPanel from '../../components/suppliers/SupplierReturnsPanel';
-import { SupplierWorkspaceGuide, SupplierOverviewCards } from '../../components/suppliers/SupplierWorkspaceGuide';
+import { SupplierOverviewCards } from '../../components/suppliers/SupplierWorkspaceGuide';
 import { appConfirm } from '../../components/common/appDialogs';
 import { useLocation } from 'react-router-dom';
 import { customerContactLinks } from '../../components/jobs/customerContact.utils';
@@ -506,7 +506,6 @@ export default function SuppliersPage({ section = 'all' }) {
       {canViewFinance && <a href="#supplier-returns"><Package size={16}/> Returns</a>}
       {canViewFinance && <a href="#supplier-ledger"><Wallet size={16}/> Accounts &amp; Payments</a>}
     </nav>}
-    {!id && <SupplierWorkspaceGuide purchaseView={purchaseView}/>}
     {error&&<div className="cg-supplier-error cg-supplier-page-error" role="alert">
       <span>{error}</span>
       <button type="button" onClick={() => id ? window.location.reload() : setReloadList(x => x + 1)}><RefreshCw size={15}/> Retry</button>

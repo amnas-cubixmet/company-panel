@@ -8,7 +8,6 @@ import { VehicleCameraQueue } from '../../components/vehicles/VehicleCameraQueue
 import { staffService } from '../../services/staff.service';
 import { payrollService } from '../../services/payroll.service';
 import { JobBreadcrumbs } from '../../components/jobs/JobBreadcrumbs';
-import { JobCreateGuide } from '../../components/jobs/JobCardsGuide';
 import { JobCustomerPicker } from '../../components/jobs/JobCustomerPicker';
 import { PhoneInput } from '../../components/common/PhoneInput';
 import { customerService } from '../../services/customer.service';
@@ -433,7 +432,6 @@ export const JobCreatePage = () => {
         </div>
       </header>
 
-      <JobCreateGuide/>
       {error ? <div role="alert" className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-xs font-bold text-red-600">{error}</div> : null}
 
       <form ref={formRef} onSubmit={submit} className="job-create-form flex flex-col gap-4">

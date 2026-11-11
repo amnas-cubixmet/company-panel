@@ -18,7 +18,6 @@ import '../../styles/invoice-template-sync.css';
 import { customerService } from '../../services/customer.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { InvoicePdfShareSheet } from '../../components/invoices/InvoicePdfShareSheet';
-import InvoiceHelpGuide from '../../components/invoices/InvoiceHelpGuide';
 import '../../styles/invoice-unified-ui.css';
 import '../../styles/invoice-directory-refined.css';
 import { WhatsAppManualShareButton } from '../../components/common/WhatsAppManualShareButton';
@@ -693,7 +692,6 @@ export function InvoiceRoutePage() {
         onEWayBills={() => navigate('/invoices/e-way-bills')}
       />
 
-      <InvoiceHelpGuide mode={activeTab}/>
       <InvoiceOverviewStats
         activeTab={activeTab}
         documents={activeDocuments}
@@ -870,7 +868,6 @@ export function InvoiceRoutePage() {
         </div>
       </div>
 
-      <InvoiceHelpGuide mode={form.kind}/>
       {mode === 'create' && workshopTaxLoading && <p role="status" className="billing-empty">Verifying workshop GST registration…</p>}
       {mode === 'create' && workshopTaxError && <div className="billing-error no-print" role="alert">
         {workshopTaxError}
