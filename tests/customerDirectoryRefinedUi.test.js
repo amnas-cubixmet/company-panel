@@ -41,7 +41,7 @@ test('URL query filters have removable active chips and reset behavior', () => {
 test('customer name is a real profile link and mobile card preserves call, WhatsApp and edit', () => {
   assert.match(list, /<Link to=\{\x60\/customers\/\$\{c\.id\}\x60\} className="cg-directory-name">\{c\.name\}<\/Link>/);
   assert.match(list, /className="cg-directory-avatar"/);
-  assert.match(list, /className="cg-directory-status/);
+  assert.match(list, /className=\{\x60cg-directory-status/);
   assert.match(list, /className="customer-directory-card"/);
   assert.equal((list.match(/<CustomerContactActions customer=\{c\}/g) || []).length,2);
   assert.match(list, /onClick=\{\(event\) => \{ event\.stopPropagation\(\); openEditModal\(c\); \}\}/);
