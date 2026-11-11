@@ -13,6 +13,7 @@ import {
   ServicesHeader,
 } from '../../components/services';
 import { serviceService } from '../../services/service.service';
+import GstRateDropdown from '../../components/common/GstRateDropdown';
 import { buildCategoryTreeRows } from '../../utils/serviceHierarchy';
 import '../../styles/service-management.css';
 import '../../styles/service-borderless-forms.css';
@@ -182,8 +183,8 @@ const ServiceForm = ({
               onChange={(e)=>setValues({...values,hsnSac:e.target.value})} placeholder="Verified code if known"/>
           </Field>
           <Field label="GST Rate (%)">
-            <input type="number" min="0" max="100" step="0.01" value={values.taxRate ?? ''}
-              onChange={(e)=>setValues({...values,taxRate:e.target.value})}/>
+            <GstRateDropdown value={values.taxRate ?? ''} selectLabel="Service GST Rate (%)"
+              onChange={rate => setValues({ ...values, taxRate: rate })}/>
           </Field>
           <Field label="GST Treatment">
             <select value={values.taxTreatment || 'taxable'}
