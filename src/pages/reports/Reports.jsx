@@ -14,7 +14,6 @@ import {
 } from './reportsDashboard.utils';
 import { ReportPerformanceChart, ReportExpenseCategoryChart } from '../../components/reports/ReportCharts';
 import { ReportFiscalPrint } from '../../components/reports/ReportFiscalPrint';
-import { ReportHelpGuide } from '../../components/reports/ReportHelpGuide';
 import { reportLoadErrorMessage } from './reportErrorMessage';
 import { ReportPeriodFilter, ReportStats, ReportTabs, ReportsHeader } from '../../components/reports';
 import '../../styles/reports-dashboard.css';
@@ -294,12 +293,6 @@ export function Reports() {
         onTo={(value) => customDate('to', value)}
         onThisMonth={() => chooseMonth(defaultMonth, defaultYear)}
         onAllTime={() => chooseMonth('All')}/>
-      <ReportHelpGuide/>
-      <p className="report-pdf-guide no-print">
-        <strong>Print / PDF:</strong> The first page compares two financial years;
-        the following pages show the dates you selected above.
-        In the print window, choose “Save as PDF” to save a file.
-      </p>
       {!dateRangeValid && <div role="alert" className="reports-error no-print">
         Choose an end date on or after the start date.
       </div>}
