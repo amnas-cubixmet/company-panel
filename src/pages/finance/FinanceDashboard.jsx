@@ -6,6 +6,8 @@ import {
   Receipt, List, RefreshCw, TrendingUp
 } from 'lucide-react';
 import { financeService } from '../../services/finance.service';
+import { USE_MOCK_API } from '../../api/apiConfig';
+import FinanceSupplierPurchases from '../../components/finance/FinanceSupplierPurchases';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/finance-dashboard.css';
 
@@ -19,6 +21,11 @@ export function FinanceDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const canViewSupplierBills = can('stock.view') && can('payments.view');
+  const canPostSupplierPurchase = canViewSupplierBills &&
+    can('stock.create') && can('stock.edit') && can('payments.create') && !USE_MOCK_API;
+  const canPaySupplierCredit = canViewSupplierBills && can('payments.create') && !USE_MOCK_API;
 
   const load = async () => {
     setLoading(true);
@@ -58,6 +65,14 @@ export function FinanceDashboard() {
     { label: 'Transfer Money', icon: ArrowLeftRight, path: '/finance/transfers/new', permission: 'payments.edit' },
     { label: 'View Transactions', icon: List, path: '/finance/transactions', permission: 'payments.view' },
     { label: 'Accounting & Reports', icon: List, path: '/finance/accounting', permission: 'payments.view' },
+    ...(canPostSupplierPurchase ? [
+      { label: 'Receive Stock / Purchase GST', icon: Package,
+        path: '/suppliers/purchases', permission: 'stock.create' },
+    ] : []),
+    ...(canPaySupplierCredit ? [
+      { label: 'Pay Supplier Credit', icon: Wallet,
+        path: '/suppliers', permission: 'payments.create' },
+    ] : []),
   ];
 
   return (
@@ -68,7 +83,10 @@ export function FinanceDashboard() {
           <h1>Money Overview</h1>
           <p>See money received, money paid, cash and bank balances, and pending dues.</p>
         </div>
-        <button className="finance-refresh-btn" onClick={load} disabled={loading} aria-label="Refresh">
+        <button className="finance-refresh-btn" onClick={() => {
+          setRefreshVersion(value => value + 1);
+          void load();
+        }} disabled={loading} aria-label="Refresh">
           <RefreshCw size={16} className={loading ? 'finance-spin' : ''} />
           Refresh
         </button>
@@ -107,6 +125,13 @@ export function FinanceDashboard() {
 
       {data?.profitNote && <p className="finance-dash-note">{data.profitNote}</p>}
       {data?.accountBalanceNote && <p className="finance-dash-note">{data.accountBalanceNote}</p>}
+
+      {canViewSupplierBills && <FinanceSupplierPurchases
+        refreshVersion={refreshVersion}
+        canPurchase={canPostSupplierPurchase}
+        canPaySupplier={canPaySupplierCredit}
+        canReviewGST={can('gstr.view')}
+      />}
 
       {/* Accounts */}
       {data?.accounts?.length > 0 && (
