@@ -235,12 +235,16 @@ try {
         }
         await page.locator('.route-loading').waitFor({state:'hidden',timeout:15000});
         await page.waitForFunction(()=>document.body.innerText.length>=20);
-        // Suppliers has one drawer link and four page tabs (no slide-out submenu).
+        // Supplier directory and Purchase History are valid navigation.
+        // Credits and Payments are on the supplier detail page, not old tabs.
         if(path==='/suppliers' && (profile.width===390 || profile.width===1440)) {
           await page.getByRole('heading',{name:'Suppliers',exact:true}).waitFor({state:'visible'});
           await page.locator('a.cg-supplier-name-link:visible').first().waitFor({state:'visible'});
-          // Supplier actions are now on /suppliers/:id, not separate tabs.
-          if (await page.getByRole('navigation',{name:'Supplier sections'}).count()) {
+          const outdatedSupplierTabs = page.locator([
+            '.cg-supplier-page-nav a[href="/suppliers/credits"]',
+            '.cg-supplier-page-nav a[href="/suppliers/payments"]',
+          ].join(','));
+          if (await outdatedSupplierTabs.count()) {
             throw Error('Obsolete supplier finance tabs should be removed');
           }
           const supplierProfile = page.locator('a.cg-supplier-name-link:visible').first();
