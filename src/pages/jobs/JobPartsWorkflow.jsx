@@ -23,6 +23,7 @@ import { jobPartsService } from '../../services/jobParts.service';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
 import { financeAccountsForChannel } from '../../utils/financeCashBank';
+import GstRateDropdown from '../../components/common/GstRateDropdown';
 
 const money = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -755,8 +756,9 @@ function OutsidePartPurchasePanel({ initial, onClose, onSave, busy, error }) {
             value={form.unitCost} onChange={(e) => set('unitCost', e.target.value)} placeholder="Cost from shop" />
         </label>
         <label className="form-label">Purchase GST Rate (%) *
-          <input className="cubegears-input" type="number" required min="0" max="100" step="0.01"
-            value={form.purchaseGstRate} onChange={event => set('purchaseGstRate', event.target.value)} />
+          <GstRateDropdown required className="cubegears-select"
+            selectLabel="Outside Purchase GST Rate (%)" value={form.purchaseGstRate}
+            onChange={rate => set('purchaseGstRate', rate)}/>
         </label>
         <label className="form-label job-parts-modal-full">Customer Selling Price / Unit (₹) *
           <input className="cubegears-input" type="number" required inputMode="decimal"
@@ -975,7 +977,11 @@ function OrderPanel({ line, error, onClose, onSave, busy }) {
       <label className="form-label">Order Quantity *<input name="orderedQty" className="cubegears-input mt-1" type="number" inputMode="decimal" min="0.01" step="0.01" required value={form.orderedQty} onChange={(e) => set('orderedQty', e.target.value)}/></label>
       <label className="form-label">Unit Cost (₹) *<input name="unitCost" className="cubegears-input mt-1" type="number" inputMode="decimal" min="0" step="0.01" required value={form.unitCost} onChange={(e) => set('unitCost', e.target.value)} placeholder="Enter supplier price"/></label>
       <label className="form-label">Discount (%)<input name="discount" className="cubegears-input mt-1" type="number" inputMode="decimal" min="0" max="100" step="0.01" value={form.discount} onChange={(e) => set('discount', e.target.value)}/></label>
-      <label className="form-label">GST Rate (%)<input name="tax" className="cubegears-input mt-1" type="number" inputMode="decimal" min="0" max="100" step="0.01" value={form.tax} onChange={(e) => set('tax', e.target.value)}/></label>
+      <label className="form-label">GST Rate (%)
+        <GstRateDropdown name="tax" className="cubegears-select mt-1"
+          selectLabel="Purchase Order GST Rate (%)" value={form.tax}
+          onChange={rate => set('tax', rate)}/>
+      </label>
       <button type="button" className="secondary-button" onClick={onClose} disabled={busy}>Cancel</button>
       <button type="submit" className="primary-button" disabled={busy}>{busy ? 'Creating…' : 'Create Purchase Order'}</button>
     </form>
