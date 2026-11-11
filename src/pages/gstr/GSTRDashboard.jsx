@@ -10,6 +10,7 @@ import GSTRGuide from './GSTRGuide';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import './gstr.css';
 import './gstr-ui-polish.css';
+import './gstr-directory-refined.css';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -71,7 +72,7 @@ function DataTable({ rows, columns, search = '', pageSize = 20 }) {
   const visible = filtered.slice((current - 1) * pageSize, current * pageSize);
   if (!filtered.length) return <div className="gstr-empty" role="status">No records match the selected month or search. Check the period or try another search.</div>;
   return <>
-    <div className="gstr-table-scroll">
+    <div className="gstr-table-scroll" role="region" aria-label="GST records table" tabIndex={0}>
       <table className="gstr-table" aria-label="GST records for selected return period">
         <thead><tr>{columns.map((column) => <th scope="col" key={column.key} className={column.money ? 'is-money' : ''}>{column.label}</th>)}</tr></thead>
         <tbody>{visible.map((row, i) =>
@@ -283,18 +284,19 @@ export default function GSTRDashboard() {
   const expenseTaxReview = data?.gstr2b?.expenseGSTReview || [];
   const validations = data?.issues || [];
 
-  return <main className="gstr-page">
+  return <main className="gstr-page cg-gstr-refined">
     <header className="gstr-header">
-      <div><div className="gstr-eyebrow"><ShieldCheck size={15} /> GST Returns Management</div>
+      <div className="cg-gstr-heading">
+        <div className="gstr-eyebrow"><ShieldCheck size={15} aria-hidden="true"/> GST Returns Management</div>
         <h1>GST Reports &amp; Returns</h1>
         <p>Review sales GST, supplier GST, tax credits and return preparation for your workshop.</p>
       </div>
       <div className="gstr-header-actions">
-        <button type="button" onClick={() => setReload((n) => n + 1)} disabled={loading} aria-label="Refresh GST data"><RefreshCw size={16} /> Refresh</button>
-        {access.can('gstr.export') && <button type="button" disabled={busy || loading} onClick={() => exportCsv('gstr1')} title="Download GSTR-1 preparation data, not a filed return"><Download size={16} /> Sales CSV</button>}
+        <button type="button" className="cg-gstr-refresh" onClick={() => setReload((n) => n + 1)} disabled={loading} aria-label="Refresh GST data"><RefreshCw size={17} aria-hidden="true"/> Refresh</button>
+        {access.can('gstr.export') && <button type="button" className="cg-gstr-export" disabled={busy || loading} onClick={() => exportCsv('gstr1')} title="Download GSTR-1 preparation data, not a filed return"><Download size={17} aria-hidden="true"/> Sales CSV</button>}
       </div>
     </header>
-    <div className="gstr-filter-panel">
+    <section className="gstr-filter-panel" aria-label="GST return reporting period and registration">
       <label><CalendarDays size={15} aria-hidden="true"/> Financial Year
         <select value={financialYear} onChange={(event) => setFinancialYear(event.target.value)}>
           {years.map((year) => <option key={year} value={year}>{year}–{String(year + 1).slice(-2)}</option>)}
@@ -309,7 +311,7 @@ export default function GSTRDashboard() {
         <div className="gstr-readonly">{data?.company?.gstin || 'Not registered / unavailable'}</div>
       </label>
       <span className="gstr-status"><AlertTriangle size={16} aria-hidden="true"/> Preparation only · Portal unverified · Not submitted by CubixGear</span>
-    </div>
+    </section>
     <GSTRGuide/>
 
     {issue && <div className="gstr-alert is-error" role="alert">
@@ -355,7 +357,12 @@ export default function GSTRDashboard() {
         {params.get('invoice') && <p className="gstr-note" role="status">
           Opened from invoice {params.get('invoice')}. Matching records are shown below; finalized and validated tax invoices only.
         </p>}
-        <div className="gstr-search"><Search size={17} /><input aria-label="Search outward invoices" placeholder="Search invoice, customer or GSTIN" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+        <div className="gstr-search cg-gstr-search">
+          <Search size={18} aria-hidden="true"/>
+          <input type="search" aria-label="Search outward invoices" placeholder="Search invoice, customer or GSTIN" value={search} onChange={(e) => setSearch(e.target.value)}/>
+          {search && <button type="button" className="cg-gstr-search-reset"
+            aria-label="Clear outward invoice search" onClick={() => setSearch('')}>Clear</button>}
+        </div>
         <DataTable key={'sales-' + period} rows={invoices} columns={invoiceColumns} search={search} />
         <p className="gstr-note">Source: finalized GST invoices only. Sales credit notes are recorded separately under GST Credit Notes; amendments and document summary require independent review.</p>
       </section>}
