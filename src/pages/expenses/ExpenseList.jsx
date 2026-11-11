@@ -8,7 +8,7 @@ import { expenseService } from '../../services/expense.service';
 import { ExpenseBudgetPanel } from '../../components/expenses/ExpenseBudgetPanel';
 import { financeService } from '../../services/finance.service';
 import { FINANCE_CHANNELS, financeAccountsForChannel, assertFinanceAccount } from '../../utils/financeCashBank';
-import { gstPresetRatesForMode } from '../../utils/gstRatePresets';
+import GstRateDropdown from '../../components/common/GstRateDropdown';
 import { expenseIncludedGst } from '../../utils/expenseGst';
 import { localDate } from '../../services/expense.mapper';
 import {
@@ -189,15 +189,11 @@ const ExpenseForm = ({
           </Field>
 
           <Field label="GST Rate (included in amount)">
-            <select aria-label="Expense GST percentage" value={values.gstRate ?? ''}
-              onChange={(e) => setValues({...values, gstRate: e.target.value,
-                taxAmount: e.target.value === '' ? values.taxAmount :
-                  expenseIncludedGst(values.amount, e.target.value)})}>
-              <option value="">Previously saved / enter GST amount</option>
-              <option value="0">None — 0%</option>
-              {gstPresetRatesForMode('unknown').map((rate) =>
-                <option key={rate} value={rate}>{rate}%</option>)}
-            </select>
+            <GstRateDropdown selectLabel="Expense GST percentage" value={values.gstRate ?? ''}
+              blankLabel="Previously saved / enter GST amount"
+              onChange={rate => setValues({ ...values, gstRate: rate,
+                taxAmount: rate === '' ? values.taxAmount :
+                  expenseIncludedGst(values.amount, rate) })}/>
           </Field>
           <Field label="Tax / GST Amount (included)">
             <input type="number" min="0" step="0.01" value={values.taxAmount}
