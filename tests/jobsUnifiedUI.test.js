@@ -10,7 +10,6 @@ const records = read('src/components/jobs/JobRecordsPanel.jsx');
 const stats = read('src/components/jobs/JobsStats.jsx');
 const create = read('src/pages/jobs/JobCreatePage.jsx');
 const detail = read('src/pages/jobs/JobCardWorkspace.jsx');
-const guide = read('src/components/jobs/JobCardsGuide.jsx');
 const vehicleLookup = read('src/components/jobs/VehicleLookupPanel.jsx');
 const css = read('src/styles/jobs-unified-ui.css');
 
@@ -67,15 +66,12 @@ test('advanced job filters are mobile-collapsible but retain active URL values',
   assert.match(css, /display:contents/);
 });
 
-test('job directory removes the help block while create/detail keep accessible guidance', () => {
+test('job directory, create and detail views omit help panels while retaining accessible actions', () => {
   assert.doesNotMatch(list, /<JobCardsGuide\/>/);
   assert.doesNotMatch(list, /import \{ JobCardsGuide \}/);
-  assert.match(create, /<JobCreateGuide\/>/);
-  assert.match(detail, /<JobDetailGuide\/>/);
+  assert.doesNotMatch(create, /<JobCreateGuide/);
+  assert.doesNotMatch(detail, /<JobDetailGuide/);
   assert.match(header, /Create Job Card/);
-  assert.doesNotMatch(guide, /ജോബ് കാർഡ് സഹായം/);
-  assert.match(guide, /export function JobCreateGuide/);
-  assert.match(guide, /export function JobDetailGuide/);
   assert.match(css, /^\/\*[\s\S]*?@media screen \{/);
   assert.doesNotMatch(css, /@media print/);
   assert.match(css, /font-size:16px!important/);
