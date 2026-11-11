@@ -16,6 +16,8 @@ export const InvoiceRecordsPanel = ({
   onCreate,
   onRetry,
   loadError,
+  hasFilters = false,
+  onReset,
 }) => {
   const { user } = useAuth();
   const canEdit = hasPermission(user, 'invoices.edit');
@@ -43,16 +45,21 @@ export const InvoiceRecordsPanel = ({
           </button>
         </div>
       ) : documents.length === 0 ? (
-        <div className="invoice-dashboard-empty">
-          <FileText size={14} />
-          <span>No {activeTab === 'estimate' ? 'estimates' : 'invoices'} match the selected filters.</span>
-          {canCreate && <button type="button" className="bill-btn" onClick={onCreate}>
+        <div className="invoice-dashboard-empty cg-invoice-empty" role="status">
+          <FileText size={28} aria-hidden="true"/>
+          <strong>{hasFilters ? 'No matching documents' : activeTab === 'estimate' ? 'No estimates yet' : 'No invoices yet'}</strong>
+          <span>{hasFilters
+            ? 'Try another document number, customer or status.'
+            : activeTab === 'estimate' ? 'Create an estimate to start your quotation records.' : 'Create an invoice to start your billing records.'}</span>
+          {hasFilters ? <button type="button" className="bill-btn secondary" onClick={onReset}>
+            Clear filters
+          </button> : canCreate && <button type="button" className="bill-btn" onClick={onCreate}>
             <Plus size={16}/> {activeTab === 'estimate' ? 'Add Estimate' : 'Create Invoice'}
           </button>}
         </div>
       ) : (
         <>
-          <div className="invoice-dashboard-table-wrap">
+          <div className="invoice-dashboard-table-wrap" role="region" aria-label="Invoice and estimate records table" tabIndex={0}>
             <table className="invoice-dashboard-table">
               <thead>
                 <tr>
