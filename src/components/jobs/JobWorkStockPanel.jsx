@@ -8,13 +8,14 @@ import { appConfirm } from '../common/appDialogs';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
 import { invoiceLineTaxChoices, invoiceTotalRateFromChoice } from '../../utils/invoiceTaxUi';
+import SupplierSelectField from '../common/SupplierSelectField';
 
 const money = new Intl.NumberFormat('en-IN', {
   style: 'currency', currency: 'INR', maximumFractionDigits: 2,
 });
 const num = (value) => Number(value || 0);
 const blankNewPart = {
-  partName: '', partNumber: '', brand: '', unit: 'Piece', category: '',
+  partName: '', partNumber: '', brand: '', unit: 'Piece', category: '', supplier: '',
   costPrice: '', sellingPrice: '', hsnCode: '', tax: '',
   zeroTaxClassification: '', minimumStock: '0', location: '',
 };
@@ -52,6 +53,7 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], canEdit = true, onC
   const [createError, setCreateError] = useState('');
   const [categories, setCategories] = useState([]);
   const [createNotice, setCreateNotice] = useState('');
+  const [createdSupplierId, setCreatedSupplierId] = useState('');
 
   const refresh = async () => {
     if (!canView) return;
@@ -77,6 +79,7 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], canEdit = true, onC
     setNewPartGstChoice('');
     setCreateError('');
     setCreateNotice('');
+    setCreatedSupplierId('');
     refresh();
   }, [jobId, canView]);
 
@@ -191,6 +194,7 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], canEdit = true, onC
       setNewPart(blankNewPart);
       setNewPartGstChoice('');
       setShowCreate(false);
+      setCreatedSupplierId(newPart.supplier || '');
       setCreateNotice('Part saved in inventory catalogue with zero stock. Receive stock before issuing it to this job.');
     } catch (cause) {
       const response = cause?.response?.data;
@@ -232,7 +236,7 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], canEdit = true, onC
 
       {error && <p className="job-work-stock-error" role="alert">{error}</p>}
       {success && <p className="job-work-stock-success" role="status"><CheckCircle2 size={16} aria-hidden="true"/>{success}</p>}
-      {createNotice && <p className="job-work-stock-success" role="status">{createNotice} <Link to="/stock">Receive Stock</Link></p>}
+      {createNotice && <p className="job-work-stock-success" role="status">{createNotice} <Link to={createdSupplierId ? '/suppliers/' + encodeURIComponent(createdSupplierId) : '/stock'}>Receive Stock</Link></p>}
 
       {canIssue && showCreate && (
         <form id="job-work-new-part-form" className="job-work-new-part-form" onSubmit={createPart}>
@@ -248,6 +252,9 @@ export function JobWorkStockPanel({ jobId, issuedParts = [], canEdit = true, onC
               onChange={e => setNewPart(v => ({ ...v, partNumber: e.target.value }))}/></label>
             <label>Brand<input maxLength="100" value={newPart.brand}
               onChange={e => setNewPart(v => ({ ...v, brand: e.target.value }))}/></label>
+            <SupplierSelectField label="Supplier (Stock & Parts)" valueMode="id"
+              value={newPart.supplier} disabled={creating || busy}
+              onChange={supplier => setNewPart(v => ({ ...v, supplier }))}/>
             <label>Unit<select value={newPart.unit} onChange={e => setNewPart(v => ({ ...v, unit: e.target.value }))}>
               {unitOptions.map(value => <option key={value} value={value}>{value}</option>)}
             </select></label>
