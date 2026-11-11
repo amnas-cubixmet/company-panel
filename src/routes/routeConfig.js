@@ -7,6 +7,7 @@ export const ROUTE_SECTIONS = {
   MAIN: 'Main',
   ATTENDANCE_HR: 'Attendance & HR',
   OPERATIONS: 'Workshop Operations',
+  STOCK_PARTS: 'Stock & Parts',
   FINANCE: 'Finance & Billing',
   ANALYTICS_SYSTEM: 'Analytics & Settings'
 };
@@ -17,7 +18,7 @@ export const routeConfig = [
   { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, section: ROUTE_SECTIONS.MAIN, mobilePrimary: true, permission: 'dashboard.view' },
   { id: 'jobs', label: 'Job Cards', path: '/jobs', icon: ClipboardList, section: ROUTE_SECTIONS.OPERATIONS, mobilePrimary: true, permission: 'jobs.view' },
   {
-    id: 'stock', label: 'Inventory Management', path: '/stock', icon: Boxes, section: ROUTE_SECTIONS.OPERATIONS, mobilePrimary: true, permission: 'stock.view'
+    id: 'stock', label: 'Inventory Management', path: '/stock', icon: Boxes, section: ROUTE_SECTIONS.STOCK_PARTS, mobilePrimary: true, permission: 'stock.view'
   },
   {
     id: 'my-attendance', label: 'My Attendance', path: '/my-attendance', icon: Clock, section: ROUTE_SECTIONS.ATTENDANCE_HR, mobilePrimary: false, permission: 'attendance.self'
@@ -31,7 +32,7 @@ export const routeConfig = [
   {
     id: 'payroll', label: 'Payroll', path: '/payroll', icon: DollarSign, section: ROUTE_SECTIONS.ATTENDANCE_HR, mobilePrimary: false, permission: 'payroll.view'
   },
-  { id: 'suppliers', label: 'Suppliers', path: '/suppliers', icon: Truck, section: ROUTE_SECTIONS.OPERATIONS, mobilePrimary: false, permission: 'stock.view' },
+  { id: 'suppliers', label: 'Suppliers', path: '/suppliers', icon: Truck, section: ROUTE_SECTIONS.STOCK_PARTS, mobilePrimary: false, permission: 'stock.view' },
   { id: 'customers', label: 'Customers', path: '/customers', icon: Users, section: ROUTE_SECTIONS.OPERATIONS, mobilePrimary: false, permission: 'customers.view' },
   { id: 'vehicles', label: 'Vehicles', path: '/vehicles', icon: Car, section: ROUTE_SECTIONS.OPERATIONS, mobilePrimary: false, permission: 'vehicles.view' },
   { id: 'services', label: 'Services Catalog', path: '/services', icon: Wrench, section: ROUTE_SECTIONS.OPERATIONS, mobilePrimary: false, permission: 'services.view' },
