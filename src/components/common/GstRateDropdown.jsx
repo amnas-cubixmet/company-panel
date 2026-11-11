@@ -1,24 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  invoiceChoiceFromTotalRate, invoiceLineTaxChoices, invoiceTotalRateFromChoice,
-} from '../../utils/invoiceTaxUi';
+  GST_TAX_DROPDOWN_CHOICES, gstChoiceForSavedRate, gstTotalFromSelection,
+} from '../../utils/gstRateDropdown';
 import './GstRateDropdown.css';
 
 // This shared editor changes only the stored TOTAL GST percentage. It never
 // infers tax jurisdiction, approves ITC, or creates accounting entries.
-const choices = invoiceLineTaxChoices('unknown');
-
-export const gstChoiceForSavedRate = value => {
-  const text = String(value ?? '').trim();
-  if (!text) return '';
-  if (Number(text) === 0) return 'none';
-  const inferred = invoiceChoiceFromTotalRate(text, 'unknown');
-  return inferred?.startsWith('saved:') || !inferred ? 'custom' : inferred;
-};
-
-export const gstTotalFromSelection = selection =>
-  selection === 'none' ? '0' :
-    selection === 'custom' || !selection ? '' : invoiceTotalRateFromChoice(selection);
+const choices = GST_TAX_DROPDOWN_CHOICES;
 
 /**
  * A drop-in GST rate control for fields that store a numeric TOTAL percentage.
