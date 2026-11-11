@@ -19,7 +19,7 @@ test('Stock & Parts Add New Part offers the canonical supplier dropdown and inli
   assert.match(stock, /stockCatalogService\.createItem\(\{\s*\.\.\.newPart/);
   assert.match(stock, /stockQuantity: 0/);
   assert.match(stock, /setCreatedSupplierId\(newPart\.supplier \|\| ''\)/);
-  assert.match(stock, /'/ + 'suppliers/' + '/);
+  assert.ok(stock.includes("'/suppliers/'"));
   assert.match(catalogue, /supplier: await resolveSupplierId\(payload\.supplier\)/);
 });
 
