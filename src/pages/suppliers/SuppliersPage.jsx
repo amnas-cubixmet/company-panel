@@ -216,6 +216,16 @@ export default function SuppliersPage({ section = 'all' }) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [reloadList, setReloadList] = useState(0);
   const [reloadPurchaseHistory, setReloadPurchaseHistory] = useState(0);
+  // After choosing a supplier from Billing > Purchase Bills, land on the
+  // existing canonical purchase form once the supplier record has loaded.
+  useEffect(() => {
+    if (!id || !supplier?.id || !canCreatePurchase ||
+        location.hash !== '#supplier-purchase-form') return;
+    document.getElementById('supplier-purchase-form')?.scrollIntoView({
+      behavior: 'smooth', block: 'start',
+    });
+  }, [id, supplier, canCreatePurchase, location.hash]);
+
   const statusFilter = params.get('status') || 'all';
   const search = params.get('q') || '';
 
@@ -647,7 +657,7 @@ export default function SuppliersPage({ section = 'all' }) {
           <form className="cg-supplier-purchase-start" onSubmit={event => {
             event.preventDefault();
             if (newPurchaseSupplier && suppliers.some(row =>
-              String(row.id) === newPurchaseSupplier && row.is_active !== false)) {
+              String(row.id) === newPurchaseSupplier && row.is_active !== false && row.status !== 'Inactive')) {
               navigate('/suppliers/' + encodeURIComponent(newPurchaseSupplier) + '#supplier-purchase-form');
             }
           }}>
@@ -660,14 +670,14 @@ export default function SuppliersPage({ section = 'all' }) {
               <select value={newPurchaseSupplier} required
                 onChange={event => setNewPurchaseSupplier(event.target.value)}>
                 <option value="">Select supplier</option>
-                {suppliers.filter(row => row.is_active !== false).map(row => (
+                {suppliers.filter(row => row.is_active !== false && row.status !== 'Inactive').map(row => (
                   <option key={row.id} value={String(row.id)}>{row.name}</option>
                 ))}
               </select>
             </label>
             <button className="cg-supplier-button primary" type="submit"
               disabled={!newPurchaseSupplier || !suppliers.some(row =>
-                String(row.id) === newPurchaseSupplier && row.is_active !== false)}>
+                String(row.id) === newPurchaseSupplier && row.is_active !== false && row.status !== 'Inactive')}>
               Continue to GST &amp; Payment
             </button>
           </form>
