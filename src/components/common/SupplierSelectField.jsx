@@ -167,7 +167,12 @@ export default function SupplierSelectField({
     {!loading && !loadError && !available.length &&
       <small>No active suppliers found. Add a supplier or open the Supplier directory.</small>}
     {creatingOpen && canCreateSupplier && <div className="cg-supplier-select-create"
-      aria-label="Add supplier without leaving the part form">
+      aria-label="Add supplier without leaving the part form"
+      onKeyDown={event => {
+        // This editor lives inside a parent Part / Purchase form.
+        // Enter on supplier details must not submit that unrelated form.
+        if (event.key === 'Enter' && event.target.tagName === 'INPUT') event.preventDefault();
+      }}>
       <strong>New Supplier</strong>
       <label>Supplier Name *<input value={draft.name} maxLength={180} disabled={creating || disabled}
         onChange={event => setDraft(old => ({ ...old, name: event.target.value }))}/></label>
