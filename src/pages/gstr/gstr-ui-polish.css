@@ -409,3 +409,38 @@
   color:var(--gstr-muted);background:var(--gstr-surface-alt);
   border-radius:10px;font-size:14px;line-height:1.5;
 }
+
+
+/* GSTR purchase-ledger cross-reference only; never a second payment form. */
+.gstr-header-actions .gstr-source-link,
+.gstr-purchase-settlements .gstr-source-link {
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-height:42px;padding:9px 13px;border-radius:10px;
+  border:1px solid var(--border,#dce4ed);
+  background:var(--surface,#fff);color:var(--primary,#1768d2);
+  text-decoration:none;font-weight:700;font-size:13px;
+}
+.gstr-header-actions .gstr-source-link:focus-visible,
+.gstr-purchase-settlements .gstr-source-link:focus-visible{
+  outline:2px solid var(--primary,#1768d2);outline-offset:2px;
+}
+.gstr-purchase-settlements{
+  display:grid;gap:10px;min-width:0;margin:17px 0 0;
+  padding:16px;border:1px solid var(--border,#dce4ed);
+  border-radius:14px;background:var(--surface,#fff);
+}
+.gstr-purchase-settlements .gstr-panel-heading{
+  margin:0;align-items:center;
+}
+.gstr-purchase-settlements .gstr-panel-heading h3{
+  font-size:17px;line-height:1.4;font-weight:750;
+  margin:0;color:var(--text-primary,#18253a);
+}
+.gstr-purchase-settlements .gstr-note{margin:0}
+.gstr-purchase-settlements .gstr-table-scroll{max-width:100%}
+@media(max-width:700px){
+  .gstr-header-actions .gstr-source-link{width:100%;min-width:0}
+  .gstr-purchase-settlements{padding:12px}
+  .gstr-purchase-settlements .gstr-panel-heading{align-items:stretch}
+  .gstr-purchase-settlements .gstr-source-link{width:100%}
+}
