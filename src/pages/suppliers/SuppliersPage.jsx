@@ -469,7 +469,7 @@ export default function SuppliersPage({ section = 'all' }) {
         {id&&<Link className="cg-suppliers-back" to="/suppliers"><ArrowLeft size={16}/> All Suppliers</Link>}
         <span className="cg-suppliers-eyebrow">CUBIXGEAR · WORKSHOP SUPPLIERS</span>
         <h1 title={id ? (supplier?.name || 'Supplier Details') : undefined}>
-          {id ? (supplier?.name || 'Supplier Details') : purchaseView ? 'Supplier Purchases' : 'Supplier Management'}
+          {id ? (supplier?.name || 'Supplier Details') : purchaseView ? 'Supplier Purchases' : 'Suppliers'}
         </h1>
         <p className="cg-suppliers-subtitle">{id
           ? 'View this supplier’s contacts, purchases, outstanding bills, returns and payments.'
