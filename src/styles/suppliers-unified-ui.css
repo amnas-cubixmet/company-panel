@@ -584,3 +584,46 @@
   .cg-suppliers-ui .cg-supplier-header-actions{width:100%;justify-content:stretch}
   .cg-suppliers-ui .cg-supplier-header-actions>.cg-supplier-button{flex:1 1 140px;min-height:44px}
 }
+
+/* Invoices -> Supplier Purchases lands on the canonical purchase workflow.
+   This only navigates: no second supplier bill or stock movement is created. */
+.cg-suppliers-ui .cg-supplier-purchase-start{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(190px,255px) auto;
+  align-items:end;gap:12px;
+  padding:16px;border:1px solid var(--supplier-border);
+  border-radius:14px;background:var(--supplier-surface);
+}
+.cg-suppliers-ui .cg-supplier-purchase-start-copy{
+  display:flex;flex-direction:column;gap:5px;
+  align-self:center;min-width:0;
+}
+.cg-suppliers-ui .cg-supplier-purchase-start-copy strong{
+  font-size:15px;font-weight:750;color:var(--supplier-text);
+}
+.cg-suppliers-ui .cg-supplier-purchase-start-copy span{
+  font-size:13px;line-height:1.5;color:var(--supplier-muted);
+}
+.cg-suppliers-ui .cg-supplier-purchase-start label{
+  display:flex;flex-direction:column;gap:6px;
+  font-size:13px;font-weight:650;min-width:0;
+}
+.cg-suppliers-ui .cg-supplier-purchase-start select{
+  width:100%;min-height:44px;padding:9px 11px;
+  border:1px solid var(--supplier-border);
+  border-radius:10px;background:var(--supplier-surface);color:var(--supplier-text);
+}
+.cg-suppliers-ui .cg-supplier-purchase-start .cg-supplier-button{
+  min-height:44px;white-space:normal;
+}
+@media(max-width:920px){
+  .cg-suppliers-ui .cg-supplier-purchase-start{
+    grid-template-columns:minmax(0,1fr) minmax(190px,1fr);
+  }
+  .cg-suppliers-ui .cg-supplier-purchase-start-copy{grid-column:1/-1}
+}
+@media(max-width:560px){
+  .cg-suppliers-ui .cg-supplier-purchase-start{grid-template-columns:minmax(0,1fr);padding:13px}
+  .cg-suppliers-ui .cg-supplier-purchase-start-copy{grid-column:auto}
+  .cg-suppliers-ui .cg-supplier-purchase-start .cg-supplier-button{width:100%}
+}
