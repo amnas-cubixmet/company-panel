@@ -11,6 +11,7 @@ import { supplierService } from '../../services/supplier.service';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import StockFinanceConnections from '../../components/stock/StockFinanceConnections';
+import StockPurchaseStartDialog from '../../components/stock/StockPurchaseStartDialog';
 import { invoiceLineTaxChoices, invoiceTotalRateFromChoice } from '../../utils/invoiceTaxUi';
 import '../../styles/stock-easy.css';
 import '../../styles/stock-form-polish.css';
@@ -105,6 +106,9 @@ export default function StockEasyPage() {
   const { can } = useFeatureAccess();
   const canManageStock = can('stock.edit');
   const canCreateStock = can('stock.create');
+  const canPurchaseStock = can('stock.view') && can('stock.create') &&
+    can('stock.edit') && can('payments.view') && can('payments.create') &&
+    !USE_MOCK_API;
   const canViewGSTR = can('gstr.view');
   // Supplier credit is financial data. The balances endpoint requires both
   // stock.view and payments.view; catalog access alone never grants it.
@@ -166,6 +170,8 @@ export default function StockEasyPage() {
   const [moveLookup, setMoveLookup] = useState('');
   const [moveOpen, setMoveOpen] = useState(false);
   const [move, setMove] = useState(initialMove);
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [receiveItem, setReceiveItem] = useState(null);
 
   const reload = async () => {
     setLoading(true);
@@ -296,19 +302,18 @@ export default function StockEasyPage() {
 
   const beginMove = (mode, itemId = '', partItem = null) => {
     setError('');
-    const item = partItem || items.find((row) => String(row.id) === String(itemId));
-    const linkedSupplier = item?.supplier?.id || item?.supplier;
-    if (mode === 'in' && item) {
-      if (!linkedSupplier) {
-        setError('This part has no Supplier linked. Assign its Supplier before receiving a purchase. Stock and supplier credit must be posted together.');
+    // Supplier purchases must use the canonical bill + GST + Finance workflow.
+    // Selecting a supplier in this dialog is sufficient for catalog items that
+    // have never been assigned to a supplier; posting the bill links the item.
+    const item = partItem || items.find(row => String(row.id) === String(itemId)) ||
+      (remoteMatches || []).find(row => String(row.id) === String(itemId));
+    if (mode === 'in') {
+      if (!canPurchaseStock) {
+        setError('Receiving a supplier purchase needs Stock Edit and Payments permissions.');
         return;
       }
-      navigate('/suppliers/' + encodeURIComponent(linkedSupplier), {
-        state: { purchasePrefill: {
-          itemId: String(item.id), quantity: '1',
-          purchaseRate: String(item.costPrice ?? 0), supplierId: String(linkedSupplier),
-        }},
-      });
+      setReceiveItem(item || null);
+      setReceiveOpen(true);
       return;
     }
     setMove({ ...initialMove, mode, requestKey: inventoryRequestKey(), itemId: String(itemId || ''),
@@ -316,6 +321,18 @@ export default function StockEasyPage() {
       sellingPrice: item ? String(item.sellingPrice ?? 0) : '' });
     setMoveLookup(item?.partName || item?.name || '');
     setMoveOpen(true);
+  };
+
+  const continueStockPurchase = ({ itemId, supplierId: selectedSupplierId, quantity, purchaseRate }) => {
+    setReceiveOpen(false);
+    setReceiveItem(null);
+    navigate('/suppliers/' + encodeURIComponent(selectedSupplierId), {
+      state: {
+        purchasePrefill: {
+          itemId, quantity, purchaseRate, supplierId: selectedSupplierId,
+        },
+      },
+    });
   };
 
   const savePart = async (event) => {
@@ -414,6 +431,13 @@ export default function StockEasyPage() {
   const saveMovement = async (event) => {
     event.preventDefault();
     if (saving) return;
+    if (move.mode === 'in' && !USE_MOCK_API) {
+      // Legacy stock-in modal must not create an unbilled purchase.
+      // Supplier purchase posting is the only normal Stock purchase action.
+      setMoveOpen(false);
+      beginMove('in', move.itemId);
+      return;
+    }
     const quantity = Number(move.quantity);
     if (!selected || !Number.isFinite(quantity) || quantity <= 0) {
       setError('Select a part and enter a valid quantity.'); return;
@@ -462,6 +486,8 @@ export default function StockEasyPage() {
         </div>
         <div className="cg-easy-actions">
           <button type="button" className="cg-easy-secondary" onClick={reload} disabled={loading}><RefreshCw size={16}/> Refresh</button>
+          {canPurchaseStock && <button type="button" className="cg-easy-secondary"
+            onClick={() => beginMove('in')}><PackagePlus size={16}/> Receive Purchase</button>}
           {canCreateStock && <button type="button" className="cg-easy-primary" onClick={() => openPartDialog()}><Plus size={16}/> Add New Part</button>}
         </div>
       </header>
@@ -582,6 +608,16 @@ export default function StockEasyPage() {
           <div key={entry.id} className="cg-easy-history-row"><div><strong>{entry.partName || entry.itemName || 'Stock Item'}</strong><small>{entry.type || entry.movement_type || 'Movement'}</small></div><b>{number(entry.quantity ?? entry.qty) > 0 ? '+' : ''}{number(entry.quantity ?? entry.qty)}</b></div>
         )) : <p>No stock movements yet.</p>}</div>
       </section>
+
+      <StockPurchaseStartDialog
+        isOpen={receiveOpen}
+        items={items}
+        suppliers={suppliers}
+        initialItem={receiveItem}
+        canPurchase={canPurchaseStock}
+        onClose={() => { setReceiveOpen(false); setReceiveItem(null); }}
+        onContinue={continueStockPurchase}
+      />
 
       <ResponsiveModalSheet isOpen={partOpen} onClose={() => !saving && setPartOpen(false)} title="Add New Part" maxWidth="600px">
         {partMode === 'find' ? (
