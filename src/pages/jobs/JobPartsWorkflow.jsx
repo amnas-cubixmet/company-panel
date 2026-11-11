@@ -24,6 +24,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
 import { financeAccountsForChannel } from '../../utils/financeCashBank';
 import GstRateDropdown from '../../components/common/GstRateDropdown';
+import SupplierSelectField from '../../components/common/SupplierSelectField';
 
 const money = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -734,10 +735,9 @@ function OutsidePartPurchasePanel({ initial, onClose, onSave, busy, error }) {
           <input className="cubegears-input" required maxLength={160} autoFocus
             value={form.partName} onChange={(e) => set('partName', e.target.value)} placeholder="Part / spare name" />
         </label>
-        <label className="form-label job-parts-modal-full">Shop / Supplier Name *
-          <input className="cubegears-input" required maxLength={160}
-            value={form.vendor} onChange={(e) => set('vendor', e.target.value)} placeholder="Outside shop name" />
-        </label>
+        <SupplierSelectField fullWidth required label="Shop / Supplier Name"
+          valueMode="name" allowManual value={form.vendor} disabled={busy}
+          className="cubegears-input" onChange={vendor => set('vendor', vendor)}/>
         <label className="form-label">SKU / Part Number
           <input className="cubegears-input" maxLength={80}
             value={form.sku} onChange={(e) => set('sku', e.target.value)} placeholder="Optional" />
@@ -971,7 +971,9 @@ function OrderPanel({ line, error, onClose, onSave, busy }) {
         <strong>{line.pendingQty} still needed</strong><br />
         Stock updates after you record the delivery in Inward / Goods Receipt.
       </div>
-      <label className="form-label job-parts-modal-full">Supplier / Vendor *<input className="cubegears-input mt-1" name="vendor" autoComplete="organization" required maxLength={120} value={form.vendor} onChange={(e) => set('vendor', e.target.value)} placeholder="Enter supplier name"/></label>
+      <SupplierSelectField fullWidth required label="Supplier / Vendor"
+        valueMode="name" allowManual value={form.vendor} disabled={busy}
+        className="cubegears-input mt-1" onChange={vendor => set('vendor', vendor)}/>
       <label className="form-label">Payment Type<select className="cubegears-select mt-1" name="type" value={form.type} onChange={(e) => set('type', e.target.value)}><option>Cash</option><option>Credit</option></select></label>
       <label className="form-label">Order Date *<input name="orderDate" type="date" required className="cubegears-input mt-1" value={form.orderDate} onChange={(e) => set('orderDate', e.target.value)}/></label>
       <label className="form-label">Order Quantity *<input name="orderedQty" className="cubegears-input mt-1" type="number" inputMode="decimal" min="0.01" step="0.01" required value={form.orderedQty} onChange={(e) => set('orderedQty', e.target.value)}/></label>
