@@ -415,7 +415,8 @@ export const CustomerList = () => {
           <h1 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Customers</h1>
         </div>
         <button
-          onClick={openAddModal}
+          onClick={openAddModal} disabled={!canCreateCustomer}
+          title={!canCreateCustomer ? 'Customer creation permission required' : undefined}
           style={{
             height: '44px',
             padding: '0 18px',
@@ -502,7 +503,8 @@ export const CustomerList = () => {
         <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '40px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
           <Users size={36} style={{ color: 'var(--text-muted)' }} />
           <strong style={{ fontSize: '15px', color: 'var(--text-primary)' }}>No customers found.</strong>
-          <button onClick={openAddModal} style={{ padding: '8px 16px', borderRadius: '10px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none', fontWeight: '700', fontSize: '12.5px', cursor: 'pointer', marginTop: '6px' }}>
+          <button onClick={openAddModal} disabled={!canCreateCustomer}
+          title={!canCreateCustomer ? 'Customer creation permission required' : undefined} style={{ padding: '8px 16px', borderRadius: '10px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none', fontWeight: '700', fontSize: '12.5px', cursor: 'pointer', marginTop: '6px' }}>
             + Add First Customer
           </button>
         </div>
@@ -542,7 +544,7 @@ export const CustomerList = () => {
                     <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>{c.jobsCount ?? '—'}</td>
                     <td title={!c.moneyAvailable ? 'Invoice balance unavailable' : undefined}
                       style={{ padding: '12px 14px', fontWeight: '700', color: c.outstanding === null ? 'var(--text-muted)' : c.outstanding > 0 ? 'var(--warning)' : 'var(--success)' }}>
-                      {formatCustomerMoney(c.outstanding)}
+                      {canViewCustomerMoney ? formatCustomerMoney(c.outstanding) : 'Restricted'}
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '6px', backgroundColor: c.status === 'Active' ? 'var(--success-soft)' : 'var(--surface-2)', color: c.status === 'Active' ? 'var(--success)' : 'var(--text-muted)' }}>
@@ -558,6 +560,8 @@ export const CustomerList = () => {
                       </button>
                       <button
                         onClick={(event) => { event.stopPropagation(); openEditModal(c); }}
+                        disabled={!canEditCustomer}
+                        title={!canEditCustomer ? 'Customer edit permission required' : undefined}
                         style={{ padding: '6px 8px', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--surface-2)', color: 'var(--text-primary)', cursor: 'pointer' }}
                       >
                         <Edit size={14} />
@@ -592,7 +596,7 @@ export const CustomerList = () => {
                   <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px' }}>Last Visit</span><strong>{c.lastVisit || '—'}</strong></div>
                   <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px' }}>Customer Type</span><strong>{c.customerType || 'Individual'}</strong></div>
                   <div><span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '11px' }}>Outstanding</span><strong title={!c.moneyAvailable ? 'Invoice balance unavailable' : undefined}
-                    style={{ color: c.outstanding === null ? 'var(--text-muted)' : c.outstanding > 0 ? 'var(--warning)' : 'var(--success)' }}>{formatCustomerMoney(c.outstanding)}</strong></div>
+                    style={{ color: c.outstanding === null ? 'var(--text-muted)' : c.outstanding > 0 ? 'var(--warning)' : 'var(--success)' }}>{canViewCustomerMoney ? formatCustomerMoney(c.outstanding) : 'Restricted'}</strong></div>
                 </div>
 
                 <CustomerContactActions customer={c} />
@@ -605,6 +609,8 @@ export const CustomerList = () => {
                   </button>
                   <button
                     onClick={(event) => { event.stopPropagation(); openEditModal(c); }}
+                        disabled={!canEditCustomer}
+                        title={!canEditCustomer ? 'Customer edit permission required' : undefined}
                     style={{ width: '38px', height: '38px', borderRadius: '10px', border: '1px solid var(--border)', backgroundColor: 'var(--surface-2)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                   >
                     <Edit size={16} />
