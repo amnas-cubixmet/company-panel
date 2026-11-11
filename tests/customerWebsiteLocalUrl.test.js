@@ -15,6 +15,7 @@ test('localhost panel uses the SAME workshop subdomain for preview, open, copy a
     subdomainLabel: slug,
     wildcardReady: false,
     localDevelopment: isLocalCustomerWebsiteDevelopment(true, 'localhost'),
+    localOrigin: 'http://localhost:5174',
   });
   assert.equal(urls.displayUrl, 'http://mendoza-and-chang-traders.localhost:5174/');
   assert.equal(urls.productionUrl, 'https://mendoza-and-chang-traders.cubegears.com/');
@@ -57,7 +58,7 @@ test('default workshop subdomain remains authoritative on local and production U
   const production = customerWebsiteAddresses(config);
   assert.equal(production.displayUrl, 'https://mendoza-and-chang-traders.cubegears.com/');
   assert.equal(production.canOpen, false);
-  const dev = customerWebsiteAddresses({ ...config, localDevelopment: true });
+  const dev = customerWebsiteAddresses({ ...config, localDevelopment: true, localOrigin: 'http://localhost:5174' });
   assert.equal(dev.displayUrl, 'http://mendoza-and-chang-traders.localhost:5174/');
   assert.equal(dev.productionUrl, production.displayUrl);
 
@@ -71,6 +72,24 @@ test('default workshop subdomain remains authoritative on local and production U
   assert.equal(staleConfig.canOpen, true);
 });
 
+test('development website preview follows configured port and rejects remote origins', () => {
+  const workshop = {
+    subdomain: slug + '.cubegears.com',
+    subdomainLabel: slug,
+    localDevelopment: true,
+  };
+  const configured = customerWebsiteAddresses({ ...workshop, localOrigin: 'http://127.0.0.1:5414' });
+  assert.equal(configured.displayUrl, 'http://mendoza-and-chang-traders.localhost:5414/');
+  assert.equal(configured.suffix, '.localhost:5414');
+  assert.equal(configured.canOpen, true);
+  for (const localOrigin of ['', 'https://evil.example.com', 'http://evil.example.com:5414',
+    'http://localhost:5414/custom', 'http://localhost:5414?redirect=1']) {
+    const rejected = customerWebsiteAddresses({ ...workshop, localOrigin });
+    assert.equal(rejected.localUrl, '');
+    assert.equal(rejected.canOpen, false);
+  }
+});
+
 test('dev-only localhost detection never activates on remote hosts or bad labels', () => {
   assert.equal(isLocalCustomerWebsiteDevelopment(true, 'localhost'), true);
   assert.equal(isLocalCustomerWebsiteDevelopment(true, '127.0.0.1'), true);
@@ -81,6 +100,7 @@ test('dev-only localhost detection never activates on remote hosts or bad labels
     subdomain: 'bad.cubegears.com',
     subdomainLabel: 'invalid.label',
     localDevelopment: true,
+    localOrigin: 'http://localhost:5174',
   });
   assert.equal(invalid.localUrl, '');
   assert.equal(invalid.canOpen, false);
