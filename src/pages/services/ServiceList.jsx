@@ -18,6 +18,7 @@ import '../../styles/service-management.css';
 import '../../styles/service-borderless-forms.css';
 import '../../styles/service-hierarchy.css';
 import '../../styles/services-modal-workspace.css';
+import '../../styles/services-directory-refined.css';
 
 const money = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -268,6 +269,12 @@ export const ServiceList = () => {
   const [query, setQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const hasActiveFilters = Boolean(query.trim() || categoryFilter !== 'All' || statusFilter !== 'All');
+  const resetCatalogFilters = () => {
+    setQuery('');
+    setCategoryFilter('All');
+    setStatusFilter('All');
+  };
   const [form, setForm] = useState(emptyService);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [categoryForm, setCategoryForm] = useState(emptyCategory);
@@ -539,7 +546,7 @@ export const ServiceList = () => {
   const editingService = isNew || isEdit;
 
   return (
-    <div className="service-management-page cg-services service-dashboard">
+    <div className="service-management-page cg-services service-dashboard cg-services-refined">
       <ServicesHeader
         onAdd={()=>navigate('/services/new')}
         onAddCategory={()=>openCategoryDialog()}
@@ -578,11 +585,12 @@ export const ServiceList = () => {
         statusFilter={statusFilter}
         onStatusChange={setStatusFilter}
         categories={categoryTree}
+        onReset={resetCatalogFilters}
       />
 
       <div className="service-workspace-list-head">
-        <div><h2>Workshop Services</h2>
-          <p>{filtered.length} of {services.length} services · Select a card to view details</p>
+        <div><h2>Service Catalog</h2>
+          <p>{filtered.length} of {services.length} services</p>
         </div>
         <button type="button" className="service-workspace-manage"
           aria-expanded={showCategories} aria-controls="service-categories-section"
@@ -597,6 +605,8 @@ export const ServiceList = () => {
         onView={(service)=>navigate(`/services/${service.id}`)}
         onEdit={(service)=>navigate(`/services/${service.id}/edit`)}
         onDelete={(service)=>navigate(`/services/${service.id}/delete`)}
+        hasFilters={hasActiveFilters}
+        onReset={resetCatalogFilters}
       />}
       {!loading && !services.length && canCreate && !loadError && (
         <button type="button" className="service-workspace-empty-add" onClick={()=>navigate('/services/new')}>
