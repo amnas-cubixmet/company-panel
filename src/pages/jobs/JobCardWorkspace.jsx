@@ -37,7 +37,6 @@ import { jobDisplayLabel } from '../../components/jobs/jobs.utils';
 import { jobInvoiceGST, jobInvoiceFinance } from '../../utils/jobGstFinance';
 import '../../styles/job-gst-finance.css';
 import { JobBreadcrumbs } from '../../components/jobs/JobBreadcrumbs';
-import { JobDetailGuide } from '../../components/jobs/JobCardsGuide';
 import '../../styles/jobs-unified-ui.css';
 import { WhatsAppManualShareButton } from '../../components/common/WhatsAppManualShareButton';
 import { statusForComplaint, complaintStatusClass, unresolvedComplaintCount, COMPLAINT_STATUSES } from '../../components/jobs/complaintStatus';
@@ -940,7 +939,6 @@ export function JobCardWorkspace() {
         </div>
       </header>
 
-      <JobDetailGuide/>
       {can('payroll.view') && can('expenses.view') && hasStockAccess && <JobTotalCostPanel
         jobId={job.id}
         refreshVersion={timerRefreshVersion}
