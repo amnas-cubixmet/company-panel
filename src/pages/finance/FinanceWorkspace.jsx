@@ -27,7 +27,8 @@ const sections = [
 
 const workflows = [
   { label: 'Customer Invoice', to: '/invoices', icon: FileText, access: 'invoices.view' },
-  { label: 'Supplier Purchases & Dues', to: '/suppliers', icon: Truck, access: 'stock.view' },
+  { label: 'Supplier Purchases · GST & Dues', to: '/suppliers/purchases', icon: Truck, access: 'stock.view' },
+  { label: 'Purchase GST / GSTR-2B', to: '/gstr?tab=gstr2b', icon: FileText, access: 'gstr.view' },
   { label: 'Employee Wages', to: '/payroll/daily-wages', icon: UserRound, access: 'payroll.view' },
   { label: 'Outside Purchases', to: '/jobs/outside-labour', icon: Wrench, access: 'jobs.view' },
 ];
