@@ -6,6 +6,7 @@ import {
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/finance-workspace.css';
 import '../../styles/finance-unified-ui.css';
+import '../../styles/finance-white-refined.css';
 
 // One workspace; each existing financial workflow remains the sole source of truth.
 const sections = [
@@ -48,9 +49,9 @@ export default function FinanceWorkspace() {
   const current = [...sections].sort((a, b) => b.to.length - a.to.length).find((item) =>
     location.pathname === item.to || location.pathname.startsWith(item.to + '/')
   );
-  return <main className="finance-workspace">
+  return <main className="finance-workspace cg-finance-refined">
     <div className="finance-workspace-top">
-      <div>
+      <div className="cg-finance-heading">
         <span className="finance-workspace-eyebrow">CUBIXGEAR · WORKSHOP FINANCE</span>
         <h1>Finance</h1>
         <p>Track the money your workshop receives, pays and keeps in its accounts.</p>

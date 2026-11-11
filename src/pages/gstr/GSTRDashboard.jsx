@@ -11,6 +11,7 @@ import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import './gstr.css';
 import './gstr-ui-polish.css';
 import './gstr-directory-refined.css';
+import './gstr-purchase-finance-refined.css';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -428,6 +429,24 @@ export default function GSTRDashboard() {
       {tab === 'gstr2b' && <section className="gstr-panel">
         <div className="gstr-panel-heading"><h2>GSTR-2B · Purchase ITC Reconciliation</h2><span>{purchases.length} posted supplier bills</span></div>
         <p className="gstr-note">Upload the official GST Portal GSTR-2B JSON. Matching B2B invoice evidence is now saved by upload fingerprint, but purchase bills remain unchanged. ITC must still be reviewed and approved separately.</p>
+        <div className="cg-gstr-purchase-quick-links" aria-label="Purchase GST and finance source records">
+          <div className="cg-gstr-purchase-heading">
+            <span className="cg-gstr-purchase-kicker">PURCHASE GST &amp; FINANCE</span>
+            <strong>Purchase records and payment references</strong>
+            <small>Purchase GST, supplier payments and eligible input tax are separate records.</small>
+          </div>
+          <div className="cg-gstr-purchase-link-actions">
+            {canSeePurchaseFinance && <Link to="/suppliers/purchases" className="cg-gstr-purchase-nav-link">
+              <ShoppingBag size={16} aria-hidden="true"/> Supplier Purchases
+            </Link>}
+            {access.can('payments.view') && <Link to="/finance/transactions" className="cg-gstr-purchase-nav-link">
+              <FileText size={16} aria-hidden="true"/> Finance Transactions
+            </Link>}
+            {access.can('expenses.view') && <Link to="/finance/expenses" className="cg-gstr-purchase-nav-link">
+              <FileSpreadsheet size={16} aria-hidden="true"/> Finance Expenses
+            </Link>}
+          </div>
+        </div>
         <div className="gstr-saved-imports">
           <label>Saved GSTR-2B reconciliation
             <select aria-label="Open saved GSTR-2B reconciliation" value={activeImportId}
@@ -467,7 +486,10 @@ export default function GSTRDashboard() {
           <DataTable key={'purchases-' + period} rows={purchases} columns={purchaseColumns} search={search} /></>}
         {canSeePurchaseFinance && <div className="gstr-purchase-settlements" aria-label="Supplier purchase payment allocation summary">
           <div className="gstr-panel-heading">
-            <h3>Purchase Bill Payments &amp; Remaining Credit</h3>
+            <div className="cg-gstr-purchase-heading">
+              <span className="cg-gstr-purchase-kicker">SUPPLIER PAYMENTS</span>
+              <h3>Purchase Bill Payments &amp; Remaining Credit</h3>
+            </div>
             <Link to="/suppliers/purchases" className="gstr-source-link">Open Supplier Purchases</Link>
           </div>
           <p className="gstr-note">
@@ -487,7 +509,15 @@ export default function GSTRDashboard() {
               columns={purchaseSettlementColumns} />}
         </div>}
         {access.can('expenses.view') && <div className="gstr-expense-gst-review">
-          <h3 className="gstr-subheading">Operational Expense GST · Review Required</h3>
+          <div className="cg-gstr-expense-heading">
+            <div className="cg-gstr-purchase-heading">
+              <span className="cg-gstr-purchase-kicker">FINANCE EXPENSES</span>
+              <h3 className="gstr-subheading">Operational Expense GST · Review Required</h3>
+            </div>
+            <Link to="/finance/expenses" className="cg-gstr-purchase-nav-link">
+              Review Finance Expenses
+            </Link>
+          </div>
           <p className="gstr-note">Finance Expenses may record a tax amount without a verified supplier GSTIN or CGST/SGST/IGST invoice breakdown. These amounts appear for investigation only; they are excluded from eligible ITC and GSTR-3B.</p>
           <DataTable key={'expense-gst-' + period} rows={expenseTaxReview} columns={expenseGSTColumns} />
         </div>}
