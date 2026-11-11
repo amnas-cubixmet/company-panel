@@ -2,11 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle, CheckCircle2, Download, FileSpreadsheet, FileText,
-  RefreshCw, Search, ShieldCheck, UploadCloud, Info, CalendarDays, AlertTriangle, ShoppingBag
+  RefreshCw, Search, ShieldCheck, UploadCloud, CalendarDays, AlertTriangle, ShoppingBag
 } from 'lucide-react';
 import apiClient from '../../api/apiClient';
 import GSTPart15Workspace from './GSTPart15Workspace';
-import GSTRGuide from './GSTRGuide';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import './gstr.css';
 import './gstr-ui-polish.css';
@@ -24,17 +23,6 @@ const TABS = [
   ['credits', 'GST Credit Notes'], ['ledger', 'Tax Ledger'],
   ['exports', 'Exports & Filing']
 ];
-const TAB_HELP = {
-  overview: 'Summary of recorded GST invoice tax and purchase tax for the selected month. Figures may need review.',
-  gstr1: 'Customer GST invoices included in your outward sales preparation. Open an invoice to review it.',
-  gstr3b: 'A preparation view of recorded output tax and reviewed ITC. Not a GST Portal return or final tax due.',
-  gstr2b: 'Compare your supplier bills with the official GSTR-2B JSON. A matched bill still needs a separate ITC eligibility decision.',
-  hsn: 'Provisional product and service classification totals. These are not a ready-to-file HSN return.',
-  itc: 'Review documented GST input-credit eligibility for purchases, separately from the GSTR-2B match.',
-  credits: 'Record sales GST credit notes linked to finalized invoices; this does not issue a customer refund.',
-  ledger: 'Review internal GST tax-head entries. This is not the GST Portal electronic cash or credit ledger.',
-  exports: 'Download preparation CSV files and record internal review evidence. You must verify filing separately on the GST Portal.',
-};
 const todayPeriod = () => {
   const now = new Date();
   return String(now.getFullYear()) + '-' + String(now.getMonth() + 1).padStart(2, '0');
@@ -359,7 +347,6 @@ export default function GSTRDashboard() {
       </label>
       <span className="gstr-status"><AlertTriangle size={16} aria-hidden="true"/> Preparation only · Portal unverified · Not submitted by CubixGear</span>
     </section>
-    <GSTRGuide/>
 
     {issue && <div className="gstr-alert is-error" role="alert">
       <AlertCircle size={18} aria-hidden="true"/>
@@ -385,7 +372,6 @@ export default function GSTRDashboard() {
             onClick={() => changeTab(value)}>{label}</button>
         )}
       </nav>
-      <p className="gstr-tab-help"><Info size={17} aria-hidden="true"/>{TAB_HELP[tab]}</p>
 
       {tab === 'overview' && <section className="gstr-panel">
         <div className="gstr-panel-heading"><h2>Monthly GST Overview</h2><span>{period}</span></div>
