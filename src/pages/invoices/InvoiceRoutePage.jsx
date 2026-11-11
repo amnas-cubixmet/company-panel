@@ -678,6 +678,7 @@ export function InvoiceRoutePage() {
         onCreate={() => navigate(`/invoices/new?kind=${activeTab}`)}
         onGSTR={() => navigate('/gstr?tab=overview')}
         onFinance={() => navigate('/finance')}
+        onSupplierPurchases={() => navigate('/suppliers/purchases')}
       />
 
       <InvoiceTabs
