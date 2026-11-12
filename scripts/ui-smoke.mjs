@@ -322,6 +322,9 @@ try {
           );
           if(await page.locator('.vehicle-camera-queued').count()!==5)
             throw Error('Five uploaded pictures should generate five independent thumbnails');
+          // File previews can paint a frame after the queued records appear.
+          // Wait for a real preview image before measuring its responsive CSS.
+          await page.locator('.vehicle-camera-preview-button img').first().waitFor({state:'visible',timeout:5000});
           const grid=await page.locator('.vehicle-camera-queue-grid').evaluate(el=>{
             const rect=el.getBoundingClientRect();
             const columns=getComputedStyle(el).gridTemplateColumns.split(/\s+/).filter(Boolean);
@@ -365,6 +368,20 @@ try {
           const registerLink=page.getByRole('link',{name:'Register',exact:true});
           if(await registerLink.getAttribute('href')!=='https://cubixgear.tech/signup')
             throw Error('Register must open public website registration');
+        }
+        if(path==='/forgot-password') {
+          await page.getByRole('heading',{name:'Reset your password'}).waitFor({state:'visible'});
+          if(await page.locator('input[type="email"]').count()!==1)
+            throw Error('Forgot password must have exactly one email input');
+          if(await page.locator('input[type="tel"],input[autocomplete="organization"],.auth-mode-tabs').count())
+            throw Error('Old mobile/workshop recovery controls must not appear');
+          if(await page.getByText('Staff Reset Help').count())
+            throw Error('Staff Reset Help should be removed');
+          if(await page.getByRole('button',{name:'Send Reset Link'}).count()!==1)
+            throw Error('Email reset action is missing');
+          const logo=page.locator('.login-brand-mark img.cubixgear-logo-image');
+          if(await logo.count()!==1 || !await logo.evaluate(node=>node.complete && node.naturalWidth>0))
+            throw Error('Cubixgear recovery page logo is missing');
         }
         const text=await page.locator('body').innerText();
         if(text.length<20)throw Error('Blank page');
