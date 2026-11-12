@@ -214,6 +214,12 @@ try {
         await route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({message:'Smoke tests do not write tenant data.'})});return;
       }
       const path=new URL(route.request().url()).pathname.replace('/api/v1','').replace(/\/$/,'');
+      if(path==='/company/logo') {
+        // Authenticated company branding is a private image response.
+        const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==','base64');
+        await route.fulfill({status:200,contentType:'image/png',body:png});
+        return;
+      }
       if (/^\/(?:billing\/documents|e-way-bills)\/[^/]+\/pdf$/.test(path)) {
         await route.fulfill({status:200,contentType:'application/pdf',body:'%PDF-1.4\n% UI fixture\n%%EOF'});
         return;
@@ -356,6 +362,34 @@ try {
             throw Error('Removing one photo should leave all other queued photos');
         }
 
+        if(path==='/dashboard' && profile.width<1024) {
+          const brand=page.locator('.mobile-workshop-brand');
+          await brand.waitFor({state:'visible'});
+          if(await brand.locator('.mobile-brand-copy strong').innerText()!=='Test Workshop')
+            throw Error('Mobile header must show the authenticated workshop name, not the product name');
+          if(await brand.locator('.mobile-powered-brand').innerText()!=='cubixgear')
+            throw Error('Mobile header must also show cubixgear branding');
+          const companyLogo=brand.locator('.mobile-company-logo img');
+          await companyLogo.waitFor({state:'visible',timeout:5000});
+          const productLogo=brand.locator('.mobile-powered-logo img.cubixgear-logo-image');
+          await productLogo.waitFor({state:'visible',timeout:5000});
+          if(!(await companyLogo.evaluate(el=>el.complete&&el.naturalWidth>0)) ||
+              !(await productLogo.evaluate(el=>el.complete&&el.naturalWidth>0)))
+            throw Error('Both uploaded workshop and cubixgear images must render in mobile header');
+          const layout=await page.evaluate(()=>{
+            const brand=document.querySelector('.mobile-workshop-brand');
+            const copy=brand.querySelector('.mobile-brand-copy');
+            const actions=document.querySelector('.mobile-header-actions');
+            return {
+              brandRight:brand.getBoundingClientRect().right,
+              actionsLeft:actions.getBoundingClientRect().left,
+              copyWidth:copy.getBoundingClientRect().width,
+              display:getComputedStyle(copy).display,
+            };
+          });
+          if(layout.display==='none'||layout.copyWidth<35||layout.brandRight>layout.actionsLeft+1)
+            throw Error('Mobile branding is hidden or overlaps controls: '+JSON.stringify(layout));
+        }
         if(path==='/plans') {
           if(new URL(page.url()).pathname!=='/account/credits/buy') throw Error('Redirect did not reach module marketplace');
           if(new URL(page.url()).searchParams.has('month')) throw Error('Payroll filters leaked into unrelated route');
