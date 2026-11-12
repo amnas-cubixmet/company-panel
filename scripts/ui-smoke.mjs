@@ -538,6 +538,11 @@ try {
           const registerLink=page.getByRole('link',{name:'Register',exact:true});
           if(await registerLink.getAttribute('href')!=='https://cubixgear.tech/signup')
             throw Error('Register must open public website registration');
+          // Leave both credentials empty for the existing shared login border
+          // validation test that runs later in the same smoke-test page.
+          await input.fill('');
+          await mobileOption.click();
+          await input.fill('');
         }
         if(path==='/staff-management/add') {
           await page.getByRole('heading',{name:'Add Staff'}).waitFor({state:'visible'});
