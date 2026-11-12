@@ -285,7 +285,16 @@ function StorageView({ storage, setStorage }) {
         {canManageStorage && <div className="saas-storage-actions">
           <select value={category} onChange={(e) => setCategory(e.target.value)}><option>Job Card</option><option>Inspection</option><option>Invoice</option><option>Delivery</option><option>General</option></select>
           <label className="saas-button"><Upload size={18} /> {storageBusy ? 'Working…' : 'Upload photos'}<input hidden multiple disabled={storageBusy} type="file" accept="image/jpeg,image/png,image/webp" onChange={upload} /></label>
-          <button className="saas-button danger" disabled={!selected.length || storageBusy} onClick={() => remove(selected)}><Trash2 size={18} /> Delete selected</button>
+          <button
+            type="button"
+            className="saas-button danger saas-storage-delete"
+            disabled={!selected.length || storageBusy}
+            onClick={() => remove(selected)}
+            title={!selected.length ? 'Select one or more files to delete' : `Delete ${selected.length} selected file(s)`}
+          >
+            <Trash2 size={17} strokeWidth={2} aria-hidden="true" />
+            <span>Delete selected</span>
+          </button>
         </div>}
         {storageError && <p className="saas-error" role="alert">{storageError}</p>}
       </section>
