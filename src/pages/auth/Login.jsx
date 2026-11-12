@@ -29,10 +29,15 @@ export const Login = () => {
   const suggestedEmail = params.get('email') || '';
   const resetComplete = params.get('reset') === 'success';
 
-  const [identifier, setIdentifier] = useState(isMockMode ? 'admin@cubixgear.com' : suggestedEmail);
+  const initialEmail = isMockMode ? 'admin@cubixgear.com' : suggestedEmail;
+  const [loginMethod, setLoginMethod] = useState(initialEmail ? 'email' : 'mobile');
+  const [mobileNumber, setMobileNumber] = useState('');
+  const [emailAddress, setEmailAddress] = useState(initialEmail);
   const [countryCode, setCountryCode] = useState('+91');
-  const isEmailIdentifier = identifier.includes('@');
-  const showCountryCode = !isEmailIdentifier && !identifier.trim().startsWith('+');
+  // Keep each identifier separate when the user switches sign-in methods.
+  const identifier = loginMethod === 'email' ? emailAddress : mobileNumber;
+  const isEmailIdentifier = loginMethod === 'email';
+  const showCountryCode = !isEmailIdentifier && !mobileNumber.trim().startsWith('+');
   const [workshop, setWorkshop] = useState('');
   const [needsWorkshop, setNeedsWorkshop] = useState(false);
   const [password, setPassword] = useState(isMockMode ? 'password123' : '');
@@ -55,7 +60,7 @@ export const Login = () => {
     if (loading) return;
 
     const enteredIdentifier = identifier.trim();
-    const isEmail = enteredIdentifier.includes('@');
+    const isEmail = loginMethod === 'email';
     // Keep the existing backend contract: normalized emails or E.164 mobile numbers.
     const identity = isEmail
       ? normalizeEmail(enteredIdentifier)
@@ -63,7 +68,7 @@ export const Login = () => {
         ? enteredIdentifier.replace(/[\s().-]/g, '')
         : `${countryCode}${enteredIdentifier.replace(/[\s().-]/g, '')}`;
     const nextErrors = {};
-    if (!enteredIdentifier) nextErrors.identifier = 'Email or mobile number is required.';
+    if (!enteredIdentifier) nextErrors.identifier = isEmail ? 'Email address is required.' : 'Mobile number is required.';
     else if (isEmail && !isValidEmail(identity))
       nextErrors.identifier = 'Enter a valid email address.';
     else if (!isEmail && !/^\+[1-9]\d{7,14}$/.test(identity))
@@ -132,7 +137,35 @@ export const Login = () => {
 
           <form onSubmit={handleSubmit} className="login-form" noValidate>
             <div className="login-identifier-field">
-              <label htmlFor="login-identifier" className="login-field-label">Mobile Number or Email</label>
+              <div className="login-method-switch" role="group" aria-label="Sign in using">
+                <button
+                  type="button"
+                  className={'login-method-option' + (!isEmailIdentifier ? ' is-active' : '')}
+                  aria-pressed={!isEmailIdentifier}
+                  onClick={() => {
+                    setLoginMethod('mobile');
+                    clearField('identifier');
+                  }}
+                >
+                  <Phone size={15} strokeWidth={1.8} aria-hidden="true" />
+                  Mobile Number
+                </button>
+                <button
+                  type="button"
+                  className={'login-method-option' + (isEmailIdentifier ? ' is-active' : '')}
+                  aria-pressed={isEmailIdentifier}
+                  onClick={() => {
+                    setLoginMethod('email');
+                    clearField('identifier');
+                  }}
+                >
+                  <Mail size={15} strokeWidth={1.8} aria-hidden="true" />
+                  Email
+                </button>
+              </div>
+              <label htmlFor="login-identifier" className="login-field-label">
+                {isEmailIdentifier ? 'Email Address' : 'Mobile Number'}
+              </label>
               <div className={'login-input-shell ' + (fieldErrors.identifier ? 'is-error' : '')}>
                 {showCountryCode ? (
                   <select
@@ -158,24 +191,28 @@ export const Login = () => {
                 <input
                   id="login-identifier"
                   className="login-input"
-                  type="text"
+                  type={isEmailIdentifier ? 'email' : 'tel'}
                   autoComplete="username"
-                  inputMode={isEmailIdentifier ? 'email' : 'text'}
+                  inputMode={isEmailIdentifier ? 'email' : 'tel'}
                   value={identifier}
                   onChange={(event) => {
                     const value = event.target.value;
-                    const matchingCountry = value.startsWith('+')
-                      ? LOGIN_COUNTRY_CODES.find((country) => value.startsWith(country.code))
-                      : null;
-                    if (matchingCountry) {
-                      setCountryCode(matchingCountry.code);
-                      setIdentifier(value.slice(matchingCountry.code.length).replace(/[\s().-]/g, ''));
+                    if (isEmailIdentifier) {
+                      setEmailAddress(value);
                     } else {
-                      setIdentifier(value);
+                      const matchingCountry = value.startsWith('+')
+                        ? LOGIN_COUNTRY_CODES.find((country) => value.startsWith(country.code))
+                        : null;
+                      if (matchingCountry) {
+                        setCountryCode(matchingCountry.code);
+                        setMobileNumber(value.slice(matchingCountry.code.length).replace(/[\s().-]/g, ''));
+                      } else {
+                        setMobileNumber(value);
+                      }
                     }
                     clearField('identifier');
                   }}
-                  placeholder="90000000000"
+                  placeholder={isEmailIdentifier ? 'name@example.com' : '90000000000'}
                   aria-invalid={Boolean(fieldErrors.identifier)}
                   aria-describedby={fieldErrors.identifier ? 'login-identifier-error' : undefined}
                 />
