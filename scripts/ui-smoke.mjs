@@ -322,6 +322,9 @@ try {
           );
           if(await page.locator('.vehicle-camera-queued').count()!==5)
             throw Error('Five uploaded pictures should generate five independent thumbnails');
+          // File previews can paint a frame after the queued records appear.
+          // Wait for a real preview image before measuring its responsive CSS.
+          await page.locator('.vehicle-camera-preview-button img').first().waitFor({state:'visible',timeout:5000});
           const grid=await page.locator('.vehicle-camera-queue-grid').evaluate(el=>{
             const rect=el.getBoundingClientRect();
             const columns=getComputedStyle(el).gridTemplateColumns.split(/\s+/).filter(Boolean);
