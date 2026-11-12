@@ -13,11 +13,11 @@ Updated: 2026-11-12
 
 ## Verification
 - Company Panel CI initial branch run: lint, build, bundle, node regression tests and browser UI smoke checks succeeded (workflow 43167924784).
-- Follow-up invoice/payment reminder UI commit is pending its new CI workflow.
+- Final merged-main Company Panel CI [run 43170662851](https://github.com/amnas-cubixmet/company-panel/actions/runs/43170662851): **success** (lint, Vite build, Node regressions, Playwright Chromium UI smoke). Merge commit `11bc866b7979157e4683c81845bcca6d0fdd2c38`.
 - No production browser WhatsApp delivery has been verified; a draft is NOT a delivery confirmation.
 - Public and Customer Website have no automatic WhatsApp provider integration changed by this migration.
 
 ## GitHub delivery
 PR: https://github.com/amnas-cubixmet/company-panel/pull/131
 Backend dependency: https://github.com/amnas-cubixmet/cubegears-backend/pull/80
-Merge status: pending checks/verification.
+Implementation PR #131 merged to main. Backend PR #80 merged to main as `9e2f1a9830ea1b36ac0699b929d3c6db52f2943a` following successful [CI 43171262646](https://github.com/amnas-cubixmet/cubegears-backend/actions/runs/43171262646). Production browser/network/traceback retests remain pending; do not label reported 500 bugs production-fixed yet.
