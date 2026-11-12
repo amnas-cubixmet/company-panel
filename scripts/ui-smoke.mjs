@@ -678,10 +678,30 @@ try {
             });
             await email.fill('Member@Example.com');
             await page.getByRole('button',{name:'Send Magic Link'}).click();
-            await page.locator('.auth-message[role="status"]').waitFor({state:'visible'});
+            const inlineStatus=page.locator('.auth-recovery-inline-status[role="status"]');
+            await inlineStatus.waitFor({state:'visible'});
             if(requests.length!==1||requests[0].kind!=='magic'||
                requests[0].body?.email!=='member@example.com')
               throw Error('Magic link should send normalized email to the magic-link API');
+            const presentation=await inlineStatus.evaluate(node=>{
+              const field=document.querySelector('#forgot-password-email').getBoundingClientRect();
+              const status=node.getBoundingClientRect();
+              const styles=getComputedStyle(node);
+              return {
+                message:node.textContent.trim(),
+                belowInput:status.top>=field.bottom,
+                borderTopWidth:styles.borderTopWidth,
+                background:styles.backgroundColor,
+                fontSize:parseFloat(styles.fontSize),
+                height:status.height,
+              };
+            });
+            if(presentation.message.length>65 ||
+              !presentation.belowInput ||
+              presentation.borderTopWidth!=='0px' ||
+              presentation.background!=='rgba(0, 0, 0, 0)' ||
+              presentation.fontSize>12 || presentation.height>40)
+              throw Error('Magic link feedback should be short, unboxed, and inline: '+JSON.stringify(presentation));
             await reset.click();
             if(await page.locator('.auth-message[role="status"]').count())
               throw Error('Changing recovery method should clear stale success feedback');
@@ -690,6 +710,22 @@ try {
             if(requests.length!==2||requests[1].kind!=='reset'||
                requests[1].body?.email!=='member@example.com')
               throw Error('Reset mode must submit to the password-reset API');
+            // Backend field-level errors must appear directly under the input
+            // with a red outline, not as a large toast/banner.
+            await page.route('**/api/v1/auth/forgot-password',route=>route.fulfill({
+              status:400,contentType:'application/json',
+              body:JSON.stringify({email:['Enter a valid email address.']}),
+            }));
+            await email.fill('another@example.test');
+            await page.getByRole('button',{name:'Send Reset Link'}).click();
+            await page.locator('#forgot-password-email-error').waitFor({state:'visible'});
+            if(await email.getAttribute('aria-invalid')!=='true' ||
+               await page.locator('.login-input-shell.is-error').count()!==1 ||
+               await page.locator('.auth-recovery-inline-status').count())
+              throw Error('Server-side email error should be shown inline with a red input outline');
+            await email.fill('corrected@example.test');
+            if(await page.locator('.auth-field-error,.login-input-shell.is-error').count())
+              throw Error('Changing recovery email must clear server-side errors');
           } else {
             await reset.click();
           }
