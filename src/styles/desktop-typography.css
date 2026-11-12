@@ -487,22 +487,31 @@
 }
 
 
-/* The logged-in workshop is the primary mobile app identity. Override only
-   this wordmark, while keeping ordinary content and form fields regular. */
+/* A modest semibold workshop wordmark is the sole workspace masthead.
+   Keep the global regular-weight contract for all other UI text. */
 @media screen and (max-width:1023px) {
   #root .app-shell .mobile-dual-identity .workshop-company-name {
-    font-weight:800 !important;
-    font-size:16px !important;
+    font-weight:600 !important;
+    font-size:15px !important;
     line-height:1.25;
-    letter-spacing:-.025em;
+    letter-spacing:-.01em;
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
   }
+  #root .app-shell .mobile-drawer-company-line .workshop-company-name {
+    font-weight:600 !important;
+    font-size:14px !important;
+  }
 }
 @media screen and (max-width:390px) {
   #root .app-shell .mobile-dual-identity .workshop-company-name {
-    font-weight:800 !important;
+    font-size:13px !important;
+  }
+}
+@media screen and (min-width:1024px) {
+  #root .app-shell .sidebar-workshop-only .workshop-company-name {
+    font-weight:600 !important;
     font-size:14px !important;
   }
 }
