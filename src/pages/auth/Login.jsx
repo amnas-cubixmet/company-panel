@@ -167,7 +167,7 @@ export const Login = () => {
             </div>
           )}
           {invalidCredentials && (
-            <div className="auth-message is-info" role="note">
+            <div className="login-help-note" role="note">
               {isEmailIdentifier
                 ? 'Registered a new workshop? Complete the one-time password setup from your email first. If the link expired, request a new recovery link.'
                 : 'New staff account? Ask your workshop administrator for a valid password setup link. If your phone is linked to several workshops, enter the correct workshop code.'}
