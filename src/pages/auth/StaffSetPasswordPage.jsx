@@ -14,11 +14,26 @@ async function publicPasswordRequest(path, payload) {
     referrerPolicy: 'no-referrer',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(payload),
-  });
-  const data = await response.json().catch(() => ({}));
+  }).catch(() => { throw new Error('Unable to connect. Please try again.'); });
+  const data = (response.headers.get('content-type') || '').includes('json')
+    ? await response.json().catch(() => ({}))
+    : {};
   if (!response.ok) {
     const problem = data?.password;
-    throw new Error(Array.isArray(problem) ? problem.join(' ') : problem || data.message || 'Invalid or expired setup link.');
+    const message = response.status >= 500
+      ? 'Something went wrong. Please try again.'
+      : response.status === 429
+        ? 'Too many attempts. Please try again shortly.'
+        : Array.isArray(problem)
+          ? problem.join(' ')
+          : typeof problem === 'string'
+            ? problem
+            : typeof data?.message === 'string'
+              ? data.message
+              : 'This link is invalid or expired.';
+    const failure = new Error(message);
+    failure.status = response.status;
+    throw failure;
   }
   return data;
 }
@@ -48,7 +63,7 @@ export default function StaffSetPasswordPage() {
         setExpiry(result.expiresAt || '');
         setState('ready');
       })
-      .catch(() => { if (active) setState('invalid'); });
+      .catch((cause) => { if (active) setState(cause?.status === 400 ? 'invalid' : 'unavailable'); });
     return () => { active = false; };
   }, [token]);
 
@@ -117,6 +132,11 @@ export default function StaffSetPasswordPage() {
               <span className="login-brand-subtitle">Secure Workshop Staff Access</span></div>
           </div>
           {state === 'checking' && <p role="status">Checking your one-time password setup link…</p>}
+          {state === 'unavailable' && <>
+            <h1 className="login-title">Unable to verify link</h1>
+            <p role="alert" className="login-description">Unable to connect. Please try again.</p>
+            <button className="login-submit" type="button" onClick={() => window.location.reload()}>Retry Connection</button>
+          </>}
           {state === 'invalid' && <>
             <h1 className="login-title">Link unavailable</h1>
             <p role="alert" className="login-description">This secure link has expired, was already used, or was replaced. Ask your workshop administrator to resend it.</p>
