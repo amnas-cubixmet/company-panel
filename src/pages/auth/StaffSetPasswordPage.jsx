@@ -14,23 +14,32 @@ async function publicPasswordRequest(path, payload) {
     referrerPolicy: 'no-referrer',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(payload),
-  }).catch(() => { throw new Error('Unable to connect. Please try again.'); });
+  }).catch(() => {
+    const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    throw new Error(isLocal
+      ? 'Cannot reach the Django backend. Check that it is running and VITE_API_URL is correct.'
+      : 'Unable to connect to the cubixgear service. Please try again.');
+  });
   const data = (response.headers.get('content-type') || '').includes('json')
     ? await response.json().catch(() => ({}))
     : {};
   if (!response.ok) {
     const problem = data?.password;
     const message = response.status >= 500
-      ? 'Something went wrong. Please try again.'
+      ? 'The password service is temporarily unavailable. Please try again.'
       : response.status === 429
         ? 'Too many attempts. Please try again shortly.'
-        : Array.isArray(problem)
-          ? problem.join(' ')
-          : typeof problem === 'string'
-            ? problem
-            : typeof data?.message === 'string'
-              ? data.message
-              : 'This link is invalid or expired.';
+        : response.status === 404 || response.status === 405
+          ? 'Password verification API not found. Check the Django backend version and API URL.'
+          : response.status === 401 || response.status === 403
+            ? 'Password verification is blocked. Check the server authentication and CORS configuration.'
+            : Array.isArray(problem)
+              ? problem.join(' ')
+              : typeof problem === 'string'
+                ? problem
+                : typeof data?.message === 'string'
+                  ? data.message
+                  : 'This link is invalid or expired.';
     const failure = new Error(message);
     failure.status = response.status;
     throw failure;
@@ -43,6 +52,8 @@ export default function StaffSetPasswordPage() {
   const navigate = useNavigate();
   const [state, setState] = useState('checking');
   const [purpose, setPurpose] = useState('setup');
+  const [accountType, setAccountType] = useState('unknown');
+  const [connectionError, setConnectionError] = useState('');
   const [expiry, setExpiry] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -56,14 +67,20 @@ export default function StaffSetPasswordPage() {
     if (!token) { setState('invalid'); return; }
     let active = true;
     setState('checking');
+    setConnectionError('');
     publicPasswordRequest('validate', { token })
       .then((result) => {
         if (!active) return;
         setPurpose(result.purpose || 'setup');
+        setAccountType(result.accountType === 'owner' ? 'owner' : 'staff');
         setExpiry(result.expiresAt || '');
         setState('ready');
       })
-      .catch((cause) => { if (active) setState(cause?.status === 400 ? 'invalid' : 'unavailable'); });
+      .catch((cause) => {
+        if (!active) return;
+        setConnectionError(cause?.message || 'Unable to verify the link. Please try again.');
+        setState(cause?.status === 400 ? 'invalid' : 'unavailable');
+      });
     return () => { active = false; };
   }, [token]);
 
@@ -129,17 +146,21 @@ export default function StaffSetPasswordPage() {
         <section className="login-card auth-recovery-card">
           <div className="login-brand-row"><div className="login-brand-mark" aria-hidden="true"><CubixgearLogo /></div>
             <div><strong className="login-brand-name">cubixgear</strong>
-              <span className="login-brand-subtitle">Secure Workshop Staff Access</span></div>
+              <span className="login-brand-subtitle">
+                {accountType === 'owner' ? 'Secure Workshop Owner Access'
+                  : accountType === 'staff' ? 'Secure Workshop Staff Access'
+                    : 'Secure Workshop Account Access'}
+              </span></div>
           </div>
           {state === 'checking' && <p role="status">Checking your one-time password setup link…</p>}
           {state === 'unavailable' && <>
             <h1 className="login-title">Unable to verify link</h1>
-            <p role="alert" className="login-description">Unable to connect. Please try again.</p>
+            <p role="alert" className="login-description">{connectionError || 'Unable to verify the link. Please try again.'}</p>
             <button className="login-submit" type="button" onClick={() => window.location.reload()}>Retry Connection</button>
           </>}
           {state === 'invalid' && <>
             <h1 className="login-title">Link unavailable</h1>
-            <p role="alert" className="login-description">This secure link has expired, was already used, or was replaced. Ask your workshop administrator to resend it.</p>
+            <p role="alert" className="login-description">This secure link has expired, was already used, or was replaced. Request a new password setup link.</p>
             <Link className="login-submit" to="/login">Go to Login</Link>
           </>}
           {(state === 'success' || state === 'signed-in') && <div className="auth-success-state">
@@ -155,7 +176,7 @@ export default function StaffSetPasswordPage() {
               : <Link className="login-submit" to="/login">Continue to Login</Link>}
           </div>}
           {state === 'ready' && <>
-            <h1 className="login-title">{purpose === 'reset' ? 'Reset your password' : 'Set your account password'}</h1>
+            <h1 className="login-title">{purpose === 'reset' ? 'Reset your password' : accountType === 'owner' ? 'Create your workshop owner password' : 'Set your account password'}</h1>
             <p className="login-description">Enter your own password. Your workshop never receives it. This link works only once.</p>
             {expiry && <p className="login-description">Link valid until {new Date(expiry).toLocaleString()}.</p>}
             {error && <div className="login-error" role="alert">{error}</div>}
