@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Mail } from 'lucide-react';
+import { ArrowLeft, KeyRound, Mail, WandSparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CubixgearLogo } from '../../components/branding/CubixgearLogo';
 import { authRecoveryService } from '../../services/authRecovery.service';
@@ -10,6 +10,8 @@ import '../../styles/auth-recovery.css';
 
 export const ForgotPassword = () => {
   const [email, setEmail] = useState('');
+  const [mode, setMode] = useState('reset');
+  const isMagicLink = mode === 'magic';
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
@@ -36,16 +38,22 @@ export const ForgotPassword = () => {
 
     setLoading(true);
     try {
-      // Request an actual password reset email, not a passwordless sign-in link.
-      const result = await authRecoveryService.requestPasswordReset(cleanEmail);
+      // Both paths already exist in Django. Keep them separate, rate-limited
+      // server-side, and never disclose whether this address has an account.
+      const result = isMagicLink
+        ? await authRecoveryService.requestMagicLink(cleanEmail)
+        : await authRecoveryService.requestPasswordReset(cleanEmail);
       if (result?.previewUrl) setPreviewUrl(result.previewUrl);
-      // Do not reveal whether the email is registered.
-      setMessage('If an account exists for this email, a password reset link will be sent.');
+      setMessage(isMagicLink
+        ? 'If this email belongs to an eligible account, a magic login link will be sent.'
+        : 'If this email belongs to an eligible account, a password reset link will be sent. Staff can request a reset link from their workshop administrator.');
       setIsError(false);
     } catch (error) {
       const backend = getAuthFieldErrors(error);
       if (backend.email) setEmailError(backend.email);
-      else setMessage(getAuthErrorMessage(error, 'Unable to request a password reset link.'));
+      else setMessage(getAuthErrorMessage(error, isMagicLink
+        ? 'Unable to request a magic login link.'
+        : 'Unable to request a password reset link.'));
       setIsError(true);
     } finally {
       setLoading(false);
@@ -68,10 +76,41 @@ export const ForgotPassword = () => {
             </div>
           </div>
 
-          <h1 className="login-title">Reset your password</h1>
+          <h1 className="login-title">{isMagicLink ? 'Sign in with a magic link' : 'Reset your password'}</h1>
           <p className="login-description">
-            Enter your registered email to receive a password reset link.
+            {isMagicLink
+              ? 'Receive a single-use sign-in link by email. No password needed. The link expires in 15 minutes.'
+              : 'Enter your registered email to receive a password reset link.'}
           </p>
+
+          <div className="auth-recovery-methods" role="group" aria-label="Choose account recovery method">
+            <button
+              type="button"
+              className={'auth-recovery-method' + (!isMagicLink ? ' is-active' : '')}
+              aria-pressed={!isMagicLink}
+              disabled={loading}
+              onClick={() => {
+                setMode('reset');
+                clearFeedback();
+              }}
+            >
+              <KeyRound size={16} strokeWidth={1.8} aria-hidden="true" />
+              Reset Password
+            </button>
+            <button
+              type="button"
+              className={'auth-recovery-method' + (isMagicLink ? ' is-active' : '')}
+              aria-pressed={isMagicLink}
+              disabled={loading}
+              onClick={() => {
+                setMode('magic');
+                clearFeedback();
+              }}
+            >
+              <WandSparkles size={16} strokeWidth={1.8} aria-hidden="true" />
+              Magic Login Link
+            </button>
+          </div>
 
           {message && (
             <div className={'auth-message ' + (isError ? 'is-error' : 'is-success')}
@@ -111,14 +150,14 @@ export const ForgotPassword = () => {
               )}
             </label>
             <button type="submit" className="login-submit" disabled={loading}>
-              {loading ? 'Sending…' : 'Send Reset Link'}
+              {loading ? 'Sending…' : isMagicLink ? 'Send Magic Link' : 'Send Reset Link'}
             </button>
           </form>
 
           {previewUrl && (
             <div className="auth-dev-link">
               <span>Development preview</span>
-              <Link to={previewUrl}>Open reset link</Link>
+              <Link to={previewUrl}>{isMagicLink ? 'Open magic link' : 'Open reset link'}</Link>
             </div>
           )}
         </section>
