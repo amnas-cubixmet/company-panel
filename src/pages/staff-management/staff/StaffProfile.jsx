@@ -176,6 +176,9 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
   const [toastMsg, setToastMsg] = useState('');
   const [inviteNotice, setInviteNotice] = useState(() => staffInviteDeliveryMessage(location.state?.whatsappInviteStatus));
   const [error, setError] = useState('');
+  const [errorStatus, setErrorStatus] = useState(null);
+  const [errorRequestId, setErrorRequestId] = useState(null);
+  const [supportWarning, setSupportWarning] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [inviteBusy, setInviteBusy] = useState(false);
 
@@ -240,8 +243,9 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
   };
 
   const loadSupportData = async (profile) => {
+    // Role editing is loaded separately after a permission check.
+    // Keep these indices aligned: teams, shifts, skills, documents, activities.
     const tasks = [
-      roleService.getAssignableRoles(),
       staffManagementService.getTeams(),
       staffManagementService.getShifts(),
       staffManagementService.getSkills(),
@@ -254,6 +258,9 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
       results[index]?.status === 'fulfilled'
         ? results[index].value
         : fallback;
+    setSupportWarning(results.some(result => result.status === 'rejected')
+      ? 'Some optional profile information could not load. The staff record is still available.'
+      : '');
 
     setTeams(Array.isArray(value(0)) ? value(0) : []);
     setShifts(Array.isArray(value(1)) ? value(1) : []);
@@ -277,17 +284,23 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
   const refreshAll = async () => {
     setLoading(true);
     setError('');
+    setErrorStatus(null);
+    setErrorRequestId(null);
     try {
       const profile = await loadStaff();
       await loadSupportData(profile);
     } catch (requestError) {
       setError(requestError?.message || 'Unable to load staff profile.');
+      setErrorStatus(requestError?.status || null);
+      setErrorRequestId(requestError?.requestId || null);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    // Do not show a previous employee's details while a new route loads.
+    setStaff(null);
     refreshAll();
   }, [staffId]);
 
@@ -511,20 +524,42 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
     await refreshAll();
   };
 
-  if (loading) {
-    return <div className="staff-workshop-empty">Loading staff profile…</div>;
+  if (loading && !staff) {
+    return <div className="staff-workshop-empty" role="status">Loading staff profile…</div>;
   }
 
-  if (error || !staff) {
+  if (!staff) {
     return (
-      <div className="staff-workshop-empty">
-        {error || 'Staff profile not found.'}
-      </div>
+      <section className="staff-workshop-empty" role="alert">
+        <p>{error || 'Staff profile not found.'}</p>
+        {errorRequestId && <p>Support reference: {errorRequestId}</p>}
+        {errorStatus !== 401 && errorStatus !== 403 && (
+          <button type="button" className="staff360-secondary-button" onClick={refreshAll}>
+            Retry Loading Profile
+          </button>
+        )}
+      </section>
     );
   }
 
   return (
     <div className="staff-profile staff360">
+      {error && (
+        <div className="staff-directory-message is-error" role="alert">
+          <span>{error}{errorRequestId ? ` · Reference: ${errorRequestId}` : ''}</span>
+          {errorStatus !== 401 && errorStatus !== 403 && (
+            <button type="button" onClick={refreshAll} disabled={loading}>
+              {loading ? 'Retrying…' : 'Retry'}
+            </button>
+          )}
+        </div>
+      )}
+      {supportWarning && (
+        <div className="staff-directory-message" role="status">
+          {supportWarning}
+          <button type="button" onClick={refreshAll} disabled={loading}>Retry</button>
+        </div>
+      )}
       {toastMsg && <div className="staff360-toast" role="status">{toastMsg}</div>}
       {inviteError && (
         <div className="staff-directory-message is-error" role="alert">
