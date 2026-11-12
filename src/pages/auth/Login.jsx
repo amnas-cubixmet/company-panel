@@ -1,5 +1,5 @@
 import { CubixgearLogo } from '../../components/branding/CubixgearLogo';
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Eye, EyeOff, Lock, Mail, Phone } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -45,6 +45,7 @@ export const Login = () => {
   const [formError, setFormError] = useState('');
   const [invalidCredentials, setInvalidCredentials] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const submitting = useRef(false);
 
   const clearField = (field) => {
     // Typing a correction clears the previous unsuccessful sign-in state.
@@ -73,7 +74,8 @@ export const Login = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (loading) return;
+    // Prevent rapid double submits while React state is updating.
+    if (loading || submitting.current) return;
 
     const enteredIdentifier = identifier.trim();
     const isEmail = loginMethod === 'email';
@@ -103,6 +105,7 @@ export const Login = () => {
     setFormError('');
     setInvalidCredentials(false);
 
+    submitting.current = true;
     try {
       const authenticatedUser = await login({ identifier: identity, password, ...(!isEmail && workshop.trim() ? { workshop: workshop.trim().toLowerCase() } : {}) });
       navigate(getStaffLandingPath(authenticatedUser, params.get('next')), { replace: true });
@@ -131,6 +134,8 @@ export const Login = () => {
           : serviceUnavailable
             ? 'Unable to connect. Please try again.'
             : 'Something went wrong. Please try again.');
+    } finally {
+      submitting.current = false;
     }
   };
 
@@ -159,6 +164,18 @@ export const Login = () => {
           {formError && (
             <div id="login-form-error" role="alert" className="login-error">
               {formError}
+            </div>
+          )}
+          {invalidCredentials && (
+            <div className="auth-message is-info" role="note">
+              {isEmailIdentifier
+                ? 'Registered a new workshop? Complete the one-time password setup from your email first. If the link expired, request a new recovery link.'
+                : 'New staff account? Ask your workshop administrator for a valid password setup link. If your phone is linked to several workshops, enter the correct workshop code.'}
+              <div>
+                <Link to="/forgot-password" className="login-forgot">
+                  Password help
+                </Link>
+              </div>
             </div>
           )}
 
@@ -235,7 +252,7 @@ export const Login = () => {
                     }
                     clearField('identifier');
                   }}
-                  placeholder={isEmailIdentifier ? 'name@example.com' : '90000000000'}
+                  placeholder={isEmailIdentifier ? 'name@example.com' : '9876543210'}
                   aria-invalid={Boolean(fieldErrors.identifier || invalidCredentials)}
                   aria-describedby={fieldErrors.identifier ? 'login-identifier-error'
                     : invalidCredentials ? 'login-form-error' : undefined}
