@@ -21,18 +21,9 @@ const staffCountryCodes = [
   { code: '+973', country: 'Bahrain', flag: '🇧🇭', digits: 8 },
 ];
 const statuses = ['Active', 'Probation', 'Notice Period', 'Inactive', 'Suspended', 'Resigned', 'Terminated'];
-const DEFAULT_WHATSAPP_CONSENT_SOURCE = 'Staff consented in person during onboarding';
-const consentSources = [
-  { value: '', label: 'Choose consent source' },
-  { value: DEFAULT_WHATSAPP_CONSENT_SOURCE, label: 'In person' },
-  { value: 'Signed staff WhatsApp consent form', label: 'Signed consent form' },
-  { value: 'Staff consented through approved digital form', label: 'Approved digital form' },
-];
-
 const emptyStaff = (loginEnabled) => ({
   name: '', phone: '', branchId: '', roleId: '', role: '',
   employmentStatus: 'Active', loginAccessEnabled: loginEnabled,
-  whatsappConsent: false, whatsappConsentSource: '',
 });
 
 export const StaffAddPage = () => {
@@ -91,10 +82,6 @@ export const StaffAddPage = () => {
       showFormFieldError(formRef.current, 'role', 'Choose an active company role.');
       return;
     }
-    if (form.whatsappConsent && !form.whatsappConsentSource) {
-      showFormFieldError(formRef.current, 'whatsappConsentSource', 'Select how consent was recorded.');
-      return;
-    }
 
     setSaving(true);
     setError('');
@@ -114,7 +101,6 @@ export const StaffAddPage = () => {
       showServerFormErrors(formRef.current, cause, {
         roleId: 'role', role: 'role', phone: 'phone', name: 'name',
         branchId: 'branchId', employmentStatus: 'employmentStatus',
-        whatsappConsentSource: 'whatsappConsentSource',
       });
       setError(cause?.message || 'Unable to create staff. Check the highlighted fields.');
     } finally {
@@ -299,24 +285,6 @@ export const StaffAddPage = () => {
               </p>}
           </section>
 
-          <section className="staff-form-panel">
-            <div className="staff-form-panel__title">Manual WhatsApp Consent</div>
-            <label className="staff-login-invite-hint staff-consent-line">
-              <input type="checkbox" checked={form.whatsappConsent} onChange={event => setForm(current => ({
-                ...current,
-                whatsappConsent: event.target.checked,
-                whatsappConsentSource: event.target.checked
-                  ? (current.whatsappConsentSource || DEFAULT_WHATSAPP_CONSENT_SOURCE) : '',
-              }))}/>
-              Staff agreed to receive manual WhatsApp setup links
-            </label>
-            {form.whatsappConsent && <label className="staff-consent-source">Consent Source *
-              <select name="whatsappConsentSource" value={form.whatsappConsentSource} required
-                onChange={event => set('whatsappConsentSource', event.target.value)}>
-                {consentSources.map(source => <option key={source.value} value={source.value}>{source.label}</option>)}
-              </select>
-            </label>}
-          </section>
         </div>
       </div>
     </form>
