@@ -403,6 +403,16 @@ try {
           if(await registerLink.getAttribute('href')!=='https://cubixgear.tech/signup')
             throw Error('Register must open public website registration');
         }
+        if(path==='/staff-management/add') {
+          await page.getByRole('heading',{name:'Add Staff'}).waitFor({state:'visible'});
+          if(await page.getByText('Manual WhatsApp Consent').count() ||
+              await page.getByText('Staff agreed to receive manual WhatsApp setup links').count() ||
+              await page.locator('input[name="whatsappConsentSource"]').count() ||
+              await page.locator('select[name="whatsappConsentSource"]').count())
+            throw Error('Staff add form must not require manual WhatsApp consent fields');
+          if(await page.getByRole('button',{name:'Save Staff'}).count()!==1)
+            throw Error('Save Staff action is missing');
+        }
         if(path==='/forgot-password') {
           await page.getByRole('heading',{name:'Reset your password'}).waitFor({state:'visible'});
           if(await page.locator('input[type="email"]').count()!==1)
