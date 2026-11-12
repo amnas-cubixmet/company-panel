@@ -23,8 +23,9 @@ const permissions = [...new Set([
   ...ROLE_PERMISSION_MODULES.flatMap(module => module.actions.map(action => `${module.key}.${action}`)),
   'billing.view', 'billing.edit', 'company.manage', 'storage.view', 'storage.manage', 'attendance.self', 'gstr.view',
 ])];
+const longWorkshopName = 'Mendoza and Chang Traders Automotive Service Center';
 const user = {id:'owner',name:'Workshop Owner',email:'owner@example.test',companyId:'company-a',
-  company:{id:'company-a',name:'Test Workshop'},role:{name:'Owner',permissions:['*']},effectivePermissions:permissions,isCompanyOwner:true};
+  company:{id:'company-a',name:longWorkshopName},role:{name:'Owner',permissions:['*']},effectivePermissions:permissions,isCompanyOwner:true};
 const settings = Object.fromEntries(['company','operations','billing','inventory','attendance','payroll','notifications','security','integrations'].map(key => [key, {}]));
 settings.company = {name:'Test Workshop',country:'India',currency:'INR',timezone:'Asia/Kolkata'};
 const bundles = [
@@ -362,33 +363,55 @@ try {
             throw Error('Removing one photo should leave all other queued photos');
         }
 
-        if(path==='/dashboard' && profile.width<1024) {
-          const brand=page.locator('.mobile-workshop-brand');
+        if(path==='/dashboard') {
+          const mobile=profile.width<1024;
+          const brand=page.locator(mobile ? '.mobile-workshop-brand' : '.sidebar-brand');
           await brand.waitFor({state:'visible'});
-          if(await brand.locator('.mobile-brand-copy strong').innerText()!=='Test Workshop')
-            throw Error('Mobile header must show the authenticated workshop name, not the product name');
-          if(await brand.locator('.mobile-powered-brand').innerText()!=='cubixgear')
-            throw Error('Mobile header must also show cubixgear branding');
-          const companyLogo=brand.locator('.mobile-company-logo img');
-          await companyLogo.waitFor({state:'visible',timeout:5000});
-          const productLogo=brand.locator('.mobile-powered-logo img.cubixgear-logo-image');
-          await productLogo.waitFor({state:'visible',timeout:5000});
+          const name=brand.locator('.workshop-company-name');
+          if(await name.innerText()!==longWorkshopName)
+            throw Error('Workshop name must use the full authenticated tenant name');
+          if(await brand.locator('.workshop-platform-brand').innerText()!=='cubixgear')
+            throw Error('Both screens must retain subtle cubixgear branding');
+          const companyLogo=brand.locator('.workshop-company-logo-image');
+          await companyLogo.waitFor({state:'visible',timeout:8000});
+          const productLogo=brand.locator('.workshop-platform-logo img.cubixgear-logo-image');
+          await productLogo.waitFor({state:'visible',timeout:8000});
           if(!(await companyLogo.evaluate(el=>el.complete&&el.naturalWidth>0)) ||
               !(await productLogo.evaluate(el=>el.complete&&el.naturalWidth>0)))
-            throw Error('Both uploaded workshop and cubixgear images must render in mobile header');
-          const layout=await page.evaluate(()=>{
-            const brand=document.querySelector('.mobile-workshop-brand');
-            const copy=brand.querySelector('.mobile-brand-copy');
-            const actions=document.querySelector('.mobile-header-actions');
+            throw Error('Workshop and product logos must load successfully');
+          const metrics=await name.evaluate(el=>{
+            const style=getComputedStyle(el);
             return {
-              brandRight:brand.getBoundingClientRect().right,
-              actionsLeft:actions.getBoundingClientRect().left,
-              copyWidth:copy.getBoundingClientRect().width,
-              display:getComputedStyle(copy).display,
+              whiteSpace:style.whiteSpace,textOverflow:style.textOverflow,
+              overflowX:style.overflowX,display:style.display,
+              scrollWidth:el.scrollWidth,clientWidth:el.clientWidth,
             };
           });
-          if(layout.display==='none'||layout.copyWidth<35||layout.brandRight>layout.actionsLeft+1)
-            throw Error('Mobile branding is hidden or overlaps controls: '+JSON.stringify(layout));
+          if(metrics.display==='none'||metrics.whiteSpace==='nowrap' ||
+            metrics.textOverflow==='ellipsis'||metrics.scrollWidth>metrics.clientWidth+2)
+            throw Error('Workshop name is hidden, truncated or clipped: '+JSON.stringify(metrics));
+          if(mobile) {
+            const drawer=page.locator('.mobile-drawer-brand .workshop-company-name');
+            if(await drawer.textContent()!==longWorkshopName)
+              throw Error('Mobile menu must also show the complete workshop name');
+            const layout=await page.evaluate(()=>{
+              const brand=document.querySelector('.mobile-workshop-brand').getBoundingClientRect();
+              const actions=document.querySelector('.mobile-header-actions').getBoundingClientRect();
+              const copy=document.querySelector('.mobile-workshop-brand .workshop-identity-copy');
+              return {sameRow:brand.bottom>actions.top && actions.bottom>brand.top,
+                brandRight:brand.right,actionsLeft:actions.left,
+                brandBottom:brand.bottom,actionsTop:actions.top,
+                copyWidth:copy.getBoundingClientRect().width,
+                copyDisplay:getComputedStyle(copy).display};
+            });
+            if(layout.copyDisplay==='none'||layout.copyWidth<35||
+               (layout.sameRow && layout.brandRight>layout.actionsLeft+1))
+              throw Error('Workshop identity overlaps mobile actions or is hidden: '+JSON.stringify(layout));
+          } else {
+            const sidebar=page.locator('.sidebar-brand-row');
+            if(await sidebar.evaluate(el=>el.getBoundingClientRect().height)<=56)
+              throw Error('Desktop sidebar must grow to show long workshop names without ellipsis');
+          }
         }
         if(path==='/plans') {
           if(new URL(page.url()).pathname!=='/account/credits/buy') throw Error('Redirect did not reach module marketplace');
