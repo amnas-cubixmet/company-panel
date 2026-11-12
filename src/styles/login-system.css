@@ -513,3 +513,30 @@
   font-size:11px;
   line-height:1.5;
 }
+
+
+/* Clear, accessible credentials feedback for both dark and light login themes. */
+.login-page .login-input-shell.is-error {
+  border:1px solid #dc2626 !important;
+  box-shadow:0 0 0 3px rgba(220,38,38,.15) !important;
+}
+.login-page .login-input-shell.is-error:focus-within {
+  border-color:#b91c1c !important;
+  box-shadow:0 0 0 3px rgba(220,38,38,.22) !important;
+}
+.login-page .login-error {
+  border:1px solid #ef4444;
+  background:rgba(185,28,28,.15);
+  color:#fecaca;
+  font-size:13px;
+  line-height:1.45;
+}
+.login-page .auth-field-error {
+  color:#fca5a5;
+  font-size:12px;
+  line-height:1.45;
+}
+@media (prefers-color-scheme: light) {
+  .login-page .login-error {background:#fff1f2;color:#991b1b;}
+  .login-page .auth-field-error {color:#b91c1c;}
+}
