@@ -30,7 +30,7 @@ export const Login = () => {
   const resetComplete = params.get('reset') === 'success';
 
   const initialEmail = isMockMode ? 'admin@cubixgear.com' : suggestedEmail;
-  const [loginMethod, setLoginMethod] = useState(initialEmail ? 'email' : 'mobile');
+  const [loginMethod, setLoginMethod] = useState('email');
   const [mobileNumber, setMobileNumber] = useState('');
   const [emailAddress, setEmailAddress] = useState(initialEmail);
   const [countryCode, setCountryCode] = useState('+91');
@@ -140,18 +140,6 @@ export const Login = () => {
               <div className="login-method-switch" role="group" aria-label="Sign in using">
                 <button
                   type="button"
-                  className={'login-method-option' + (!isEmailIdentifier ? ' is-active' : '')}
-                  aria-pressed={!isEmailIdentifier}
-                  onClick={() => {
-                    setLoginMethod('mobile');
-                    clearField('identifier');
-                  }}
-                >
-                  <Phone size={15} strokeWidth={1.8} aria-hidden="true" />
-                  Mobile Number
-                </button>
-                <button
-                  type="button"
                   className={'login-method-option' + (isEmailIdentifier ? ' is-active' : '')}
                   aria-pressed={isEmailIdentifier}
                   onClick={() => {
@@ -161,6 +149,18 @@ export const Login = () => {
                 >
                   <Mail size={15} strokeWidth={1.8} aria-hidden="true" />
                   Email
+                </button>
+                <button
+                  type="button"
+                  className={'login-method-option' + (!isEmailIdentifier ? ' is-active' : '')}
+                  aria-pressed={!isEmailIdentifier}
+                  onClick={() => {
+                    setLoginMethod('mobile');
+                    clearField('identifier');
+                  }}
+                >
+                  <Phone size={15} strokeWidth={1.8} aria-hidden="true" />
+                  Mobile Number
                 </button>
               </div>
               <label htmlFor="login-identifier" className="login-field-label">
