@@ -605,15 +605,15 @@ try {
             });
             await email.fill('Member@Example.com');
             await page.getByRole('button',{name:'Send Magic Link'}).click();
-            await page.getByRole('status').waitFor({state:'visible'});
+            await page.locator('.auth-message[role="status"]').waitFor({state:'visible'});
             if(requests.length!==1||requests[0].kind!=='magic'||
                requests[0].body?.email!=='member@example.com')
               throw Error('Magic link should send normalized email to the magic-link API');
             await reset.click();
-            if(await page.getByRole('status').count())
+            if(await page.locator('.auth-message[role="status"]').count())
               throw Error('Changing recovery method should clear stale success feedback');
             await page.getByRole('button',{name:'Send Reset Link'}).click();
-            await page.getByRole('status').waitFor({state:'visible'});
+            await page.locator('.auth-message[role="status"]').waitFor({state:'visible'});
             if(requests.length!==2||requests[1].kind!=='reset'||
                requests[1].body?.email!=='member@example.com')
               throw Error('Reset mode must submit to the password-reset API');
