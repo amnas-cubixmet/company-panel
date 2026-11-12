@@ -61,6 +61,8 @@ export const Login = () => {
 
   const selectLoginMethod = (method) => {
     setLoginMethod(method);
+    setWorkshop('');
+    setNeedsWorkshop(false);
     setFieldErrors({});
     setInvalidCredentials(false);
     setFormError('');
@@ -92,7 +94,7 @@ export const Login = () => {
     else if (!isEmail && !/^\+[1-9]\d{7,14}$/.test(identity))
       nextErrors.identifier = 'Enter a valid mobile number.';
     if (!password) nextErrors.password = 'Password is required.';
-    if (!isEmail && needsWorkshop && !workshop.trim()) nextErrors.workshop = 'Enter your workshop code.';
+    if (needsWorkshop && !workshop.trim()) nextErrors.workshop = 'Enter your workshop code.';
 
     if (Object.keys(nextErrors).length) {
       setInvalidCredentials(false);
@@ -107,13 +109,13 @@ export const Login = () => {
 
     submitting.current = true;
     try {
-      const authenticatedUser = await login({ identifier: identity, password, ...(!isEmail && workshop.trim() ? { workshop: workshop.trim().toLowerCase() } : {}) });
+      const authenticatedUser = await login({ identifier: identity, password, ...(workshop.trim() ? { workshop: workshop.trim().toLowerCase() } : {}) });
       navigate(getStaffLandingPath(authenticatedUser, params.get('next')), { replace: true });
     } catch (error) {
       const backendFields = getAuthFieldErrors(error);
       const status = Number(error?.status || error?.response?.status || 0);
       const identifierError = backendFields.identifier || backendFields.email || backendFields.mobile;
-      const workshopError = !isEmail && backendFields.workshop;
+      const workshopError = backendFields.workshop;
       const hasFieldError = Boolean(identifierError || backendFields.password || workshopError);
       const credentialsRejected = status === 401 || (status === 400 &&
         backendFields.non_field_errors === 'Invalid credentials or workshop selection.');
@@ -130,7 +132,7 @@ export const Login = () => {
       setFormError(status === 429
         ? `Too many sign-in attempts. Try again${error?.retryAfterSeconds ? ` in ${error.retryAfterSeconds} seconds` : ' later'}.`
         : hasFieldError ? '' : credentialsRejected
-          ? 'Incorrect email/mobile number or password.'
+          ? 'Unable to sign in with these details. Check your account setup or password.'
           : serviceUnavailable
             ? 'Unable to connect. Please try again.'
             : 'Something went wrong. Please try again.');
@@ -169,7 +171,7 @@ export const Login = () => {
           {invalidCredentials && (
             <div className="login-help-note" role="note">
               {isEmailIdentifier
-                ? 'Registered a new workshop? Complete the one-time password setup from your email first. If the link expired, request a new recovery link.'
+                ? 'Registered a new workshop? Complete password setup from your email first. If you use this email for more than one workshop, enter its workshop code. For expired links, use Password help.'
                 : 'New staff account? Ask your workshop administrator for a valid password setup link. If your phone is linked to several workshops, enter the correct workshop code.'}
               <div>
                 <Link to="/forgot-password" className="login-forgot">
@@ -265,7 +267,7 @@ export const Login = () => {
               )}
             </div>
 
-            {!isEmailIdentifier && needsWorkshop && <label className="block">
+            {needsWorkshop && <label className="block">
               <span className="login-field-label">Workshop code</span>
               <div className={'login-input-shell ' + (fieldErrors.workshop ? 'is-error' : '')}>
                 <input className="login-input" type="text" autoComplete="organization"
