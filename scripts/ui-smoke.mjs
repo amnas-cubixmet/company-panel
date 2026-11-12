@@ -366,7 +366,7 @@ try {
         if(path==='/dashboard') {
           const mobile=profile.width<1024;
           const shortName=longWorkshopName.split(/\s+/u)[0];
-          const workshop=page.locator(mobile ? '.mobile-workshop-brand' : '.sidebar-workshop-line');
+          const workshop=page.locator(mobile ? '.mobile-workshop-brand' : '.sidebar-workshop-only');
           await workshop.waitFor({state:'visible'});
           const companyName=workshop.locator('.workshop-company-name');
           if(await companyName.innerText()!==shortName)
@@ -390,8 +390,9 @@ try {
               fontSize:parseFloat(getComputedStyle(el).fontSize),
               textOverflow:getComputedStyle(el).textOverflow,
             }));
-            if(typography.fontWeight<750 || typography.fontSize<14)
-              throw Error('Mobile workshop name should be bold and readable: '+JSON.stringify(typography));
+            if(typography.fontWeight<550 || typography.fontWeight>700 ||
+              typography.fontSize<13 || typography.fontSize>15)
+              throw Error('Mobile workshop name should be moderately bold and compact: '+JSON.stringify(typography));
             const layout=await page.evaluate(()=>{
               const brand=document.querySelector('.mobile-workshop-brand').getBoundingClientRect();
               const actions=document.querySelector('.mobile-header-actions').getBoundingClientRect();
@@ -412,29 +413,34 @@ try {
             if(await page.locator('.mobile-header-page').isVisible())
               throw Error('Mobile page title must not compete with the compact header controls');
           } else {
-            const product=page.locator('.sidebar-platform-line');
-            await product.waitFor({state:'visible'});
-            if(await product.locator('strong').innerText()!=='cubixgear')
-              throw Error('Desktop sidebar must retain cubixgear branding');
-            const productLogo=product.locator('img.cubixgear-logo-image');
-            await productLogo.waitFor({state:'visible',timeout:8000});
-            if(!(await productLogo.evaluate(el=>el.complete && el.naturalWidth>0)))
-              throw Error('Desktop cubixgear logo must load');
             const sidebar=page.locator('.sidebar-brand-row');
-            if(await sidebar.evaluate(el=>el.getBoundingClientRect().height)<=56)
-              throw Error('Desktop sidebar must fit both logo/name lines');
+            const brand=page.locator('.sidebar-workshop-only');
+            if(await brand.locator('.workshop-company-name').count()!==1 ||
+               await brand.locator('.workshop-company-logo-image').count()!==1)
+              throw Error('Desktop must show only workshop logo and company short name');
+            if(await sidebar.locator('.sidebar-platform-line,.cubixgear-logo-image').count())
+              throw Error('Desktop sidebar should not include cubixgear product branding');
+            const typography=await companyName.evaluate(el=>({
+              fontWeight:parseInt(getComputedStyle(el).fontWeight,10),
+              fontSize:parseFloat(getComputedStyle(el).fontSize),
+            }));
+            if(typography.fontWeight<550||typography.fontWeight>700||
+               typography.fontSize<13||typography.fontSize>15)
+              throw Error('Desktop workshop name should be compact semibold: '+JSON.stringify(typography));
             const overlap=await page.evaluate(()=>{
-              const row=document.querySelector('.sidebar-brand-row').getBoundingClientRect();
+              const brand=document.querySelector('.sidebar-workshop-only').getBoundingClientRect();
               const collapse=document.querySelector('.sidebar-collapse-button').getBoundingClientRect();
-              const lines=[...document.querySelectorAll('.sidebar-identity-line')].map(el=>el.getBoundingClientRect());
-              return {rowRight:row.right,toggleLeft:collapse.left,lines:lines.map(rect=>({right:rect.right,bottom:rect.bottom,top:rect.top}))};
+              return {brandRight:brand.right,toggleLeft:collapse.left};
             });
-            if(overlap.lines.some(rect=>rect.right>overlap.toggleLeft+1)||
-              overlap.lines[0].bottom>overlap.lines[1].top+1)
-              throw Error('Desktop dual masthead overlaps its collapse button: '+JSON.stringify(overlap));
+            if(overlap.brandRight>overlap.toggleLeft+1)
+              throw Error('Desktop workshop name overlaps collapse control: '+JSON.stringify(overlap));
             await page.getByRole('button',{name:'Collapse sidebar'}).click();
-            if(await page.locator('.sidebar-identity-line').count())
-              throw Error('Collapsed desktop sidebar must show only the product icon');
+            if(await page.locator('.sidebar-workshop-only .workshop-company-name').count())
+              throw Error('Collapsed sidebar should show company logo only');
+            const collapsedLogo=page.locator('.sidebar-workshop-only .workshop-company-logo-image');
+            await collapsedLogo.waitFor({state:'visible',timeout:5000});
+            if(!(await collapsedLogo.evaluate(el=>el.complete&&el.naturalWidth>0)))
+              throw Error('Collapsed sidebar must use workshop logo');
             await page.getByRole('button',{name:'Expand sidebar'}).click();
             const headerMetrics=await page.locator('.desktop-header-row').evaluate(header=>{
               const search=header.querySelector('.header-search-wrap');
