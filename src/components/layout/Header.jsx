@@ -1,4 +1,5 @@
 import { WorkshopIdentity } from '../branding/WorkshopIdentity';
+import { CubixgearLogo } from '../branding/CubixgearLogo';
 import { useContext, useEffect, useRef, useState } from "react";
 import { Bell, BellRing, CalendarDays, ChevronDown, LogOut, Settings, User } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -197,9 +198,15 @@ export const Header = () => {
 
       <div className="mobile-header">
         <div className="mobile-header-row">
-          <button type="button" className="mobile-brand mobile-workshop-brand" onClick={() => navigate(homePath)} aria-label={`Go to ${companyName} workspace`}>
-            <WorkshopIdentity mode="mobile" />
-          </button>
+          <div className="mobile-dual-identity">
+            <button type="button" className="mobile-brand mobile-workshop-brand" onClick={() => navigate(homePath)} aria-label={`Go to ${companyName} workspace`}>
+              <WorkshopIdentity mode="mobile" shortName />
+            </button>
+            <div className="mobile-product-brand" aria-label="cubixgear">
+              <span className="mobile-product-icon" aria-hidden="true"><CubixgearLogo /></span>
+              <strong>cubixgear</strong>
+            </div>
+          </div>
 
           <div className="mobile-header-actions">
             <span className="mobile-header-page" aria-hidden="true">{pageTitle}</span>
