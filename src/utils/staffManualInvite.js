@@ -52,7 +52,7 @@ export const shareManualStaffInvite = async (getInvitation, details) => {
     const invitation = await getInvitation();
     const status = invitation?.whatsappInviteStatus;
     if (!invitation || status !== 'manual' || !invitation.setupLink) {
-      throw new Error('WhatsApp reset is not ready. Check staff role and consent.');
+      throw new Error('WhatsApp setup link is not ready. Check staff login access and try again.');
     }
     const url = buildStaffWhatsAppUrl({ ...details, setupLink: invitation.setupLink, purpose: invitation.purpose });
     // A localhost setup URL works on the developer's PC but cannot be opened
