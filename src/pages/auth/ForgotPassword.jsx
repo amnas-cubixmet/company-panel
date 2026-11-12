@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, KeyRound, Mail, WandSparkles } from 'lucide-react';
+import { ArrowLeft, KeyRound, Mail, Phone, WandSparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CubixgearLogo } from '../../components/branding/CubixgearLogo';
 import { authRecoveryService } from '../../services/authRecovery.service';
@@ -10,8 +10,11 @@ import '../../styles/auth-recovery.css';
 
 export const ForgotPassword = () => {
   const [email, setEmail] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [workshop, setWorkshop] = useState('');
   const [mode, setMode] = useState('reset');
   const isMagicLink = mode === 'magic';
+  const isMobile = mode === 'mobile';
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [emailError, setEmailError] = useState('');
@@ -29,7 +32,16 @@ export const ForgotPassword = () => {
 
     clearFeedback();
     const cleanEmail = normalizeEmail(email);
-    if (!cleanEmail || !isValidEmail(cleanEmail)) {
+    if (isMobile) {
+      if (!/^\+[\d\s().-]{8,22}$/.test(mobile.trim())) {
+        setEmailError('Enter your international mobile number, e.g. +919876543210.');
+        return;
+      }
+      if (!workshop.trim()) {
+        setEmailError('Enter your workshop code for a manual password reset.');
+        return;
+      }
+    } else if (!cleanEmail || !isValidEmail(cleanEmail)) {
       setEmailError('Enter a valid email address.');
       return;
     }
@@ -38,13 +50,17 @@ export const ForgotPassword = () => {
     try {
       // Both paths already exist in Django. Keep them separate, rate-limited
       // server-side, and never disclose whether this address has an account.
-      const result = isMagicLink
-        ? await authRecoveryService.requestMagicLink(cleanEmail)
-        : await authRecoveryService.requestPasswordReset(cleanEmail);
+      const result = isMobile
+        ? await authRecoveryService.requestPasswordReset({ mobile, workshop })
+        : isMagicLink
+          ? await authRecoveryService.requestMagicLink(cleanEmail)
+          : await authRecoveryService.requestPasswordReset(cleanEmail);
       if (result?.previewUrl) setPreviewUrl(result.previewUrl);
       // A successful public request does not prove that an account exists or
       // that email delivery succeeded. Never show "Link sent" for unknown users.
-      setMessage('If eligible, check your email for the link.');
+      setMessage(isMobile
+        ? 'If eligible, contact your workshop administrator for a secure manual reset link. No WhatsApp message is sent automatically.'
+        : 'If an account is eligible, recovery instructions will be sent.');
     } catch (error) {
       const backend = getAuthFieldErrors(error);
       setEmailError(backend.email || getAuthErrorMessage(error, isMagicLink
@@ -75,7 +91,9 @@ export const ForgotPassword = () => {
           <p className="login-description">
             {isMagicLink
               ? 'Email a one-time login link (valid for 15 minutes).'
-              : 'Request a password reset link by email.'}
+              : isMobile
+                  ? 'Mobile-only staff can request a reset link from their workshop administrator. No OTP or automatic WhatsApp is used.'
+                  : 'Request a password reset link by email.'}
           </p>
 
           <div className="auth-recovery-methods" role="group" aria-label="Choose account recovery method">
@@ -105,32 +123,44 @@ export const ForgotPassword = () => {
               <WandSparkles size={16} strokeWidth={1.8} aria-hidden="true" />
               Magic Login Link
             </button>
+            <button type="button"
+              className={'auth-recovery-method auth-recovery-method--mobile' + (isMobile ? ' is-active' : '')}
+              aria-pressed={isMobile} disabled={loading}
+              onClick={() => { setMode('mobile'); clearFeedback(); }}>
+              <Phone size={16} aria-hidden="true" /> Mobile Recovery (Manual)
+            </button>
           </div>
 
           <form className="login-form" onSubmit={submit} noValidate>
             <label htmlFor="forgot-password-email" className="block">
-              <span className="login-field-label">Email</span>
+              <span className="login-field-label">{isMobile ? 'International mobile number' : 'Email'}</span>
               <div className={'login-input-shell ' + (emailError ? 'is-error' : '')}>
-                <span className="login-input-icon" aria-hidden="true"><Mail size={16} /></span>
+                <span className="login-input-icon" aria-hidden="true">{isMobile ? <Phone size={16} /> : <Mail size={16} />}</span>
                 <input
                   id="forgot-password-email"
                   className="login-input"
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
+                  type={isMobile ? 'tel' : 'email'}
+                  inputMode={isMobile ? 'tel' : 'email'}
+                  autoComplete={isMobile ? 'tel' : 'email'}
                   autoCapitalize="none"
                   spellCheck={false}
-                  value={email}
-                  placeholder="name@example.com"
+                  value={isMobile ? mobile : email}
+                  placeholder={isMobile ? '+919876543210' : 'name@example.com'}
                   required
                   aria-invalid={Boolean(emailError)}
                   aria-describedby={emailError ? 'forgot-password-email-error' : undefined}
                   onChange={(event) => {
-                    setEmail(event.target.value);
+                    if (isMobile) setMobile(event.target.value);
+                    else setEmail(event.target.value);
                     clearFeedback();
                   }}
                 />
               </div>
+              {isMobile && (
+                <input className="login-input mt-3" type="text" aria-label="Workshop code"
+                  autoComplete="off" placeholder="Workshop code" value={workshop}
+                  onChange={(event) => { setWorkshop(event.target.value); clearFeedback(); }} />
+              )}
               {emailError && (
                 <span id="forgot-password-email-error" className="auth-field-error" role="alert">
                   {emailError}
@@ -143,7 +173,7 @@ export const ForgotPassword = () => {
               )}
             </label>
             <button type="submit" className="login-submit" disabled={loading}>
-              {loading ? 'Sending…' : isMagicLink ? 'Send Magic Link' : 'Send Reset Link'}
+              {loading ? 'Submitting…' : isMobile ? 'Request Manual Recovery' : isMagicLink ? 'Send Magic Link' : 'Send Reset Link'}
             </button>
           </form>
 
