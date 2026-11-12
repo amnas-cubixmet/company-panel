@@ -96,3 +96,74 @@
 .account-billing-page .saas-table-wrap{scrollbar-width:none;-ms-overflow-style:none}.account-billing-page .saas-table-wrap::-webkit-scrollbar{display:none;width:0;height:0}
 .account-billing-page .saas-template-entry{border-color:color-mix(in srgb,var(--primary) 22%,var(--border))}
 @media(max-width:760px){.saas-page.account-billing-page{padding:0!important}.account-billing-page .saas-grid{grid-template-columns:1fr}.account-billing-page .saas-wide{grid-column:auto}}
+
+
+/* Storage delete control: keep the trash icon and label readable even when
+   disabled because there are no selected files. Never enable deletion before
+   selection; this only improves the visual affordance and contrast. */
+.saas-page.account-billing-page .saas-storage-actions .saas-storage-delete {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-width:138px;
+  min-height:40px;
+  padding:8px 14px;
+  border:1px solid #b91c1c;
+  border-radius:9px;
+  background:#b91c1c;
+  color:#fff !important;
+  opacity:1 !important;
+  font-size:13px;
+  font-weight:650;
+  line-height:1.4;
+  white-space:nowrap;
+  cursor:pointer;
+  transition:background-color .16s ease,border-color .16s ease;
+}
+.saas-page.account-billing-page .saas-storage-actions .saas-storage-delete svg {
+  display:block;
+  flex:0 0 17px;
+  width:17px;
+  height:17px;
+  color:inherit;
+  stroke:currentColor;
+  opacity:1;
+}
+.saas-page.account-billing-page .saas-storage-actions .saas-storage-delete span {
+  display:inline;
+  color:inherit;
+  opacity:1;
+}
+.saas-page.account-billing-page .saas-storage-actions .saas-storage-delete:hover:not(:disabled) {
+  background:#991b1b;
+  border-color:#991b1b;
+  color:#fff !important;
+}
+.saas-page.account-billing-page .saas-storage-actions .saas-storage-delete:focus-visible {
+  outline:2px solid #dc2626;
+  outline-offset:3px;
+}
+.saas-page.account-billing-page .saas-storage-actions .saas-storage-delete:disabled,
+.saas-page.account-billing-page .saas-storage-actions .saas-storage-delete:disabled:hover {
+  background:#fee2e2;
+  border-color:#fca5a5;
+  color:#991b1b !important;
+  opacity:1 !important;
+  cursor:not-allowed;
+  box-shadow:none;
+}
+.saas-page.account-billing-page .saas-media-row .saas-icon-button {
+  border-color:#fecaca;
+  background:#fff1f2;
+  color:#b91c1c;
+}
+.saas-page.account-billing-page .saas-media-row .saas-icon-button:hover {
+  background:#fee2e2;
+  border-color:#fca5a5;
+  color:#991b1b;
+}
+.saas-page.account-billing-page .saas-media-row .saas-icon-button:focus-visible {
+  outline:2px solid #dc2626;
+  outline-offset:2px;
+}
