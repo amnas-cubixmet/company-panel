@@ -164,7 +164,7 @@ const profiles = process.env.UI_QUICK ? [{width:390,height:844,theme:'light'}] :
   {width:320,height:720,theme:'dark'}, {width:375,height:812,theme:'light'},
   {width:390,height:844,theme:'dark'}, {width:430,height:932,theme:'light'},
   {width:768,height:1024,theme:'dark'}, {width:1024,height:768,theme:'light'},
-  {width:1440,height:1000,theme:'dark'}, {width:1920,height:1080,theme:'light'},
+  {width:1140,height:760,theme:'light'}, {width:1440,height:1000,theme:'dark'}, {width:1920,height:1080,theme:'light'},
 ];
 const server=spawn(process.execPath,['node_modules/vite/bin/vite.js',...(process.env.UI_PRODUCTION ? ['preview'] : []),'--host','127.0.0.1','--port',String(port),'--strictPort'],{
   cwd:new URL('..',import.meta.url),env:{...process.env,VITE_API_URL:'http://127.0.0.1:8000/api/v1'},stdio:['ignore','pipe','pipe'],
@@ -408,7 +408,46 @@ try {
             const sidebar=page.locator('.sidebar-brand-row');
             if(await sidebar.evaluate(el=>el.getBoundingClientRect().height)<=56)
               throw Error('Desktop sidebar must grow to show long workshop names without ellipsis');
+            const headerMetrics=await page.locator('.desktop-header-row').evaluate(header=>{
+              const search=header.querySelector('.header-search-wrap');
+              const actions=header.querySelector('.header-actions');
+              const bounds=header.getBoundingClientRect();
+              return {
+                headerRight:bounds.right,
+                searchWidth:search.getBoundingClientRect().width,
+                actionsRight:actions.getBoundingClientRect().right,
+                clipped:[...actions.children].filter(el=>{
+                  const rect=el.getBoundingClientRect();
+                  return rect.width>0 && rect.right>bounds.right+2;
+                }).map(el=>el.className),
+              };
+            });
+            if(headerMetrics.clipped.length||headerMetrics.actionsRight>headerMetrics.headerRight+2||
+               headerMetrics.searchWidth<130)
+              throw Error('Desktop workspace header clips its controls: '+JSON.stringify(headerMetrics));
           }
+          if(mobile && profile.width<=640) {
+            const label=page.locator('.mobile-header-page');
+            if(await label.textContent()!=='Dashboard' || !await label.isVisible())
+              throw Error('Narrow mobile action row must identify the current page');
+            const labelAndWallet=await page.evaluate(()=>{
+              const label=document.querySelector('.mobile-header-page').getBoundingClientRect();
+              const wallet=document.querySelector('.mobile-header-actions .cg-credit-chip').getBoundingClientRect();
+              return {labelRight:label.right,walletLeft:wallet.left};
+            });
+            if(labelAndWallet.labelRight>labelAndWallet.walletLeft+1)
+              throw Error('Mobile page label overlaps wallet: '+JSON.stringify(labelAndWallet));
+          }
+          const search=page.locator('.global-search-field input');
+          await search.focus();
+          if(await page.locator('.global-search-results').count())
+            throw Error('Empty focused search should not cover workspace content');
+          await search.fill('da');
+          await page.locator('.global-search-results').waitFor({state:'visible',timeout:5000});
+          await search.press('Escape');
+          await search.fill('');
+          if(await page.locator('.global-search-results').count())
+            throw Error('Empty query should close the search popover');
         }
         if(path==='/plans') {
           if(new URL(page.url()).pathname!=='/account/credits/buy') throw Error('Redirect did not reach module marketplace');
