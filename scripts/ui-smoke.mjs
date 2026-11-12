@@ -560,7 +560,7 @@ try {
           if(await mobileOption.getAttribute('aria-pressed')!=='true' ||
               await page.getByLabel('Country code').inputValue()!=='+91' ||
               await input.getAttribute('type')!=='tel' ||
-              await input.getAttribute('placeholder')!=='90000000000')
+              await input.getAttribute('placeholder')!=='9876543210')
             throw Error('Mobile option must show +91 country code and phone input');
           await input.fill('9876543210');
           await emailOption.click();
@@ -588,7 +588,7 @@ try {
             await page.getByRole('button',{name:'Sign In',exact:true}).click();
             const generic=page.locator('#login-form-error');
             await generic.waitFor({state:'visible'});
-            if(!/Incorrect email\/mobile number or password/i.test(await generic.innerText()))
+            if(!/Unable to sign in with these details/i.test(await generic.innerText()))
               throw Error('Invalid credentials must show a generic red error');
             if(await page.locator('.login-input-shell.is-error').count()!==2 ||
               await input.getAttribute('aria-invalid')!=='true' ||
