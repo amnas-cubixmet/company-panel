@@ -211,10 +211,10 @@
   font-size:12px;
   line-height:1.55;
 }
-.auth-recovery-feedback.is-success {
-  border-color:rgba(52,211,153,.38);
-  background:rgba(16,185,129,.11);
-  color:#a7f3d0;
+.auth-recovery-feedback.is-info {
+  border-color:rgba(96,165,250,.4);
+  background:rgba(37,99,235,.1);
+  color:#bfdbfe;
 }
 .auth-recovery-feedback.is-error {
   border-color:rgba(248,113,113,.4);
@@ -223,10 +223,10 @@
 }
 @media (prefers-color-scheme:light) {
   .auth-recovery-page .login-form .auth-field-error { color:#b91c1c; }
-  .auth-recovery-feedback.is-success {
-    background:#f0fdf4;
-    color:#166534;
-    border-color:#86efac;
+  .auth-recovery-feedback.is-info {
+    background:#eff6ff;
+    color:#1e40af;
+    border-color:#93c5fd;
   }
   .auth-recovery-feedback.is-error {
     background:#fff1f2;
