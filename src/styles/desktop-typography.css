@@ -485,3 +485,24 @@
     border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft);
   }
 }
+
+
+/* The logged-in workshop is the primary mobile app identity. Override only
+   this wordmark, while keeping ordinary content and form fields regular. */
+@media screen and (max-width:1023px) {
+  #root .app-shell .mobile-dual-identity .workshop-company-name {
+    font-weight:800 !important;
+    font-size:16px !important;
+    line-height:1.25;
+    letter-spacing:-.025em;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+}
+@media screen and (max-width:390px) {
+  #root .app-shell .mobile-dual-identity .workshop-company-name {
+    font-weight:800 !important;
+    font-size:14px !important;
+  }
+}
