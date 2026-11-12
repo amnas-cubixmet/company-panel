@@ -1,7 +1,7 @@
 import { appConfirm } from '../../components/common/appDialogs';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarDays, ChevronRight, CreditCard, FilePenLine, IndianRupee, Infinity, ReceiptText, ShieldCheck, Trash2, Upload, Users } from 'lucide-react';
+import { CalendarDays, ChevronRight, CreditCard, FilePenLine, IndianRupee, ReceiptText, ShieldCheck, Trash2, Upload, Users } from 'lucide-react';
 import { saasAccountService } from '../../services/saasAccount.service';
 import { settingsService } from '../../services/settings.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
@@ -122,10 +122,10 @@ function BillingView({ billing, storage, onOpenTemplates }) {
 
 function StorageView({ storage, setStorage }) {
   const access = useFeatureAccess();
-  const canManage = access.can('storage.manage');
   const navigate = useNavigate();
   const { can } = useFeatureAccess();
   const canManageStorage = can('storage.manage');
+  const canToggleStorage = access.isCompanyOwner || canManageStorage;
   const { user } = useAuth();
   const [storageError, setStorageError] = useState('');
   const [unit, setUnit] = useState('auto');
@@ -266,7 +266,7 @@ function StorageView({ storage, setStorage }) {
   };
 
   const setting = async (key, value) => {
-    if (!canManageStorage) return setStorageError('Storage settings require storage.manage permission.');
+    if (!(key === 'enabled' && canToggleStorage) && !canManageStorage) return setStorageError('Storage settings require storage.manage permission.');
     setStorageBusy(true); setStorageError('');
     try {
       const next = await saasAccountService.updateStorageSettings({ [key]: value });
@@ -294,7 +294,7 @@ function StorageView({ storage, setStorage }) {
               <span>Allow new uploads</span>
               <input type="checkbox" role="switch" aria-label="Enable workshop storage uploads"
                 aria-checked={storageEnabled} checked={storageEnabled}
-                disabled={storageBusy || !canManageStorage}
+                disabled={storageBusy || !canToggleStorage}
                 onChange={async (event) => {
                   const next = event.target.checked;
                   if (!next && !await appConfirm('Disable new storage uploads for this workshop? Existing files and history remain accessible; billing for previously stored data is unchanged.')) return;
