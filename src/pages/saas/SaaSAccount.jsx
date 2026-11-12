@@ -367,8 +367,8 @@ function StorageView({ storage, setStorage }) {
 
         <div className="storage-interval-summary">
           <div><span>Days</span><strong>{summary.days}</strong></div>
-          <div><span>Average storage</span><strong>{formatStorageBytes(summary.averageGb * BYTES_PER_GB, unit)}</strong></div>
-          <div><span>Peak storage</span><strong>{formatStorageBytes(summary.peakGb * BYTES_PER_GB, unit)}</strong></div>
+          <div><span>Average storage</span><strong>{formatStorageBytes(summary.averageBytes, unit)}</strong></div>
+          <div><span>Peak storage</span><strong>{formatStorageBytes(summary.peakBytes, unit)}</strong></div>
           <div><span>Snapshots</span><strong>{history.length}</strong></div>
         </div>
 
