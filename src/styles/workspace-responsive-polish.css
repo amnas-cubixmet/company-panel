@@ -576,3 +576,122 @@
     min-width:0;min-height:38px;height:38px;
   }
 }
+
+
+/* Tenant-first, two-brand identity: actual workshop icon + short name,
+   alongside the cubixgear product mark. No "Workshop Management" subtitle. */
+@media (min-width:1024px) {
+  #root .app-shell .sidebar-dual-brand {
+    display:flex;flex:1 1 auto;min-width:0;flex-direction:column;
+    align-items:stretch;gap:4px;
+  }
+  #root .app-shell .sidebar-dual-brand .sidebar-identity-line {
+    display:flex;align-items:center;gap:8px;min-width:0;min-height:25px;
+  }
+  #root .app-shell .sidebar-dual-brand .sidebar-workshop-line .sidebar-logo,
+  #root .app-shell .sidebar-dual-brand .sidebar-platform-line .sidebar-product-logo {
+    width:25px;height:25px;flex:0 0 25px;border:0;
+    border-radius:6px;background:transparent;
+  }
+  #root .app-shell .sidebar-dual-brand .sidebar-product-logo .cubixgear-logo-image {
+    width:25px;height:25px;object-fit:contain;
+  }
+  #root .app-shell .sidebar-dual-brand .sidebar-identity-line strong {
+    font-size:13px;line-height:1.3;font-weight:700;
+  }
+  #root .app-shell .sidebar-dual-brand .sidebar-workshop-line .workshop-company-name {
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    overflow-wrap:normal;
+  }
+  #root .app-shell .sidebar-dual-brand .sidebar-platform-line {
+    color:var(--text-secondary);
+  }
+  #root .app-shell .sidebar-dual-brand .sidebar-platform-line strong {
+    font-size:12px;
+  }
+  #root .app-shell .sidebar-brand-row {
+    min-height:78px;padding-block:8px;align-items:center;
+  }
+  #root .app-shell .app-sidebar.is-collapsed .sidebar-brand-row {
+    min-height:56px;
+  }
+  #root .app-shell .app-sidebar.is-collapsed .sidebar-product-logo,
+  #root .app-shell .app-sidebar.is-collapsed .sidebar-product-logo .cubixgear-logo-image {
+    width:32px;height:32px;
+  }
+}
+/* Both identities occupy the top row; wallet and account controls stay below. */
+@media (max-width:1023px) {
+  #root .app-shell .mobile-header-row {
+    flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:4px;
+  }
+  #root .app-shell .mobile-dual-identity {
+    display:flex;align-items:center;justify-content:space-between;
+    gap:8px;width:100%;min-width:0;min-height:34px;
+  }
+  #root .app-shell .mobile-dual-identity .mobile-workshop-brand {
+    display:flex;flex:1 1 auto;width:auto;min-width:0;
+    max-width:calc(100% - 116px);align-items:center;gap:7px;
+  }
+  #root .app-shell .mobile-dual-identity .mobile-workshop-brand .mobile-brand-copy {
+    flex:1 1 auto;min-width:0;overflow:hidden;
+  }
+  #root .app-shell .mobile-dual-identity .workshop-company-name {
+    max-width:100%;font-size:13px;line-height:1.3;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    overflow-wrap:normal;
+  }
+  #root .app-shell .mobile-product-brand {
+    display:flex;align-items:center;flex:0 0 auto;gap:5px;
+    min-width:0;color:var(--text-secondary);
+  }
+  #root .app-shell .mobile-product-icon {
+    display:flex;align-items:center;justify-content:center;
+    width:26px;height:26px;flex:0 0 26px;
+  }
+  #root .app-shell .mobile-product-icon .cubixgear-logo-image {
+    display:block;width:26px;height:26px;object-fit:contain;
+  }
+  #root .app-shell .mobile-product-brand strong {
+    font-size:12px;line-height:1.2;font-weight:700;white-space:nowrap;
+  }
+  #root .app-shell .mobile-header-row .mobile-header-actions {
+    display:flex;justify-content:flex-end;width:100%;flex:0 0 auto;
+    min-width:0;gap:6px;
+  }
+  #root .app-shell .mobile-header-page {
+    display:block;flex:1 1 auto;min-width:0;
+    margin-right:auto;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;font-size:12px;color:var(--text-secondary);
+  }
+}
+@media (max-width:360px) {
+  #root .app-shell .mobile-dual-identity {gap:5px;}
+  #root .app-shell .mobile-dual-identity .mobile-workshop-brand {gap:5px;}
+  #root .app-shell .mobile-product-brand strong {font-size:11px;}
+  #root .app-shell .mobile-product-icon,
+  #root .app-shell .mobile-product-icon .cubixgear-logo-image {
+    width:23px;height:23px;
+  }
+}
+/* Mobile drawer uses the same small company and platform identity. */
+#root .app-shell .mobile-drawer-dual-brand {
+  display:flex;flex:1 1 auto;flex-direction:column;
+  align-items:flex-start;gap:5px;min-width:0;
+}
+#root .app-shell .mobile-drawer-company-line,
+#root .app-shell .mobile-drawer-platform-line {
+  display:flex;align-items:center;gap:8px;min-width:0;
+}
+#root .app-shell .mobile-drawer-company-line .mobile-drawer-logo {
+  width:25px;height:25px;flex:0 0 25px;background:transparent;
+}
+#root .app-shell .mobile-drawer-company-line .workshop-company-name {
+  font-size:13px;white-space:nowrap;
+}
+#root .app-shell .mobile-drawer-platform-line {color:var(--text-secondary);}
+#root .app-shell .mobile-drawer-platform-line>span,
+#root .app-shell .mobile-drawer-platform-line img {
+  display:block;width:25px;height:25px;object-fit:contain;
+}
+#root .app-shell .mobile-drawer-platform-line strong {font-size:12px;}

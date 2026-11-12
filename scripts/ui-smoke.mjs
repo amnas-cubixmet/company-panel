@@ -365,80 +365,84 @@ try {
 
         if(path==='/dashboard') {
           const mobile=profile.width<1024;
+          const shortName=longWorkshopName.split(/\s+/u)[0];
+          const workshop=page.locator(mobile ? '.mobile-workshop-brand' : '.sidebar-workshop-line');
+          const product=page.locator(mobile ? '.mobile-product-brand' : '.sidebar-platform-line');
+          await workshop.waitFor({state:'visible'});
+          await product.waitFor({state:'visible'});
+          const companyName=workshop.locator('.workshop-company-name');
+          if(await companyName.innerText()!==shortName)
+            throw Error('Workshop must display only its first word in the compact header');
+          if(await companyName.getAttribute('title')!==longWorkshopName)
+            throw Error('Short workshop name must preserve the full name in its tooltip');
+          const companyLogo=workshop.locator('.workshop-company-logo-image');
+          await companyLogo.waitFor({state:'visible',timeout:8000});
+          if(!(await companyLogo.evaluate(el=>el.complete && el.naturalWidth>0)))
+            throw Error('The actual workshop logo must load');
+          if(await product.locator('strong').innerText()!=='cubixgear')
+            throw Error('Product mark must show the cubixgear name');
+          const productLogo=product.locator('img.cubixgear-logo-image');
+          await productLogo.waitFor({state:'visible',timeout:8000});
+          if(!(await productLogo.evaluate(el=>el.complete && el.naturalWidth>0)))
+            throw Error('The cubixgear product logo must load');
+          if(await page.getByText('Workshop Management',{exact:true}).count())
+            throw Error('Obsolete Workshop Management subtitle should be removed');
           if(mobile) {
-            const brand=page.locator('.mobile-workshop-brand');
-            await brand.waitFor({state:'visible'});
-            const name=brand.locator('.workshop-company-name');
-            if(await name.innerText()!==longWorkshopName)
-              throw Error('Mobile header must display the full workshop name');
-            if(await brand.locator('.cubixgear-logo-image,.workshop-platform-brand').count())
-              throw Error('Mobile workshop identity must not include product branding');
-            const companyLogo=brand.locator('.workshop-company-logo-image');
-            await companyLogo.waitFor({state:'visible',timeout:8000});
-            if(!(await companyLogo.evaluate(el=>el.complete && el.naturalWidth>0)))
-              throw Error('Workshop logo must render on mobile');
-            const metrics=await name.evaluate(el=>{
-              const style=getComputedStyle(el);
-              return {
-                whiteSpace:style.whiteSpace,textOverflow:style.textOverflow,
-                scrollWidth:el.scrollWidth,clientWidth:el.clientWidth,
-              };
-            });
-            if(metrics.whiteSpace==='nowrap'||metrics.textOverflow==='ellipsis'||
-               metrics.scrollWidth>metrics.clientWidth+2)
-              throw Error('Mobile workshop name is truncated: '+JSON.stringify(metrics));
-            const drawer=page.locator('.mobile-drawer-brand .workshop-company-name');
-            if(await drawer.textContent()!==longWorkshopName)
-              throw Error('Mobile menu must also show the complete workshop name');
+            const drawerWorkshop=page.locator('.mobile-drawer-company-line .workshop-company-name');
+            const drawerProduct=page.locator('.mobile-drawer-platform-line strong');
+            if(await drawerWorkshop.textContent()!==shortName ||
+               await drawerProduct.textContent()!=='cubixgear')
+              throw Error('Mobile menu must preserve both company and product identities');
             const layout=await page.evaluate(()=>{
-              const brand=document.querySelector('.mobile-workshop-brand').getBoundingClientRect();
+              const workshop=document.querySelector('.mobile-workshop-brand').getBoundingClientRect();
+              const product=document.querySelector('.mobile-product-brand').getBoundingClientRect();
+              const brandRow=document.querySelector('.mobile-dual-identity').getBoundingClientRect();
               const actions=document.querySelector('.mobile-header-actions').getBoundingClientRect();
-              const copy=document.querySelector('.mobile-workshop-brand .workshop-identity-copy');
-              return {sameRow:brand.bottom>actions.top && actions.bottom>brand.top,
-                brandRight:brand.right,actionsLeft:actions.left,
-                brandBottom:brand.bottom,actionsTop:actions.top,
-                copyWidth:copy.getBoundingClientRect().width,
-                copyDisplay:getComputedStyle(copy).display};
-            });
-            if(layout.copyDisplay==='none'||layout.copyWidth<35||
-               (layout.sameRow && layout.brandRight>layout.actionsLeft+1))
-              throw Error('Workshop identity overlaps mobile actions or is hidden: '+JSON.stringify(layout));
-          } else {
-            const brand=page.locator('.sidebar-product-brand');
-            await brand.waitFor({state:'visible'});
-            if(await brand.locator('.sidebar-product-copy strong').innerText()!=='cubixgear')
-              throw Error('Desktop sidebar must show cubixgear product name');
-            if(await brand.locator('.sidebar-product-copy small').innerText()!=='Workshop Management')
-              throw Error('Desktop sidebar must show Workshop Management');
-            const logo=brand.locator('img.cubixgear-logo-image');
-            await logo.waitFor({state:'visible',timeout:8000});
-            if(!(await logo.evaluate(el=>el.complete&&el.naturalWidth>0)))
-              throw Error('Desktop sidebar product logo is missing');
-            const brandMetrics=await page.evaluate(()=>{
-              const text=document.querySelector('.sidebar-product-copy small');
-              const collapse=document.querySelector('.sidebar-collapse-button');
-              const brand=document.querySelector('.sidebar-product-brand');
               return {
-                subtitleWidth:text.scrollWidth,subtitleClientWidth:text.clientWidth,
-                textRight:text.getBoundingClientRect().right,
-                toggleLeft:collapse.getBoundingClientRect().left,
-                brandRight:brand.getBoundingClientRect().right
+                companyRight:workshop.right,productLeft:product.left,
+                productRight:product.right,brandRight:brandRow.right,
+                actionsTop:actions.top,brandBottom:brandRow.bottom
               };
             });
-            if(brandMetrics.subtitleWidth>brandMetrics.subtitleClientWidth+2 ||
-               brandMetrics.textRight>brandMetrics.toggleLeft+1)
-              throw Error('Desktop brand text overlaps collapse button or is clipped: '+JSON.stringify(brandMetrics));
+            if(layout.companyRight>layout.productLeft+1 ||
+              layout.productRight>layout.brandRight+1 ||
+              layout.actionsTop<layout.brandBottom-1)
+              throw Error('Two mobile brands or wallet row overlap: '+JSON.stringify(layout));
+            if(profile.width<=640) {
+              const label=page.locator('.mobile-header-page');
+              if(await label.textContent()!=='Dashboard'||!await label.isVisible())
+                throw Error('Narrow mobile action row must identify the current page');
+              const positions=await page.evaluate(()=>{
+                const label=document.querySelector('.mobile-header-page').getBoundingClientRect();
+                const wallet=document.querySelector('.mobile-header-actions .cg-credit-chip').getBoundingClientRect();
+                return {labelRight:label.right,walletLeft:wallet.left};
+              });
+              if(positions.labelRight>positions.walletLeft+1)
+                throw Error('Mobile page label overlaps wallet: '+JSON.stringify(positions));
+            }
+          } else {
+            const sidebar=page.locator('.sidebar-brand-row');
+            if(await sidebar.evaluate(el=>el.getBoundingClientRect().height)<=56)
+              throw Error('Desktop sidebar must fit both logo/name lines');
+            const overlap=await page.evaluate(()=>{
+              const row=document.querySelector('.sidebar-brand-row').getBoundingClientRect();
+              const collapse=document.querySelector('.sidebar-collapse-button').getBoundingClientRect();
+              const lines=[...document.querySelectorAll('.sidebar-identity-line')].map(el=>el.getBoundingClientRect());
+              return {rowRight:row.right,toggleLeft:collapse.left,lines:lines.map(rect=>({right:rect.right,bottom:rect.bottom,top:rect.top}))};
+            });
+            if(overlap.lines.some(rect=>rect.right>overlap.toggleLeft+1)||
+              overlap.lines[0].bottom>overlap.lines[1].top+1)
+              throw Error('Desktop dual masthead overlaps its collapse button: '+JSON.stringify(overlap));
             await page.getByRole('button',{name:'Collapse sidebar'}).click();
-            if(await page.locator('.sidebar-product-copy').count())
-              throw Error('Collapsed desktop sidebar should display the product icon only');
+            if(await page.locator('.sidebar-identity-line').count())
+              throw Error('Collapsed desktop sidebar must show only the product icon');
             await page.getByRole('button',{name:'Expand sidebar'}).click();
             const headerMetrics=await page.locator('.desktop-header-row').evaluate(header=>{
               const search=header.querySelector('.header-search-wrap');
               const actions=header.querySelector('.header-actions');
               const bounds=header.getBoundingClientRect();
               return {
-                headerRight:bounds.right,
-                searchWidth:search.getBoundingClientRect().width,
+                headerRight:bounds.right,searchWidth:search.getBoundingClientRect().width,
                 actionsRight:actions.getBoundingClientRect().right,
                 clipped:[...actions.children].filter(el=>{
                   const rect=el.getBoundingClientRect();
@@ -447,20 +451,8 @@ try {
               };
             });
             if(headerMetrics.clipped.length||headerMetrics.actionsRight>headerMetrics.headerRight+2||
-               headerMetrics.searchWidth<130)
+              headerMetrics.searchWidth<130)
               throw Error('Desktop workspace header clips its controls: '+JSON.stringify(headerMetrics));
-          }
-          if(mobile && profile.width<=640) {
-            const label=page.locator('.mobile-header-page');
-            if(await label.textContent()!=='Dashboard' || !await label.isVisible())
-              throw Error('Narrow mobile action row must identify the current page');
-            const labelAndWallet=await page.evaluate(()=>{
-              const label=document.querySelector('.mobile-header-page').getBoundingClientRect();
-              const wallet=document.querySelector('.mobile-header-actions .cg-credit-chip').getBoundingClientRect();
-              return {labelRight:label.right,walletLeft:wallet.left};
-            });
-            if(labelAndWallet.labelRight>labelAndWallet.walletLeft+1)
-              throw Error('Mobile page label overlaps wallet: '+JSON.stringify(labelAndWallet));
           }
           const search=page.locator('.global-search-field input');
           await search.focus();
