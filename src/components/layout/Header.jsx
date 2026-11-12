@@ -202,6 +202,7 @@ export const Header = () => {
           </button>
 
           <div className="mobile-header-actions">
+            <span className="mobile-header-page" aria-hidden="true">{pageTitle}</span>
             <CreditBalanceChip compact />
             {canViewNotifications && (
               <button type="button" className={`mobile-notification-button ${location.pathname === '/notifications' ? 'is-notifications-active' : ''}`} onClick={() => navigate('/notifications')} aria-label={`Notifications, ${notificationCount} unread`} aria-current={location.pathname === '/notifications' ? 'page' : undefined}>
