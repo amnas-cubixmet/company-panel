@@ -574,6 +574,32 @@ try {
           const registerLink=page.getByRole('link',{name:'Register',exact:true});
           if(await registerLink.getAttribute('href')!=='https://cubixgear.tech/signup')
             throw Error('Register must open public website registration');
+          // Unknown accounts and incorrect passwords must share the same
+          // generic error, without indicating that a particular email exists.
+          if(profile.width===390 || profile.width===1440) {
+            await page.route('**/api/v1/auth/login',route=>route.fulfill({
+              status:400,contentType:'application/json',
+              body:JSON.stringify({non_field_errors:['Invalid credentials or workshop selection.']}),
+            }));
+            await emailOption.click();
+            await input.fill('missing@example.test');
+            const password=page.locator('input[autocomplete="current-password"]');
+            await password.fill('WrongPassword123!');
+            await page.getByRole('button',{name:'Sign In',exact:true}).click();
+            const generic=page.locator('#login-form-error');
+            await generic.waitFor({state:'visible'});
+            if(!/Incorrect email\/mobile number or password/i.test(await generic.innerText()))
+              throw Error('Invalid credentials must show a generic red error');
+            if(await page.locator('.login-input-shell.is-error').count()!==2 ||
+              await input.getAttribute('aria-invalid')!=='true' ||
+              await password.getAttribute('aria-invalid')!=='true')
+              throw Error('Invalid credentials must mark both identifier and password red');
+            await input.fill('other@example.test');
+            if(await generic.count() || await page.locator('.login-input-shell.is-error').count())
+              throw Error('Correcting login credentials must clear stale red errors');
+            await password.fill('');
+            await page.unroute('**/api/v1/auth/login');
+          }
           // Restore the default Email mode and clear values for the existing
           // empty-field border validation performed later on this page.
           await input.fill('');
@@ -606,7 +632,15 @@ try {
             throw Error('Password reset must be the default recovery method');
           if(await page.getByRole('button',{name:'Send Reset Link'}).count()!==1)
             throw Error('Password reset submit action is missing');
+          await email.fill('not-an-email');
+          await page.getByRole('button',{name:'Send Reset Link'}).click();
+          if(await email.getAttribute('aria-invalid')!=='true' ||
+             await page.locator('.auth-field-error').count()!==1 ||
+             await page.locator('.login-input-shell.is-error').count()!==1)
+            throw Error('Malformed recovery email must produce red inline validation');
           await email.fill('member@example.test');
+          if(await page.locator('.login-input-shell.is-error').count())
+            throw Error('Correcting recovery email must clear the red input error');
           await magic.click();
           if(await magic.getAttribute('aria-pressed')!=='true' ||
               await page.getByRole('heading',{name:'Sign in with a magic link'}).count()!==1 ||
@@ -614,6 +648,12 @@ try {
             throw Error('Magic login option must render its own title and submit action');
           if(await email.inputValue()!=='member@example.test')
             throw Error('Changing recovery method must preserve the typed email');
+          await email.fill('invalid-address');
+          await page.getByRole('button',{name:'Send Magic Link'}).click();
+          if(await email.getAttribute('aria-invalid')!=='true' ||
+             !await page.locator('.login-input-shell.is-error').count())
+            throw Error('Magic link must reject an invalid email with red input border');
+          await email.fill('member@example.test');
           if(await page.locator('input[type="email"]').count()!==1)
             throw Error('Recovery modes should share a single email input');
           const twoOptionLayout=await page.locator('.auth-recovery-methods').evaluate(el=>{
