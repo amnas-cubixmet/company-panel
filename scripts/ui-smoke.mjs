@@ -450,15 +450,16 @@ try {
             throw Error('Empty query should close the search popover');
         }
         if(path==='/account') {
-          const stats=page.locator('.account-overview-refined .account-overview-stats article');
+          // /account renders CreditWorkspace, not the legacy AccountOverview component.
+          const stats=page.locator('.cg-credit-page .cg-credit-metrics article');
           await stats.first().waitFor({state:'visible',timeout:15000});
           if(await stats.count()!==3)
-            throw Error('Account overview must display three KPI cards');
+            throw Error('Wallet overview must display the three real KPI cards');
           const typography=await page.evaluate(()=>{
-            const card=document.querySelector('.account-overview-refined .account-overview-stats article');
-            const label=card.querySelector('span');
+            const card=document.querySelector('.cg-credit-page .cg-credit-metrics article');
+            const label=card.querySelector('div span');
             const value=card.querySelector('strong');
-            const tab=document.querySelector('.account-dashboard-tabs button');
+            const tab=document.querySelector('.cg-credit-page .account-dashboard-tabs button');
             const box=card.getBoundingClientRect();
             return {
               labelFont:parseFloat(getComputedStyle(label).fontSize),
@@ -466,11 +467,16 @@ try {
               tabFont:parseFloat(getComputedStyle(tab).fontSize),
               cardWidth:box.width,
               scrollWidth:document.documentElement.scrollWidth,
+              columnCount:getComputedStyle(card.parentElement).gridTemplateColumns.split(' ').length,
             };
           });
-          if(typography.labelFont<12 || typography.valueFont<19 || typography.tabFont<13 ||
+          if(typography.labelFont<13 || typography.valueFont<22 || typography.tabFont<13 ||
             typography.cardWidth<140 || typography.scrollWidth>profile.width+2)
-            throw Error('Account overview is too small or overflows: '+JSON.stringify(typography));
+            throw Error('Wallet overview KPIs or tabs are unreadable/overflow: '+JSON.stringify(typography));
+          if(profile.width<=360 && typography.columnCount!==1)
+            throw Error('Tiny phones must show a single readable account card per row');
+          if(profile.width>=1024 && typography.columnCount!==3)
+            throw Error('Desktop account should show three balanced KPI columns');
         }
         if(path==='/plans') {
           if(new URL(page.url()).pathname!=='/account/credits/buy') throw Error('Redirect did not reach module marketplace');
