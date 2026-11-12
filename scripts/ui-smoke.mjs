@@ -680,12 +680,12 @@ try {
             });
             await email.fill('Member@Example.com');
             await page.getByRole('button',{name:'Send Magic Link'}).click();
-            const successStatus=page.locator('.auth-recovery-feedback.is-success[role="status"]');
-            await successStatus.waitFor({state:'visible'});
+            const neutralStatus=page.locator('.auth-recovery-feedback.is-info[role="status"]');
+            await neutralStatus.waitFor({state:'visible'});
             if(requests.length!==1||requests[0].kind!=='magic'||
                requests[0].body?.email!=='member@example.com')
               throw Error('Magic link should send normalized email to the magic-link API');
-            const presentation=await successStatus.evaluate(node=>{
+            const presentation=await neutralStatus.evaluate(node=>{
               const button=document.querySelector('.login-form .login-submit').getBoundingClientRect();
               const status=node.getBoundingClientRect();
               const styles=getComputedStyle(node);
@@ -697,17 +697,17 @@ try {
                 height:status.height,
               };
             });
-            if(!presentation.message.includes('Request received') ||
-              !presentation.message.includes('If this email belongs to an eligible account') ||
+            if(!presentation.message.includes('Check your email if registered') ||
+              !presentation.message.includes('No email or login link is created for an unknown address') ||
               !presentation.belowButton ||
               presentation.borderTopWidth==='0px' ||
               presentation.fontSize<12 || presentation.height<40)
-              throw Error('Magic link success message must be visible and accessible: '+JSON.stringify(presentation));
+              throw Error('Neutral magic link acknowledgment must be visible and accessible: '+JSON.stringify(presentation));
             await reset.click();
             if(await page.locator('.auth-recovery-feedback[role="status"]').count())
-              throw Error('Changing recovery method should clear stale success feedback');
+              throw Error('Changing recovery method should clear stale recovery feedback');
             await page.getByRole('button',{name:'Send Reset Link'}).click();
-            await page.locator('.auth-recovery-feedback.is-success[role="status"]').waitFor({state:'visible'});
+            await page.locator('.auth-recovery-feedback.is-info[role="status"]').waitFor({state:'visible'});
             if(requests.length!==2||requests[1].kind!=='reset'||
                requests[1].body?.email!=='member@example.com')
               throw Error('Reset mode must submit to the password-reset API');
@@ -735,8 +735,8 @@ try {
             const failure=page.locator('.auth-recovery-feedback.is-error[role="alert"]');
             await failure.waitFor({state:'visible'});
             if(!/Too many requests/.test(await failure.innerText()) ||
-               await page.locator('.auth-recovery-feedback.is-success').count())
-              throw Error('Throttling must show a visible error without stale success feedback');
+               await page.locator('.auth-recovery-feedback.is-info').count())
+              throw Error('Throttling must show a visible error without stale recovery confirmation');
             await email.fill('fixed@example.test');
             if(await page.locator('.auth-recovery-feedback').count())
               throw Error('Editing email must dismiss stale recovery errors');
