@@ -202,6 +202,13 @@ try {
       const url=new URL(route.request().url());
       return url.origin===baseURL||url.pathname.startsWith('/api/v1/')?route.continue():route.abort();
     });
+    // Intercept the public signup destination so UI smoke tests stay offline.
+    // This explicitly tests the redirect without opening a real external site.
+    await context.route('https://cubixgear.tech/signup', route => route.fulfill({
+      status:200,
+      contentType:'text/html',
+      body:'<!doctype html><html><body><main>Public workshop registration destination</main></body></html>',
+    }));
     await context.route('**/api/v1/**',async route=>{
       if(!['GET','HEAD'].includes(route.request().method())) {
         await route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({message:'Smoke tests do not write tenant data.'})});return;
@@ -222,6 +229,14 @@ try {
       console.log(`Checking ${profile.width}px ${path}`);
       errors.length=0;
       try {
+        if(path==='/signup') {
+          // The panel must no longer render its own registration form.
+          await page.goto(baseURL+path,{waitUntil:'domcontentloaded',timeout:15000});
+          await page.waitForURL('https://cubixgear.tech/signup',{timeout:15000});
+          firstNavigation=true;
+          tested++;
+          continue;
+        }
         if(firstNavigation) {
           await page.goto(baseURL+path,{waitUntil:'networkidle',timeout:15000});
           firstNavigation=false;
@@ -342,13 +357,14 @@ try {
           if(new URL(page.url()).pathname!=='/account/credits/buy') throw Error('Redirect did not reach module marketplace');
           if(new URL(page.url()).searchParams.has('month')) throw Error('Payroll filters leaked into unrelated route');
         }
-        if(path==='/signup') {
-          if(new URL(page.url()).pathname!=='/signup') throw Error('Workshop mobile signup must remain public');
-          await page.getByRole('heading',{name:'Create a workshop'}).waitFor({state:'visible'});
-          const mobile=page.locator('input[type="tel"]');
-          if(!(await mobile.count())) throw Error('Mobile number field missing on workshop registration');
-          if(await page.locator('input[type="email"]').getAttribute('required')!==null)
-            throw Error('Email must remain optional for workshop registration');
+        if(path==='/login') {
+          if(await page.getByLabel('Country code').inputValue()!=='+91')
+            throw Error('Login country code should default to +91');
+          if(await page.locator('#login-identifier').getAttribute('placeholder')!=='90000000000')
+            throw Error('Login mobile number placeholder is outdated');
+          const registerLink=page.getByRole('link',{name:'Register',exact:true});
+          if(await registerLink.getAttribute('href')!=='https://cubixgear.tech/signup')
+            throw Error('Register must open public website registration');
         }
         const text=await page.locator('body').innerText();
         if(text.length<20)throw Error('Blank page');
