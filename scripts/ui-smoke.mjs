@@ -367,9 +367,7 @@ try {
           const mobile=profile.width<1024;
           const shortName=longWorkshopName.split(/\s+/u)[0];
           const workshop=page.locator(mobile ? '.mobile-workshop-brand' : '.sidebar-workshop-line');
-          const product=page.locator(mobile ? '.mobile-product-brand' : '.sidebar-platform-line');
           await workshop.waitFor({state:'visible'});
-          await product.waitFor({state:'visible'});
           const companyName=workshop.locator('.workshop-company-name');
           if(await companyName.innerText()!==shortName)
             throw Error('Workshop must display only its first word in the compact header');
@@ -379,48 +377,49 @@ try {
           await companyLogo.waitFor({state:'visible',timeout:8000});
           if(!(await companyLogo.evaluate(el=>el.complete && el.naturalWidth>0)))
             throw Error('The actual workshop logo must load');
-          if(await product.locator('strong').innerText()!=='cubixgear')
-            throw Error('Product mark must show the cubixgear name');
-          const productLogo=product.locator('img.cubixgear-logo-image');
-          await productLogo.waitFor({state:'visible',timeout:8000});
-          if(!(await productLogo.evaluate(el=>el.complete && el.naturalWidth>0)))
-            throw Error('The cubixgear product logo must load');
           if(await page.getByText('Workshop Management',{exact:true}).count())
             throw Error('Obsolete Workshop Management subtitle should be removed');
           if(mobile) {
+            if(await page.locator('.mobile-product-brand,.mobile-drawer-platform-line').count())
+              throw Error('Mobile must not display cubixgear logo or wordmark');
             const drawerWorkshop=page.locator('.mobile-drawer-company-line .workshop-company-name');
-            const drawerProduct=page.locator('.mobile-drawer-platform-line strong');
-            if(await drawerWorkshop.textContent()!==shortName ||
-               await drawerProduct.textContent()!=='cubixgear')
-              throw Error('Mobile menu must preserve both company and product identities');
+            if(await drawerWorkshop.textContent()!==shortName)
+              throw Error('Mobile menu should display only the workshop short name');
+            const typography=await companyName.evaluate(el=>({
+              fontWeight:parseInt(getComputedStyle(el).fontWeight,10),
+              fontSize:parseFloat(getComputedStyle(el).fontSize),
+              textOverflow:getComputedStyle(el).textOverflow,
+            }));
+            if(typography.fontWeight<750 || typography.fontSize<14)
+              throw Error('Mobile workshop name should be bold and readable: '+JSON.stringify(typography));
             const layout=await page.evaluate(()=>{
-              const workshop=document.querySelector('.mobile-workshop-brand').getBoundingClientRect();
-              const product=document.querySelector('.mobile-product-brand').getBoundingClientRect();
-              const brandRow=document.querySelector('.mobile-dual-identity').getBoundingClientRect();
+              const brand=document.querySelector('.mobile-workshop-brand').getBoundingClientRect();
               const actions=document.querySelector('.mobile-header-actions').getBoundingClientRect();
+              const wallet=document.querySelector('.mobile-header-actions .cg-credit-chip').getBoundingClientRect();
+              const profile=document.querySelector('.mobile-profile-button').getBoundingClientRect();
               return {
-                companyRight:workshop.right,productLeft:product.left,
-                productRight:product.right,brandRight:brandRow.right,
-                actionsTop:actions.top,brandBottom:brandRow.bottom
+                brandRight:brand.right,actionsLeft:actions.left,
+                walletLeft:wallet.left,brandTop:brand.top,brandBottom:brand.bottom,
+                actionsTop:actions.top,actionsBottom:actions.bottom,
+                profileRight:profile.right,viewport:innerWidth,
               };
             });
-            if(layout.companyRight>layout.productLeft+1 ||
-              layout.productRight>layout.brandRight+1 ||
-              layout.actionsTop<layout.brandBottom-1)
-              throw Error('Two mobile brands or wallet row overlap: '+JSON.stringify(layout));
-            if(profile.width<=640) {
-              const label=page.locator('.mobile-header-page');
-              if(await label.textContent()!=='Dashboard'||!await label.isVisible())
-                throw Error('Narrow mobile action row must identify the current page');
-              const positions=await page.evaluate(()=>{
-                const label=document.querySelector('.mobile-header-page').getBoundingClientRect();
-                const wallet=document.querySelector('.mobile-header-actions .cg-credit-chip').getBoundingClientRect();
-                return {labelRight:label.right,walletLeft:wallet.left};
-              });
-              if(positions.labelRight>positions.walletLeft+1)
-                throw Error('Mobile page label overlaps wallet: '+JSON.stringify(positions));
-            }
+            const sameRow=layout.brandBottom>layout.actionsTop && layout.actionsBottom>layout.brandTop;
+            if(!sameRow || layout.brandRight>layout.actionsLeft+1 ||
+               layout.brandRight>layout.walletLeft+1 ||
+               layout.profileRight>layout.viewport+1)
+              throw Error('Mobile workshop and top-right controls must share one row: '+JSON.stringify(layout));
+            if(await page.locator('.mobile-header-page').isVisible())
+              throw Error('Mobile page title must not compete with the compact header controls');
           } else {
+            const product=page.locator('.sidebar-platform-line');
+            await product.waitFor({state:'visible'});
+            if(await product.locator('strong').innerText()!=='cubixgear')
+              throw Error('Desktop sidebar must retain cubixgear branding');
+            const productLogo=product.locator('img.cubixgear-logo-image');
+            await productLogo.waitFor({state:'visible',timeout:8000});
+            if(!(await productLogo.evaluate(el=>el.complete && el.naturalWidth>0)))
+              throw Error('Desktop cubixgear logo must load');
             const sidebar=page.locator('.sidebar-brand-row');
             if(await sidebar.evaluate(el=>el.getBoundingClientRect().height)<=56)
               throw Error('Desktop sidebar must fit both logo/name lines');
