@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, CheckCircle2, KeyRound, Mail, WandSparkles } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Info, KeyRound, Mail, WandSparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CubixgearLogo } from '../../components/branding/CubixgearLogo';
 import { authRecoveryService } from '../../services/authRecovery.service';
@@ -46,11 +46,11 @@ export const ForgotPassword = () => {
 
       if (result?.previewUrl) setPreviewUrl(result.previewUrl);
       setFeedback({
-        type: 'success',
-        title: 'Request received',
+        type: 'info',
+        title: 'Check your email if registered',
         message: isMagicLink
-          ? 'If this email belongs to an eligible account, a secure sign-in link will be sent. Check your inbox and spam folder.'
-          : 'If this email belongs to an eligible account, password reset instructions will be sent. Check your inbox and spam folder.',
+          ? 'Only registered, eligible accounts receive a magic sign-in link. No email or login link is created for an unknown address. If you have an account, check your inbox and spam folder.'
+          : 'Only registered, eligible accounts receive password reset instructions. No email or reset link is created for an unknown address. If you have an account, check your inbox and spam folder.',
       });
     } catch (error) {
       const fields = getAuthFieldErrors(error);
@@ -161,12 +161,12 @@ export const ForgotPassword = () => {
 
             {feedback && (
               <div
-                className={'auth-recovery-feedback ' + (feedback.type === 'success' ? 'is-success' : 'is-error')}
-                role={feedback.type === 'success' ? 'status' : 'alert'}
-                aria-live={feedback.type === 'success' ? 'polite' : 'assertive'}
+                className={'auth-recovery-feedback ' + (feedback.type === 'info' ? 'is-info' : 'is-error')}
+                role={feedback.type === 'info' ? 'status' : 'alert'}
+                aria-live={feedback.type === 'info' ? 'polite' : 'assertive'}
               >
-                {feedback.type === 'success'
-                  ? <CheckCircle2 size={19} aria-hidden="true" />
+                {feedback.type === 'info'
+                  ? <Info size={19} aria-hidden="true" />
                   : <AlertCircle size={19} aria-hidden="true" />}
                 <div>
                   <strong>{feedback.title}</strong>
