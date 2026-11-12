@@ -366,6 +366,20 @@ try {
           if(await registerLink.getAttribute('href')!=='https://cubixgear.tech/signup')
             throw Error('Register must open public website registration');
         }
+        if(path==='/forgot-password') {
+          await page.getByRole('heading',{name:'Reset your password'}).waitFor({state:'visible'});
+          if(await page.locator('input[type="email"]').count()!==1)
+            throw Error('Forgot password must have exactly one email input');
+          if(await page.locator('input[type="tel"],input[autocomplete="organization"],.auth-mode-tabs').count())
+            throw Error('Old mobile/workshop recovery controls must not appear');
+          if(await page.getByText('Staff Reset Help').count())
+            throw Error('Staff Reset Help should be removed');
+          if(await page.getByRole('button',{name:'Send Reset Link'}).count()!==1)
+            throw Error('Email reset action is missing');
+          const logo=page.locator('.login-brand-mark img.cubixgear-logo-image');
+          if(await logo.count()!==1 || !await logo.evaluate(node=>node.complete && node.naturalWidth>0))
+            throw Error('Cubixgear recovery page logo is missing');
+        }
         const text=await page.locator('body').innerText();
         if(text.length<20)throw Error('Blank page');
         if(errors.length)throw Error(errors.join('; '));
