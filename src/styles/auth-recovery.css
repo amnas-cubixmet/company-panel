@@ -175,3 +175,33 @@
   .auth-recovery-page .auth-message.is-info {background:#eff6ff;color:#1e40af;}
   .auth-recovery-page .auth-message.is-error {background:#fff1f2;color:#991b1b;}
 }
+
+
+/* Compact non-enumerating recovery feedback stays beside the email field,
+   rather than displaying a large success-like callout above the form. */
+.auth-recovery-page .login-form .auth-message.is-info.auth-recovery-inline-status {
+  display:block;
+  margin:6px 0 0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  color:#94a3b8;
+  font-size:11px;
+  font-weight:500;
+  line-height:1.45;
+}
+.auth-recovery-page .login-form .auth-field-error {
+  display:block;
+  margin:6px 0 0;
+  color:#ef4444;
+  font-size:12px;
+  font-weight:600;
+  line-height:1.45;
+}
+@media (prefers-color-scheme:light) {
+  .auth-recovery-page .login-form .auth-message.is-info.auth-recovery-inline-status {
+    color:#64748b;
+  }
+}

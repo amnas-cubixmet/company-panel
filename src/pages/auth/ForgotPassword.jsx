@@ -14,13 +14,11 @@ export const ForgotPassword = () => {
   const isMagicLink = mode === 'magic';
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const [isError, setIsError] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
 
   const clearFeedback = () => {
     setMessage('');
-    setIsError(false);
     setEmailError('');
     setPreviewUrl('');
   };
@@ -46,17 +44,12 @@ export const ForgotPassword = () => {
       if (result?.previewUrl) setPreviewUrl(result.previewUrl);
       // A successful public request does not prove that an account exists or
       // that email delivery succeeded. Never show "Link sent" for unknown users.
-      setMessage(isMagicLink
-        ? 'Request received. If this email belongs to an eligible account, a magic link will be sent. Check the address or contact your workshop administrator if nothing arrives.'
-        : 'Request received. Only eligible accounts receive a password reset link. If nothing arrives, check the email address or ask your workshop administrator.');
-      setIsError(false);
+      setMessage('If eligible, check your email for the link.');
     } catch (error) {
       const backend = getAuthFieldErrors(error);
-      if (backend.email) setEmailError(backend.email);
-      else setMessage(getAuthErrorMessage(error, isMagicLink
-        ? 'Unable to request a magic login link.'
-        : 'Unable to request a password reset link.'));
-      setIsError(true);
+      setEmailError(backend.email || getAuthErrorMessage(error, isMagicLink
+        ? 'Could not request the magic link. Try again.'
+        : 'Could not request the reset link. Try again.'));
     } finally {
       setLoading(false);
     }
@@ -81,8 +74,8 @@ export const ForgotPassword = () => {
           <h1 className="login-title">{isMagicLink ? 'Sign in with a magic link' : 'Reset your password'}</h1>
           <p className="login-description">
             {isMagicLink
-              ? 'Receive a single-use sign-in link by email. No password needed. The link expires in 15 minutes.'
-              : 'Enter your registered email to receive a password reset link.'}
+              ? 'Email a one-time login link (valid for 15 minutes).'
+              : 'Request a password reset link by email.'}
           </p>
 
           <div className="auth-recovery-methods" role="group" aria-label="Choose account recovery method">
@@ -114,13 +107,6 @@ export const ForgotPassword = () => {
             </button>
           </div>
 
-          {message && (
-            <div className={'auth-message ' + (isError ? 'is-error' : 'is-info')}
-              role={isError ? 'alert' : 'status'}>
-              {message}
-            </div>
-          )}
-
           <form className="login-form" onSubmit={submit} noValidate>
             <label htmlFor="forgot-password-email" className="block">
               <span className="login-field-label">Email</span>
@@ -148,6 +134,11 @@ export const ForgotPassword = () => {
               {emailError && (
                 <span id="forgot-password-email-error" className="auth-field-error" role="alert">
                   {emailError}
+                </span>
+              )}
+              {message && !emailError && (
+                <span className="auth-message is-info auth-recovery-inline-status" role="status">
+                  {message}
                 </span>
               )}
             </label>
