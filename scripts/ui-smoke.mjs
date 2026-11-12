@@ -61,7 +61,7 @@ function fixture(path) {
     }],
   };
   if(path==='/payroll/daily-wages/history') return [{
-    id:'HIST-001',date:'2026-10-28',employeeId:'EMP-0012',
+    id:'HIST-001',date:new Date().toISOString().slice(0,10),employeeId:'EMP-0012',
     employeeName:'Ajmal K',branchId:'branch-a',branchName:'Main Branch',
     attendance:'Full Day',dailyRate:600,baseWage:600,extras:0,
     adjustments:0,total:600,paymentStatus:'Unpaid',
