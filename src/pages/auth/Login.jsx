@@ -235,7 +235,7 @@ export const Login = () => {
                     }
                     clearField('identifier');
                   }}
-                  placeholder={isEmailIdentifier ? 'name@example.com' : 'Enter mobile number'}
+                  placeholder={isEmailIdentifier ? 'name@example.com' : '90000000000'}
                   aria-invalid={Boolean(fieldErrors.identifier || invalidCredentials)}
                   aria-describedby={fieldErrors.identifier ? 'login-identifier-error'
                     : invalidCredentials ? 'login-form-error' : undefined}
