@@ -107,8 +107,7 @@
 }
 
 
-/* Account recovery choices use one email field and two independent actions.
-   Keep both visible side-by-side on narrow mobile screens. */
+/* Account recovery offers email reset, magic login and manual mobile recovery. */
 .auth-recovery-methods{
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
@@ -139,6 +138,7 @@
   transition:background-color .14s ease,color .14s ease;
 }
 .auth-recovery-method svg{flex:0 0 16px;}
+.auth-recovery-method--mobile{grid-column:1/-1;}
 .auth-recovery-method.is-active{
   border-color:rgba(59,130,246,.28);
   background:rgba(59,130,246,.12);
