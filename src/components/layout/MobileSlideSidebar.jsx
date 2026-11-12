@@ -1,4 +1,5 @@
 import { WorkshopIdentity } from '../branding/WorkshopIdentity';
+import { CubixgearLogo } from '../branding/CubixgearLogo';
 import { useEffect, useRef } from "react";
 import { NavLink, useLocation } from 'react-router-dom';
 import { routeConfig, ROUTE_SECTIONS } from '../../routes/routeConfig';
@@ -68,8 +69,14 @@ export const MobileSlideSidebar = ({ isOpen, onClose }) => {
         className={`mobile-drawer ${isOpen ? 'is-open' : ''}`}
       >
         <header className="mobile-drawer-head">
-          <div className="mobile-drawer-brand">
-            <WorkshopIdentity mode="drawer" />
+          <div className="mobile-drawer-brand mobile-drawer-dual-brand">
+            <div className="mobile-drawer-company-line">
+              <WorkshopIdentity mode="drawer" shortName />
+            </div>
+            <div className="mobile-drawer-platform-line" aria-label="cubixgear">
+              <span aria-hidden="true"><CubixgearLogo /></span>
+              <strong>cubixgear</strong>
+            </div>
           </div>
 
           <button type="button" className="mobile-drawer-close" onClick={onClose} aria-label="Close menu">
