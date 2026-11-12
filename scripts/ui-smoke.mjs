@@ -507,41 +507,44 @@ try {
           const input=page.locator('#login-identifier');
           const mobileOption=page.getByRole('button',{name:'Mobile Number',exact:true});
           const emailOption=page.getByRole('button',{name:'Email',exact:true});
-          if(await mobileOption.getAttribute('aria-pressed')!=='true' ||
-              await emailOption.getAttribute('aria-pressed')!=='false')
-            throw Error('Mobile number should be the default login method');
-          if(await page.getByLabel('Country code').inputValue()!=='+91')
-            throw Error('Login country code should default to +91');
-          if(await input.getAttribute('placeholder')!=='90000000000' ||
-              await input.getAttribute('type')!=='tel')
-            throw Error('Mobile mode requires a phone input with the expected placeholder');
-          await input.fill('9876543210');
-          await emailOption.click();
+          const order=await page.locator('.login-method-switch button').allTextContents();
+          if(order.length!==2 || order[0].trim()!=='Email' || order[1].trim()!=='Mobile Number')
+            throw Error('Email must be the first login option');
           if(await emailOption.getAttribute('aria-pressed')!=='true' ||
-              await page.getByLabel('Country code').count()!==0)
-            throw Error('Email mode must hide the calling-code selector');
+              await mobileOption.getAttribute('aria-pressed')!=='false')
+            throw Error('Email should be the default login method');
+          if(await page.getByLabel('Country code').count()!==0)
+            throw Error('Email mode should not display the country-code selector');
           if(await input.getAttribute('type')!=='email' ||
               await input.getAttribute('placeholder')!=='name@example.com')
-            throw Error('Email mode must provide a dedicated email input');
+            throw Error('Email default mode needs the email input and placeholder');
           await input.fill('not-an-email');
           await page.getByRole('button',{name:'Sign In',exact:true}).click();
           if(!await page.getByText('Enter a valid email address.').isVisible())
             throw Error('Email login must validate email format');
           await input.fill('owner@example.com');
           await mobileOption.click();
+          if(await mobileOption.getAttribute('aria-pressed')!=='true' ||
+              await page.getByLabel('Country code').inputValue()!=='+91' ||
+              await input.getAttribute('type')!=='tel' ||
+              await input.getAttribute('placeholder')!=='90000000000')
+            throw Error('Mobile option must show +91 country code and phone input');
+          await input.fill('9876543210');
+          await emailOption.click();
+          if(await input.inputValue()!=='owner@example.com' ||
+              await page.getByLabel('Country code').count()!==0)
+            throw Error('Switching to Email should restore the email and hide country code');
+          await mobileOption.click();
           if(await input.inputValue()!=='9876543210' ||
               await page.getByLabel('Country code').inputValue()!=='+91')
-            throw Error('Switching login methods should preserve phone and country code');
-          await emailOption.click();
-          if(await input.inputValue()!=='owner@example.com')
-            throw Error('Switching login methods should preserve the email address');
+            throw Error('Switching to Mobile should preserve phone and selected country');
           const registerLink=page.getByRole('link',{name:'Register',exact:true});
           if(await registerLink.getAttribute('href')!=='https://cubixgear.tech/signup')
             throw Error('Register must open public website registration');
-          // Leave both credentials empty for the existing shared login border
-          // validation test that runs later in the same smoke-test page.
+          // Restore the default Email mode and clear values for the existing
+          // empty-field border validation performed later on this page.
           await input.fill('');
-          await mobileOption.click();
+          await emailOption.click();
           await input.fill('');
         }
         if(path==='/staff-management/add') {
