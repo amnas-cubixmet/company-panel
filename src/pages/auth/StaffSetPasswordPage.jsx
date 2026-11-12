@@ -42,9 +42,29 @@ async function publicPasswordRequest(path, payload) {
                   : 'This link is invalid or expired.';
     const failure = new Error(message);
     failure.status = response.status;
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers.get('retry-after'));
+      failure.retryAfter = Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(Math.ceil(retryAfter), 86400) : 60;
+    }
     throw failure;
   }
   return data;
+}
+
+// React StrictMode remounts effects during development. Share only the
+// in-flight validation promise; do not store bearer links persistently.
+const pendingValidations = new Map();
+function validateInvitation(token) {
+  const existing = pendingValidations.get(token);
+  if (existing) return existing;
+  const request = publicPasswordRequest('validate', { token });
+  pendingValidations.set(token, request);
+  request.then(
+    () => pendingValidations.delete(token),
+    () => pendingValidations.delete(token),
+  );
+  return request;
 }
 
 export default function StaffSetPasswordPage() {
@@ -54,6 +74,8 @@ export default function StaffSetPasswordPage() {
   const [purpose, setPurpose] = useState('setup');
   const [accountType, setAccountType] = useState('unknown');
   const [connectionError, setConnectionError] = useState('');
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [retrySeconds, setRetrySeconds] = useState(0);
   const [expiry, setExpiry] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -68,7 +90,7 @@ export default function StaffSetPasswordPage() {
     let active = true;
     setState('checking');
     setConnectionError('');
-    publicPasswordRequest('validate', { token })
+    validateInvitation(token)
       .then((result) => {
         if (!active) return;
         setPurpose(result.purpose || 'setup');
@@ -79,10 +101,24 @@ export default function StaffSetPasswordPage() {
       .catch((cause) => {
         if (!active) return;
         setConnectionError(cause?.message || 'Unable to verify the link. Please try again.');
-        setState(cause?.status === 400 ? 'invalid' : 'unavailable');
+        if (cause?.status === 429) {
+          setRetrySeconds(cause.retryAfter || 60);
+          setState('rate-limited');
+        } else {
+          setRetrySeconds(0);
+          setState(cause?.status === 400 ? 'invalid' : 'unavailable');
+        }
       });
     return () => { active = false; };
-  }, [token]);
+  }, [token, retryAttempt]);
+
+  useEffect(() => {
+    if (!retrySeconds) return undefined;
+    const timer = window.setTimeout(
+      () => setRetrySeconds((seconds) => Math.max(0, seconds - 1)), 1000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [retrySeconds]);
 
   useEffect(() => {
     if (state !== 'success') return undefined;
@@ -156,7 +192,20 @@ export default function StaffSetPasswordPage() {
           {state === 'unavailable' && <>
             <h1 className="login-title">Unable to verify link</h1>
             <p role="alert" className="login-description">{connectionError || 'Unable to verify the link. Please try again.'}</p>
-            <button className="login-submit" type="button" onClick={() => window.location.reload()}>Retry Connection</button>
+            <button className="login-submit" type="button" onClick={() => setRetryAttempt((count) => count + 1)}>Retry Connection</button>
+          </>}
+          {state === 'rate-limited' && <>
+            <h1 className="login-title">Too many verification attempts</h1>
+            <p role="alert" className="login-description">
+              Password setup is temporarily rate-limited for security. Do not refresh repeatedly.
+            </p>
+            <button className="login-submit" type="button"
+              disabled={retrySeconds > 0}
+              onClick={() => setRetryAttempt((count) => count + 1)}>
+              {retrySeconds > 0
+                ? `Retry in ${Math.floor(retrySeconds / 60)}:${String(retrySeconds % 60).padStart(2, '0')}`
+                : 'Retry Verification'}
+            </button>
           </>}
           {state === 'invalid' && <>
             <h1 className="login-title">Link unavailable</h1>
