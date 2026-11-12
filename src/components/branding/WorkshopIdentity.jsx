@@ -1,11 +1,8 @@
 import { useContext } from 'react';
 import { Store } from 'lucide-react';
 import { CompanyContext } from '../../context/CompanyContext';
-import { CubixgearLogo } from './CubixgearLogo';
 
-/** Customer-owned workshop identity; cubixgear is a secondary platform credit.
- * This shared component renders the same tenant branding on every screen.
- */
+/** Show only the customer's own workshop name and logo throughout the workspace. */
 export function WorkshopIdentity({ mode = 'mobile', collapsed = false }) {
   const { company, logoUrl } = useContext(CompanyContext);
   const companyName = typeof company?.name === 'string' && company.name.trim()
@@ -30,12 +27,6 @@ export function WorkshopIdentity({ mode = 'mobile', collapsed = false }) {
       {!collapsed && (
         <span className={`${copyClass} workshop-identity-copy`}>
           <strong className="workshop-company-name">{companyName}</strong>
-          <small className="workshop-platform-brand mobile-powered-brand">
-            <span className="workshop-platform-logo mobile-powered-logo" aria-hidden="true">
-              <CubixgearLogo />
-            </span>
-            <span>cubixgear</span>
-          </small>
         </span>
       )}
     </>
