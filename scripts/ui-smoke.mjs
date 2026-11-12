@@ -625,6 +625,8 @@ try {
             throw Error('Old mobile/workshop recovery controls must not appear');
           if(await page.getByText('Staff Reset Help').count())
             throw Error('Staff Reset Help should remain removed');
+          if(await page.getByRole('button',{name:'Mobile Recovery (Manual)'}).count())
+            throw Error('Manual mobile recovery button must not appear');
           const reset=page.getByRole('button',{name:'Reset Password',exact:true});
           const magic=page.getByRole('button',{name:'Magic Login Link',exact:true});
           if(await reset.getAttribute('aria-pressed')!=='true' ||
@@ -678,35 +680,34 @@ try {
             });
             await email.fill('Member@Example.com');
             await page.getByRole('button',{name:'Send Magic Link'}).click();
-            const inlineStatus=page.locator('.auth-recovery-inline-status[role="status"]');
-            await inlineStatus.waitFor({state:'visible'});
+            const successStatus=page.locator('.auth-recovery-feedback.is-success[role="status"]');
+            await successStatus.waitFor({state:'visible'});
             if(requests.length!==1||requests[0].kind!=='magic'||
                requests[0].body?.email!=='member@example.com')
               throw Error('Magic link should send normalized email to the magic-link API');
-            const presentation=await inlineStatus.evaluate(node=>{
-              const field=document.querySelector('#forgot-password-email').getBoundingClientRect();
+            const presentation=await successStatus.evaluate(node=>{
+              const button=document.querySelector('.login-form .login-submit').getBoundingClientRect();
               const status=node.getBoundingClientRect();
               const styles=getComputedStyle(node);
               return {
                 message:node.textContent.trim(),
-                belowInput:status.top>=field.bottom,
+                belowButton:status.top>=button.bottom,
                 borderTopWidth:styles.borderTopWidth,
-                background:styles.backgroundColor,
                 fontSize:parseFloat(styles.fontSize),
                 height:status.height,
               };
             });
-            if(presentation.message.length>65 ||
-              !presentation.belowInput ||
-              presentation.borderTopWidth!=='0px' ||
-              presentation.background!=='rgba(0, 0, 0, 0)' ||
-              presentation.fontSize>12 || presentation.height>40)
-              throw Error('Magic link feedback should be short, unboxed, and inline: '+JSON.stringify(presentation));
+            if(!presentation.message.includes('Request received') ||
+              !presentation.message.includes('If this email belongs to an eligible account') ||
+              !presentation.belowButton ||
+              presentation.borderTopWidth==='0px' ||
+              presentation.fontSize<12 || presentation.height<40)
+              throw Error('Magic link success message must be visible and accessible: '+JSON.stringify(presentation));
             await reset.click();
-            if(await page.locator('.auth-message[role="status"]').count())
+            if(await page.locator('.auth-recovery-feedback[role="status"]').count())
               throw Error('Changing recovery method should clear stale success feedback');
             await page.getByRole('button',{name:'Send Reset Link'}).click();
-            await page.locator('.auth-message[role="status"]').waitFor({state:'visible'});
+            await page.locator('.auth-recovery-feedback.is-success[role="status"]').waitFor({state:'visible'});
             if(requests.length!==2||requests[1].kind!=='reset'||
                requests[1].body?.email!=='member@example.com')
               throw Error('Reset mode must submit to the password-reset API');
@@ -721,11 +722,24 @@ try {
             await page.locator('#forgot-password-email-error').waitFor({state:'visible'});
             if(await email.getAttribute('aria-invalid')!=='true' ||
                await page.locator('.login-input-shell.is-error').count()!==1 ||
-               await page.locator('.auth-recovery-inline-status').count())
+               await page.locator('.auth-recovery-feedback').count())
               throw Error('Server-side email error should be shown inline with a red input outline');
             await email.fill('corrected@example.test');
             if(await page.locator('.auth-field-error,.login-input-shell.is-error').count())
               throw Error('Changing recovery email must clear server-side errors');
+            await page.route('**/api/v1/auth/forgot-password', route=>route.fulfill({
+              status:429, contentType:'application/json', headers:{'Retry-After':'120'},
+              body:JSON.stringify({detail:'Request was throttled.'}),
+            }));
+            await page.getByRole('button',{name:'Send Reset Link'}).click();
+            const failure=page.locator('.auth-recovery-feedback.is-error[role="alert"]');
+            await failure.waitFor({state:'visible'});
+            if(!/Too many requests/.test(await failure.innerText()) ||
+               await page.locator('.auth-recovery-feedback.is-success').count())
+              throw Error('Throttling must show a visible error without stale success feedback');
+            await email.fill('fixed@example.test');
+            if(await page.locator('.auth-recovery-feedback').count())
+              throw Error('Editing email must dismiss stale recovery errors');
           } else {
             await reset.click();
           }
