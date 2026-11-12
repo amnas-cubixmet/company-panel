@@ -50,14 +50,8 @@ export const shareManualStaffInvite = async (getInvitation, details) => {
   const popup = typeof window !== 'undefined' ? window.open('about:blank', '_blank') : null;
   try {
     const invitation = await getInvitation();
-    // Cloud API delivery is automatic: never open a redundant manual URL.
-    // Django owns the one-use invitation and its provider delivery state.
     const status = invitation?.whatsappInviteStatus;
-    if (['queued', 'sending', 'sent'].includes(status)) {
-      if (popup && !popup.closed) popup.close();
-      return { status, expiresAt: invitation.expiresAt, localOnlyLink: false };
-    }
-    if (!invitation || status !== 'manual') {
+    if (!invitation || status !== 'manual' || !invitation.setupLink) {
       throw new Error('WhatsApp reset is not ready. Check staff role and consent.');
     }
     const url = buildStaffWhatsAppUrl({ ...details, setupLink: invitation.setupLink, purpose: invitation.purpose });

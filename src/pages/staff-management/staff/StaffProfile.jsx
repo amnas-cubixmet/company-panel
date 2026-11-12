@@ -297,21 +297,6 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
     }
   }, [activeTab, canViewJobs]);
 
-  // Refresh provider delivery state while the official WhatsApp worker is pending.
-  // Poll only this authorized staff profile, never another tenant or public URL.
-  useEffect(() => {
-    if (!canManageLogin || !staff?.id || !['queued', 'sending'].includes(staff.whatsappInviteStatus)) {
-      return undefined;
-    }
-    let mounted = true;
-    const timer = window.setInterval(() => {
-      staffService.getStaffById(staff.id)
-        .then(next => { if (mounted) setStaff(next); })
-        .catch(() => {});
-    }, 10000);
-    return () => { mounted = false; window.clearInterval(timer); };
-  }, [staff?.id, staff?.whatsappInviteStatus, canManageLogin]);
-
   // Roles are administrator-only; ordinary staff must not make forbidden
   // /roles/ requests on profile load.
   useEffect(() => {
@@ -423,10 +408,6 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
 
   const handleSendInvite = async () => {
     if (inviteBusy || !canResetStaffPassword || !staff?.id) return;
-    if (!staff.whatsappConsent) {
-      setInviteError('Record staff WhatsApp consent before sharing a setup link.');
-      return;
-    }
     setInviteBusy(true);
     setInviteError('');
     setInviteNotice('');
@@ -438,11 +419,9 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
         }),
         { phone: staff.phone, staffName: staff.name, workshopName: user?.company?.name },
       );
-      setInviteNotice(['queued', 'sending', 'sent'].includes(handoff.status)
-        ? 'Password reset has been handed to the official WhatsApp delivery service. Check its delivery status; no manual message was sent.'
-        : handoff.localOnlyLink
-          ? 'WhatsApp opened, but the setup URL is localhost. Set backend FRONTEND_URL to the public HTTPS company-panel address before the employee opens the link.'
-          : 'Password link is ready in WhatsApp. Review it and press Send to share manually.');
+      setInviteNotice(handoff.localOnlyLink
+        ? 'WhatsApp opened, but the setup URL is localhost. Set backend FRONTEND_URL to the public HTTPS company-panel address before the employee opens the link.'
+        : 'Password link is ready in WhatsApp. Review it and press Send to share manually.');
       await refreshAll();
     } catch (requestError) {
       setInviteError(staffInviteErrorMessage(requestError));
@@ -452,7 +431,7 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
   };
 
   const handleCopyInvite = async () => {
-    if (inviteBusy || !canResetStaffPassword || !staff?.whatsappConsent) return;
+    if (inviteBusy || !canResetStaffPassword || !staff?.id) return;
     setInviteBusy(true);
     setInviteError('');
     setInviteNotice('');
@@ -612,8 +591,7 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
               <>
                 <button type="button" onClick={handleSendInvite}
                   disabled={inviteBusy || staff.loginStatus === 'Disabled'}
-                  title={staff.loginStatus === 'Disabled'
-                    ? 'Enable staff login first' : !staff.whatsappConsent ? 'Record WhatsApp consent in Edit Profile before sending' : undefined}
+                  title={staff.loginStatus === 'Disabled' ? 'Enable staff login first' : undefined}
                   className="staff360-secondary-button staff360-manual-reset"
                   aria-label={staff.loginStatus === 'Active'
                     ? 'Send password reset link manually via WhatsApp'
@@ -626,7 +604,7 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
                   <summary>More</summary>
                   <div>
                     <button type="button" className="staff360-secondary-button"
-                      disabled={inviteBusy || staff.loginStatus === 'Disabled' || !staff.whatsappConsent}
+                      disabled={inviteBusy || staff.loginStatus === 'Disabled'}
                       onClick={handleCopyInvite}>
                       <Copy size={14}/> Copy Password Link Message
                     </button>
