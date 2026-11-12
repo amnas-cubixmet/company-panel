@@ -3,10 +3,13 @@ import { Store } from 'lucide-react';
 import { CompanyContext } from '../../context/CompanyContext';
 
 /** Show only the customer's own workshop name and logo throughout the workspace. */
-export function WorkshopIdentity({ mode = 'mobile', collapsed = false }) {
+export function WorkshopIdentity({ mode = 'mobile', collapsed = false, shortName = false }) {
   const { company, logoUrl } = useContext(CompanyContext);
   const companyName = typeof company?.name === 'string' && company.name.trim()
     ? company.name.trim() : 'Workshop';
+  // Header identity remains concise; the full legal workshop name is preserved
+  // in the accessible title and in the existing company settings.
+  const visibleName = shortName ? companyName.split(/\s+/u)[0] : companyName;
   const logoClass = mode === 'mobile'
     ? 'mobile-brand-icon mobile-company-logo'
     : mode === 'sidebar' ? 'sidebar-logo' : 'mobile-drawer-logo';
@@ -26,7 +29,7 @@ export function WorkshopIdentity({ mode = 'mobile', collapsed = false }) {
       </span>
       {!collapsed && (
         <span className={`${copyClass} workshop-identity-copy`}>
-          <strong className="workshop-company-name">{companyName}</strong>
+          <strong className="workshop-company-name" title={companyName}>{visibleName}</strong>
         </span>
       )}
     </>
