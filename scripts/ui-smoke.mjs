@@ -556,14 +556,70 @@ try {
         }
         if(path==='/forgot-password') {
           await page.getByRole('heading',{name:'Reset your password'}).waitFor({state:'visible'});
+          const email=page.locator('#forgot-password-email');
           if(await page.locator('input[type="email"]').count()!==1)
-            throw Error('Forgot password must have exactly one email input');
+            throw Error('Account recovery must have exactly one email input');
           if(await page.locator('input[type="tel"],input[autocomplete="organization"],.auth-mode-tabs').count())
             throw Error('Old mobile/workshop recovery controls must not appear');
           if(await page.getByText('Staff Reset Help').count())
-            throw Error('Staff Reset Help should be removed');
+            throw Error('Staff Reset Help should remain removed');
+          const reset=page.getByRole('button',{name:'Reset Password',exact:true});
+          const magic=page.getByRole('button',{name:'Magic Login Link',exact:true});
+          if(await reset.getAttribute('aria-pressed')!=='true' ||
+              await magic.getAttribute('aria-pressed')!=='false')
+            throw Error('Password reset must be the default recovery method');
           if(await page.getByRole('button',{name:'Send Reset Link'}).count()!==1)
-            throw Error('Email reset action is missing');
+            throw Error('Password reset submit action is missing');
+          await email.fill('member@example.test');
+          await magic.click();
+          if(await magic.getAttribute('aria-pressed')!=='true' ||
+              await page.getByRole('heading',{name:'Sign in with a magic link'}).count()!==1 ||
+              await page.getByRole('button',{name:'Send Magic Link'}).count()!==1)
+            throw Error('Magic login option must render its own title and submit action');
+          if(await email.inputValue()!=='member@example.test')
+            throw Error('Changing recovery method must preserve the typed email');
+          if(await page.locator('input[type="email"]').count()!==1)
+            throw Error('Recovery modes should share a single email input');
+          const twoOptionLayout=await page.locator('.auth-recovery-methods').evaluate(el=>{
+            const buttons=[...el.querySelectorAll('button')].map(b=>b.getBoundingClientRect());
+            return {firstRight:buttons[0].right,secondLeft:buttons[1].left};
+          });
+          if(twoOptionLayout.firstRight>twoOptionLayout.secondLeft+1)
+            throw Error('Recovery method buttons must fit side-by-side on mobile');
+          // Verify the actual request route and normalized email without sending
+          // to a real API or exposing a production recovery token.
+          if(profile.width===390 || profile.width===1440) {
+            const requests=[];
+            await page.route('**/api/v1/auth/magic-link', async route=>{
+              requests.push({kind:'magic',body:route.request().postDataJSON()});
+              await route.fulfill({status:200,contentType:'application/json',
+                body:JSON.stringify({message:'If the account exists, a magic link has been sent.'})});
+            });
+            await page.route('**/api/v1/auth/forgot-password', async route=>{
+              requests.push({kind:'reset',body:route.request().postDataJSON()});
+              await route.fulfill({status:200,contentType:'application/json',
+                body:JSON.stringify({message:'If an eligible staff account exists, ask your administrator.'})});
+            });
+            await email.fill('Member@Example.com');
+            await page.getByRole('button',{name:'Send Magic Link'}).click();
+            await page.getByRole('status').waitFor({state:'visible'});
+            if(requests.length!==1||requests[0].kind!=='magic'||
+               requests[0].body?.email!=='member@example.com')
+              throw Error('Magic link should send normalized email to the magic-link API');
+            await reset.click();
+            if(await page.getByRole('status').count())
+              throw Error('Changing recovery method should clear stale success feedback');
+            await page.getByRole('button',{name:'Send Reset Link'}).click();
+            await page.getByRole('status').waitFor({state:'visible'});
+            if(requests.length!==2||requests[1].kind!=='reset'||
+               requests[1].body?.email!=='member@example.com')
+              throw Error('Reset mode must submit to the password-reset API');
+          } else {
+            await reset.click();
+          }
+          if(await reset.getAttribute('aria-pressed')!=='true' ||
+             await page.getByRole('heading',{name:'Reset your password'}).count()!==1)
+            throw Error('Reset option should restore the original recovery form');
           const logo=page.locator('.login-brand-mark img.cubixgear-logo-image');
           if(await logo.count()!==1 || !await logo.evaluate(node=>node.complete && node.naturalWidth>0))
             throw Error('Cubixgear recovery page logo is missing');
