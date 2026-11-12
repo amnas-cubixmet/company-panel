@@ -370,15 +370,12 @@ try {
           const name=brand.locator('.workshop-company-name');
           if(await name.innerText()!==longWorkshopName)
             throw Error('Workshop name must use the full authenticated tenant name');
-          if(await brand.locator('.workshop-platform-brand').innerText()!=='cubixgear')
-            throw Error('Both screens must retain subtle cubixgear branding');
+          if(await brand.locator('.workshop-platform-brand,.workshop-platform-logo,.cubixgear-logo-image').count())
+            throw Error('Workshop branding must not display the cubixgear logo or credit');
           const companyLogo=brand.locator('.workshop-company-logo-image');
           await companyLogo.waitFor({state:'visible',timeout:8000});
-          const productLogo=brand.locator('.workshop-platform-logo img.cubixgear-logo-image');
-          await productLogo.waitFor({state:'visible',timeout:8000});
-          if(!(await companyLogo.evaluate(el=>el.complete&&el.naturalWidth>0)) ||
-              !(await productLogo.evaluate(el=>el.complete&&el.naturalWidth>0)))
-            throw Error('Workshop and product logos must load successfully');
+          if(!(await companyLogo.evaluate(el=>el.complete&&el.naturalWidth>0)))
+            throw Error('Workshop logo must load successfully');
           const metrics=await name.evaluate(el=>{
             const style=getComputedStyle(el);
             return {
