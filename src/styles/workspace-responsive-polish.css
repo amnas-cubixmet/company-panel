@@ -578,48 +578,30 @@
 }
 
 
-/* Desktop sidebar retains its two compact identity lines. */
+/* Workshop-owned branding in the desktop dashboard sidebar. */
 @media (min-width:1024px) {
-  #root .app-shell .sidebar-dual-brand {
-    display:flex;flex:1 1 auto;min-width:0;flex-direction:column;
-    align-items:stretch;gap:4px;
-  }
-  #root .app-shell .sidebar-dual-brand .sidebar-identity-line {
-    display:flex;align-items:center;gap:8px;min-width:0;min-height:25px;
-  }
-  #root .app-shell .sidebar-dual-brand .sidebar-workshop-line .sidebar-logo,
-  #root .app-shell .sidebar-dual-brand .sidebar-platform-line .sidebar-product-logo {
-    width:25px;height:25px;flex:0 0 25px;border:0;
-    border-radius:6px;background:transparent;
-  }
-  #root .app-shell .sidebar-dual-brand .sidebar-product-logo .cubixgear-logo-image {
-    width:25px;height:25px;object-fit:contain;
-  }
-  #root .app-shell .sidebar-dual-brand .sidebar-identity-line strong {
-    font-size:13px;line-height:1.3;font-weight:700;
-  }
-  #root .app-shell .sidebar-dual-brand .sidebar-workshop-line .workshop-company-name {
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-    overflow-wrap:normal;
-  }
-  #root .app-shell .sidebar-dual-brand .sidebar-platform-line {
-    color:var(--text-secondary);
-  }
-  #root .app-shell .sidebar-dual-brand .sidebar-platform-line strong {
-    font-size:12px;
-  }
   #root .app-shell .sidebar-brand-row {
-    min-height:78px;padding-block:8px;align-items:center;
+    min-height:64px;align-items:center;padding-block:9px;
+  }
+  #root .app-shell .sidebar-workshop-only {
+    display:flex;align-items:center;gap:8px;flex:1 1 auto;min-width:0;
+  }
+  #root .app-shell .sidebar-workshop-only .sidebar-logo {
+    display:flex;align-items:center;justify-content:center;
+    flex:0 0 32px;width:32px;height:32px;
+    overflow:hidden;border-radius:8px;background:transparent;
+  }
+  #root .app-shell .sidebar-workshop-only .sidebar-brand-copy {
+    display:flex;flex:1 1 auto;min-width:0;overflow:hidden;
+  }
+  #root .app-shell .sidebar-workshop-only .workshop-company-name {
+    max-width:100%;font-size:14px;line-height:1.25;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
   #root .app-shell .app-sidebar.is-collapsed .sidebar-brand-row {
-    min-height:56px;
-  }
-  #root .app-shell .app-sidebar.is-collapsed .sidebar-product-logo,
-  #root .app-shell .app-sidebar.is-collapsed .sidebar-product-logo .cubixgear-logo-image {
-    width:32px;height:32px;
+    min-height:56px;align-items:center;padding-block:8px;
   }
 }
-
 /* Mobile-only: one accessible top toolbar, workshop first; no product badge. */
 @media (max-width:1023px) {
   #root .app-shell .mobile-header-row {
@@ -642,7 +624,7 @@
   }
   #root .app-shell .mobile-dual-identity .workshop-company-name {
     display:block;min-width:0;max-width:100%;
-    font-size:16px;line-height:1.25;font-weight:800;
+    font-size:15px;line-height:1.25;font-weight:600;
     letter-spacing:-.025em;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
     overflow-wrap:normal;
@@ -672,7 +654,7 @@
     flex-basis:28px;width:28px;min-width:28px;height:28px;
   }
   #root .app-shell .mobile-dual-identity .workshop-company-name {
-    font-size:14px;font-weight:800;
+    font-size:13px;font-weight:600;
   }
   #root .app-shell .mobile-header-row .mobile-header-actions {gap:4px;}
   #root .app-shell .mobile-search-wrap {padding-inline:8px;}
@@ -692,6 +674,6 @@
   background:transparent;
 }
 #root .app-shell .mobile-drawer-company-line .workshop-company-name {
-  font-size:15px;line-height:1.3;font-weight:800;
+  font-size:14px;line-height:1.3;font-weight:600;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
