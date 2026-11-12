@@ -458,7 +458,7 @@
 
 /* Laptop/desktop: the workshop's full identity replaces the product header. */
 @media (min-width:1024px) {
-  #root .app-shell .sidebar-brand-row:not(.unused) {
+  #root .app-shell .sidebar-brand-row {
     height:auto;min-height:64px;flex:0 0 auto;align-items:flex-start;padding-block:12px;
   }
   #root .app-shell .sidebar-brand {flex:1 1 auto;min-width:0;align-items:flex-start;}
@@ -484,7 +484,7 @@
   #root .app-shell .mobile-header-row {height:auto;min-height:60px;align-items:center;}
   #root .app-shell .mobile-workshop-brand {align-items:center;overflow:visible;}
   #root .app-shell .mobile-workshop-brand .mobile-brand-copy {overflow:visible;}
-  #root .app-shell .mobile-workshop-brand .workshop-company-name {
+  #root .app-shell .mobile-workshop-brand .mobile-brand-copy .workshop-company-name {
     font-size:clamp(12px,3.5vw,15px);white-space:normal;
     overflow:visible;text-overflow:clip;max-width:100%;
   }
