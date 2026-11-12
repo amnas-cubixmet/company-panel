@@ -1,4 +1,4 @@
-import { CubixgearLogo } from '../branding/CubixgearLogo';
+import { WorkshopIdentity } from '../branding/WorkshopIdentity';
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation } from 'react-router-dom';
 import { routeConfig, ROUTE_SECTIONS } from '../../routes/routeConfig';
@@ -78,13 +78,7 @@ export const Sidebar = () => {
     <aside className={`app-sidebar ${collapsed ? 'is-collapsed' : ''}`}>
       <div className="sidebar-brand-row">
         <div className="sidebar-brand">
-          <span className="sidebar-logo" aria-hidden="true"><CubixgearLogo /></span>
-          {!collapsed && (
-            <span className="sidebar-brand-copy">
-              <strong>cubixgear</strong>
-              <small>Workshop Management</small>
-            </span>
-          )}
+          <WorkshopIdentity mode="sidebar" collapsed={collapsed} />
         </div>
 
         {!collapsed ? (
