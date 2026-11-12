@@ -470,6 +470,39 @@ try {
           if(await page.locator('.global-search-results').count())
             throw Error('Empty query should close the search popover');
         }
+        if(path==='/account/storage') {
+          const deleteButton=page.locator('.saas-storage-actions .saas-storage-delete');
+          await deleteButton.waitFor({state:'visible',timeout:15000});
+          if(!await deleteButton.isDisabled())
+            throw Error('Empty media storage must keep Delete selected disabled');
+          const appearance=await deleteButton.evaluate(button=>{
+            const icon=button.querySelector('svg');
+            const label=button.querySelector('span');
+            const box=button.getBoundingClientRect();
+            const iconBox=icon?.getBoundingClientRect();
+            const labelBox=label?.getBoundingClientRect();
+            return {
+              text:label?.textContent.trim(),
+              background:getComputedStyle(button).backgroundColor,
+              foreground:getComputedStyle(button).color,
+              iconStroke:icon?getComputedStyle(icon).stroke:null,
+              opacity:parseFloat(getComputedStyle(button).opacity),
+              width:box.width,height:box.height,
+              iconVisible:Boolean(iconBox&&iconBox.width>=16&&iconBox.height>=16),
+              labelVisible:Boolean(labelBox&&labelBox.width>45&&labelBox.height>10),
+              iconInside:Boolean(iconBox&&iconBox.left>=box.left&&iconBox.right<=box.right),
+              labelInside:Boolean(labelBox&&labelBox.left>=box.left&&labelBox.right<=box.right),
+            };
+          });
+          if(appearance.text!=='Delete selected' ||
+            appearance.background!=='rgb(254, 226, 226)' ||
+            appearance.foreground!=='rgb(153, 27, 27)' ||
+            appearance.iconStroke!==appearance.foreground ||
+            appearance.opacity<.99 || appearance.width<138 || appearance.height<40 ||
+            !appearance.iconVisible || !appearance.labelVisible ||
+            !appearance.iconInside || !appearance.labelInside)
+            throw Error('Disabled Media Storage delete icon, text or red box is not readable: '+JSON.stringify(appearance));
+        }
         if(path==='/account') {
           // /account renders CreditWorkspace, not the legacy AccountOverview component.
           const stats=page.locator('.cg-credit-page .cg-credit-metrics article');
