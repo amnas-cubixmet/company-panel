@@ -37,9 +37,8 @@ export const ForgotPassword = () => {
     setLoading(true);
     try {
       // Request an actual password reset email, not a passwordless sign-in link.
-      await authRecoveryService.requestPasswordReset(cleanEmail).then((result) => {
-        if (result?.previewUrl) setPreviewUrl(result.previewUrl);
-      });
+      const result = await authRecoveryService.requestPasswordReset(cleanEmail);
+      if (result?.previewUrl) setPreviewUrl(result.previewUrl);
       // Do not reveal whether the email is registered.
       setMessage('If an account exists for this email, a password reset link will be sent.');
       setIsError(false);
