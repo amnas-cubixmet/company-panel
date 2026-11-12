@@ -365,29 +365,28 @@ try {
 
         if(path==='/dashboard') {
           const mobile=profile.width<1024;
-          const brand=page.locator(mobile ? '.mobile-workshop-brand' : '.sidebar-brand');
-          await brand.waitFor({state:'visible'});
-          const name=brand.locator('.workshop-company-name');
-          if(await name.innerText()!==longWorkshopName)
-            throw Error('Workshop name must use the full authenticated tenant name');
-          if(await brand.locator('.workshop-platform-brand,.workshop-platform-logo,.cubixgear-logo-image').count())
-            throw Error('Workshop branding must not display the cubixgear logo or credit');
-          const companyLogo=brand.locator('.workshop-company-logo-image');
-          await companyLogo.waitFor({state:'visible',timeout:8000});
-          if(!(await companyLogo.evaluate(el=>el.complete&&el.naturalWidth>0)))
-            throw Error('Workshop logo must load successfully');
-          const metrics=await name.evaluate(el=>{
-            const style=getComputedStyle(el);
-            return {
-              whiteSpace:style.whiteSpace,textOverflow:style.textOverflow,
-              overflowX:style.overflowX,display:style.display,
-              scrollWidth:el.scrollWidth,clientWidth:el.clientWidth,
-            };
-          });
-          if(metrics.display==='none'||metrics.whiteSpace==='nowrap' ||
-            metrics.textOverflow==='ellipsis'||metrics.scrollWidth>metrics.clientWidth+2)
-            throw Error('Workshop name is hidden, truncated or clipped: '+JSON.stringify(metrics));
           if(mobile) {
+            const brand=page.locator('.mobile-workshop-brand');
+            await brand.waitFor({state:'visible'});
+            const name=brand.locator('.workshop-company-name');
+            if(await name.innerText()!==longWorkshopName)
+              throw Error('Mobile header must display the full workshop name');
+            if(await brand.locator('.cubixgear-logo-image,.workshop-platform-brand').count())
+              throw Error('Mobile workshop identity must not include product branding');
+            const companyLogo=brand.locator('.workshop-company-logo-image');
+            await companyLogo.waitFor({state:'visible',timeout:8000});
+            if(!(await companyLogo.evaluate(el=>el.complete && el.naturalWidth>0)))
+              throw Error('Workshop logo must render on mobile');
+            const metrics=await name.evaluate(el=>{
+              const style=getComputedStyle(el);
+              return {
+                whiteSpace:style.whiteSpace,textOverflow:style.textOverflow,
+                scrollWidth:el.scrollWidth,clientWidth:el.clientWidth,
+              };
+            });
+            if(metrics.whiteSpace==='nowrap'||metrics.textOverflow==='ellipsis'||
+               metrics.scrollWidth>metrics.clientWidth+2)
+              throw Error('Mobile workshop name is truncated: '+JSON.stringify(metrics));
             const drawer=page.locator('.mobile-drawer-brand .workshop-company-name');
             if(await drawer.textContent()!==longWorkshopName)
               throw Error('Mobile menu must also show the complete workshop name');
@@ -405,9 +404,34 @@ try {
                (layout.sameRow && layout.brandRight>layout.actionsLeft+1))
               throw Error('Workshop identity overlaps mobile actions or is hidden: '+JSON.stringify(layout));
           } else {
-            const sidebar=page.locator('.sidebar-brand-row');
-            if(await sidebar.evaluate(el=>el.getBoundingClientRect().height)<=56)
-              throw Error('Desktop sidebar must grow to show long workshop names without ellipsis');
+            const brand=page.locator('.sidebar-product-brand');
+            await brand.waitFor({state:'visible'});
+            if(await brand.locator('.sidebar-product-copy strong').innerText()!=='cubixgear')
+              throw Error('Desktop sidebar must show cubixgear product name');
+            if(await brand.locator('.sidebar-product-copy small').innerText()!=='Workshop Management')
+              throw Error('Desktop sidebar must show Workshop Management');
+            const logo=brand.locator('img.cubixgear-logo-image');
+            await logo.waitFor({state:'visible',timeout:8000});
+            if(!(await logo.evaluate(el=>el.complete&&el.naturalWidth>0)))
+              throw Error('Desktop sidebar product logo is missing');
+            const brandMetrics=await page.evaluate(()=>{
+              const text=document.querySelector('.sidebar-product-copy small');
+              const collapse=document.querySelector('.sidebar-collapse-button');
+              const brand=document.querySelector('.sidebar-product-brand');
+              return {
+                subtitleWidth:text.scrollWidth,subtitleClientWidth:text.clientWidth,
+                textRight:text.getBoundingClientRect().right,
+                toggleLeft:collapse.getBoundingClientRect().left,
+                brandRight:brand.getBoundingClientRect().right
+              };
+            });
+            if(brandMetrics.subtitleWidth>brandMetrics.subtitleClientWidth+2 ||
+               brandMetrics.textRight>brandMetrics.toggleLeft+1)
+              throw Error('Desktop brand text overlaps collapse button or is clipped: '+JSON.stringify(brandMetrics));
+            await page.getByRole('button',{name:'Collapse sidebar'}).click();
+            if(await page.locator('.sidebar-product-copy').count())
+              throw Error('Collapsed desktop sidebar should display the product icon only');
+            await page.getByRole('button',{name:'Expand sidebar'}).click();
             const headerMetrics=await page.locator('.desktop-header-row').evaluate(header=>{
               const search=header.querySelector('.header-search-wrap');
               const actions=header.querySelector('.header-actions');
