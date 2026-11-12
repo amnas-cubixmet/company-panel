@@ -44,9 +44,11 @@ export const ForgotPassword = () => {
         ? await authRecoveryService.requestMagicLink(cleanEmail)
         : await authRecoveryService.requestPasswordReset(cleanEmail);
       if (result?.previewUrl) setPreviewUrl(result.previewUrl);
+      // A successful public request does not prove that an account exists or
+      // that email delivery succeeded. Never show "Link sent" for unknown users.
       setMessage(isMagicLink
-        ? 'If this email belongs to an eligible account, a magic login link will be sent.'
-        : 'If this email belongs to an eligible account, a password reset link will be sent. Staff can request a reset link from their workshop administrator.');
+        ? 'Request received. If this email belongs to an eligible account, a magic link will be sent. Check the address or contact your workshop administrator if nothing arrives.'
+        : 'Request received. Only eligible accounts receive a password reset link. If nothing arrives, check the email address or ask your workshop administrator.');
       setIsError(false);
     } catch (error) {
       const backend = getAuthFieldErrors(error);
@@ -113,7 +115,7 @@ export const ForgotPassword = () => {
           </div>
 
           {message && (
-            <div className={'auth-message ' + (isError ? 'is-error' : 'is-success')}
+            <div className={'auth-message ' + (isError ? 'is-error' : 'is-info')}
               role={isError ? 'alert' : 'status'}>
               {message}
             </div>

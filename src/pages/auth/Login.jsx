@@ -43,9 +43,12 @@ export const Login = () => {
   const [password, setPassword] = useState(isMockMode ? 'password123' : '');
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState('');
+  const [invalidCredentials, setInvalidCredentials] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
   const clearField = (field) => {
+    // Typing a correction clears the previous unsuccessful sign-in state.
+    setInvalidCredentials(false);
     setFieldErrors((current) => {
       if (!current[field]) return current;
       const next = { ...current };
@@ -76,6 +79,7 @@ export const Login = () => {
     if (!password) nextErrors.password = 'Password is required.';
 
     if (Object.keys(nextErrors).length) {
+      setInvalidCredentials(false);
       setFieldErrors(nextErrors);
       setFormError('');
       return;
@@ -83,6 +87,7 @@ export const Login = () => {
 
     setFieldErrors({});
     setFormError('');
+    setInvalidCredentials(false);
 
     try {
       const authenticatedUser = await login({ identifier: identity, password, ...(workshop.trim() ? { workshop: workshop.trim().toLowerCase() } : {}) });
@@ -93,17 +98,23 @@ export const Login = () => {
 
       const needsSelection = Boolean(backendFields.workshop);
       setNeedsWorkshop(needsSelection || needsWorkshop);
-      const hasFieldError = Boolean(backendFields.identifier || backendFields.password || backendFields.workshop);
-      // Show explicit field validation inline, but show generic invalid
-      // credentials only once in the form banner (not in three places).
+      const identifierError = backendFields.identifier || backendFields.email || backendFields.mobile;
+      const hasFieldError = Boolean(identifierError || backendFields.password || backendFields.workshop);
+      // Credential failures must look identical for unknown addresses and a
+      // wrong password; never reveal whether a specific account exists.
+      const status = Number(error?.status || error?.response?.status || 0);
+      const genericFailure = (status === 400 || status === 401) && !hasFieldError;
+      setInvalidCredentials(genericFailure);
       setFieldErrors({
-        ...(backendFields.identifier ? { identifier: backendFields.identifier } : {}),
+        ...(identifierError ? { identifier: identifierError } : {}),
         ...(backendFields.workshop ? { workshop: backendFields.workshop } : {}),
         ...(backendFields.password ? { password: backendFields.password } : {}),
       });
-      setFormError(error?.status === 429
+      setFormError(status === 429
         ? `Too many sign-in attempts. Try again${error?.retryAfterSeconds ? ` in ${error.retryAfterSeconds} seconds` : ' later'}.`
-        : hasFieldError ? '' : credentialError);
+        : hasFieldError ? '' : genericFailure
+          ? 'Incorrect email/mobile number or password.'
+          : credentialError);
     }
   };
 
@@ -130,7 +141,7 @@ export const Login = () => {
           )}
 
           {formError && (
-            <div role="alert" className="login-error">
+            <div id="login-form-error" role="alert" className="login-error">
               {formError}
             </div>
           )}
@@ -166,7 +177,7 @@ export const Login = () => {
               <label htmlFor="login-identifier" className="login-field-label">
                 {isEmailIdentifier ? 'Email Address' : 'Mobile Number'}
               </label>
-              <div className={'login-input-shell ' + (fieldErrors.identifier ? 'is-error' : '')}>
+              <div className={'login-input-shell ' + (fieldErrors.identifier || invalidCredentials ? 'is-error' : '')}>
                 {showCountryCode ? (
                   <select
                     className="login-country-select"
@@ -213,8 +224,9 @@ export const Login = () => {
                     clearField('identifier');
                   }}
                   placeholder={isEmailIdentifier ? 'name@example.com' : '90000000000'}
-                  aria-invalid={Boolean(fieldErrors.identifier)}
-                  aria-describedby={fieldErrors.identifier ? 'login-identifier-error' : undefined}
+                  aria-invalid={Boolean(fieldErrors.identifier || invalidCredentials)}
+                  aria-describedby={fieldErrors.identifier ? 'login-identifier-error'
+                    : invalidCredentials ? 'login-form-error' : undefined}
                 />
               </div>
               {fieldErrors.identifier && (
@@ -244,7 +256,7 @@ export const Login = () => {
                 </Link>
               </div>
 
-              <div className={'login-input-shell ' + (fieldErrors.password ? 'is-error' : '')}>
+              <div className={'login-input-shell ' + (fieldErrors.password || invalidCredentials ? 'is-error' : '')}>
                 <span className="login-input-icon" aria-hidden="true">
                   <Lock size={17} strokeWidth={1.9} />
                 </span>
@@ -258,8 +270,9 @@ export const Login = () => {
                     clearField('password');
                   }}
                   placeholder="Enter your password"
-                  aria-invalid={Boolean(fieldErrors.password)}
-                  aria-describedby={fieldErrors.password ? 'login-password-error' : undefined}
+                  aria-invalid={Boolean(fieldErrors.password || invalidCredentials)}
+                  aria-describedby={fieldErrors.password ? 'login-password-error'
+                    : invalidCredentials ? 'login-form-error' : undefined}
                 />
                 <button
                   type="button"
