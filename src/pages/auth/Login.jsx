@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Eye, EyeOff, Lock, Mail, Phone } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { getCredentialError, getAuthFieldErrors } from '../../utils/authErrors';
+import { getAuthFieldErrors } from '../../utils/authErrors';
 import { getStaffLandingPath } from '../../utils/staffLanding';
 import { isValidEmail, normalizeEmail } from '../../utils/validation';
 import '../../styles/login-system.css';
@@ -58,6 +58,19 @@ export const Login = () => {
     setFormError('');
   };
 
+  const selectLoginMethod = (method) => {
+    setLoginMethod(method);
+    setFieldErrors({});
+    setInvalidCredentials(false);
+    setFormError('');
+  };
+
+  const clearWorkshop = () => {
+    setNeedsWorkshop(false);
+    setWorkshop('');
+    clearField('workshop');
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (loading) return;
@@ -77,6 +90,7 @@ export const Login = () => {
     else if (!isEmail && !/^\+[1-9]\d{7,14}$/.test(identity))
       nextErrors.identifier = 'Enter a valid mobile number.';
     if (!password) nextErrors.password = 'Password is required.';
+    if (!isEmail && needsWorkshop && !workshop.trim()) nextErrors.workshop = 'Enter your workshop code.';
 
     if (Object.keys(nextErrors).length) {
       setInvalidCredentials(false);
@@ -90,31 +104,33 @@ export const Login = () => {
     setInvalidCredentials(false);
 
     try {
-      const authenticatedUser = await login({ identifier: identity, password, ...(workshop.trim() ? { workshop: workshop.trim().toLowerCase() } : {}) });
+      const authenticatedUser = await login({ identifier: identity, password, ...(!isEmail && workshop.trim() ? { workshop: workshop.trim().toLowerCase() } : {}) });
       navigate(getStaffLandingPath(authenticatedUser, params.get('next')), { replace: true });
     } catch (error) {
       const backendFields = getAuthFieldErrors(error);
-      const credentialError = getCredentialError(error);
-
-      const needsSelection = Boolean(backendFields.workshop);
-      setNeedsWorkshop(needsSelection || needsWorkshop);
-      const identifierError = backendFields.identifier || backendFields.email || backendFields.mobile;
-      const hasFieldError = Boolean(identifierError || backendFields.password || backendFields.workshop);
-      // Credential failures must look identical for unknown addresses and a
-      // wrong password; never reveal whether a specific account exists.
       const status = Number(error?.status || error?.response?.status || 0);
-      const genericFailure = (status === 400 || status === 401) && !hasFieldError;
-      setInvalidCredentials(genericFailure);
+      const identifierError = backendFields.identifier || backendFields.email || backendFields.mobile;
+      const workshopError = !isEmail && backendFields.workshop;
+      const hasFieldError = Boolean(identifierError || backendFields.password || workshopError);
+      const credentialsRejected = status === 401 || (status === 400 &&
+        backendFields.non_field_errors === 'Invalid credentials or workshop selection.');
+      const serviceUnavailable = !status && (!error?.message ||
+        ['ERR_NETWORK', 'ECONNABORTED', 'ETIMEDOUT'].includes(error?.code));
+
+      if (workshopError) setNeedsWorkshop(true);
+      setInvalidCredentials(credentialsRejected && !hasFieldError);
       setFieldErrors({
-        ...(identifierError ? { identifier: identifierError } : {}),
-        ...(backendFields.workshop ? { workshop: backendFields.workshop } : {}),
+        ...(identifierError ? { identifier: isEmail ? 'Enter a valid email address.' : 'Enter a valid mobile number.' } : {}),
+        ...(workshopError ? { workshop: 'Enter your workshop code.' } : {}),
         ...(backendFields.password ? { password: backendFields.password } : {}),
       });
       setFormError(status === 429
         ? `Too many sign-in attempts. Try again${error?.retryAfterSeconds ? ` in ${error.retryAfterSeconds} seconds` : ' later'}.`
-        : hasFieldError ? '' : genericFailure
+        : hasFieldError ? '' : credentialsRejected
           ? 'Incorrect email/mobile number or password.'
-          : credentialError);
+          : serviceUnavailable
+            ? 'Unable to connect. Please try again.'
+            : 'Something went wrong. Please try again.');
     }
   };
 
@@ -153,10 +169,7 @@ export const Login = () => {
                   type="button"
                   className={'login-method-option' + (isEmailIdentifier ? ' is-active' : '')}
                   aria-pressed={isEmailIdentifier}
-                  onClick={() => {
-                    setLoginMethod('email');
-                    clearField('identifier');
-                  }}
+                  onClick={() => selectLoginMethod('email')}
                 >
                   <Mail size={15} strokeWidth={1.8} aria-hidden="true" />
                   Email
@@ -165,10 +178,7 @@ export const Login = () => {
                   type="button"
                   className={'login-method-option' + (!isEmailIdentifier ? ' is-active' : '')}
                   aria-pressed={!isEmailIdentifier}
-                  onClick={() => {
-                    setLoginMethod('mobile');
-                    clearField('identifier');
-                  }}
+                  onClick={() => selectLoginMethod('mobile')}
                 >
                   <Phone size={15} strokeWidth={1.8} aria-hidden="true" />
                   Mobile Number
@@ -185,6 +195,7 @@ export const Login = () => {
                     value={countryCode}
                     onChange={(event) => {
                       setCountryCode(event.target.value);
+                      clearWorkshop();
                       clearField('identifier');
                     }}
                   >
@@ -214,6 +225,7 @@ export const Login = () => {
                       const matchingCountry = value.startsWith('+')
                         ? LOGIN_COUNTRY_CODES.find((country) => value.startsWith(country.code))
                         : null;
+                      clearWorkshop();
                       if (matchingCountry) {
                         setCountryCode(matchingCountry.code);
                         setMobileNumber(value.slice(matchingCountry.code.length).replace(/[\s().-]/g, ''));
@@ -223,7 +235,7 @@ export const Login = () => {
                     }
                     clearField('identifier');
                   }}
-                  placeholder={isEmailIdentifier ? 'name@example.com' : '90000000000'}
+                  placeholder={isEmailIdentifier ? 'name@example.com' : 'Enter mobile number'}
                   aria-invalid={Boolean(fieldErrors.identifier || invalidCredentials)}
                   aria-describedby={fieldErrors.identifier ? 'login-identifier-error'
                     : invalidCredentials ? 'login-form-error' : undefined}
@@ -236,16 +248,17 @@ export const Login = () => {
               )}
             </div>
 
-            {needsWorkshop && <label className="block">
+            {!isEmailIdentifier && needsWorkshop && <label className="block">
               <span className="login-field-label">Workshop code</span>
               <div className={'login-input-shell ' + (fieldErrors.workshop ? 'is-error' : '')}>
                 <input className="login-input" type="text" autoComplete="organization"
                   value={workshop} onChange={(event) => {
                     setWorkshop(event.target.value);
                     clearField('workshop');
-                  }} placeholder="e.g. my-auto-workshop" />
+                  }} placeholder="e.g. my-auto-workshop" aria-invalid={Boolean(fieldErrors.workshop)}
+                  aria-describedby={fieldErrors.workshop ? 'login-workshop-error' : undefined} />
               </div>
-              {fieldErrors.workshop && <span className="auth-field-error" role="alert">{fieldErrors.workshop}</span>}
+              {fieldErrors.workshop && <span id="login-workshop-error" className="auth-field-error" role="alert">{fieldErrors.workshop}</span>}
             </label>}
 
             <label className="block">
