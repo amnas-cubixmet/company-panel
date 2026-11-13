@@ -14,7 +14,7 @@ import { customerService } from '../../services/customer.service';
 import { branchService } from '../../services/branch.service';
 import { JobComplaintEntries } from '../../components/jobs/JobComplaintEntries';
 import { JobCardReview } from '../../components/jobs/JobCardReview';
-import { JOB_PHONE_COUNTRIES, splitInternationalPhone, joinInternationalPhone, validInternationalPhone, jobPhoneLength, jobPhoneHint, sanitizeJobNationalPhone, splitVehicleMakeModel, newComplaint, buildJobComplaints } from '../../utils/jobCreateAdapters';
+import { JOB_PHONE_COUNTRIES, splitInternationalPhone, joinInternationalPhone, validInternationalPhone, jobPhoneLength, jobPhoneHint, sanitizeJobNationalPhone, pasteJobNationalPhone, splitVehicleMakeModel, newComplaint, buildJobComplaints } from '../../utils/jobCreateAdapters';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/job-create-professional.css';
 import '../../styles/jobs-unified-ui.css';
@@ -456,7 +456,7 @@ export const JobCreatePage = () => {
             <PhoneInput label="Phone Number" labelPosition="above" name="customerPhone" required
               value={phoneParts.national} countryCode={phoneParts.country} countries={JOB_PHONE_COUNTRIES}
               maxLength={jobPhoneLength(phoneParts.country)} inputMode="numeric"
-              helper={jobPhoneHint(phoneParts.country)}
+              helper={jobPhoneHint(phoneParts.country, phoneParts.national)}
               readOnly={Boolean(selectedCustomer)} disabled={saving || Boolean(selectedCustomer)}
               onCountryCodeChange={(code) => {
                 setPhoneCountryCode(code);
@@ -469,6 +469,14 @@ export const JobCreatePage = () => {
               onChange={(e) => set('customerPhone', joinInternationalPhone(
                 phoneParts.country, sanitizeJobNationalPhone(phoneParts.country, e.target.value),
               ))}
+              onPaste={(e) => {
+                const pasted = e.clipboardData?.getData('text');
+                if (!pasted) return;
+                e.preventDefault();
+                const national = pasteJobNationalPhone(phoneParts.country, phoneParts.national,
+                  pasted, e.currentTarget.selectionStart, e.currentTarget.selectionEnd);
+                set('customerPhone', joinInternationalPhone(phoneParts.country, national));
+              }}
               placeholder={`${jobPhoneLength(phoneParts.country)}-digit mobile number`}
               className="job-create-phone"/>
             <label className={labelClass}>Email
