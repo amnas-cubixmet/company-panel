@@ -2,7 +2,6 @@ import '../../../styles/staff-payment-settings.css';
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
-  ArrowLeft,
   BriefcaseBusiness,
   Building2,
   CalendarDays,
@@ -545,14 +544,6 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
 
   return (
     <div className="staff-profile staff360">
-      <nav className="staff360-profile-nav" aria-label="Staff profile navigation">
-        <button type="button" onClick={() => navigate('/staff-management/staff')}>
-          <ArrowLeft size={17} aria-hidden="true" />
-          Back to Staff
-        </button>
-        <span aria-hidden="true">/</span>
-        <span>Staff Profile</span>
-      </nav>
       {error && (
         <div className="staff-directory-message is-error" role="alert">
           <span>{error}{errorRequestId ? ` · Reference: ${errorRequestId}` : ''}</span>
