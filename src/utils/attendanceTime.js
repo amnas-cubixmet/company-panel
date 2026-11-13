@@ -38,3 +38,41 @@ export const formatAttendanceTime = (value) => {
 
   return raw;
 };
+
+
+/** Report-only display model for a punch: local clock plus local calendar date.
+ * ISO timestamps are converted together, so overnight punches never show an
+ * incorrect date. Legacy time-only values use the report row's date unchanged.
+ * Persisted values and CSV exports are not modified.
+ */
+const attendanceDate = new Intl.DateTimeFormat('en-GB', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+});
+
+export const formatAttendanceDateTimeParts = (value, fallbackDate = '') => {
+  const time = formatAttendanceTime(value);
+  if (time === '—' || time === 'Missing') return { time, date: '' };
+
+  const raw = String(value ?? '').trim();
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/.test(raw)) {
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) {
+      return { time, date: attendanceDate.format(parsed) };
+    }
+  }
+
+  const dayText = String(fallbackDate ?? '').slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dayText)) {
+    const [year, month, day] = dayText.split('-').map(Number);
+    const parsed = new Date(year, month - 1, day);
+    if (parsed.getFullYear() === year &&
+        parsed.getMonth() === month - 1 &&
+        parsed.getDate() === day) {
+      return { time, date: attendanceDate.format(parsed) };
+    }
+  }
+
+  return { time, date: '' };
+};
