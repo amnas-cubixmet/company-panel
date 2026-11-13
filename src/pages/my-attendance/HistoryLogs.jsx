@@ -344,7 +344,6 @@ export const HistoryLogs = () => {
                       {log.sessions.map((s, i) => (
                         <div key={i} style={{ fontSize: '12px' }}>
                           <span style={{ fontWeight: '600' }}>{formatAttendanceTime(s.clockIn)} → {s.clockOut ? formatAttendanceTime(s.clockOut) : <span style={{ color: 'var(--danger)' }}>Missing</span>}</span>
-                          <span style={{ color: 'var(--text-muted)', marginLeft: '6px' }}>({s.duration})</span>
                         </div>
                       ))}
                     </div>
