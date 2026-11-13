@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Clock3, Plus, X } from 'lucide-react';
 import { attendanceService } from '../../services/attendance.service';
+import { formatAttendanceTime } from '../../utils/attendanceTime';
 
 const formatMoney = (value) =>
   new Intl.NumberFormat('en-IN', {
@@ -29,6 +30,7 @@ export const OvertimeRequests = () => {
   });
   const [submitting, setSubmitting] = useState(false);
   const [detectedOvertime, setDetectedOvertime] = useState(null);
+  const [attendanceSessions, setAttendanceSessions] = useState([]);
   const [message, setMessage] = useState('');
 
   const load = async () => {
@@ -55,6 +57,7 @@ export const OvertimeRequests = () => {
         if (!active) return;
 
         const record = (logs || []).find((row) => row.date === form.date);
+        setAttendanceSessions(Array.isArray(record?.sessions) ? record.sessions : []);
         const minutes = Number(record?.overtimeMinutes || 0);
         const hours = minutes > 0 ? Number((minutes / 60).toFixed(2)) : 0;
 
@@ -66,7 +69,10 @@ export const OvertimeRequests = () => {
           }));
         }
       } catch {
-        if (active) setDetectedOvertime(null);
+        if (active) {
+          setDetectedOvertime(null);
+          setAttendanceSessions([]);
+        }
       }
     };
 
@@ -136,9 +142,11 @@ export const OvertimeRequests = () => {
               <input
                 type="date"
                 value={form.date}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, date: event.target.value }))
-                }
+                onChange={(event) => {
+                  setDetectedOvertime(null);
+                  setAttendanceSessions([]);
+                  setForm((current) => ({ ...current, date: event.target.value, overtimeHours: '' }));
+                }}
                 required
               />
             </label>
@@ -147,8 +155,9 @@ export const OvertimeRequests = () => {
               <span>Overtime Hours</span>
               <input
                 type="number"
-                min="0.25"
-                step="0.25"
+                min="0.01"
+                step="any"
+                inputMode="decimal"
                 value={form.overtimeHours}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, overtimeHours: event.target.value }))
@@ -157,17 +166,28 @@ export const OvertimeRequests = () => {
                 readOnly={Boolean(detectedOvertime)}
                 required
               />
-              {detectedOvertime ? (
+              {detectedOvertime > 0 && (
                 <small className="my-overtime-auto-note">
-                  Auto-loaded from attendance: {detectedOvertime}h
-                </small>
-              ) : (
-                <small className="my-overtime-auto-note">
-                  No calculated overtime found for this date. Enter hours manually if needed.
+                  Auto-loaded daily overtime: {detectedOvertime}h
                 </small>
               )}
             </label>
           </div>
+
+          {attendanceSessions.length > 0 && (
+            <section className="my-overtime-sessions" aria-label="Attendance sessions" style={{ display: 'grid', gap: '8px', minWidth: 0 }}>
+              <strong style={{ fontSize: '13px' }}>Attendance Sessions</strong>
+              {attendanceSessions.map((session, index) => (
+                <div key={session.id || index} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: '10px', background: 'var(--surface-2)', fontSize: '12px' }}>
+                  <span style={{ fontWeight: 600 }}>Session {session.sessionNumber || index + 1}</span>
+                  <span>{formatAttendanceTime(session.clockIn)} → {session.clockOut ? formatAttendanceTime(session.clockOut) : 'Missing clock out'}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {session.clockOut ? `Worked: ${Math.floor(Math.max(0, Number(session.workedMinutes) || 0) / 60)}h ${Math.max(0, Number(session.workedMinutes) || 0) % 60}m` : 'Incomplete'}
+                  </span>
+                </div>
+              ))}
+            </section>
+          )}
 
           <label>
             <span>Reason</span>
