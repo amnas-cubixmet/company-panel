@@ -676,7 +676,8 @@
     display: block;
     font-size: 12px !important;
   }
-  .cg-staff-management .staff-simple-status {
+  .cg-staff-management .staff-simple-person .staff-simple-status {
+    display: inline-flex;
     grid-column: 3;
     grid-row: 1;
     max-width: 104px;
