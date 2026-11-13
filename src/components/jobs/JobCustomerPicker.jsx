@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Plus, Search, UserRound, X } from 'lucide-react';
 import { customerService } from '../../services/customer.service';
 import { PhoneInput } from '../common/PhoneInput';
-import { JOB_PHONE_COUNTRIES, splitInternationalPhone, joinInternationalPhone, validInternationalPhone, jobPhoneLength, jobPhoneHint, sanitizeJobNationalPhone } from '../../utils/jobCreateAdapters';
+import { JOB_PHONE_COUNTRIES, splitInternationalPhone, joinInternationalPhone, validInternationalPhone, jobPhoneLength, jobPhoneHint, sanitizeJobNationalPhone, pasteJobNationalPhone } from '../../utils/jobCreateAdapters';
 
 const resultsOf = (data) => Array.isArray(data) ? data : data?.results || [];
 
@@ -216,7 +216,7 @@ export function JobCustomerPicker({ selectedCustomer, onSelect, onCreated, disab
               countryCode={phoneParts.country} countries={JOB_PHONE_COUNTRIES}
               value={phoneParts.national} disabled={saving}
               maxLength={jobPhoneLength(phoneParts.country)} inputMode="numeric"
-              helper={jobPhoneHint(phoneParts.country)}
+              helper={jobPhoneHint(phoneParts.country, phoneParts.national)}
               onCountryCodeChange={(code) => {
                 setPhoneCountryCode(code);
                 const existing = phoneParts.national;
@@ -229,6 +229,15 @@ export function JobCustomerPicker({ selectedCustomer, onSelect, onCreated, disab
                   ...old, phone: joinInternationalPhone(phoneParts.country,
                     sanitizeJobNationalPhone(phoneParts.country, event.target.value)),
                 }));
+                setError('');
+              }}
+              onPaste={(event) => {
+                const pasted = event.clipboardData?.getData('text');
+                if (!pasted) return;
+                event.preventDefault();
+                const national = pasteJobNationalPhone(phoneParts.country, phoneParts.national,
+                  pasted, event.currentTarget.selectionStart, event.currentTarget.selectionEnd);
+                setDraft(old => ({ ...old, phone: joinInternationalPhone(phoneParts.country, national) }));
                 setError('');
               }}
               placeholder={`${jobPhoneLength(phoneParts.country)}-digit mobile number`} />
