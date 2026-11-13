@@ -2,6 +2,7 @@ import '../../../styles/staff-payment-settings.css';
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
+  ArrowLeft,
   BriefcaseBusiness,
   Building2,
   CalendarDays,
@@ -122,7 +123,7 @@ const TABS = [
 
 const InfoItem = ({ label, value, icon: Icon }) => (
   <div className="staff360-info-item">
-    {Icon ? <Icon size={14} /> : null}
+    {Icon ? <Icon size={16} aria-hidden="true" /> : null}
     <div>
       <span>{label}</span>
       <strong>{displayText(value)}</strong>
@@ -544,6 +545,14 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
 
   return (
     <div className="staff-profile staff360">
+      <nav className="staff360-profile-nav" aria-label="Staff profile navigation">
+        <button type="button" onClick={() => navigate('/staff-management/staff')}>
+          <ArrowLeft size={17} aria-hidden="true" />
+          Back to Staff
+        </button>
+        <span aria-hidden="true">/</span>
+        <span>Staff Profile</span>
+      </nav>
       {error && (
         <div className="staff-directory-message is-error" role="alert">
           <span>{error}{errorRequestId ? ` · Reference: ${errorRequestId}` : ''}</span>
@@ -589,7 +598,7 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
             <div className="staff360-name-row">
               <h3>{staff.name}</h3>
               <span className={'staff360-status is-' + String(staff.employmentStatus || '').toLowerCase().replaceAll(' ', '-')}>
-                {staff.employmentStatus}
+                {staff.employmentStatus || "Unknown"}
               </span>
             </div>
             <p>
@@ -662,9 +671,10 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
               type="button"
               key={tab}
               className={activeTab === tab ? 'is-active' : ''}
+              aria-current={activeTab === tab ? 'page' : undefined}
               onClick={() => setActiveTab(tab)}
             >
-              <Icon size={12} />
+              <Icon size={16} aria-hidden="true" />
               {tab}
             </button>
           ))}
