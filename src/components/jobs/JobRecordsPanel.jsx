@@ -25,7 +25,6 @@ export const JobRecordsPanel = ({
   canViewCustomers = false,
   canViewVehicles = false,
   canViewStaff = false,
-  onOpenJob,
 }) => (
   <section className={'jobs-records-panel' + (layout === 'cards' ? ' is-card-layout' : '')} aria-label="Workshop Job Card records">
     <header className="jobs-records-head">
@@ -150,9 +149,11 @@ export const JobRecordsPanel = ({
                     ? <Link className="jobs-directory-entity-link" to={`/vehicles/${encodeURIComponent(vehicleId)}`}>{job.vehicleReg || 'Vehicle details'}</Link>
                     : <span>{job.vehicleReg || 'No registration'}</span>}
                 </div>
-                <span className={`jobs-status-chip is-${statusClass(job.status)}`}>
+                <Link className={`jobs-status-chip jobs-directory-status-link is-${statusClass(job.status)}`}
+                  to={`/jobs/${encodeURIComponent(job.id)}/status`}
+                  aria-label={`View ${jobDisplayLabel(job)} status: ${job.status || 'New'}`}>
                   {job.status || 'New'}
-                </span>
+                </Link>
               </div>
 
               {job.inspection?.status === 'Skipped' && (
