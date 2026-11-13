@@ -54,7 +54,6 @@ const schemas = {
     ['overdueInvoice', 'Overdue Invoice Alerts', 'checkbox'],
     ['leaveDecision', 'Leave Decision Alerts', 'checkbox'],
     ['email', 'Email Channel', 'checkbox'],
-    ['whatsapp', 'WhatsApp Channel', 'checkbox'],
     ['browserPush', 'Browser Push', 'checkbox']
   ],
   security: [
@@ -188,7 +187,7 @@ export const Settings = () => {
         <button type="button" className="settings-primary-button"
           style={{ alignSelf: 'flex-start', minHeight: '44px', marginBottom: '12px' }}
           onClick={() => navigate('/settings/whatsapp')}>
-          <Plug size={16} aria-hidden="true"/> Connect WhatsApp Business
+          <Plug size={16} aria-hidden="true"/> Manual WhatsApp Sharing
         </button>
       )}
       <SettingsHeader
