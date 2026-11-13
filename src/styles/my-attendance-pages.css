@@ -375,24 +375,24 @@
   height: 52px;
   padding: 0 6px;
   border-radius: 10px;
-  border: 1px solid #465473;
-  background: #172139;
-  color: #fff;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-primary);
   text-align: center;
   font-size: 23px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: .03em;
-  box-shadow: 0 2px 6px rgba(12, 20, 40, .12);
+  box-shadow: none;
 }
-.my-overtime-form .my-overtime-duration-unit input::placeholder { color: #9ba7bf; opacity: 1; }
+.my-overtime-form .my-overtime-duration-unit input::placeholder { color: var(--text-muted); opacity: 1; }
 .my-overtime-form .my-overtime-duration-unit input:focus {
   border-color: var(--primary);
   outline: 2px solid var(--primary);
   outline-offset: 2px;
   box-shadow: none;
 }
-.my-overtime-form .my-overtime-duration-unit input[readonly] { opacity: .85; cursor: default; }
+.my-overtime-form .my-overtime-duration-unit input[readonly] { opacity: 1; cursor: default; }
 .my-overtime-form .my-overtime-duration-unit > span {
   color: var(--text-secondary);
   font-size: 11px;
