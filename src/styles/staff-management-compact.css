@@ -992,34 +992,6 @@
   min-width: 0;
   width: 100%;
 }
-.cg-staff-management .staff360-profile-nav {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  min-height: 34px;
-  gap: 9px;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-.cg-staff-management .staff360-profile-nav > button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 38px;
-  padding: 7px 10px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--surface);
-  color: var(--text-primary);
-  font-size: 13px;
-  font-weight: 650;
-  cursor: pointer;
-}
-.cg-staff-management .staff360-profile-nav > button:hover {
-  border-color: var(--primary);
-}
-.cg-staff-management .staff360-profile-nav > button:focus-visible,
 .cg-staff-management .staff360-hero-actions :is(button,summary):focus-visible,
 .cg-staff-management .staff360-tabs button:focus-visible {
   outline: 2px solid var(--primary);
