@@ -686,3 +686,270 @@
 .cg-attendance-manager .attendance-manager-reports .am-report-mobile-card dd {
   min-width: 0;
 }
+
+
+/* Shifts v2: compact, readable schedule and staff-assignment layout. */
+.cg-attendance-manager .attendance-manager-shifts .am-shifts-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-summary span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 35px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-summary strong {
+  color: var(--text-primary);
+  font-size: 15px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-layout > .am-panel,
+.cg-attendance-manager .attendance-manager-shifts .am-shift-assignment-panel {
+  min-width: 0;
+  border-radius: 12px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-form {
+  gap: 13px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-form > label,
+.cg-attendance-manager .attendance-manager-shifts .am-shift-assignment-controls label {
+  min-width: 0;
+  font-size: 14px !important;
+  font-weight: 650;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-form input:not([type="checkbox"]),
+.cg-attendance-manager .attendance-manager-shifts .am-shift-assignment-controls select {
+  height: 46px;
+  min-height: 46px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding-inline: 12px;
+  font-size: 16px !important;
+  color: var(--text-primary);
+  background: var(--surface-2);
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-form .am-form-grid--2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-weekly-off {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  min-width: 0;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-weekly-off-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-weekly-off-heading strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+  font-size: 14px !important;
+  font-weight: 700;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-weekly-off-heading small {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-weekdays button {
+  min-width: 0;
+  min-height: 42px;
+  padding: 6px 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-weekdays button.is-selected {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-weekdays button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-rule-toggle-row {
+  min-height: 54px;
+  padding: 10px 12px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-rule-toggle-row strong {
+  font-size: 14px !important;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-rule-toggle-row small {
+  font-size: 12px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-form-actions {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-form-actions button {
+  min-height: 44px;
+  font-size: 14px !important;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-list {
+  gap: 9px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-list > button {
+  min-height: 74px;
+  padding: 12px;
+  gap: 12px;
+  border-radius: 10px;
+  background: var(--surface);
+  transition: border-color .12s ease, background .12s ease;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-list > button.is-editing {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-list strong {
+  font-size: 14px !important;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-list span {
+  font-size: 12px !important;
+  line-height: 1.4;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-list .am-shift-status {
+  display: inline-flex;
+  width: max-content;
+  min-width: 0;
+  margin-top: 5px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: 11px !important;
+  font-style: normal;
+  font-weight: 700;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-list .am-shift-status.is-inactive {
+  color: var(--text-secondary);
+  background: var(--surface-2);
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-list b {
+  font-size: 13px !important;
+  white-space: nowrap;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-assignment-controls {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-staff-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-staff-grid label {
+  min-width: 0;
+  min-height: 64px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-staff-grid input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-staff-grid :is(strong, small) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-staff-grid strong {
+  font-size: 14px !important;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-staff-grid small {
+  font-size: 12px !important;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-assignment-footer {
+  min-height: 58px;
+  gap: 12px;
+  font-size: 13px !important;
+}
+.cg-attendance-manager .attendance-manager-shifts .am-shift-assignment-footer button {
+  min-height: 44px;
+  padding-inline: 17px;
+  font-size: 14px;
+}
+@media (max-width: 1000px) {
+  .cg-attendance-manager .attendance-manager-shifts .am-shift-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cg-attendance-manager .attendance-manager-shifts .am-shift-staff-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .cg-attendance-manager .attendance-manager-shifts .am-shifts-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .cg-attendance-manager .attendance-manager-shifts .am-shift-summary {
+    width: 100%;
+  }
+  .cg-attendance-manager .attendance-manager-shifts .am-shift-summary span {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+  .cg-attendance-manager .attendance-manager-shifts .am-shift-assignment-controls,
+  .cg-attendance-manager .attendance-manager-shifts .am-shift-staff-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 380px) {
+  .cg-attendance-manager .attendance-manager-shifts .am-shift-weekdays {
+    gap: 3px;
+  }
+  .cg-attendance-manager .attendance-manager-shifts .am-shift-weekdays button {
+    font-size: 11px;
+  }
+  .cg-attendance-manager .attendance-manager-shifts .am-shift-form .am-form-grid--2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cg-attendance-manager .attendance-manager-shifts .am-shift-list > button {
+    transition: none;
+  }
+}
