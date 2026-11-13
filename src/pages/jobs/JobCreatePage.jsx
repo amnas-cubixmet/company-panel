@@ -419,14 +419,24 @@ export const JobCreatePage = () => {
       <header className="job-create-header flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-content">Create Job Card</h1>
-          <p className="mt-1 max-w-2xl text-xs leading-5 text-muted">Add the customer, vehicle, complaints and assigned staff. Review the details before creating the Job Card.</p>
-          <div className="job-create-steps" aria-label="Job setup steps">
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-muted">Enter customer and vehicle details, then review the Job Card.</p>
+          <nav className="job-create-steps" aria-label="Jump to Job Card section">
             {JOB_CREATE_STEPS.map((step) => (
-              <span key={step.id} className={step.id === 'review' && review ? 'is-current' : undefined}>
+              <button key={step.id} type="button"
+                disabled={step.id === 'review' && !review}
+                className={step.id === 'review' && review ? 'is-current' : undefined}
+                aria-label={`Go to ${step.label} section`}
+                onClick={() => {
+                  const target = step.id === 'review' ? 'job-card-review' : `job-step-${step.id}`;
+                  document.getElementById(target)?.scrollIntoView({
+                    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+                    block: 'start',
+                  });
+                }}>
                 <b>{stepNumber(step.id)}</b> {step.label}
-              </span>
+              </button>
             ))}
-          </div>
+          </nav>
           <div className="job-create-mode-switch" role="group" aria-label="Job Card mode">
             <button type="button" aria-pressed={jobMode === 'simple'} className={jobMode === 'simple' ? 'is-active' : ''} onClick={() => setJobMode('simple')}>Simple</button>
             <button type="button" aria-pressed={jobMode === 'advanced'} className={jobMode === 'advanced' ? 'is-active' : ''} onClick={() => setJobMode('advanced')}>Advanced</button>
@@ -437,7 +447,7 @@ export const JobCreatePage = () => {
       {error ? <div role="alert" className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-xs font-bold text-red-600">{error}</div> : null}
 
       <form ref={formRef} onSubmit={submit} className="job-create-form flex flex-col gap-4">
-        <section className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5">
+        <section id="job-step-customer" className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5">
           <div className="job-create-section-heading">
             <div>
               <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">{stepNumber('customer')}</span> Customer & Job Details</h2>
@@ -516,7 +526,7 @@ export const JobCreatePage = () => {
             }}/>
         </section>
 
-        <section className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5">
+        <section id="job-step-vehicle" className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5">
           <div className="job-create-section-heading">
             <div>
               <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">{stepNumber('vehicle')}</span> Vehicle Details</h2>
@@ -576,7 +586,7 @@ export const JobCreatePage = () => {
               </select>
             </label>
             <label className={labelClass}>KM Reading
-              <input name="kilometre" type="number" min="0" max="999999999" step="1"
+              <input name="kilometre" type="number" min="0" max="999999999" step="1" inputMode="numeric"
                 value={form.kilometre} onChange={(e) => set('kilometre', e.target.value)}
                 placeholder="52400" className={inputClass}/>
             </label>
