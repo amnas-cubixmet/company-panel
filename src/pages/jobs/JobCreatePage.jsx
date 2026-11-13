@@ -14,7 +14,7 @@ import { customerService } from '../../services/customer.service';
 import { branchService } from '../../services/branch.service';
 import { JobComplaintEntries } from '../../components/jobs/JobComplaintEntries';
 import { JobCardReview } from '../../components/jobs/JobCardReview';
-import { JOB_PHONE_COUNTRIES, splitInternationalPhone, joinInternationalPhone, validInternationalPhone, splitVehicleMakeModel, newComplaint, buildJobComplaints } from '../../utils/jobCreateAdapters';
+import { JOB_PHONE_COUNTRIES, splitInternationalPhone, joinInternationalPhone, validInternationalPhone, jobPhoneLength, jobPhoneHint, sanitizeJobNationalPhone, splitVehicleMakeModel, newComplaint, buildJobComplaints } from '../../utils/jobCreateAdapters';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/job-create-professional.css';
 import '../../styles/jobs-unified-ui.css';
@@ -273,10 +273,12 @@ export const JobCreatePage = () => {
   };
 
   const validateBeforeReview = () => {
+    const phoneCountry = splitInternationalPhone(form.customerPhone, phoneCountryCode).country;
     const required = [
       ['jobDateTime', form.jobDateTime?.trim(), 'Select the Job Card date and time.'],
       ['customerName', form.customerName.trim(), 'Enter the customer name.'],
-      ['customerPhone', validInternationalPhone(form.customerPhone), 'Enter a valid international phone number with country code.'],
+      ['customerPhone', validInternationalPhone(form.customerPhone),
+        `Enter exactly ${jobPhoneLength(phoneCountry)} digits for ${phoneCountry}.`],
       ['vehicleReg', form.vehicleReg.trim(), 'Enter the registration number.'],
     ];
     const missing = required.find(([, value]) => !value);
@@ -453,13 +455,22 @@ export const JobCreatePage = () => {
             </label>
             <PhoneInput label="Phone Number" labelPosition="above" name="customerPhone" required
               value={phoneParts.national} countryCode={phoneParts.country} countries={JOB_PHONE_COUNTRIES}
+              maxLength={jobPhoneLength(phoneParts.country)} inputMode="numeric"
+              helper={jobPhoneHint(phoneParts.country)}
               readOnly={Boolean(selectedCustomer)} disabled={saving || Boolean(selectedCustomer)}
               onCountryCodeChange={(code) => {
                 setPhoneCountryCode(code);
-                set('customerPhone', joinInternationalPhone(code, phoneParts.national));
+                // Never silently turn an existing 10-digit India number into a
+                // different 8/9-digit number when the country is changed.
+                const existing = phoneParts.national;
+                const national = existing.length > jobPhoneLength(code) ? '' : existing;
+                set('customerPhone', joinInternationalPhone(code, national));
               }}
-              onChange={(e) => set('customerPhone', joinInternationalPhone(phoneParts.country, e.target.value))}
-              placeholder="Mobile number" className="job-create-phone"/>
+              onChange={(e) => set('customerPhone', joinInternationalPhone(
+                phoneParts.country, sanitizeJobNationalPhone(phoneParts.country, e.target.value),
+              ))}
+              placeholder={`${jobPhoneLength(phoneParts.country)}-digit mobile number`}
+              className="job-create-phone"/>
             <label className={labelClass}>Email
               <input name="customerEmail" readOnly={Boolean(selectedCustomer)} type="email" autoComplete="email" value={form.customerEmail} onChange={(e) => set('customerEmail', e.target.value)} placeholder="Optional" className={inputClass}/>
             </label>
