@@ -37,8 +37,8 @@ export const JOB_PHONE_LENGTHS = Object.freeze({
 
 export const jobPhoneLength = (country) => JOB_PHONE_LENGTHS[country] || 15;
 
-export const jobPhoneHint = (country) =>
-  `${jobPhoneLength(country)} digits (excluding ${country || '+91'})`;
+export const jobPhoneHint = (country, national = '') =>
+  `${String(national || '').replace(/\D/g, '').length}/${jobPhoneLength(country)} digits · ${country || '+91'}`;
 
 const TRUNK_ZERO_COUNTRIES = new Set(['+971', '+966', '+44', '+61']);
 
@@ -62,6 +62,16 @@ export const sanitizeJobNationalPhone = (country, raw) => {
     digits = digits.slice(1);
   }
   return digits.slice(0, maxDigits);
+};
+
+// Paste is handled before the browser's maxLength truncates a complete
+// +country-number string. Respect cursor selection for partial pastes.
+export const pasteJobNationalPhone = (country, current, pasted, start, end) => {
+  const existing = String(current || '');
+  const from = Math.max(0, Math.min(existing.length, Number.isInteger(start) ? start : existing.length));
+  const to = Math.max(from, Math.min(existing.length, Number.isInteger(end) ? end : from));
+  const combined = existing.slice(0, from) + String(pasted || '') + existing.slice(to);
+  return sanitizeJobNationalPhone(country, combined);
 };
 
 export const splitInternationalPhone = (raw, fallback = '+91') => {
