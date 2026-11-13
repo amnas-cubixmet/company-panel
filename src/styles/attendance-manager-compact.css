@@ -226,12 +226,6 @@
   border-radius:10px;
   box-shadow:none;
 }
-.cg-attendance-manager .attendance-mode-copy .am-mode-description {
-  display:block;
-  margin-top:3px;
-  font-size:13px !important;
-  line-height:1.4;
-}
 .cg-attendance-manager .attendance-rule-title h3 {font-size:17px !important}
 .cg-attendance-manager .attendance-rule-form-grid {gap:12px}
 .cg-attendance-manager .attendance-rules-columns {gap:12px}
@@ -951,5 +945,72 @@
 @media (prefers-reduced-motion: reduce) {
   .cg-attendance-manager .attendance-manager-shifts .am-shift-list > button {
     transition: none;
+  }
+}
+
+
+/* Attendance Rules: concise choices without unused description space. */
+.cg-attendance-manager .attendance-rules-page .attendance-mode-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+.cg-attendance-manager .attendance-rules-page .attendance-mode-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+  min-height: 72px;
+  gap: 10px;
+  padding: 12px 32px 12px 12px !important;
+  border-radius: 10px;
+  text-align: left;
+}
+.cg-attendance-manager .attendance-rules-page .attendance-mode-icon {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+}
+.cg-attendance-manager .attendance-rules-page .attendance-mode-copy {
+  min-width: 0;
+}
+.cg-attendance-manager .attendance-rules-page .attendance-mode-copy strong {
+  font-size: 14px !important;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.cg-attendance-manager .attendance-rules-page .attendance-mode-radio {
+  top: 12px;
+  right: 12px;
+}
+.cg-attendance-manager .attendance-rules-page .attendance-location-readonly {
+  gap: 4px;
+}
+.cg-attendance-manager .attendance-rules-page .attendance-location-readonly strong,
+.cg-attendance-manager .attendance-rules-page .attendance-location-readonly span {
+  line-height: 1.4;
+}
+@media (max-width: 1140px) {
+  .cg-attendance-manager .attendance-rules-page .attendance-mode-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 440px) {
+  .cg-attendance-manager .attendance-rules-page .attendance-mode-card {
+    min-height: 66px;
+    padding: 10px 22px 10px 9px !important;
+    gap: 7px;
+  }
+  .cg-attendance-manager .attendance-rules-page .attendance-mode-icon {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+  }
+  .cg-attendance-manager .attendance-rules-page .attendance-mode-copy strong {
+    font-size: 12px !important;
+  }
+  .cg-attendance-manager .attendance-rules-page .attendance-mode-radio {
+    top: 8px;
+    right: 7px;
   }
 }
