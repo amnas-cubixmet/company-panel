@@ -20,8 +20,7 @@ const sections = [
   { id: 'attendance', label: 'Attendance Rules', icon: Clock3 },
   { id: 'payroll', label: 'Payroll', icon: WalletCards },
   { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'security', label: 'Roles & Security', icon: ShieldCheck },
-  { id: 'integrations', label: 'Integrations', icon: Plug }
+  { id: 'security', label: 'Roles & Security', icon: ShieldCheck }
 ];
 
 const SETTINGS_SECTION_PERMISSIONS = { operations: 'jobs.view', billing: 'invoices.view', inventory: 'stock.view', attendance: 'attendance.manage', payroll: 'payroll.view' };
@@ -60,9 +59,6 @@ const schemas = {
   ],
   security: [
     ['sessionHours', 'Session Lifetime (Hours)', 'number'], ['requireStrongPassword', 'Strong Password Required', 'checkbox'], ['auditExports', 'Audit Data Exports', 'checkbox'], ['twoFactor', 'Two-factor Authentication', 'checkbox']
-  ],
-  integrations: [
-    ['razorpayEnabled', 'Razorpay Enabled', 'checkbox'], ['whatsappEnabled', 'WhatsApp Integration Enabled', 'checkbox'], ['emailEnabled', 'Email Integration Enabled', 'checkbox'], ['webhookUrl', 'Webhook URL', 'url']
   ]
 };
 
