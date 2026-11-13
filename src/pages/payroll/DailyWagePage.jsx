@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Banknote, CalendarCheck2, CheckCircle2, Clock3, History, Search, Users, Wallet } from 'lucide-react';
+import { ArrowUpRight, Banknote, CalendarCheck2, CheckCircle2, Clock3, History, RefreshCcw, Search, Users, Wallet, X } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { dailyWageService } from '../../services/dailyWage.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
@@ -108,17 +108,22 @@ export const DailyWagePage = ({ mode = 'overview' }) => {
       .map((e) => [e.branchId, e.branchName || 'Branch'])).entries()],
     [data],
   );
+  const hasActiveFilters = Boolean(query.trim()) || branch !== 'All';
+  const resetFilters = () => {
+    setQuery('');
+    setBranch('All');
+  };
 
   if (!canView) return <div className="dw-page"><Empty text="You need Payroll View permission to see wage accounts."/></div>;
 
   return (
-    <main className="dw-page dashboard-page">
+    <main className={`dw-page dashboard-page${mode === 'overview' ? ' dw-daily-wages' : ''}`}>
       <header className="dw-header dashboard-heading">
         <div className="dashboard-heading-copy">
           <h1>{mode === 'overview' ? 'Daily Wages' : mode === 'history' ? 'Daily Wage History' : 'Wage Payments'}</h1>
         </div>
-        <button className="dw-button" type="button" onClick={() => setRefreshToken((v) => v + 1)}>
-          <Clock3 size={16}/> Refresh
+        <button className="dw-button" type="button" disabled={loading} onClick={() => setRefreshToken((v) => v + 1)}>
+          <RefreshCcw size={16} aria-hidden="true"/> {loading ? 'Refreshing…' : 'Refresh'}
         </button>
       </header>
       <DailyWageNav selected={mode}/>
@@ -147,16 +152,21 @@ export const DailyWagePage = ({ mode = 'overview' }) => {
             <h2 id="dw-records-heading">{mode === 'overview' ? 'Employee Wage Accounts' : mode === 'history' ? 'Posted Daily Earnings' : 'Wage Payment Transactions'}</h2>
 
           </div>
-          <span>{loading || error ? '—' : items.length} records</span>
+          <span role="status" aria-live="polite">{loading || error ? '—' : items.length} {mode === 'overview' ? 'staff' : 'records'}</span>
         </div>
         <div className="dw-toolbar">
-          <label className="dw-search"><Search size={17}/>
+          <label className="dw-search"><Search size={17} aria-hidden="true"/>
             <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search staff or records" aria-label="Search Daily Wages"/>
           </label>
           <select aria-label="Filter by branch" value={branch} onChange={(event) => setBranch(event.target.value)}>
             <option value="All">All Branches</option>
             {branches.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
           </select>
+          {mode === 'overview' && hasActiveFilters && (
+            <button type="button" className="dw-button dw-clear-filters" onClick={resetFilters}>
+              <X size={15} aria-hidden="true" /> Clear Filters
+            </button>
+          )}
           {mode === 'history' && (
             <>
               <label>From <input type="date" max={to || undefined} value={from} onChange={(event) => setFrom(event.target.value)}/></label>
@@ -165,7 +175,14 @@ export const DailyWagePage = ({ mode = 'overview' }) => {
           )}
         </div>
         {loading ? <Empty text="Loading wage records…"/> : error ? <Empty text="Unable to display wage records."/> : !items.length ? (
-          <Empty text="No wage entries match the selected filters."/>
+          <div className="dw-empty">
+            {hasActiveFilters ? 'No wage entries match the selected filters.' : 'No wage records available.'}
+            {mode === 'overview' && hasActiveFilters && (
+              <button type="button" className="dw-button dw-clear-filters" onClick={resetFilters}>
+                <X size={15} aria-hidden="true" /> Clear Filters
+              </button>
+            )}
+          </div>
         ) : (
           <div className="dw-table-scroll">
             {mode === 'overview' ? (
@@ -180,7 +197,7 @@ export const DailyWagePage = ({ mode = 'overview' }) => {
                     <td data-label="Extra">{rupees(w.today.extraEarnings)}</td>
                     <td data-label="Unpaid"><strong>{rupees(w.currentBalance)}</strong></td>
                     <td data-label="Last Paid">{w.lastPaymentDate || '—'}</td>
-                    <td data-label="Action"><button className="dw-button is-primary" onClick={() => navigate(`/staff/${w.id}/wages`)} type="button">Wage Account </button></td>
+                    <td data-label="Action"><button className="dw-button is-primary dw-account-action" onClick={() => navigate(`/staff/${w.id}/wages`)} type="button">Wage Account <ArrowUpRight size={16} aria-hidden="true" /></button></td>
                   </tr>
                 ))}</tbody>
               </table>
