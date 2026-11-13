@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Plus, Search, UserRound, X } from 'lucide-react';
 import { customerService } from '../../services/customer.service';
 import { PhoneInput } from '../common/PhoneInput';
-import { JOB_PHONE_COUNTRIES, splitInternationalPhone, joinInternationalPhone, validInternationalPhone } from '../../utils/jobCreateAdapters';
+import { JOB_PHONE_COUNTRIES, splitInternationalPhone, joinInternationalPhone, validInternationalPhone, jobPhoneLength, jobPhoneHint, sanitizeJobNationalPhone } from '../../utils/jobCreateAdapters';
 
 const resultsOf = (data) => Array.isArray(data) ? data : data?.results || [];
 
@@ -89,7 +89,8 @@ export function JobCustomerPicker({ selectedCustomer, onSelect, onCreated, disab
     setPhoneCountryCode(phoneParts.country);
     setDraft({
       name: phoneQuery ? '' : query.trim(),
-      phone: phoneQuery ? joinInternationalPhone(phoneParts.country, phoneParts.national) : '',
+      phone: phoneQuery ? joinInternationalPhone(phoneParts.country,
+        sanitizeJobNationalPhone(phoneParts.country, phoneParts.national)) : '',
       email: '', address: ''
     });
     setAdding(true);
@@ -102,8 +103,13 @@ export function JobCustomerPicker({ selectedCustomer, onSelect, onCreated, disab
     if (saving) return;
     const name = draft.name.trim();
     const phone = draft.phone.trim();
-    if (!name || !validInternationalPhone(phone)) {
-      setError('Enter a customer name and a valid phone number.');
+    if (!name) {
+      setError('Enter the customer name.');
+      return;
+    }
+    if (!validInternationalPhone(phone)) {
+      const country = splitInternationalPhone(phone, phoneCountryCode).country;
+      setError(`Enter exactly ${jobPhoneLength(country)} digits for ${country}.`);
       return;
     }
     setSaving(true);
@@ -207,14 +213,25 @@ export function JobCustomerPicker({ selectedCustomer, onSelect, onCreated, disab
             </label>
             <PhoneInput label="Phone Number" labelPosition="above" name="newCustomerPhone" required
               className="job-create-phone job-customer-phone"
-              countryCode={phoneParts.country} countries={JOB_PHONE_COUNTRIES} value={phoneParts.national} disabled={saving}
+              countryCode={phoneParts.country} countries={JOB_PHONE_COUNTRIES}
+              value={phoneParts.national} disabled={saving}
+              maxLength={jobPhoneLength(phoneParts.country)} inputMode="numeric"
+              helper={jobPhoneHint(phoneParts.country)}
               onCountryCodeChange={(code) => {
                 setPhoneCountryCode(code);
-                setDraft(old => ({ ...old, phone: joinInternationalPhone(code, phoneParts.national) }));
+                const existing = phoneParts.national;
+                const national = existing.length > jobPhoneLength(code) ? '' : existing;
+                setDraft(old => ({ ...old, phone: joinInternationalPhone(code, national) }));
+                setError('');
               }}
-              onChange={(event) => setDraft(old => ({
-                ...old, phone: joinInternationalPhone(phoneParts.country, event.target.value),
-              }))} placeholder="Mobile number" />
+              onChange={(event) => {
+                setDraft(old => ({
+                  ...old, phone: joinInternationalPhone(phoneParts.country,
+                    sanitizeJobNationalPhone(phoneParts.country, event.target.value)),
+                }));
+                setError('');
+              }}
+              placeholder={`${jobPhoneLength(phoneParts.country)}-digit mobile number`} />
             <label>Email
               <input type="email" name="newCustomerEmail" value={draft.email} disabled={saving}
                 onChange={e => setDraft(old => ({ ...old, email: e.target.value }))} placeholder="Optional" />
