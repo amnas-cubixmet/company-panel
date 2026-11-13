@@ -27,6 +27,9 @@ import '../../styles/jobs-list-compact.css';
 export const JobList = () => {
   const navigate = useNavigate();
   const { can } = useFeatureAccess();
+  const canViewCustomers = can('customers.view');
+  const canViewVehicles = can('vehicles.view');
+  const canViewStaff = can('staff.view');
   const canViewInvoices = can('invoices.view');
   const canViewGST = can('gstr.view');
   const canViewPayments = can('payments.view');
@@ -333,6 +336,9 @@ export const JobList = () => {
         canViewGST={canViewGST}
         canViewPayments={canViewPayments}
         canCollectPayments={canCollectPayments}
+        canViewCustomers={canViewCustomers}
+        canViewVehicles={canViewVehicles}
+        canViewStaff={canViewStaff}
         totalCount={filteredJobs.length}
         loading={loading}
         status={status}
