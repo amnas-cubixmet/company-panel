@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { jobInvoiceFinance, jobInvoiceGST } from '../../utils/jobGstFinance';
 import { jobDisplayLabel, statusClass } from './jobs.utils';
 import { JobCustomerContactActions } from './JobCustomerContactActions';
+import { formatJobDirectoryDate } from './jobDirectoryDate';
 
 export const JobRecordsPanel = ({
   jobs,
@@ -21,6 +22,9 @@ export const JobRecordsPanel = ({
   canViewGST = false,
   canViewPayments = false,
   canCollectPayments = false,
+  canViewCustomers = false,
+  canViewVehicles = false,
+  canViewStaff = false,
   onOpenJob,
 }) => (
   <section className={'jobs-records-panel' + (layout === 'cards' ? ' is-card-layout' : '')} aria-label="Workshop Job Card records">
@@ -61,25 +65,37 @@ export const JobRecordsPanel = ({
                 const invoice = invoiceByJob.get(String(job.id));
                 const finance = jobInvoiceFinance(invoice);
                 const gst = finance.posted ? jobInvoiceGST(invoice) : null;
+                const jobHref = `/jobs/${encodeURIComponent(job.id)}`;
+                const vehicleId = job.vehicleId || job.vehicle?.id || job.vehicle_id;
+                const customerId = job.customerId || job.customer?.id || job.customer_id;
+                const staffId = job.assignedEmployeeId || job.assignedEmployee?.id || job.assigned_employee_id;
                 return <tr key={job.id}>
                   <td>
-                    <button className="jobs-table-job-link" type="button" onClick={() => onOpenJob(job.id)}>{jobDisplayLabel(job)}</button>
-                    <span>{job.createdDate || job.serviceType || 'Workshop service'}</span>
+                    <Link className="jobs-table-job-link" to={jobHref} title={`Open ${jobDisplayLabel(job)}`}>{jobDisplayLabel(job)}</Link>
+                    <span className="jobs-directory-created" title={job.createdDate || ''}>{formatJobDirectoryDate(job.createdDate) || job.serviceType || 'Workshop service'}</span>
                   </td>
                   <td>
-                    <strong>{job.vehicleReg || 'No registration'}</strong>
-                    <span>{job.vehicleInfo || 'Vehicle'}</span>
+                    {canViewVehicles && vehicleId
+                      ? <Link className="jobs-directory-entity-link" to={`/vehicles/${encodeURIComponent(vehicleId)}`}>{job.vehicleReg || 'Vehicle details'}</Link>
+                      : <strong>{job.vehicleReg || 'No registration'}</strong>}
+                    <span className="jobs-directory-vehicle-info" title={job.vehicleInfo || ''}>{job.vehicleInfo || 'Vehicle'}</span>
                   </td>
                   <td>
-                    <strong>{job.customerName || 'Walk-in customer'}</strong>
-                    <span>{job.customerPhone || '—'}</span>
+                    {canViewCustomers && customerId
+                      ? <Link className="jobs-directory-entity-link" to={`/customers/${encodeURIComponent(customerId)}`}>{job.customerName || 'Customer details'}</Link>
+                      : <strong>{job.customerName || 'Walk-in customer'}</strong>}
+                    <span className="jobs-directory-phone">{job.customerPhone || '—'}</span>
                     <JobCustomerContactActions job={job} />
                   </td>
-                  <td><strong>{job.assignedEmployeeName || 'Unassigned'}</strong></td>
+                  <td>{canViewStaff && staffId
+                    ? <Link className="jobs-directory-entity-link" to={`/staff-management/staff/${encodeURIComponent(staffId)}`}>{job.assignedEmployeeName || 'View staff'}</Link>
+                    : <strong>{job.assignedEmployeeName || 'Unassigned'}</strong>}</td>
                   <td>
-                    <span className={`jobs-status-chip is-${statusClass(job.status)}`}>
+                    <Link className={`jobs-status-chip jobs-directory-status-link is-${statusClass(job.status)}`}
+                      to={`/jobs/${encodeURIComponent(job.id)}/status`}
+                      aria-label={`View ${jobDisplayLabel(job)} status: ${job.status || 'New'}`}>
                       {job.status || 'New'}
-                    </span>
+                    </Link>
                     {job.inspection?.status === 'Skipped' && (
                       <span className="jobs-inspection-skip-tag" title={job.inspection.skipReason || 'Vehicle inspection skipped'}>Inspection skipped</span>
                     )}
@@ -111,7 +127,7 @@ export const JobRecordsPanel = ({
                           <Link to={finance.historyUrl}>Transactions</Link>}
                       </div>}
                   </td>}
-                  <td><button type="button" className="jobs-table-open" onClick={() => onOpenJob(job.id)} aria-label={`Open ${jobDisplayLabel(job)}`}><ChevronRight size={17} /></button></td>
+                  <td><Link className="jobs-table-open" to={jobHref} aria-label={`Open ${jobDisplayLabel(job)}`} title="Open Job Card"><ChevronRight size={17} aria-hidden="true" /></Link></td>
                 </tr>;
               })}
             </tbody>
@@ -123,11 +139,16 @@ export const JobRecordsPanel = ({
             const invoice = invoiceByJob.get(String(job.id));
             const finance = jobInvoiceFinance(invoice);
             const gst = finance.posted ? jobInvoiceGST(invoice) : null;
+            const vehicleId = job.vehicleId || job.vehicle?.id || job.vehicle_id;
+            const customerId = job.customerId || job.customer?.id || job.customer_id;
+            const staffId = job.assignedEmployeeId || job.assignedEmployee?.id || job.assigned_employee_id;
             return <article key={job.id} className="jobs-mobile-card">
               <div className="jobs-mobile-card-head">
                 <div>
-                  <strong>{jobDisplayLabel(job)}</strong>
-                  <span>{job.vehicleReg || 'No registration'}</span>
+                  <Link className="jobs-directory-entity-link jobs-mobile-job-link" to={`/jobs/${encodeURIComponent(job.id)}`}>{jobDisplayLabel(job)}</Link>
+                  {canViewVehicles && vehicleId
+                    ? <Link className="jobs-directory-entity-link" to={`/vehicles/${encodeURIComponent(vehicleId)}`}>{job.vehicleReg || 'Vehicle details'}</Link>
+                    : <span>{job.vehicleReg || 'No registration'}</span>}
                 </div>
                 <span className={`jobs-status-chip is-${statusClass(job.status)}`}>
                   {job.status || 'New'}
@@ -138,9 +159,13 @@ export const JobRecordsPanel = ({
                 <span className="jobs-inspection-skip-tag" title={job.inspection.skipReason || 'Vehicle inspection skipped'}>Inspection skipped</span>
               )}
               <div className="jobs-mobile-card-meta">
-                <span><Car size={12} />{job.vehicleInfo || 'Vehicle'}</span>
-                <span><User size={12} />{job.customerName || 'Walk-in customer'}</span>
-                <span><Wrench size={14} aria-hidden="true"/>{job.assignedEmployeeName || 'Unassigned'}</span>
+                <span><Car size={14} aria-hidden="true" />{job.vehicleInfo || 'Vehicle'}</span>
+                <span><User size={14} aria-hidden="true" />{canViewCustomers && customerId
+                  ? <Link className="jobs-directory-entity-link" to={`/customers/${encodeURIComponent(customerId)}`}>{job.customerName || 'Customer details'}</Link>
+                  : job.customerName || 'Walk-in customer'}</span>
+                <span><Wrench size={14} aria-hidden="true" />{canViewStaff && staffId
+                  ? <Link className="jobs-directory-entity-link" to={`/staff-management/staff/${encodeURIComponent(staffId)}`}>{job.assignedEmployeeName || 'View staff'}</Link>
+                  : job.assignedEmployeeName || 'Unassigned'}</span>
               </div>
 
               <JobCustomerContactActions job={job} />
@@ -169,9 +194,9 @@ export const JobRecordsPanel = ({
                 </nav>
               </div>}
               <div className="jobs-mobile-card-footer">
-                <span>{job.createdDate || '—'}</span>
-                <button className="jobs-mobile-view-job" type="button" onClick={() => onOpenJob(job.id)}
-                  aria-label={`Open ${jobDisplayLabel(job)}`}>View Job Card <ChevronRight size={16} aria-hidden="true"/></button>
+                <span title={job.createdDate || ''}>{formatJobDirectoryDate(job.createdDate) || '—'}</span>
+                <Link className="jobs-mobile-view-job" to={`/jobs/${encodeURIComponent(job.id)}`}
+                  aria-label={`Open ${jobDisplayLabel(job)}`}>View Job Card <ChevronRight size={16} aria-hidden="true"/></Link>
               </div>
             </article>;
           })}
