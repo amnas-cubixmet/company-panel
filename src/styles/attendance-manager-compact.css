@@ -995,6 +995,11 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+@media (max-width: 360px) {
+  .cg-attendance-manager .attendance-rules-page .attendance-mode-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 @media (max-width: 440px) {
   .cg-attendance-manager .attendance-rules-page .attendance-mode-card {
     min-height: 66px;
