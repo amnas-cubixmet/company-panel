@@ -22,12 +22,8 @@ export const defaultFinanceAccountId = (accounts, channel) => {
   if (preferred.length === 1) return String(preferred[0].id);
   if (preferred.length > 1) return '';
   if (matching.length === 1) return String(matching[0].id);
-  if (channel === 'Cash') {
-    const named = matching.filter(account =>
-      /^cash(?:\s+in\s+hand)?$/i.test(String(account.name || '').trim()));
-    return named.length === 1 ? String(named[0].id) : '';
-  }
   return '';
+
 };
 
 export const assertFinanceAccount = (accounts, accountId, channel) => {
