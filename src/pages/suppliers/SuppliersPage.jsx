@@ -17,6 +17,7 @@ import { useLocation } from 'react-router-dom';
 import { customerContactLinks } from '../../components/jobs/customerContact.utils';
 import '../../styles/suppliers-workspace.css';
 import '../../styles/suppliers-unified-ui.css';
+import '../../styles/supplier-detail-tabs.css';
 
 const SUPPLIER_TAB_HASHES = Object.freeze({
   overview: '#supplier-profile',
@@ -253,6 +254,7 @@ export default function SuppliersPage({ section = 'all' }) {
   const [supplierFinanceError, setSupplierFinanceError] = useState('');
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
+  const [supplierProductSearch, setSupplierProductSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -406,6 +408,15 @@ export default function SuppliersPage({ section = 'all' }) {
     });
     return () => { active = false; };
   }, [canViewFinance, purchaseView]);
+
+  const supplierProductsFiltered = useMemo(() => {
+    const query = supplierProductSearch.trim().toLowerCase();
+    if (!query) return products;
+    return products.filter(item => [
+      item.partName, item.name, item.sku, item.partNumber, item.part_number,
+      item.brand, item.hsnCode, item.hsn_code,
+    ].some(value => String(value || '').toLowerCase().includes(query)));
+  }, [products, supplierProductSearch]);
 
   const supplierBalanceTotals = useMemo(() => {
     if (!creditBalances) return null;
@@ -923,15 +934,23 @@ export default function SuppliersPage({ section = 'all' }) {
           </div>):<p className="cg-supplier-empty">No purchase orders found.</p>}
         </section>
         <section className="cg-supplier-profile">
-          <div className="cg-supplier-profile-head"><Package size={20}/><h2>Supplied Products</h2><span>{products.length} loaded</span></div>
-          {products.length? products.map(item=><div className="cg-supplier-record" key={item.id}>
+          <div className="cg-supplier-profile-head"><Package size={20}/><h2>Supplied Products</h2><span>{supplierProductsFiltered.length} products</span></div>
+          <label className="cg-supplier-products-search">
+            <Search size={17} aria-hidden="true"/>
+            <input type="search" aria-label="Search supplier products" value={supplierProductSearch}
+              placeholder="Search part, SKU, brand or HSN…"
+              onChange={event => setSupplierProductSearch(event.target.value)}/>
+          </label>
+          {supplierProductsFiltered.length ? supplierProductsFiltered.map(item=><div className="cg-supplier-record" key={item.id}>
             <div>
               <strong>{item.partName||item.name}</strong>
               <small>{item.sku||'—'} · Purchase {money(item.costPrice ?? item.cost)} · Selling {money(item.sellingPrice ?? item.price)}</small>
               <small>GST {item.tax ?? 0}% · {item.hsnCode || item.hsn_code || 'No HSN'}</small>
             </div>
             <span>{item.onHand??'—'} in stock</span>
-          </div>):<p className="cg-supplier-empty">No products linked yet.</p>}
+          </div>):<p className="cg-supplier-empty">
+            {products.length ? 'No matching products.' : 'No products linked yet.'}
+          </p>}
         </section>
       </div>
       )}
