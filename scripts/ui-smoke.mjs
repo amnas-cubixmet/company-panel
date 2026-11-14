@@ -309,8 +309,8 @@ try {
           if(await page.getByRole('button',{name:'Advanced',exact:true}).count() ||
             await page.getByRole('button',{name:'Simple',exact:true}).count())
             throw Error('Legacy Job Create mode switch must not reappear');
-          if(await page.getByText('Service Advisor',{exact:true}).count()!==1)
-            throw Error('Service Advisor missing from single Job Card form');
+          if(await page.locator('select[name="serviceAdvisorEmployeeId"]').count()!==1)
+            throw Error('Service Advisor field missing from single Job Card form');
           if(await firstComplaint.inputValue()!=='Noise when braking' ||
             await page.locator('.job-complaint-row').count()!==1)
             throw Error('Complaints were lost after editing or removal');
