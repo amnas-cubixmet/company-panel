@@ -18,6 +18,23 @@ import { customerContactLinks } from '../../components/jobs/customerContact.util
 import '../../styles/suppliers-workspace.css';
 import '../../styles/suppliers-unified-ui.css';
 
+const SUPPLIER_TAB_HASHES = Object.freeze({
+  overview: '#supplier-profile',
+  purchase: '#supplier-purchase-form',
+  payments: '#supplier-pay-now',
+  products: '#supplier-products',
+  accounts: '#supplier-ledger',
+  returns: '#supplier-returns',
+});
+
+export const supplierTabForHash = hash => {
+  if (hash === '#supplier-purchase-form') return 'purchase';
+  if (hash === '#supplier-pay-now') return 'payments';
+  if (hash === '#supplier-products') return 'products';
+  if (hash === '#supplier-ledger' || hash === '#supplier-transactions') return 'accounts';
+  if (hash === '#supplier-returns') return 'returns';
+  return 'overview';
+};
 const asText = value => String(value ?? '').trim();
 const formFields = ['name', 'contact_person', 'phone', 'email', 'gstNo', 'address'];
 const money = value => value === null || value === undefined || value === '' || !Number.isFinite(Number(value))
@@ -195,6 +212,24 @@ export default function SuppliersPage({ section = 'all' }) {
     access.can('payments.create') && !USE_MOCK_API;
   const canPaySupplier = canViewFinance && access.can('payments.create') && !USE_MOCK_API;
   const canDelete = access.can('stock.delete') && !USE_MOCK_API;
+  const availableSupplierTabs = [
+    { key: 'overview', label: 'Overview', icon: Building2 },
+    ...(canCreatePurchase ? [{ key: 'purchase', label: 'Buy / Receive', icon: ShoppingBag }] : []),
+    ...(canPaySupplier ? [{ key: 'payments', label: 'Payments', icon: CreditCard }] : []),
+    { key: 'products', label: 'Products', icon: Package },
+    ...(canViewFinance ? [{ key: 'accounts', label: 'Accounts', icon: Wallet },
+      { key: 'returns', label: 'Returns', icon: ReceiptText }] : []),
+  ];
+  const requestedTab = supplierTabForHash(location.hash);
+  const activeSupplierTab = availableSupplierTabs.some(tab => tab.key === requestedTab)
+    ? requestedTab : 'overview';
+  const chooseSupplierTab = key => {
+    if (!id || !availableSupplierTabs.some(tab => tab.key === key)) return;
+    navigate({
+      pathname: location.pathname, search: location.search,
+      hash: SUPPLIER_TAB_HASHES[key],
+    }, { state: location.state });
+  };
   const [suppliers, setSuppliers] = useState([]);
   const [creditBalances, setCreditBalances] = useState(null);
   const [balancesError, setBalancesError] = useState('');
@@ -494,7 +529,7 @@ export default function SuppliersPage({ section = 'all' }) {
           {id ? (supplier?.name || 'Supplier Details') : purchaseView ? 'Supplier Purchases' : 'Suppliers'}
         </h1>
         <p className="cg-suppliers-subtitle">{id
-          ? 'View this supplier’s contacts, purchases, outstanding bills, returns and payments.'
+          ? 'Supplier details, products and balances.'
           : purchaseView
             ? 'Review purchase orders separately from posted bills and supplier credit.'
             : 'Manage supplier contacts and see the money still owed on posted purchase bills.'}</p>
@@ -510,12 +545,15 @@ export default function SuppliersPage({ section = 'all' }) {
       </div>
     </div>
 
-    {id && <nav className="cg-supplier-details-nav" aria-label="Supplier details sections">
-      <a href="#supplier-profile"><Building2 size={16}/> Profile</a>
-      {canCreatePurchase && <a href="#supplier-purchase-form"><ShoppingBag size={16}/> Purchases</a>}
-      {canPaySupplier && <a href="#supplier-pay-now"><CreditCard size={16}/> Pay Credit</a>}
-      {canViewFinance && <a href="#supplier-returns"><Package size={16}/> Returns</a>}
-      {canViewFinance && <a href="#supplier-ledger"><Wallet size={16}/> Accounts &amp; Payments</a>}
+    {id && <nav className="cg-supplier-details-tabs" aria-label="Supplier detail tabs">
+      {availableSupplierTabs.map(({ key, label, icon: TabIcon }) => (
+        <button key={key} type="button"
+          className={activeSupplierTab === key ? 'is-active' : ''}
+          aria-current={activeSupplierTab === key ? 'page' : undefined}
+          onClick={() => chooseSupplierTab(key)}>
+          <TabIcon size={16} aria-hidden="true" /> {label}
+        </button>
+      ))}
     </nav>}
     {error&&<div className="cg-supplier-error cg-supplier-page-error" role="alert">
       <span>{error}</span>
@@ -772,7 +810,8 @@ export default function SuppliersPage({ section = 'all' }) {
     )}
 
     {id&&!detailsLoading&&supplier&&<>
-      <section className="cg-supplier-profile" id="supplier-profile">
+      {activeSupplierTab === 'overview' && (
+      <section className="cg-supplier-profile cg-supplier-tab-panel" id="supplier-profile">
         <div className="cg-supplier-profile-head"><Building2 size={20}/><h2>Supplier Information</h2>
           <span className={supplier.is_active===false?'cg-supplier-status inactive':'cg-supplier-status'}>{status(supplier)}</span>
         </div>
@@ -807,8 +846,8 @@ export default function SuppliersPage({ section = 'all' }) {
             onClick={() => setDeleteConfirmOpen(true)} className="cg-supplier-button">Delete Supplier</button>}
         </div>
       </section>
-
-      {canViewFinance && (
+      )}
+      {canViewFinance && activeSupplierTab === 'returns' && (
         <div id="supplier-returns" className="cg-supplier-return-section">
         <SupplierReturnsPanel
           supplier={supplier}
@@ -820,8 +859,8 @@ export default function SuppliersPage({ section = 'all' }) {
         />
         </div>
       )}
-      {canViewFinance && (
-        <section className="cg-supplier-profile" id="supplier-ledger" aria-label="Supplier credit and settlement">
+      {canViewFinance && activeSupplierTab === 'accounts' && (
+        <section className="cg-supplier-profile cg-supplier-tab-panel" id="supplier-ledger" aria-label="Supplier credit and settlement">
           <div className="cg-supplier-profile-head">
             <CreditCard size={20}/><h2>Supplier Credit, Balance & Transactions</h2>
           </div>
@@ -834,10 +873,7 @@ export default function SuppliersPage({ section = 'all' }) {
               <div><span>Advance Available</span><strong>{money(supplierFinancials.availableAdvance)}</strong></div>
             </div>
           )}
-          <p className="cg-supplier-ledger-note" aria-label="Credit outstanding">
-            Credit outstanding is based on posted supplier bills. Use “Pay Supplier” above to settle a bill.
-            Advances, supplier payments and returns remain separate accounting entries.
-          </p>
+
           <SupplierAccountStatement
             supplier={supplier}
             ledger={supplierLedger}
@@ -863,16 +899,22 @@ export default function SuppliersPage({ section = 'all' }) {
         </section>
       )}
       {(canCreatePurchase || canPaySupplier) && (
-        <SupplierPurchaseFlow
-          supplier={supplier}
-          initialPart={location.state?.purchasePrefill || null}
-          canPurchase={canCreatePurchase}
-          canPay={canPaySupplier}
-          bills={supplierBills}
-          onChanged={refreshSupplierDetails}
-        />
+        <div className="cg-supplier-tab-panel"
+          hidden={activeSupplierTab !== 'purchase' && activeSupplierTab !== 'payments'}>
+          <SupplierPurchaseFlow
+            supplier={supplier}
+            initialPart={location.state?.purchasePrefill || null}
+            canPurchase={canCreatePurchase}
+            canPay={canPaySupplier}
+            showPurchase={activeSupplierTab === 'purchase'}
+            showPayments={activeSupplierTab === 'payments'}
+            bills={supplierBills}
+            onChanged={refreshSupplierDetails}
+          />
+        </div>
       )}
-      <div className="cg-supplier-details-grid">
+      {activeSupplierTab === 'products' && (
+      <div className="cg-supplier-details-grid cg-supplier-tab-panel" id="supplier-products">
         <section className="cg-supplier-profile">
           <div className="cg-supplier-profile-head"><ShoppingBag size={20}/><h2>Purchase Orders</h2><span>{orders.length} loaded</span></div>
           {orders.length? orders.map(order=><div className="cg-supplier-record" key={order.id}>
@@ -892,6 +934,7 @@ export default function SuppliersPage({ section = 'all' }) {
           </div>):<p className="cg-supplier-empty">No products linked yet.</p>}
         </section>
       </div>
+      )}
     </>}
     {id&&detailsLoading&&<p role="status" className="cg-supplier-empty">Loading supplier details…</p>}
     {id&&!detailsLoading&&!supplier&&!error&&<p className="cg-supplier-empty">Supplier not found.</p>}
