@@ -18,6 +18,7 @@ import { JobCardReview } from '../../components/jobs/JobCardReview';
 import { JOB_PHONE_COUNTRIES, splitInternationalPhone, joinInternationalPhone, validInternationalPhone, jobPhoneLength, jobPhoneHint, sanitizeJobNationalPhone, pasteJobNationalPhone, splitVehicleMakeModel, newComplaint, buildJobComplaints } from '../../utils/jobCreateAdapters';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/job-create-professional.css';
+import '../../styles/job-create-alignment.css';
 import '../../styles/jobs-unified-ui.css';
 import { showFormFieldError, showServerFormErrors, findFormField, clearFieldValidation } from '../../utils/formValidation';
 
