@@ -17,6 +17,7 @@ import { jobService } from '../../services/job.service';
 import { billingService } from '../../services/billing.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { jobInvoiceFor } from '../../utils/jobGstFinance';
+import { isPostedInvoice } from '../../utils/invoiceFinanceLinks';
 import { USE_MOCK_API } from '../../api/apiConfig';
 import '../../styles/job-gst-finance.css';
 import '../../styles/jobs-dashboard.css';
@@ -229,13 +230,14 @@ export const JobList = () => {
       .map((item) => item.name || item.partName)
       .filter(Boolean);
 
-    const spending = sameVehicle.reduce((sum, job) => {
-      const total =
-        job.billing?.invoiceTotal ||
-        job.estimates?.at(-1)?.grandTotal ||
-        0;
-      return sum + Number(total || 0);
-    }, 0);
+    // Estimates are quotations, not money spent or paid by the customer.
+    // Count only finalized invoices, and only when this role may read invoices.
+    const issuedInvoices = canViewInvoices && !invoicesLoading && !invoicesError
+      ? sameVehicle.map(item => jobInvoiceFor(jobInvoiceRows, item))
+        .filter(invoice => invoice && isPostedInvoice(invoice)) : [];
+    const spending = issuedInvoices.reduce((sum, invoice) =>
+      sum + Number(invoice.total || 0), 0);
+    const spendingVerified = Boolean(canViewInvoices && !invoicesLoading && !invoicesError);
 
     return {
       registration,
@@ -244,8 +246,9 @@ export const JobList = () => {
       currentOpen,
       lastParts,
       spending,
+      spendingVerified,
     };
-  }, [jobs, query]);
+  }, [jobs, query, canViewInvoices, jobInvoiceRows, invoicesLoading, invoicesError]);
 
   const counts = useMemo(
     () => ({
@@ -304,7 +307,7 @@ export const JobList = () => {
 
       <VehicleLookupPanel
         lookup={vehicleLookup}
-        canViewTotals={canViewPayments}
+        canViewTotals={canViewPayments && canViewInvoices}
         onOpenCurrentJob={() =>
           vehicleLookup?.currentOpen
             ? openJob(vehicleLookup.currentOpen.id)
