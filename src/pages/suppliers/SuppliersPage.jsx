@@ -15,6 +15,7 @@ import { SupplierOverviewCards } from '../../components/suppliers/SupplierWorksp
 import { appConfirm } from '../../components/common/appDialogs';
 import { useLocation } from 'react-router-dom';
 import { customerContactLinks } from '../../components/jobs/customerContact.utils';
+import { filterSupplierProducts } from '../../utils/supplierProductSearch';
 import '../../styles/suppliers-workspace.css';
 import '../../styles/suppliers-unified-ui.css';
 import '../../styles/supplier-detail-tabs.css';
@@ -409,14 +410,10 @@ export default function SuppliersPage({ section = 'all' }) {
     return () => { active = false; };
   }, [canViewFinance, purchaseView]);
 
-  const supplierProductsFiltered = useMemo(() => {
-    const query = supplierProductSearch.trim().toLowerCase();
-    if (!query) return products;
-    return products.filter(item => [
-      item.partName, item.name, item.sku, item.partNumber, item.part_number,
-      item.brand, item.hsnCode, item.hsn_code,
-    ].some(value => String(value || '').toLowerCase().includes(query)));
-  }, [products, supplierProductSearch]);
+  const supplierProductsFiltered = useMemo(
+    () => filterSupplierProducts(products, supplierProductSearch),
+    [products, supplierProductSearch],
+  );
 
   const supplierBalanceTotals = useMemo(() => {
     if (!creditBalances) return null;
