@@ -816,3 +816,13 @@
     flex: 1 1 0;
   }
 }
+
+/* New Job uses the parent Photos heading; keep camera/upload controls aligned. */
+.job-create-page.jobs-ui-polished #job-step-photos .vehicle-camera-heading.is-heading-hidden {
+  justify-content: flex-start;
+  margin-top: 10px;
+}
+.job-create-page.jobs-ui-polished #job-step-photos .vehicle-camera-heading.is-heading-hidden .vehicle-photo-add-actions {
+  width: 100%;
+  justify-content: flex-start;
+}
