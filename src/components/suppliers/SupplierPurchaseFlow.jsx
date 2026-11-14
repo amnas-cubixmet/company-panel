@@ -104,7 +104,7 @@ export default function SupplierPurchaseFlow({
         setStock(items);
         setAccounts(moneyAccounts.filter(a => a.isActive && accountChannel(a.kind)));
         setStates(gst.states || []);
-    setPlaceOfSupply(previous => previous || gst.suggestedBuyerStateCode || '');
+        setPlaceOfSupply(previous => previous || gst.suggestedBuyerStateCode || '');
       })
       .catch(cause => { if (alive) setError(getErrorText(cause)); })
       .finally(() => { if (alive) setLoading(false); });
@@ -350,7 +350,7 @@ export default function SupplierPurchaseFlow({
     // Django posts the supplier bill, stock receipt and money splits atomically.
     const purchasePayload = {
       supplierId: String(supplier.id), invoiceNumber: invoiceNumber.trim(),
-      invoiceDate: purchaseDate, placeOfSupply: placeOfSupply || undefined,
+      invoiceDate: purchaseDate, placeOfSupply: unregisteredSupplier ? undefined : placeOfSupply || undefined,
       receiveIntoStock: true, postNow: true,
       items: parts.map(row => ({
         itemId: row.itemId, description: row.description,
@@ -546,7 +546,7 @@ export default function SupplierPurchaseFlow({
               <label>GST / Tax for this product *
                 <select className={fieldClass} value={unregisteredSupplier ? 'none' : activePart.gstChoice} disabled={unregisteredSupplier}
                   onChange={e => setActivePart(p => ({ ...p, gstChoice: e.target.value }))}>
-                  <option value="none">0% — Select Classification</option>
+                  <option value="none">{unregisteredSupplier ? '0% — No GST' : '0% — Select Classification'}</option>
                   {choices.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                   <option value="custom">Other saved / HSN-specific total %</option>
                 </select>
@@ -615,7 +615,7 @@ export default function SupplierPurchaseFlow({
                     <input className={fieldClass} type="date" readOnly value={purchaseDate}/>
                   </label>
                   {!unregisteredSupplier && (
-                   <label>Buyer State (GST)
+                   <label>Buyer State (GST) *
                      <select className={fieldClass} value={placeOfSupply}
                        onChange={e => setPlaceOfSupply(e.target.value)}>
                        <option value="">Select buyer state</option>
@@ -629,7 +629,7 @@ export default function SupplierPurchaseFlow({
                     <strong>Supplier GSTIN needs attention.</strong>{' '}
                     {gstinProblem || 'Supplier is unregistered and cannot charge GST.'}{' '}
                     <a href="#supplier-profile">Open Supplier Details</a>, then use Edit Supplier.
-                    If unregistered, leave GSTIN blank and select a correctly classified 0% purchase.
+                    If unregistered, leave GSTIN blank and purchase at 0% GST.
                   </div>}
                 <div className="cg-supplier-purchase-total">
                   <div><span>Parts subtotal</span><strong>{rupees(subtotal)}</strong></div>
