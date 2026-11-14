@@ -28,7 +28,7 @@ export const InvoiceRecordsPanel = ({
       <header className="invoice-dashboard-section-title">
         <div>
           <h2>{activeTab === 'estimate' ? 'Estimate Records' : 'Invoice Records'}</h2>
-          <p>Customer, vehicle, amount due and current document status.</p>
+          <p>{activeTab === 'estimate' ? 'Quotations, customers and approval status.' : 'Customer bills, received payments, outstanding and document status.'}</p>
         </div>
         <span>{documents.length} record{documents.length === 1 ? '' : 's'}</span>
       </header>
@@ -66,8 +66,9 @@ export const InvoiceRecordsPanel = ({
                   <th>Document</th>
                   <th>Customer / Vehicle</th>
                   <th>Date</th>
-                  <th>Total</th>
-                  <th>Still Due</th>
+                  <th align="right">Total</th>
+                  <th align="right">{activeTab === 'estimate' ? 'Not Billed' : 'Paid'}</th>
+                  <th align="right">{activeTab === 'estimate' ? 'Quote Only' : 'Still Due'}</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -94,8 +95,9 @@ export const InvoiceRecordsPanel = ({
                         </span>
                       </td>
                       <td>{document.date || '—'}</td>
-                      <td><strong>{formatMoney(totals.total)}</strong></td>
-                      <td>{formatMoney(totals.balance)}</td>
+                      <td className="cg-invoice-money-cell"><strong>{formatMoney(totals.total)}</strong></td>
+                      <td className="cg-invoice-money-cell">{activeTab === 'estimate' ? '—' : formatMoney(totals.paid)}</td>
+                      <td className="cg-invoice-money-cell">{activeTab === 'estimate' ? '—' : <strong>{formatMoney(totals.balance)}</strong>}</td>
                       <td>
                         <span className={'invoice-dashboard-status ' + invoiceStatusClass(document.status)}>
                           {document.status || 'Draft'}
@@ -104,7 +106,7 @@ export const InvoiceRecordsPanel = ({
                       <td>
                         <div className="invoice-dashboard-actions">
                           <button type="button" title="View" aria-label={`View ${document.number || document.id}`} onClick={() => onView(document)}><Eye size={13} /></button>
-                          <button type="button" title="PDF" aria-label={`Download PDF for ${document.number || document.id}`} onClick={() => onPdf(document)}><Download size={13} /></button>
+                          <button type="button" title="Save or share PDF" aria-label={`Save or share PDF for ${document.number || document.id}`} onClick={() => onPdf(document)}><Download size={15} /></button>
                           {canEdit && document.status === 'Draft' && (
                             <button type="button" title="Edit" aria-label={`Edit ${document.number || document.id}`} onClick={() => onEdit(document)}><Edit3 size={13} /></button>
                           )}
@@ -132,16 +134,19 @@ export const InvoiceRecordsPanel = ({
                     </span>
                   </div>
 
-                  <div className="invoice-dashboard-mobile-meta">
+                  <div className="invoice-dashboard-mobile-meta cg-invoice-mobile-meta">
                     <div><span>Date</span><strong>{document.date || '—'}</strong></div>
                     <div><span>Vehicle</span><strong>{document.vehicle?.registration || document.transportation?.vehicleNo || '—'}</strong></div>
                     <div><span>Total</span><strong>{formatMoney(totals.total)}</strong></div>
-                    <div><span>Still Due</span><strong>{formatMoney(totals.balance)}</strong></div>
+                    <div><span>{activeTab === 'estimate' ? 'Not Billed' : 'Paid'}</span>
+                      <strong>{activeTab === 'estimate' ? '—' : formatMoney(totals.paid)}</strong></div>
+                    <div><span>{activeTab === 'estimate' ? 'Quote Only' : 'Still Due'}</span>
+                      <strong>{activeTab === 'estimate' ? '—' : formatMoney(totals.balance)}</strong></div>
                   </div>
 
                   <div className="invoice-dashboard-mobile-actions">
                     <button type="button" onClick={() => onView(document)}><Eye size={15} /> View</button>
-                    <button type="button" onClick={() => onPdf(document)}><Download size={15} /> PDF</button>
+                    <button type="button" onClick={() => onPdf(document)}><Download size={15} /> PDF / Share</button>
                     {canEdit && document.status === 'Draft' && (
                       <button type="button" onClick={() => onEdit(document)}><Edit3 size={15} /> Edit</button>
                     )}
