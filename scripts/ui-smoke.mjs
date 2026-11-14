@@ -1152,6 +1152,26 @@ try {
         }
         // Real computed styles: legacy !important Job Card rules must not
         // shrink iPhone input fonts/labels after the CSS is bundled.
+        if(path==='/jobs/JOB-00251/overview' && [390,1440].includes(profile.width)) {
+          await page.locator('.job-workflow-tabs').waitFor({state:'visible',timeout:12000});
+          const links=page.locator('.cg-job-connected-links');
+          await links.waitFor({state:'visible',timeout:12000});
+          for(const dest of ['/customers/CUS-0001','/vehicles/VEH-0001']) {
+            if(!await links.locator('a[href="'+dest+'"]').count()) {
+              throw Error('Job Card should link to real customer and vehicle profiles: '+dest);
+            }
+          }
+          const financial=page.locator('.job-total-cost-panel');
+          if(await financial.count()) {
+            const labels=await financial.innerText();
+            if(!labels.includes('Customer Selling (before GST)') ||
+               !labels.includes('Workshop Direct Cost') ||
+               !labels.includes('Indicative Gross Profit')) {
+              throw Error('Job Cost, Selling and Profit labels were not separated.');
+            }
+          }
+        }
+
         if(/^\/jobs\/JOB-00251\/(overview|inspection|estimate|work)$/.test(path)){
           const metrics=await page.evaluate(()=>{
             const roots=[...document.querySelectorAll(
