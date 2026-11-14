@@ -1,5 +1,7 @@
 /* Shared customer create/edit form: directory modal and standalone pages. */
-.cg-customer-standard-form,
+.cg-customer-standard-form {
+  display:grid;gap:16px;min-width:0;width:100%;
+}
 .cg-customer-unified-fields {min-width:0;width:100%}
 .cg-customer-unified-fields {
   display:grid;gap:14px;
