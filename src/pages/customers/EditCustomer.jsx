@@ -16,6 +16,7 @@ export const EditCustomer = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -38,7 +39,8 @@ export const EditCustomer = () => {
         if (!customer) return;
         setFormData({
           name: customer.name || '',
-          phone: customer.phone || '',
+          phone: /^\d{10}$/.test(String(customer.phone || '').trim())
+            ? '+91' + String(customer.phone).trim() : customer.phone || '',
           email: customer.email || '',
           customerType: customer.customerType || 'Individual',
           companyName: customer.companyName || '',
@@ -60,12 +62,16 @@ export const EditCustomer = () => {
   const submit = async (event) => {
     event.preventDefault();
     if (!validInternationalPhone(formData.phone)) {
+      setFormError('Enter a valid phone for the selected country code.');
       return;
     }
+    setFormError('');
     setSubmitting(true);
     try {
       await customerService.updateCustomer(id, { ...formData, whatsapp: formData.phone });
       navigate(`/customers/${id}`);
+    } catch (cause) {
+      setFormError(cause?.message || 'Unable to save customer changes.');
     } finally {
       setSubmitting(false);
     }
@@ -79,6 +85,7 @@ export const EditCustomer = () => {
       description="Update customer contact, account type, company details, address and workshop preferences."
     >
       <CustomerManagementTabs />
+      {formError && <p role="alert" className="customer-form-error">{formError}</p>}
 
       <form onSubmit={submit} className="customer-edit-form">
         <FormSection title="Customer Information" description="Primary contact and customer classification.">
