@@ -326,3 +326,8 @@
 @media(prefers-reduced-motion:reduce){
   .cg-vehicles.vehicle-profile-page .vehicle-profile-tabs {scroll-behavior:auto;}
 }
+
+.cg-vehicles.vehicle-profile-page .cg-vehicle-tab-content {
+  display:flex;flex-direction:column;gap:13px;
+  min-width:0;width:100%;max-width:100%;
+}
