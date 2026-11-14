@@ -82,3 +82,14 @@
   background:var(--surface,#fff);color:var(--primary,#2870dc);
   font-size:14px;font-weight:600;cursor:pointer;
 }
+
+
+/* Supplier payments use the Finance default; never expose a second account selector. */
+.cg-supplier-debit-preview{
+  align-self:center;min-width:0;padding:11px 12px;margin:0;
+  border:1px solid var(--border,#d9e0e7);
+  border-radius:10px;background:var(--surface-muted,rgba(127,127,127,.05));
+  color:var(--text-secondary,#667085);font-size:13px;line-height:1.55;
+}
+.cg-supplier-debit-preview strong{font-weight:700;color:var(--text-primary,inherit)}
+.cg-supplier-debit-preview a{color:var(--primary,#2870dc);text-decoration:underline}
