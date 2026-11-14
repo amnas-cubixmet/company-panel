@@ -71,7 +71,8 @@ export function EstimateCatalogPicker({ kind, value, disabled, onChange, onSelec
       : row.taxTreatment || row.tax_treatment || '';
     const isClassifiedZero = Number(rawRate) === 0
       && ['exempt', 'nil_rated', 'non_gst', 'out_of_scope'].includes(classification);
-    const rate = rawRate == null || rawRate === '' ? '' : String(rawRate);
+    const rate = rawRate == null || rawRate === '' ? ''
+      : Number.isFinite(Number(rawRate)) ? String(Number(rawRate)) : '';
     // A legacy 0% Stock record with no classification is not an exemption.
     // It must be classified explicitly, rather than being silently quoted at 0%.
     onSelect({
