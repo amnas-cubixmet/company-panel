@@ -1102,26 +1102,25 @@ export const CustomerDetails = () => {
           </section>
         )}
 
-        {/* 13. ACTIVITY TAB */}
+        {/* ACTIVITY — server audit events, no invented entries. */}
         {activeTab === 'activity' && (
-          <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div>
-              <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Full Audit & Activity Timeline</h3>
-              
+          <section className="cg-profile-pane">
+            <div className="cg-profile-pane-header">
+              <div><h3>Customer Activity</h3><p>Recorded service events and workshop updates.</p></div>
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative', paddingLeft: '22px' }}>
-              <div style={{ position: 'absolute', left: '8px', top: '10px', bottom: '10px', width: '2px', backgroundColor: 'var(--border)' }} />
-              {activity.map((act, idx) => (
-                <div key={idx} style={{ position: 'relative' }}>
-                  <div style={{ position: 'absolute', left: '-22px', top: '4px', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--primary)', border: '2px solid var(--surface)' }} />
-                  <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--primary)' }}>{act.time || act.created_at || '—'}</span>
-                  <h4 style={{ fontSize: '13.5px', fontWeight: '700', color: 'var(--text-primary)', margin: '2px 0' }}>{act.type || act.activity_type || 'Customer Activity'}</h4>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>{act.desc || act.description || '—'}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+            {!activity.length ? <p className="cg-profile-empty">
+              No recorded activity for this customer.</p>
+            : <div className="cg-profile-timeline">
+                {activity.map((event,index) => <article className="cg-profile-event" key={event.id || index}>
+                  <span className="cg-profile-event-dot" aria-hidden="true"/>
+                  <div>
+                    <time>{event.time || customerProfileDate(event.created_at)}</time>
+                    <h4>{event.type || event.activity_type || 'Customer Activity'}</h4>
+                    <p>{event.desc || event.description || '—'}</p>
+                  </div>
+                </article>)}
+              </div>}
+          </section>
         )}
 
       </div>
