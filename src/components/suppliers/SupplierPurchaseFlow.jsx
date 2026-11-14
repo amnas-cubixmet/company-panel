@@ -6,6 +6,7 @@ import { invoiceLineTaxChoices, invoiceTotalRateFromChoice, invoiceChoiceFromTot
 import { FINANCE_CHANNELS, accountChannel, financeAccountsForChannel } from '../../utils/financeCashBank';
 import { findPostedSupplierBillReplay } from '../../utils/supplierPurchaseReplay';
 import { purchaseProductOptions } from '../../utils/supplierProductSearch';
+import { normalizeSupplierGstin, supplierGstinError, supplierGstinStateCode } from '../../utils/supplierGstin';
 import '../../styles/supplier-purchase-flow.css';
 
 const rupees = value => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(value || 0));
@@ -178,8 +179,10 @@ export default function SupplierPurchaseFlow({
   const total = costRows.reduce((sum, row) => sum + row.total, 0);
   const paidNow = splits.reduce((sum, row) => sum + n(row.amount), 0);
   const remaining = Math.max(0, total - paidNow);
-  const supplierStateCode = String(supplier.gstNo || supplier.gstin || '').slice(0, 2);
-  const gstBreakup = placeOfSupply && /^\d{2}$/.test(supplierStateCode)
+  const supplierGstin = normalizeSupplierGstin(supplier.gstNo || supplier.gstin);
+  const gstinProblem = supplierGstinError(supplierGstin);
+  const supplierStateCode = supplierGstinStateCode(supplierGstin);
+  const gstBreakup = placeOfSupply && supplierStateCode
     ? (placeOfSupply === supplierStateCode
       ? { mode: 'Intra-state', cgst: Math.round(tax * 50) / 100,
           sgst: Math.round(tax * 100 - Math.round(tax * 50)) / 100, igst: 0 }
@@ -295,13 +298,14 @@ export default function SupplierPurchaseFlow({
     if (!placeOfSupply) {
       setError('Choose the workshop / buyer Place of Supply for the purchase GST record.'); return;
     }
-    if (positiveGst && !String(supplier.gstNo || supplier.gstin || '').trim()) {
-      setError('For GST purchases, select Place of Supply and verify the Supplier GSTIN.'); return;
+    if (positiveGst && !supplierGstin) {
+      setError('This supplier has no GSTIN. An unregistered supplier cannot charge GST. '
+        + 'Use a properly classified 0% purchase, or update the real supplier GSTIN in Edit Supplier.'); return;
     }
-    const supplierState = String(supplier.gstNo || supplier.gstin || '').slice(0, 2);
-    if (positiveGst && !/^\d{2}$/.test(supplierState)) {
-      setError('Supplier GSTIN does not contain a valid state code. Verify Supplier Details.'); return;
+    if (positiveGst && gstinProblem) {
+      setError(gstinProblem + ' Open Edit Supplier to correct the saved GSTIN before posting.'); return;
     }
+    const supplierState = supplierStateCode;
     if (positiveGst && parts.some(row =>
       (['cgst', 'sgst'].includes(row.gstChoice.split(':')[0]) && placeOfSupply !== supplierState) ||
       (row.gstChoice.startsWith('igst:') && placeOfSupply === supplierState)
@@ -604,6 +608,13 @@ export default function SupplierPurchaseFlow({
                     </select>
                   </label>
                 </div>
+                {parts.some(row => n(row.gstRate) > 0) && (!supplierGstin || gstinProblem) &&
+                  <div className="cg-supplier-purchase-error" role="alert">
+                    <strong>Supplier GSTIN needs attention.</strong>{' '}
+                    {gstinProblem || 'Supplier is unregistered and cannot charge GST.'}{' '}
+                    <a href="#supplier-profile">Open Supplier Details</a>, then use Edit Supplier.
+                    If unregistered, select a correctly classified 0% purchase instead.
+                  </div>}
                 <div className="cg-supplier-purchase-total">
                   <div><span>Parts subtotal</span><strong>{rupees(subtotal)}</strong></div>
                   <div><span>GST</span><strong>{rupees(tax)}</strong></div>
