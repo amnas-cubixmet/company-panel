@@ -214,3 +214,99 @@
 :is(#root, body) .customer-directory-form textarea:focus-visible {
   caret-color: var(--primary);
 }
+
+/* Reference-style Add Workshop Customer sheet; scoped so other modals are unchanged. */
+.cg-workshop-customer-modal {
+  border-radius:16px;
+  background:var(--surface,#fff);
+}
+.cg-workshop-customer-modal .responsive-modal-header {
+  min-height:58px;
+  padding-inline:18px;
+}
+.cg-workshop-customer-modal .responsive-modal-header h3 {
+  font-size:16px;
+  font-weight:680;
+  letter-spacing:0;
+}
+.cg-workshop-customer-modal .responsive-modal-body {
+  padding:16px;
+}
+:is(#root,body) .cg-workshop-customer-modal .customer-directory-form {
+  gap:12px;
+}
+:is(#root,body) .cg-workshop-customer-modal .cg-customer-unified-fields {
+  gap:16px;
+}
+:is(#root,body) .cg-workshop-customer-modal .cg-customer-unified-section {
+  padding:0;
+  gap:12px;
+  border:0;
+  border-radius:0;
+  background:transparent;
+}
+:is(#root,body) .cg-workshop-customer-modal .cg-customer-unified-section:not(:first-child) {
+  border-top:1px solid var(--border,#e2e8f0);
+  padding-top:12px;
+}
+:is(#root,body) .cg-workshop-customer-modal .cg-customer-unified-section-heading {
+  align-items:center;
+  gap:6px 12px;
+}
+:is(#root,body) .cg-workshop-customer-modal .cg-customer-unified-section-heading strong {
+  font-size:13px;
+  font-weight:750;
+}
+:is(#root,body) .cg-workshop-customer-modal .cg-customer-unified-section-heading span {
+  font-size:11px;
+}
+:is(#root,body) .cg-workshop-customer-modal .cg-customer-unified-grid,
+:is(#root,body) .cg-workshop-customer-modal .cg-customer-unified-location {
+  gap:10px;
+}
+:is(#root,body) .cg-workshop-customer-modal [data-cg-input-shell="true"] {
+  background:var(--surface-2,#f6f8fb)!important;
+  min-height:48px!important;
+  border-radius:10px!important;
+}
+:is(#root,body) .cg-workshop-customer-modal .ui-label,
+:is(#root,body) .cg-workshop-customer-modal .cg-customer-unified-phone .ui-phone__label {
+  font-size:14px!important;
+  font-weight:620;
+}
+:is(#root,body) .cg-workshop-customer-modal .cg-customer-unified-fields textarea {
+  min-height:86px!important;
+  border-radius:10px!important;
+  background:var(--surface-2,#f6f8fb)!important;
+}
+:is(#root,body) .cg-workshop-customer-modal .cg-customer-contact-hint {
+  font-size:11px;
+  margin-top:4px;
+}
+:is(#root,body) .cg-workshop-customer-modal .customer-directory-form-actions {
+  margin-top:4px;
+  padding-top:12px;
+  gap:10px;
+}
+:is(#root,body) .cg-workshop-customer-modal .customer-directory-form-actions button {
+  min-height:48px;
+  font-size:14px;
+}
+@media (max-width:767px) {
+  .cg-workshop-customer-modal {
+    border-radius:16px 16px 0 0;
+    max-height:92dvh;
+  }
+  .cg-workshop-customer-modal .responsive-modal-body {
+    padding:12px 14px calc(14px + env(safe-area-inset-bottom));
+  }
+  :is(#root,body) .cg-workshop-customer-modal .cg-customer-unified-section-heading {
+    display:grid;
+    gap:2px;
+  }
+  :is(#root,body) .cg-workshop-customer-modal .customer-directory-form-actions {
+    position:sticky;
+    bottom:0;
+    background:var(--surface,#fff);
+  }
+}

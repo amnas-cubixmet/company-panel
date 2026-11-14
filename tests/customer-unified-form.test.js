@@ -83,3 +83,32 @@ test('job quick-add shares the phone field and handles matching customers safely
   assert.match(src, /if \(dupe\?\.id\)/);
   assert.doesNotMatch(src, /<PhoneInput/);
 });
+
+test('single saved phone number is authoritative for calls and manual WhatsApp', async () => {
+  const { customerContactLinks } = await import('../src/components/jobs/customerContact.utils.js');
+  const links = customerContactLinks({
+    customerPhone: '+919876543210',
+    customerWhatsapp: '+919000000000',
+  });
+  assert.equal(links.callUrl, 'tel:+919876543210');
+  assert.equal(links.whatsappUrl, 'https://wa.me/919876543210');
+  // A historical WhatsApp contact is only a fallback when no phone exists.
+  assert.equal(customerContactLinks({
+    customerWhatsapp: '+919000000000',
+  }).whatsappUrl, 'https://wa.me/919000000000');
+});
+
+test('shared customer forms use one phone field and standard responsive UI', () => {
+  const fields = readFileSync(new URL(
+    '../src/components/customers/CustomerFormFields.jsx', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL(
+    '../src/styles/customer-unified-fields.css', import.meta.url), 'utf8');
+  const directory = readFileSync(new URL(
+    '../src/pages/customers/CustomerList.jsx', import.meta.url), 'utf8');
+  assert.equal((fields.match(/<CountryPhoneField /g) || []).length, 1);
+  assert.doesNotMatch(fields, /label=["']WhatsApp Number["']/);
+  assert.match(fields, /One contact number for calls/);
+  assert.match(styles, /@media\(max-width:600px\)/);
+  assert.match(directory, /<CustomerFormFields /);
+  assert.doesNotMatch(directory, /Search name, phone, WhatsApp/);
+});

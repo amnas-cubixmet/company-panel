@@ -25,7 +25,7 @@ export function CustomerFormFields({
     <section className="cg-customer-unified-section" aria-label="Customer contact details">
       <div className="cg-customer-unified-section-heading">
         <strong>Contact Details</strong>
-        <span>Name and phone number are required.</span>
+        <span>Only name and phone are required.</span>
       </div>
       <Input label="Customer Name" required icon={Users} autoComplete="name"
         {...fieldProps('name')} value={values.name || ''}
@@ -34,6 +34,9 @@ export function CustomerFormFields({
         <CountryPhoneField label="Phone Number" required
           {...fieldProps('phone')} value={values.phone || ''}
           onChange={set('phone')}/>
+        <p className="cg-customer-contact-hint">
+          One contact number for calls and optional manual WhatsApp sharing.
+        </p>
       </div>
       <Input label="Email Address" type="email" icon={Mail}
         autoComplete="email" {...fieldProps('email')} value={values.email || ''}
@@ -43,7 +46,7 @@ export function CustomerFormFields({
     <section className="cg-customer-unified-section" aria-label="Customer classification">
       <div className="cg-customer-unified-section-heading">
         <strong>Customer Details</strong>
-        <span>Choose the correct customer type and branch.</span>
+        <span>Business and branch details.</span>
       </div>
       <div className="cg-customer-unified-grid customer-directory-form-grid">
         <Select label="Customer Type" {...fieldProps('customerType')}
@@ -78,7 +81,7 @@ export function CustomerFormFields({
     <section className="cg-customer-unified-section" aria-label="Customer address and notes">
       <div className="cg-customer-unified-section-heading">
         <strong>Address & Notes</strong>
-        <span>Optional details for invoices and service records.</span>
+        <span>Optional invoice and service details.</span>
       </div>
       <Textarea label="Address" rows={2} {...fieldProps('address')}
         value={values.address || ''} placeholder="Building, street and address"

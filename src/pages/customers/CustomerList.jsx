@@ -442,7 +442,7 @@ export const CustomerList = () => {
             <Search aria-label="Search customers"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, phone, WhatsApp, email or vehicle..."
+              placeholder="Search customer, phone, email or vehicle..."
             />
           </div>
           
@@ -641,7 +641,8 @@ export const CustomerList = () => {
         isOpen={isAddCustomerOpen}
         onClose={() => setIsAddCustomerOpen(false)}
         title={editingCustomerId ? "Edit Customer Details" : "Add Workshop Customer"}
-        maxWidth="540px"
+        className="cg-workshop-customer-modal"
+        maxWidth="560px"
       >
         <form ref={customerFormRef} className="customer-directory-form cg-customer-standard-form" onSubmit={handleFormSubmit}
           onInvalid={(event) => {

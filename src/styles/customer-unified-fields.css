@@ -81,3 +81,37 @@
     flex-basis:91px!important;width:91px!important;min-width:91px!important;max-width:91px!important;
   }
 }
+
+/* Consistent customer create / edit on directory, profile and standalone forms. */
+.cg-customer-standard-form .cg-customer-unified-section {
+  border-color:var(--border,#e1e7ef);
+  background:var(--surface,#fff);
+}
+.cg-customer-standard-form .cg-customer-unified-section-heading {
+  gap:4px 12px;
+}
+.cg-customer-standard-form .cg-customer-unified-section-heading strong {
+  font-size:14px;line-height:1.4;
+}
+.cg-customer-standard-form .cg-customer-unified-section-heading span {
+  font-size:12px;line-height:1.5;
+}
+.cg-customer-unified-phone .cg-customer-contact-hint {
+  margin:5px 0 0;padding:0;
+  font-size:12px;line-height:1.5;
+  font-weight:450;color:var(--text-secondary,#64748b);
+}
+.cg-customer-standard-form .cg-customer-unified-fields [data-cg-input-wrapper] {
+  min-width:0;
+}
+.cg-customer-standard-form .cg-customer-unified-fields :is(input,select,textarea) {
+  font-size:16px;
+}
+.cg-customer-standard-form .cg-customer-unified-fields textarea {
+  min-height:82px;
+}
+@media(max-width:600px) {
+  .cg-customer-standard-form .cg-customer-unified-section {padding:12px;gap:12px}
+  .cg-customer-standard-form .cg-customer-unified-fields {gap:11px}
+  .cg-customer-standard-form .cg-customer-unified-section-heading {display:grid}
+}
