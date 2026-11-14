@@ -35,6 +35,8 @@ import { JobActivityTimeline } from '../../components/jobs/JobActivityTimeline';
 import { JobWorkPhotoPanel } from '../../components/jobs/JobWorkPhotoPanel';
 import { jobDisplayLabel } from '../../components/jobs/jobs.utils';
 import { jobInvoiceGST, jobInvoiceFinance } from '../../utils/jobGstFinance';
+import { isPostedInvoice } from '../../utils/invoiceFinanceLinks';
+import '../../styles/job-financial-bridge.css';
 import '../../styles/job-gst-finance.css';
 import { JobBreadcrumbs } from '../../components/jobs/JobBreadcrumbs';
 import '../../styles/jobs-unified-ui.css';
@@ -127,6 +129,9 @@ export function JobCardWorkspace() {
   const [invoicePdfError, setInvoicePdfError] = useState('');
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingError, setBillingError] = useState('');
+  const [billingSummaryState, setBillingSummaryState] = useState({ jobId: null, data: null });
+  const [billingSummaryError, setBillingSummaryError] = useState('');
+  const [billingSummaryLoading, setBillingSummaryLoading] = useState(false);
   const [staff, setStaff] = useState([]);
   const [timerRefreshVersion, setTimerRefreshVersion] = useState(0);
   const [workQuickSection, setWorkQuickSection] = useState('service');
@@ -197,6 +202,31 @@ export function JobCardWorkspace() {
     rail.scrollTo({ left: Math.max(0, left), behavior: 'instant' });
   }, [activeTab]);
 
+  // Fetch posted Job Card invoice totals even when the Invoice tab is not open.
+  // Invoice/GST payment records remain canonical on Django; no browser totals are posted.
+  useEffect(() => {
+    if (!job?.id || !hasInvoiceAccess || USE_MOCK_API) {
+      setBillingSummaryState({ jobId: null, data: null });
+      setBillingSummaryError('');
+      setBillingSummaryLoading(false);
+      return undefined;
+    }
+    let active = true;
+    setBillingSummaryLoading(true);
+    setBillingSummaryError('');
+    jobService.getJobBillingSummary(job.id).then(data => {
+      if (active) setBillingSummaryState({ jobId: job.id, data });
+    }).catch(err => {
+      if (active) {
+        setBillingSummaryState({ jobId: job.id, data: null });
+        setBillingSummaryError(err?.message || 'Could not load posted invoice balances.');
+      }
+    }).finally(() => {
+      if (active) setBillingSummaryLoading(false);
+    });
+    return () => { active = false; };
+  }, [job?.id, job?.status, hasInvoiceAccess, activeTab, timerRefreshVersion]);
+
   const loadBilling = async () => {
     if (!id) return;
     setBillingLoading(true);
@@ -209,7 +239,7 @@ export function JobCardWorkspace() {
         (String(row.jobId || row.job_id || row.sourceJobId || row.source_job_id || '') === String(id) ||
          (job?.jobNumber && String(row.jobCardNo || row.job_card_no || '') === String(job.jobNumber)))
       ).sort((a, b) => String(b.createdAt || b.date || '').localeCompare(String(a.createdAt || a.date || '')));
-      const current = related.find((row) => row.status !== 'Cancelled') || related[0];
+      const current = related.find(isPostedInvoice) || related.find((row) => row.status !== 'Cancelled') || related[0];
       // Invoice read access and payment ledger read access are separate roles.
       // A job invoice must remain viewable by invoice-only staff.
       const paymentResponse = current && canViewPayments
@@ -365,25 +395,41 @@ export function JobCardWorkspace() {
   const estimateGrandTotal = taxable + estimateTaxAmount;
 
   const latestEstimate = estimates.at(-1) || null;
-  const linkedInvoice = jobInvoices.find((row) => row.status !== 'Cancelled') || null;
+  const linkedInvoice = jobInvoices.find(isPostedInvoice)
+    || jobInvoices.find((row) => row.status !== 'Cancelled') || null;
+  const postedBilling = billingSummaryState.jobId === job?.id ? billingSummaryState.data : null;
+  const hasPostedBilling = Boolean(postedBilling?.postedInvoiceCount);
+  const jobLinkedInvoiceId = postedBilling?.primaryInvoiceId || linkedInvoice?.id || null;
   const financial = jobInvoiceFinance(linkedInvoice);
   const invoiceGST = jobInvoiceGST(linkedInvoice);
   const isInvoiceFinalized = financial.posted;
   // All internal margin comparisons exclude GST; the invoice total includes tax.
-  const jobSellingBeforeTax = linkedInvoice
-    ? invoiceGST?.taxable ?? (linkedInvoice.invoiceType === 'regular'
-      ? linkedInvoice.subtotal ?? linkedInvoice.total : null)
-    : (latestEstimate?.subtotal != null ? Math.max(0,
-      cleanNumber(latestEstimate.subtotal) - cleanNumber(latestEstimate.discount)) : null);
-  const jobSalesSource = linkedInvoice ? (isInvoiceFinalized ? 'final_invoice' : 'draft_invoice')
+  const jobSellingBeforeTax = hasPostedBilling
+    ? cleanNumber(postedBilling.sellingBeforeGST)
+    : linkedInvoice
+      ? invoiceGST?.taxable ?? (linkedInvoice.invoiceType === 'regular'
+        ? linkedInvoice.taxable ?? linkedInvoice.subtotal ?? linkedInvoice.total : null)
+      : (latestEstimate?.subtotal != null ? Math.max(0,
+        cleanNumber(latestEstimate.subtotal) - cleanNumber(latestEstimate.discount)) : null);
+  const jobSalesSource = hasPostedBilling ? 'final_invoice' : linkedInvoice
+    ? (isInvoiceFinalized ? 'final_invoice' : 'draft_invoice')
     : (latestEstimate ? 'estimate' : 'none');
-  const invoiceTotal = linkedInvoice
-    ? cleanNumber(linkedInvoice.total)
+  const invoiceTotal = hasPostedBilling
+    ? cleanNumber(postedBilling.invoiceTotal)
+    : linkedInvoice ? cleanNumber(linkedInvoice.total)
     : (USE_MOCK_API ? cleanNumber(job?.billing?.invoiceTotal || latestEstimate?.grandTotal || 0) : 0);
-  const invoicePaid = linkedInvoice ? cleanNumber(linkedInvoice.paid) : cleanNumber(job?.billing?.paidAmount || 0);
-  const invoiceBalance = Math.max(0, linkedInvoice ? cleanNumber(linkedInvoice.balance ?? (invoiceTotal - invoicePaid)) : invoiceTotal - invoicePaid);
-  const invoicePaymentStatus = linkedInvoice
-    ? (invoiceTotal <= 0 ? 'No amount due' : invoiceBalance <= 0 ? 'Paid' : invoicePaid > 0 ? 'Partially Paid' : 'Unpaid')
+  const invoicePaid = hasPostedBilling
+    ? cleanNumber(postedBilling.paid)
+    : linkedInvoice ? cleanNumber(linkedInvoice.paid) : cleanNumber(job?.billing?.paidAmount || 0);
+  const invoiceBalance = Math.max(0, hasPostedBilling
+    ? cleanNumber(postedBilling.outstanding)
+    : linkedInvoice
+      ? cleanNumber(linkedInvoice.balance ?? (invoiceTotal - invoicePaid))
+      : invoiceTotal - invoicePaid);
+  const invoicePaymentStatus = hasPostedBilling || linkedInvoice
+    ? (!hasPostedBilling && !isInvoiceFinalized ? 'Draft · not due'
+      : invoiceTotal <= 0 ? 'No amount due'
+        : invoiceBalance <= 0 ? 'Paid' : invoicePaid > 0 ? 'Partially Paid' : 'Unpaid')
     : (USE_MOCK_API ? job?.paymentStatus || 'Pending' : 'Not invoiced');
 
 
