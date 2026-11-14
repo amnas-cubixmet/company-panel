@@ -55,6 +55,10 @@ export default function SupplierPurchaseFlow({
     : '';
   const [states, setStates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [accountsLoading, setAccountsLoading] = useState(true);
+  const [accountsError, setAccountsError] = useState('');
+  const [settlementError, setSettlementError] = useState('');
+  const [settlementNotice, setSettlementNotice] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const errorRef = useRef(null);
@@ -82,34 +86,63 @@ export default function SupplierPurchaseFlow({
     if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [error]);
 
-  const reload = async () => {
-    const [items, moneyAccounts, gst] = await Promise.all([
-      stockCatalogService.getItems(),
-      supplierFinanceService.getAccounts(),
-      supplierFinanceService.getGSTOptions(),
-    ]);
-    setStock(items);
-    setAccounts(moneyAccounts.filter(account => account.isActive &&
-      accountChannel(account.kind)));
-    setStates(gst.states || []);
-    setPlaceOfSupply(previous => previous || gst.suggestedBuyerStateCode || '');
+  const reloadAccounts = async () => {
+    const moneyAccounts = await supplierFinanceService.getAccounts();
+    setAccounts(moneyAccounts.filter(account => account.isActive && accountChannel(account.kind)));
   };
+
+  const reload = async () => {
+    // Payment-account updates must not depend on inventory or GST endpoints.
+    await reloadAccounts();
+    if (canPurchase && showPurchase) {
+      const [items, gst] = await Promise.all([
+        stockCatalogService.getItems(),
+        supplierFinanceService.getGSTOptions(),
+      ]);
+      setStock(items);
+      setStates(gst.states || []);
+      setPlaceOfSupply(previous => previous || gst.suggestedBuyerStateCode || '');
+    }
+  };
+
   useEffect(() => {
     let alive = true;
+    setAccountsLoading(true);
+    setAccountsError('');
+    supplierFinanceService.getAccounts()
+      .then(moneyAccounts => {
+        if (alive) setAccounts(moneyAccounts.filter(account =>
+          account.isActive && accountChannel(account.kind)));
+      })
+      .catch(cause => {
+        if (alive) {
+          setAccounts([]);
+          setAccountsError(getErrorText(cause));
+        }
+      })
+      .finally(() => { if (alive) setAccountsLoading(false); });
+    return () => { alive = false; };
+  }, [supplier.id]);
+
+  useEffect(() => {
+    // The payment tab must work independently of stock and GST lookups.
+    if (!canPurchase || !showPurchase) {
+      setLoading(false);
+      return undefined;
+    }
+    let alive = true;
     setLoading(true);
-    Promise.all([stockCatalogService.getItems(), supplierFinanceService.getAccounts(),
-      supplierFinanceService.getGSTOptions()])
-      .then(([items, moneyAccounts, gst]) => {
+    Promise.all([stockCatalogService.getItems(), supplierFinanceService.getGSTOptions()])
+      .then(([items, gst]) => {
         if (!alive) return;
         setStock(items);
-        setAccounts(moneyAccounts.filter(a => a.isActive && accountChannel(a.kind)));
         setStates(gst.states || []);
         setPlaceOfSupply(previous => previous || gst.suggestedBuyerStateCode || '');
       })
       .catch(cause => { if (alive) setError(getErrorText(cause)); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
-  }, [supplier.id]);
+  }, [supplier.id, canPurchase, showPurchase]);
 
   useEffect(() => {
     if (!initialPart?.itemId || !stock.length || prefilled.current === String(initialPart.itemId)) return;
@@ -423,17 +456,30 @@ export default function SupplierPurchaseFlow({
     event.preventDefault();
     if (settling) return;
     setError('');
+    setSettlementError('');
+    setSettlementNotice('');
     const amount = Number(settlement.amount);
     const account = accounts.find(a => String(a.id) === String(settlement.accountId));
-    if (!account || !FINANCE_CHANNELS.includes(settlement.channel) ||
-      accountChannel(account.kind) !== settlement.channel ||
-      !Number.isFinite(amount) || amount <= 0 ||
-      !/^\d+(?:\.\d{1,2})?$/.test(String(settlement.amount)) ||
-      amount > remainingSupplier + 0.001) {
-      setError('Select an account and amount within the outstanding supplier credit.'); return;
+    if (!settlement.amount || !Number.isFinite(amount) || amount <= 0 ||
+      !/^\d+(?:\.\d{1,2})?$/.test(String(settlement.amount))) {
+      setSettlementError('Enter a payment amount greater than zero (up to two decimal places).');
+      return;
+    }
+    if (amount > remainingSupplier + 0.001) {
+      setSettlementError('Payment cannot exceed the supplier balance due.');
+      return;
+    }
+    if (!settlement.channel || !FINANCE_CHANNELS.includes(settlement.channel)) {
+      setSettlementError('Select Cash or Bank / UPI as the payment method.');
+      return;
+    }
+    if (!account || accountChannel(account.kind) !== settlement.channel) {
+      setSettlementError('Choose an active account for the selected payment method.');
+      return;
     }
     if (account.recordedBalance != null && amount > n(account.recordedBalance) + 0.001) {
-      setError('Insufficient recorded account balance.'); return;
+      setSettlementError('Insufficient recorded balance in ' + account.name + '.');
+      return;
     }
     let toAllocate = Math.round(amount * 100);
     const allocations = [];
@@ -442,8 +488,9 @@ export default function SupplierPurchaseFlow({
       if (applied > 0) allocations.push({ billId: bill.id, amount: (applied / 100).toFixed(2) });
       toAllocate -= applied;
     }
-    if (toAllocate > 0) {
-      setError('Payment exceeds the remaining unpaid supplier bills.'); return;
+    if (toAllocate > 0 || !allocations.length) {
+      setSettlementError('Payment exceeds the remaining posted supplier bills. Refresh and try again.');
+      return;
     }
     setSettling(true);
     try {
@@ -453,12 +500,24 @@ export default function SupplierPurchaseFlow({
         paidOn: localDate(), reference: settlement.reference.trim(),
         allocations, idempotencyKey: settleKey.current,
       });
+      // The write succeeded. Never suggest retrying the payment because a
+      // subsequent read-only balance refresh failed.
       settleKey.current = requestKey();
       setSettlement({ amount: '', channel: '', accountId: '', reference: '' });
-      await Promise.resolve(onChanged());
-      await reload();
-    } catch (cause) { setError(getErrorText(cause)); }
-    finally { setSettling(false); }
+      setSettlementNotice('Payment recorded successfully. Supplier credit and account balance have been updated.');
+      const refreshes = await Promise.allSettled([Promise.resolve().then(() => onChanged()), reloadAccounts()]);
+      if (refreshes.some(result => result.status === 'rejected')) {
+        setSettlementNotice('Payment recorded. Some balances could not refresh; reload to view the latest transactions. Do not pay again.');
+      }
+    } catch (cause) {
+      const status = Number(cause?.status || cause?.response?.status || 0);
+      const uncertain = !status || status >= 500;
+      setSettlementError(uncertain
+        ? 'Payment confirmation is unavailable. Check Supplier Transactions before attempting again to prevent a duplicate payment.'
+        : getErrorText(cause));
+    } finally {
+      setSettling(false);
+    }
   };
 
   return (
@@ -725,19 +784,25 @@ export default function SupplierPurchaseFlow({
             : <form className="cg-supplier-purchase-grid" onSubmit={settleExisting}>
               <label>Pay amount (₹) *
                 <input className={fieldClass} type="number" min="0.01" max={fixed(remainingSupplier)} step="0.01"
-                  value={settlement.amount} onChange={e => setSettlement(old => ({ ...old, amount: e.target.value }))}/>
+                  value={settlement.amount} onChange={e => { setSettlement(old => ({ ...old, amount: e.target.value })); setSettlementError(''); }}/>
               </label>
               <label>Payment method *
                 <select className={fieldClass} value={settlement.channel}
-                  onChange={e => setSettlement(old => ({ ...old, channel: e.target.value, accountId: '' }))}>
+                  onChange={e => {
+                    const channel = e.target.value;
+                    const available = financeAccountsForChannel(accounts, channel);
+                    setSettlement(old => ({ ...old, channel,
+                      accountId: available.length === 1 ? String(available[0].id) : '' }));
+                    setSettlementError('');
+                  }}>
                   <option value="">Select method</option>
                   <option value="Cash">Cash in Hand</option>
-                  <option value="Bank">Bank</option>
+                  <option value="Bank">Bank / UPI (PhonePe, GPay, transfer)</option>
                 </select>
               </label>
               <label>Cash / Bank account *
                 <select className={fieldClass} value={settlement.accountId}
-                  onChange={e => setSettlement(old => ({ ...old, accountId: e.target.value }))}>
+                  onChange={e => { setSettlement(old => ({ ...old, accountId: e.target.value })); setSettlementError(''); }}>
                   <option value="">Select {settlement.channel || 'payment method'} account</option>
                   {financeAccountsForChannel(accounts, settlement.channel).map(account => <option key={account.id} value={account.id}>
                     {account.name} ({accountMethod(account)}){accountBalanceShown(account)}
@@ -746,14 +811,30 @@ export default function SupplierPurchaseFlow({
               </label>
               <label className="wide">Payment reference (optional)
                 <input className={fieldClass} value={settlement.reference} maxLength={120}
-                  onChange={e => setSettlement(old => ({ ...old, reference: e.target.value }))}/>
+                  onChange={e => { setSettlement(old => ({ ...old, reference: e.target.value })); setSettlementError(''); }}/>
               </label>
               <p className="wide cg-supplier-purchase-muted">
                 This settles existing posted supplier bills only; no second stock receipt or expense will be created.
                 Remaining credit after this payment: {rupees(Math.max(0, remainingSupplier - n(settlement.amount)))}
               </p>
+              {accountsLoading && <p className="wide cg-supplier-purchase-muted" role="status">Loading payment accounts…</p>}
+              {accountsError && <div className="wide cg-supplier-purchase-error" role="alert">
+                Unable to load Cash / Bank accounts: {accountsError}{' '}
+                <button type="button" onClick={() => {
+                  setAccountsLoading(true);
+                  setAccountsError('');
+                  reloadAccounts().catch(cause => setAccountsError(getErrorText(cause)))
+                    .finally(() => setAccountsLoading(false));
+                }}>Retry loading accounts</button>
+              </div>}
+              {!accountsLoading && !accountsError && !accounts.length &&
+                <p className="wide cg-supplier-purchase-muted" role="status">
+                  No payment account found. <Link to="/finance/accounts">Add a Cash / Bank / UPI account</Link> first.
+                </p>}
+              {settlementError && <p className="wide cg-supplier-purchase-error" role="alert">{settlementError}</p>}
+              {settlementNotice && <p className="wide cg-supplier-purchase-muted" role="status">{settlementNotice}</p>}
               <div className="wide cg-supplier-purchase-actions">
-                <button type="submit" className="primary" disabled={settling || !settlement.amount || !settlement.accountId || !settlement.channel}>
+                <button type="submit" className="primary" disabled={settling} aria-busy={settling}>
                   {settling ? 'Recording…' : 'Confirm Supplier Payment'}
                 </button>
               </div>

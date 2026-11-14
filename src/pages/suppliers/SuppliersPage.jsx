@@ -511,33 +511,29 @@ export default function SuppliersPage({ section = 'all' }) {
     if (!id) return;
     setSupplierFinanceError('');
     try {
-    const [summary, bills, payments, catalog] = await Promise.all([
-      supplierFinanceService.getSupplierSummary(id),
-      supplierFinanceService.getBills(id),
-      supplierFinanceService.getPayments(id),
-      supplierFinanceService.getSupplierLedger(id),
-      supplierFinanceService.getSupplierBalances(),
-      supplierService.products(),
-    ]);
-    setSupplierFinancials(summary);
-    setSupplierBills(bills);
-    setSupplierPayments(payments);
-    setSupplierLedger(ledger);
-    setCreditBalances(new Map(balances.map(row => [String(row.supplierId), row])));
-    setBalancesError('');
-    setSupplierFinanceError('');
-    setProducts(catalog.filter(row => supplierIdOf(row) === String(id)));
-    setCreditBalances(current => {
-      if (!current) return current;
-      const totalDue = bills
-        .filter(bill => bill.postingStatus === 'Posted')
-        .reduce((total, bill) => total + Number(bill.outstanding || 0), 0);
-      if (!Number.isFinite(totalDue)) return current;
-      const updated = new Map(current);
-      updated.set(String(id), totalDue);
-      return updated;
-    });
-    setNotice('Supplier purchase, stock, payments and outstanding balance updated.');
+      // Payments must refresh even if the optional product catalogue is unavailable.
+      // Keep the response order aligned with the six requests.
+      const [summary, bills, payments, ledger, balances, catalog] = await Promise.all([
+        supplierFinanceService.getSupplierSummary(id),
+        supplierFinanceService.getBills(id),
+        supplierFinanceService.getPayments(id),
+        supplierFinanceService.getSupplierLedger(id),
+        supplierFinanceService.getSupplierBalances(),
+        supplierService.products().catch(() => null),
+      ]);
+      setSupplierFinancials(summary);
+      setSupplierBills(bills);
+      setSupplierPayments(payments);
+      setSupplierLedger(ledger);
+      // Balance rows are objects used by the supplier totals; never replace one
+      // with a bare number, which makes the dashboard show an incorrect zero.
+      setCreditBalances(new Map(balances.map(row => [String(row.supplierId), row])));
+      setBalancesError('');
+      setSupplierFinanceError('');
+      if (Array.isArray(catalog)) {
+        setProducts(catalog.filter(row => supplierIdOf(row) === String(id)));
+      }
+      setNotice('Supplier purchase, stock, payments and outstanding balance updated.');
     } catch (cause) {
       setSupplierFinanceError(cause?.message || 'Supplier balances could not be refreshed. Try again.');
     }
