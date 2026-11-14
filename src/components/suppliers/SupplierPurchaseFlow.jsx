@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { supplierFinanceSetupRoute } from '../../utils/supplierFinanceReturnRoute';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { stockCatalogService } from '../../services/stockCatalog.service';
 import { invoiceLineTaxChoices, invoiceTotalRateFromChoice, invoiceChoiceFromTotalRate } from '../../utils/invoiceTaxUi';
@@ -47,6 +48,8 @@ export default function SupplierPurchaseFlow({
   showPurchase = true, showPayments = true,
   bills = [], onChanged = () => {},
 }) {
+  const location = useLocation();
+  const accountSetupRoute = channel => supplierFinanceSetupRoute(location, channel);
   const [stock, setStock] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const resolvedAccountFor = channel => accounts.find(account =>
@@ -94,6 +97,19 @@ export default function SupplierPurchaseFlow({
   const reloadAccounts = async () => {
     const moneyAccounts = await supplierFinanceService.getAccounts();
     setAccounts(moneyAccounts.filter(account => account.isActive && accountChannel(account.kind)));
+  };
+
+  const refreshPaymentAccounts = async () => {
+    setAccountsLoading(true);
+    setAccountsError('');
+    try {
+      await reloadAccounts();
+      setSettlementError('');
+    } catch (cause) {
+      setAccountsError(getErrorText(cause));
+    } finally {
+      setAccountsLoading(false);
+    }
   };
 
   const reload = async () => {
@@ -781,7 +797,7 @@ export default function SupplierPurchaseFlow({
                     {row.channel && <p className="cg-supplier-debit-preview">
                       {resolvedAccountFor(row.channel)
                         ? <>Finance debit: <strong>{resolvedAccountFor(row.channel).name}</strong></>
-                        : <Link to="/finance/accounts">Set default {row.channel} payment account in Finance</Link>}
+                        : <Link to={accountSetupRoute(row.channel)}>Set default {row.channel} payment account in Finance</Link>}
                     </p>}
                     <label>Amount (₹)
                       <input className={fieldClass} type="number" min="0.01" step="0.01"
@@ -850,10 +866,18 @@ export default function SupplierPurchaseFlow({
               {settlement.channel && !accountsLoading && !accountsError &&
                 !resolvedAccountFor(settlement.channel) &&
                 financeAccountsForChannel(accounts, settlement.channel).length > 0 &&
-                <p className="cg-supplier-debit-preview" role="alert">
-                  Multiple accounts found. <Link to="/finance/accounts">Set a Default Payment Account in Finance</Link>
-                  {' '}before paying.
-                </p>}
+                <div className="cg-supplier-debit-preview" role="alert">
+                  Multiple accounts found. Set the {settlement.channel === 'Cash' ? 'Cash' : 'Bank / UPI'} account
+                  you want to use for this payment.
+                  <div className="cg-supplier-finance-route-actions">
+                    <Link to={accountSetupRoute(settlement.channel)} className="cg-supplier-finance-route-link">
+                      Set Default {settlement.channel === 'Cash' ? 'Cash' : 'Bank'} Account
+                    </Link>
+                    <button type="button" className="cg-supplier-finance-refresh" onClick={refreshPaymentAccounts}>
+                      Refresh Accounts
+                    </button>
+                  </div>
+                </div>}
               {settlement.channel === 'Cash' && !accountsLoading && !accountsError &&
                 financeAccountsForChannel(accounts, 'Cash').length === 0 && (
                   <div className="wide cg-supplier-cash-setup">
@@ -904,7 +928,19 @@ export default function SupplierPurchaseFlow({
                 <p className="wide cg-supplier-purchase-muted" role="status">
                   No payment account found. <Link to="/finance/accounts">Add a Cash / Bank / UPI account</Link> first.
                 </p>}
-              {settlementError && <p className="wide cg-supplier-purchase-error" role="alert">{settlementError}</p>}
+              {settlementError && <div className="wide cg-supplier-purchase-error" role="alert">
+                <p>{settlementError}</p>
+                {settlement.channel && !resolvedAccountFor(settlement.channel) && (
+                  <div className="cg-supplier-finance-route-actions">
+                    <Link to={accountSetupRoute(settlement.channel)} className="cg-supplier-finance-route-link">
+                      Set Default {settlement.channel === 'Cash' ? 'Cash' : 'Bank'} Account
+                    </Link>
+                    <button type="button" className="cg-supplier-finance-refresh" onClick={refreshPaymentAccounts}>
+                      Refresh Accounts
+                    </button>
+                  </div>
+                )}
+              </div>}
               {settlementNotice && <p className="wide cg-supplier-purchase-muted" role="status">{settlementNotice}</p>}
               <div className="wide cg-supplier-purchase-actions">
                 <button type="submit" className="primary" disabled={settling} aria-busy={settling}>

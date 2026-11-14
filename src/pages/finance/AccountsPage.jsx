@@ -4,6 +4,7 @@ import {
   ArrowLeft, Building2, Wallet, Plus, Power
 } from 'lucide-react';
 import { financeService } from '../../services/finance.service';
+import { supplierFinanceReturnContext, matchesFinancePaymentChannel } from '../../utils/supplierFinanceReturnRoute';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/finance-accounts.css';
 
@@ -93,8 +94,13 @@ export function AccountsPage() {
   const { id } = useParams();
   const location = useLocation();
   const isNew = location.pathname.endsWith('/new');
+  const { returnTo, channel } = supplierFinanceReturnContext(location.search);
+  const accountListPath = '/finance/accounts' + location.search;
+  const accountDetailPath = accountId => '/finance/accounts/' + encodeURIComponent(accountId) + location.search;
+
 
   const [accounts, setAccounts] = useState([]);
+  const visibleAccounts = accounts.filter(item => matchesFinancePaymentChannel(item, channel));
   const [account, setAccount] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -144,7 +150,7 @@ export function AccountsPage() {
     setFormError('');
     try {
       await financeService.createAccount(form);
-      navigate('/finance/accounts');
+      navigate(accountListPath);
     } catch (e) {
       const details = e?.data;
       setFormError(typeof details?.detail === 'string' ? details.detail :
@@ -192,8 +198,13 @@ export function AccountsPage() {
     setSettingDefault(true);
     setError('');
     try {
-      await financeService.updateAccount(id, { isDefaultPayment: !account.isDefaultPayment });
-      await loadAccount();
+      const selected = !account.isDefaultPayment;
+      await financeService.updateAccount(id, { isDefaultPayment: selected });
+      if (selected && returnTo) {
+        navigate(returnTo, { replace: true });
+      } else {
+        await loadAccount();
+      }
     } catch (cause) {
       setError(cause?.message || 'Could not update the default payment account.');
     } finally {
@@ -216,13 +227,13 @@ export function AccountsPage() {
     return (
       <div className="finance-page">
         <header className="finance-page-header">
-          <button className="finance-back-btn" onClick={() => navigate('/finance/accounts')}>
+          <button className="finance-back-btn" onClick={() => navigate(accountListPath)}>
             <ArrowLeft size={16} /> Accounts
           </button>
           <h1>Add Cash or Bank Account</h1>
           <p>Set up a new bank or cash account for financial tracking.</p>
         </header>
-        <AccountForm onSave={handleCreate} onCancel={() => navigate('/finance/accounts')} saving={saving} error={formError} />
+        <AccountForm onSave={handleCreate} onCancel={() => navigate(accountListPath)} saving={saving} error={formError} />
       </div>
     );
   }
@@ -231,7 +242,7 @@ export function AccountsPage() {
     return (
       <div className="finance-page">
         <header className="finance-page-header">
-          <button className="finance-back-btn" onClick={() => navigate('/finance/accounts')}>
+          <button className="finance-back-btn" onClick={() => navigate(accountListPath)}>
             <ArrowLeft size={16} /> Accounts
           </button>
           <div className="finance-account-title-row">
@@ -260,6 +271,13 @@ export function AccountsPage() {
         </header>
 
         {error && <div className="finance-error" role="alert">{error}</div>}
+        {returnTo && <div className="finance-supplier-return-banner">
+          <p>Supplier payment setup: mark this {channel === 'Cash' ? 'Cash' : 'Bank / UPI'}
+            {' '}account as the default to return to the Supplier Payment page.</p>
+          <button type="button" className="finance-secondary-btn" onClick={() => navigate(returnTo)}>
+            <ArrowLeft size={16} /> Back to Supplier Payment
+          </button>
+        </div>}
         {['Cash', 'Bank', 'UPI', 'Wallet'].includes(account.kind) && <p className="finance-account-default-help">
           {account.isDefaultPayment ? 'Default payment source: supplier payments using this method will debit this account.' :
             'Optional: mark this account as the default for automatic supplier payments. Cash and Bank / UPI have separate defaults.'}
@@ -373,38 +391,48 @@ export function AccountsPage() {
           <h1>Cash &amp; Bank Accounts</h1>
           <p>Choose where workshop money is held or paid from. You can track each account separately.</p>
         </div>
-        {canManage && <button className="finance-primary-btn" onClick={() => navigate('/finance/accounts/new')}>
+        {canManage && <button className="finance-primary-btn" onClick={() => navigate('/finance/accounts/new' + location.search)}>
           <Plus size={16} /> Add Account
         </button>}
       </header>
 
       {error && <div className="finance-error" role="alert">{error}</div>}
+      {returnTo && <div className="finance-supplier-return-banner">
+        <p>
+          Select the {channel === 'Cash' ? 'Cash' : 'Bank / UPI'} account you want to use,
+          then tap <strong>Set as Default Payment Account</strong>.
+          You will return to Supplier Payment automatically.
+        </p>
+        <button type="button" className="finance-secondary-btn" onClick={() => navigate(returnTo)}>
+          <ArrowLeft size={16} /> Back to Supplier Payment
+        </button>
+      </div>}
 
       {loading ? (
         <div className="finance-loading" role="status">Loading accounts…</div>
-      ) : error ? null : accounts.length === 0 ? (
+      ) : error ? null : visibleAccounts.length === 0 ? (
         <div className="finance-empty">
           <Building2 size={40} />
           <h3>No cash or bank accounts yet</h3>
-          <p>Create an account to receive customer payments, pay expenses, or transfer money.</p>
-          {canManage && <button className="finance-primary-btn" onClick={() => navigate('/finance/accounts/new')}>
+          <p>No {channel === 'Cash' ? 'Cash' : channel === 'Bank' ? 'Bank / UPI' : 'Cash or Bank'} account available. Create one to receive customer payments or pay suppliers and expenses.</p>
+          {canManage && <button className="finance-primary-btn" onClick={() => navigate('/finance/accounts/new' + location.search)}>
             Add First Account
           </button>}
         </div>
       ) : (
         <div className="finance-accounts-list">
-          {accounts.map(acc => (
+          {visibleAccounts.map(acc => (
             <article
               key={acc.id}
               className={`finance-account-row ${!acc.isActive ? 'is-inactive' : ''}`}
-              onClick={() => navigate(`/finance/accounts/${acc.id}`)}
+              onClick={() => navigate(accountDetailPath(acc.id))}
               role="button"
               tabIndex={0}
               aria-label={`View account ${acc.name}`}
               onKeyDown={e => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  navigate(`/finance/accounts/${acc.id}`);
+                  navigate(accountDetailPath(acc.id));
                 }
               }}
             >
