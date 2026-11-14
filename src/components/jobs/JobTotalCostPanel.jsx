@@ -26,10 +26,11 @@ export function JobTotalCostPanel({
     && Number.isFinite(Number(netSellingValue));
   const incompleteCosts = Boolean(summary?.unallocatedDailyWages || summary?.unapprovedMechanicWork
     || summary?.partsAtCurrentCost);
-  // This is a job-level indicative gross margin, not an accounting net profit.
-  // Never compare GST-inclusive invoice grand total against GST-exclusive costs.
-  const grossMargin = summary && hasNetSales && !incompleteCosts
-    ? Number(netSellingValue) - Number(summary.totalCost || 0) : null;
+  // Show only the difference between known pre-tax selling and recorded direct
+  // costs. It is never a final profit (overheads/daily wages may be missing).
+  const recordedCost = summary ? Number(summary.totalCost) : NaN;
+  const grossMargin = hasNetSales && Number.isFinite(recordedCost)
+    ? Number(netSellingValue) - recordedCost : null;
 
   useEffect(() => {
     if (!jobId || !permitted) {
@@ -137,9 +138,10 @@ export function JobTotalCostPanel({
               <span>Indicative Gross Margin</span>
               <strong>{grossMargin !== null ? money(grossMargin) : 'Not ready'}</strong>
               <small>{grossMargin === null
-                ? incompleteCosts ? 'Direct cost records incomplete' : 'A verified selling figure is required'
-                : salesSource === 'final_invoice' ? 'Excludes overhead and unallocated wages'
-                  : 'Provisional; bill not yet finalized'}</small>
+                ? 'A verified pre-tax selling figure and recorded costs are required'
+                : incompleteCosts ? 'Indicative only: some wages or costs are missing'
+                  : salesSource === 'final_invoice' ? 'Excludes overhead and unallocated wages'
+                    : 'Provisional; bill not yet finalized'}</small>
             </div>
           </div>
           {refreshOnTab === 'work' && (
