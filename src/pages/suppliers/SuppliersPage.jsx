@@ -5,6 +5,7 @@ import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { supplierService } from '../../services/supplier.service';
 import { CountryPhoneField } from '../../components/common/CountryPhoneField';
 import { validInternationalPhone } from '../../utils/jobCreateAdapters';
+import { normalizeSupplierGstin, supplierGstinError } from '../../utils/supplierGstin';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { USE_MOCK_API } from '../../api/apiConfig';
@@ -97,6 +98,8 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
     if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
       errors.email = 'Enter a valid email address.';
     }
+    const gstinProblem = supplierGstinError(form.gstNo);
+    if (gstinProblem) errors.gstNo = gstinProblem;
     if (Object.keys(errors).length) {
       setFormErrors(errors);
       setError('');
@@ -106,7 +109,8 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
     setError('');
     setFormErrors({});
     try {
-      const payload = { ...form, name: form.name.trim(), email: form.email.trim() };
+      const payload = { ...form, name: form.name.trim(), email: form.email.trim(),
+        gstNo: normalizeSupplierGstin(form.gstNo) };
       const saved = supplier
         ? await supplierService.update(supplier.id, payload)
         : await supplierService.create(payload);
@@ -147,7 +151,7 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
   return <ResponsiveModalSheet isOpen onClose={tryClose}
     title={supplier ? 'Edit Supplier' : 'Add Supplier'} maxWidth="680px">
     <form className="cg-supplier-form" noValidate onSubmit={submit}>
-      <p className="cg-supplier-form-intro">Enter the supplier's contact details. Supplier Name is required; GSTIN and other details are optional.</p>
+      <p className="cg-supplier-form-intro">Enter supplier details. GSTIN is optional for unregistered suppliers.</p>
       {formFields.map(key => key === 'phone' ? (
         <div key={key} className="cg-supplier-field">
           <CountryPhoneField label="Phone" value={form.phone}
@@ -162,9 +166,12 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
               value={form[key]} onChange={e => setField(key, e.target.value)} />
           : <input ref={node => { inputRefs.current[key] = node; }} required={key === 'name'}
               type={key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}
-              maxLength={key === 'name' ? 180 : key === 'contact_person' ? 120 : key === 'phone' ? 30 : key === 'gstNo' ? 20 : 254}
+              maxLength={key === 'name' ? 180 : key === 'contact_person' ? 120 : key === 'phone' ? 30 : key === 'gstNo' ? 15 : 254}
               aria-invalid={Boolean(formErrors[key])} aria-describedby={formErrors[key] ? 'supplier-error-' + key : undefined}
-              value={form[key]} onChange={e => setField(key, e.target.value)} />}
+              value={form[key]} onChange={e => setField(key, key === 'gstNo' ? e.target.value.toUpperCase() : e.target.value)} />}
+        {key === 'gstNo' && <small className="cg-supplier-field-hint">
+          15 characters · first 2 are the state code (Kerala: 32). Leave blank if unregistered.
+        </small>}
         {formErrors[key] && <small id={'supplier-error-' + key} role="alert"
           className="cg-supplier-field-error">{formErrors[key]}</small>}
       </label>)}
