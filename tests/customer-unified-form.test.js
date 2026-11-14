@@ -159,10 +159,12 @@ test('customer fields use aligned accessible labels and compact branch assignmen
     assert.match(source, /className="cg-stacked-label"/);
     assert.match(source, /htmlFor=\{inputId\}/);
   }
-  assert.match(fields, /label="Customer Name" labelPosition="above"/);
-  assert.match(fields, /label="Email Address" labelPosition="above"/);
-  assert.match(fields, /label="Customer Type" labelPosition="above"/);
-  assert.match(fields, /label="Assigned Branch" labelPosition="above"/);
+  for (const label of ['Customer Name', 'Email Address', 'Customer Type', 'Assigned Branch']) {
+    assert.ok(fields.includes('label="' + label + '" labelPosition={labelLayout}'), label);
+  }
+  assert.match(fields, /labelLayout = 'floating'/);
+  const directory = readFileSync(new URL('../src/pages/customers/CustomerList.jsx', import.meta.url), 'utf8');
+  assert.match(directory, /<CustomerFormFields values=\{customerFormValues\} labelLayout="above"/);
   assert.match(fields, /cg-customer-branch-assignment/);
   assert.match(fields, /cg-customer-address-row/);
   assert.match(css, /grid-template-columns:minmax\(0,1\.6fr\)/);

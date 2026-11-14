@@ -12,7 +12,7 @@ import '../../styles/customer-unified-fields.css';
  */
 export function CustomerFormFields({
   values, onChange, errors = {}, branches = [], branchError = '',
-  disabled = false, showStatus = false,
+  disabled = false, showStatus = false, labelLayout = 'floating',
 }) {
   const set = field => value => onChange(field, value);
   const fieldProps = field => ({
@@ -28,7 +28,7 @@ export function CustomerFormFields({
         <strong>Contact Details</strong>
         <span>Only name and phone are required.</span>
       </div>
-      <Input label="Customer Name" labelPosition="above" required icon={Users} autoComplete="name"
+      <Input label="Customer Name" labelPosition={labelLayout} required icon={Users} autoComplete="name"
         {...fieldProps('name')} value={values.name || ''}
         placeholder="Customer full name" onChange={e => set('name')(e.target.value)} />
       <div className="cg-customer-contact-row">
@@ -40,7 +40,7 @@ export function CustomerFormFields({
             One contact number for calls and optional manual WhatsApp sharing.
           </p>
         </div>
-        <Input label="Email Address" labelPosition="above" type="email" icon={Mail}
+        <Input label="Email Address" labelPosition={labelLayout} type="email" icon={Mail}
           autoComplete="email" {...fieldProps('email')} value={values.email || ''}
           placeholder="Email (optional)" onChange={e => set('email')(e.target.value)} />
       </div>
@@ -52,7 +52,7 @@ export function CustomerFormFields({
         <span>Business and branch details.</span>
       </div>
       <div className="cg-customer-unified-grid customer-directory-form-grid">
-        <Select label="Customer Type" labelPosition="above" {...fieldProps('customerType')}
+        <Select label="Customer Type" labelPosition={labelLayout} {...fieldProps('customerType')}
           value={normalizeCustomerType(values.customerType)}
           onChange={e => set('customerType')(e.target.value)}>
           <option value="Individual">Individual</option>
@@ -68,7 +68,7 @@ export function CustomerFormFields({
                 <LockKeyhole size={15} aria-hidden="true" />
               </div>
             </div>
-          : <Select label="Assigned Branch" labelPosition="above" {...fieldProps('branch')}
+          : <Select label="Assigned Branch" labelPosition={labelLayout} {...fieldProps('branch')}
               value={preferredBranch} onChange={e => set('branch')(e.target.value)}>
               {!branches.length && <option value="">No authorized branch available</option>}
               {branches.map(branch =>
@@ -77,14 +77,14 @@ export function CustomerFormFields({
       </div>
       {branchError && <p className="cg-customer-unified-error" role="alert">{branchError}</p>}
       {isBusiness && <div className="cg-customer-unified-grid customer-directory-form-grid">
-        <Input label="Company Name" labelPosition="above" icon={Building2}
+        <Input label="Company Name" labelPosition={labelLayout} icon={Building2}
           {...fieldProps('companyName')} value={values.companyName || ''}
           placeholder="Registered business name" onChange={e => set('companyName')(e.target.value)}/>
-        <Input label="GST Number (optional)" labelPosition="above" maxLength={15}
+        <Input label="GST Number (optional)" labelPosition={labelLayout} maxLength={15}
           {...fieldProps('gstNo')} value={values.gstNo || ''}
           placeholder="GSTIN if registered" onChange={e => set('gstNo')(e.target.value.toUpperCase())}/>
       </div>}
-      {showStatus && <Select label="Customer Status" labelPosition="above" value={values.status || 'active'}
+      {showStatus && <Select label="Customer Status" labelPosition={labelLayout} value={values.status || 'active'}
         {...fieldProps('status')} onChange={e => set('status')(e.target.value)}>
         <option value="active">Active</option>
         <option value="archived">Archived</option>
@@ -97,16 +97,16 @@ export function CustomerFormFields({
         <span>Optional invoice and service details.</span>
       </div>
       <div className="cg-customer-address-row">
-        <Textarea label="Address" labelPosition="above" rows={2} {...fieldProps('address')}
+        <Textarea label="Address" labelPosition={labelLayout} rows={2} {...fieldProps('address')}
           value={values.address || ''} placeholder="Building, street and address"
           onChange={e => set('address')(e.target.value)}/>
         <div className="cg-customer-pin-only">
-          <Input label="PIN Code" labelPosition="above" inputMode="numeric" autoComplete="postal-code" maxLength={12}
+          <Input label="PIN Code" labelPosition={labelLayout} inputMode="numeric" autoComplete="postal-code" maxLength={12}
             {...fieldProps('pincode')} value={values.pincode || ''}
             placeholder="PIN (optional)" onChange={e => set('pincode')(e.target.value)}/>
         </div>
       </div>
-      <Textarea label="Customer Notes & Preferences" labelPosition="above" rows={2}
+      <Textarea label="Customer Notes & Preferences" labelPosition={labelLayout} rows={2}
         {...fieldProps('notes')} value={values.notes || ''}
         placeholder="Service instructions (optional)"
         onChange={e => set('notes')(e.target.value)}/>
