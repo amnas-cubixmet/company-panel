@@ -833,75 +833,76 @@ export const CustomerDetails = () => {
           </section>
         )}
 
-        {/* 8. SERVICE HISTORY TAB */}
+        {/* SERVICE HISTORY — real service records, no mock prices. */}
         {activeTab === 'service-history' && (
-          <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Chronological Service History</h3>
-                
-              </div>
-
-              {/* Filters Toolbar */}
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <Select
-                  value={serviceVehicleFilter}
-                  onChange={(e) => setServiceVehicleFilter(e.target.value)}
-                  containerStyle={{ width: '180px' }}
-                >
+          <section className="cg-profile-pane">
+            <div className="cg-profile-pane-header">
+              <div><h3>Service History</h3><p>Chronological visits, labour and parts across linked vehicles.</p></div>
+              <div className="cg-profile-toolbar">
+                <input type="search" aria-label="Search service history"
+                  value={serviceSearch} placeholder="Job, vehicle or complaint"
+                  onChange={event => setServiceSearch(event.target.value)}/>
+                <select aria-label="Filter service history by vehicle"
+                  value={serviceVehicleFilter} onChange={event => setServiceVehicleFilter(event.target.value)}>
                   <option value="All">All Vehicles</option>
-                  {vehicles.map(v => <option key={v.id} value={v.regNo}>{v.regNo}</option>)}
-                </Select>
+                  {vehicles.map(vehicle => <option key={vehicle.id}
+                    value={vehicleRegistration(vehicle)}>{vehicleRegistration(vehicle) || 'Vehicle'}</option>)}
+                </select>
               </div>
             </div>
-
-            {/* Timeline Cards */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {jobs
-                .filter(j => serviceVehicleFilter === 'All' || j.vehicleReg === serviceVehicleFilter)
-                .map((j) => (
-                  <div key={j.id} style={{ backgroundColor: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Calendar size={15} style={{ color: 'var(--primary)' }} />
-                        <strong style={{ fontSize: '13.5px', color: 'var(--text-primary)' }}>{j.createdDate}</strong>
-                        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>• {j.vehicleInfo || 'Toyota Innova'} ({j.vehicleReg})</span>
+            {!jobsAvailable ? <p className="cg-profile-empty">Service history could not be loaded.</p>
+              : (() => {
+                const filtered = jobs.filter(job => {
+                  const registration = String(job.vehicleReg || '');
+                  const vehicleMatches = serviceVehicleFilter === 'All'
+                    || registration.replace(/[\s-]/g, '').toUpperCase() === serviceVehicleFilter.replace(/[\s-]/g, '').toUpperCase();
+                  const query = serviceSearch.trim().toLowerCase();
+                  const textMatches = !query || [
+                    job.jobNumber, registration, job.vehicleInfo, job.customerComplaint,
+                  ].some(value => String(value || '').toLowerCase().includes(query));
+                  return vehicleMatches && textMatches;
+                });
+                return filtered.length ? <div className="cg-profile-service-list">
+                  {filtered.map(job => {
+                    const serviceLines = job.services || job.labourRecords || [];
+                    const parts = job.partsUsed || job.parts || [];
+                    const issued = invoiceForJob(job);
+                    return <article className="cg-profile-service-card" key={job.id}>
+                      <div className="cg-profile-service-card-head">
+                        <div>
+                          <strong>{job.jobNumber || 'Job Card'}</strong>
+                          <span>{customerProfileDate(job.createdDate || job.created_at)}
+                            {' · '}{job.vehicleReg || job.vehicleInfo || 'Vehicle unavailable'}</span>
+                        </div>
+                        <span className="cg-profile-record-status">{job.status || '—'}</span>
                       </div>
-                      <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--primary)' }}>{j.jobNumber}</span>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12.5px' }}>
-                      <div>
-                        <strong style={{ color: 'var(--text-secondary)', display: 'block', fontSize: '11.5px', marginBottom: '4px' }}>Services Performed:</strong>
-                        <ul style={{ margin: 0, paddingLeft: '16px', color: 'var(--text-primary)' }}>
-                          {(j.services?.length ? j.services : j.labourRecords || []).slice(0, 5).map((service, index) => (
-                            <li key={service.id || index}>{service.serviceName || service.service || 'Workshop labour'}</li>
-                          ))}
-                          {!(j.services?.length || j.labourRecords?.length) ? <li>No labour items recorded</li> : null}
-                        </ul>
+                      <div className="cg-profile-service-columns">
+                        <div><h4>Services</h4>
+                          {serviceLines.length
+                            ? <ul>{serviceLines.slice(0,5).map((item,index) =>
+                              <li key={item.id || index}>{item.serviceName || item.service || item.name || 'Labour'}</li>)}</ul>
+                            : <p>No labour items recorded</p>}
+                        </div>
+                        <div><h4>Parts</h4>
+                          {parts.length
+                            ? <ul>{parts.slice(0,5).map((item,index) =>
+                              <li key={item.id || index}>{item.itemName || item.name || item.partName || 'Part'}</li>)}</ul>
+                            : <p>No parts recorded</p>}
+                        </div>
                       </div>
-
-                      <div>
-                        <strong style={{ color: 'var(--text-secondary)', display: 'block', fontSize: '11.5px', marginBottom: '4px' }}>Parts Installed:</strong>
-                        <ul style={{ margin: 0, paddingLeft: '16px', color: 'var(--text-primary)' }}>
-                          {(j.partsUsed || []).slice(0, 5).map((part, index) => (
-                            <li key={part.id || index}>{part.name || part.partName || 'Part'}</li>
-                          ))}
-                          {!j.partsUsed?.length ? <li>No replacement parts recorded</li> : null}
-                        </ul>
+                      <div className="cg-profile-service-footer">
+                        <span>{issued ? 'Finalized invoice: ' +
+                          formatINR(issued.total ?? issued.totalAmount ?? null) : 'No finalized invoice'}</span>
+                        <button type="button" onClick={() => navigate('/jobs/' + job.id)}>
+                          Open Job <ExternalLink size={15}/>
+                        </button>
                       </div>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '8px', fontSize: '12.5px', color: 'var(--text-muted)' }}>
-                      <div>Technician: <strong style={{ color: 'var(--text-primary)' }}>{j.serviceAdvisor || j.assignedEmployeeName || '—'}</strong></div>
-                      <div>
-                        Labour: <strong>{formatINR((j.labourRecords || []).reduce((sum, item) => sum + Number(item.customerCharge || 0), 0))}</strong> • Parts: <strong>{formatINR((j.partsUsed || []).reduce((sum, item) => sum + Number(item.total || (Number(item.qty || 0) * Number(item.unitPrice || 0))), 0))}</strong> • <strong style={{ color: 'var(--primary)', fontSize: '14px' }}>Total: {formatINR(j.billing?.invoiceTotal || j.estimates?.at(-1)?.grandTotal || 0)}</strong>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
+                    </article>;
+                  })}
+                </div> : <p className="cg-profile-empty">
+                  No service visits match the current filters.</p>;
+              })()}
+          </section>
         )}
 
         {/* 9. INVOICES TAB & 10. FINANCIAL SUMMARY */}
