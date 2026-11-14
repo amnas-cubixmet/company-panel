@@ -1,14 +1,14 @@
 /** Safe in-app return flow for configuring a supplier's Finance debit source. */
-const SUPPLIER_PAYMENT_PATH = /^\/suppliers\/[0-9a-f-]{36}(?:\?[^#]*)?#supplier-pay-now$/i;
+const SUPPLIER_RETURN_PATH = /^\/suppliers\/[0-9a-f-]{36}(?:\?[^#]*)?#supplier-(?:pay-now|ledger)$/i;
 const SUPPLIER_ROUTE = /^\/suppliers\/[0-9a-f-]{36}$/i;
 
-export function supplierFinanceSetupRoute(location, channel = 'Bank') {
+export function supplierFinanceSetupRoute(location, channel = 'Bank', returnHash = '#supplier-pay-now') {
   const pathname = String(location?.pathname || '');
   const route = SUPPLIER_ROUTE.test(pathname) ? pathname : '/suppliers';
   const query = String(location?.search || '');
   const returnTo = route === '/suppliers'
     ? ''
-    : route + query + '#supplier-pay-now';
+    : route + query + (returnHash === '#supplier-ledger' ? returnHash : '#supplier-pay-now');
   const params = new URLSearchParams();
   if (returnTo) params.set('returnTo', returnTo);
   params.set('channel', channel === 'Cash' ? 'Cash' : 'Bank');
@@ -19,7 +19,7 @@ export function supplierFinanceReturnContext(search) {
   const params = new URLSearchParams(String(search || ''));
   const requestedReturn = params.get('returnTo') || '';
   return {
-    returnTo: SUPPLIER_PAYMENT_PATH.test(requestedReturn) ? requestedReturn : '',
+    returnTo: SUPPLIER_RETURN_PATH.test(requestedReturn) ? requestedReturn : '',
     channel: ['Cash', 'Bank'].includes(params.get('channel')) ? params.get('channel') : '',
   };
 }
