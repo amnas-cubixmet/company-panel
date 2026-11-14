@@ -29,6 +29,12 @@ export const getJobs = async (params) => {
   return Array.isArray(response) ? response : response?.results || [];
 };
 
+/** Read-only posted invoice totals for a Job Card, never a second payment ledger. */
+export const getJobBillingSummary = async (id) => {
+  if (USE_MOCK_API || !id) return null;
+  return apiClient.get(`${API_ENDPOINTS.JOBS}/${encodeURIComponent(id)}/billing-summary`);
+};
+
 export const getJobById = async (id) => {
   if (USE_MOCK_API) {
     await delay();
@@ -338,6 +344,7 @@ export const getVehicleHistory = async (registration) => {
 export const jobService = {
   getJobs,
   getJobById,
+  getJobBillingSummary,
   getJobCostSummary,
   issueJobStockPart,
   uploadJobWorkPhoto,
