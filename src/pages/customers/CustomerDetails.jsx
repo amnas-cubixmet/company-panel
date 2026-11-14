@@ -134,6 +134,7 @@ export const CustomerDetails = () => {
   const [docExpiry, setDocExpiry] = useState('');
   const [docStatus, setDocStatus] = useState('Valid');
   const [docFileName, setDocFileName] = useState('');
+  const [documentSaving, setDocumentSaving] = useState(false);
 
   // Service History filter state
   const [serviceSearch, setServiceSearch] = useState('');
@@ -397,32 +398,38 @@ export const CustomerDetails = () => {
     }
   };
 
-  const handleAddDocumentSubmit = async (e) => {
-    e.preventDefault();
-    if (!docName.trim()) return;
-
+  const handleAddDocumentSubmit = async event => {
+    event.preventDefault();
+    if (documentSaving || !docName.trim()) return;
+    setDocumentSaving(true);
     const nextDocument = {
-      id: `CDOC-${Date.now()}`,
+      id: 'CDOC-' + Date.now(),
       name: docName.trim(),
       type: docType,
       vehicleReg: docVehicle,
       expiryDate: docExpiry,
       status: docStatus,
-      fileName: docFileName,
-      uploadedDate: new Date().toISOString().split('T')[0]
+      fileName: docFileName.trim(),
+      uploadedDate: new Date().toISOString().split('T')[0],
     };
-
-    const nextDocuments = [nextDocument, ...documents];
-    await customerService.updateCustomer(customer.id, { documents: nextDocuments });
-    setDocuments(nextDocuments);
-    setDocName('');
-    setDocType('Vehicle RC');
-    setDocVehicle('');
-    setDocExpiry('');
-    setDocStatus('Valid');
-    setDocFileName('');
-    setIsAddDocumentOpen(false);
-    showToast('Customer document added.');
+    try {
+      const nextDocuments = [nextDocument, ...documents];
+      const updated = await customerService.updateCustomer(customer.id, { documents: nextDocuments });
+      setCustomer(updated);
+      setDocuments(Array.isArray(updated.documents) ? updated.documents : nextDocuments);
+      setDocName('');
+      setDocType('Vehicle RC');
+      setDocVehicle('');
+      setDocExpiry('');
+      setDocStatus('Valid');
+      setDocFileName('');
+      setIsAddDocumentOpen(false);
+      showToast('Document reference saved.');
+    } catch (error) {
+      showToast(error?.message || 'Unable to save document reference.');
+    } finally {
+      setDocumentSaving(false);
+    }
   };
 
   const deleteDocument = async (documentId) => {
@@ -1329,7 +1336,9 @@ export const CustomerDetails = () => {
             placeholder="For example, insurance.pdf"/>
           <p className="cg-profile-form-note">This saves reference details and expiry information only.
             No file is uploaded or stored.</p>
-          <button className="customer-document-save" type="submit">Save Document Reference</button>
+          <button className="customer-document-save" type="submit" disabled={documentSaving}>
+            {documentSaving ? 'Saving…' : 'Save Document Reference'}
+          </button>
         </form>
       </ResponsiveModalSheet>
 
