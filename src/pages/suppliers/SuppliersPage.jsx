@@ -580,7 +580,7 @@ export default function SuppliersPage({ section = 'all' }) {
           {id ? (supplier?.name || 'Supplier Details') : purchaseView ? 'Supplier Purchases' : 'Suppliers'}
         </h1>
         {id && supplier && <p className="cg-supplier-public-code" aria-label="Supplier reference">
-          {/^SUP-\\d{5,}$/i.test(String(supplier.code || '')) ? supplier.code : 'Supplier'}
+          {/^SUP-\d{5,}$/i.test(String(supplier.code || '')) ? supplier.code : 'Supplier'}
         </p>}
         {!id && <p className="cg-suppliers-subtitle">{purchaseView
           ? 'Purchase history and supplier bills.'
