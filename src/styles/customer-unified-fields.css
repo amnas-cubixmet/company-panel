@@ -131,3 +131,26 @@
     gap:11px;
   }
 }
+
+/* A single optional PIN field replaces the old City/State/PIN row. */
+.cg-customer-pin-only {max-width:220px;min-width:0;}
+.cg-customer-pin-only > * {min-width:0;}
+.cg-customer-branch-locked {
+  min-height:48px;display:grid;align-content:center;gap:3px;
+  padding:8px 12px;border-radius:10px;
+  border:1px solid var(--border,#e1e7ef);
+  background:var(--surface-2,#f6f8fb);min-width:0;
+}
+.cg-customer-branch-locked > span {
+  font-size:13px;font-weight:600;color:var(--text-secondary,#64748b);
+}
+.cg-customer-branch-locked > strong {
+  font-size:14px;font-weight:700;color:var(--text-primary,#172033);
+  overflow-wrap:anywhere;
+}
+.cg-customer-branch-locked > small {
+  font-size:11px;line-height:1.4;color:var(--text-secondary,#64748b);
+}
+@media(max-width:600px) {
+  .cg-customer-pin-only {max-width:none;width:100%;}
+}
