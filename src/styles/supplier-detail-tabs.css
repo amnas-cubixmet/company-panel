@@ -174,3 +174,51 @@
 @media (prefers-reduced-motion: reduce) {
   .cg-suppliers-ui .cg-supplier-details-tabs > button { transition: none; }
 }
+
+
+/* Compact balances on Overview, from posted supplier-finance records. */
+.cg-suppliers-ui .cg-supplier-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  width: 100%;
+  margin: 14px 0;
+}
+.cg-suppliers-ui .cg-supplier-summary-card {
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 78px;
+  padding: 12px;
+  border: 1px solid var(--border, #dce3ea);
+  border-radius: 10px;
+  background: var(--surface-2, #f8fafc);
+}
+.cg-suppliers-ui .cg-supplier-summary-card > span {
+  color: var(--text-secondary, #64748b);
+  font-size: 12px;
+  font-weight: 550;
+}
+.cg-suppliers-ui .cg-supplier-summary-card > strong {
+  color: var(--text-primary, #172033);
+  font-size: clamp(15px, 1.4vw, 19px);
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.cg-suppliers-ui .cg-supplier-search-feedback {
+  margin: 0 0 9px;
+  font-size: 12px;
+  color: var(--text-secondary, #64748b);
+}
+@media (max-width: 900px) {
+  .cg-suppliers-ui .cg-supplier-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 440px) {
+  .cg-suppliers-ui .cg-supplier-summary-grid { gap: 7px; }
+  .cg-suppliers-ui .cg-supplier-summary-card { padding: 10px; min-height: 70px; }
+  .cg-suppliers-ui .cg-supplier-summary-card > strong { font-size: 15px; }
+}
