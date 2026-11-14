@@ -369,6 +369,14 @@ export function JobCardWorkspace() {
   const financial = jobInvoiceFinance(linkedInvoice);
   const invoiceGST = jobInvoiceGST(linkedInvoice);
   const isInvoiceFinalized = financial.posted;
+  // All internal margin comparisons exclude GST; the invoice total includes tax.
+  const jobSellingBeforeTax = linkedInvoice
+    ? invoiceGST?.taxable ?? (linkedInvoice.invoiceType === 'regular'
+      ? linkedInvoice.subtotal ?? linkedInvoice.total : null)
+    : (latestEstimate ? Math.max(0,
+      cleanNumber(latestEstimate.subtotal) - cleanNumber(latestEstimate.discount)) : null);
+  const jobSalesSource = linkedInvoice ? (isInvoiceFinalized ? 'final_invoice' : 'draft_invoice')
+    : (latestEstimate ? 'estimate' : 'none');
   const invoiceTotal = linkedInvoice
     ? cleanNumber(linkedInvoice.total)
     : (USE_MOCK_API ? cleanNumber(job?.billing?.invoiceTotal || latestEstimate?.grandTotal || 0) : 0);
@@ -948,6 +956,9 @@ export function JobCardWorkspace() {
         refreshVersion={timerRefreshVersion}
         refreshOnTab={activeTab}
         customerServiceCharges={customerServiceCharges}
+        billedTotal={linkedInvoice ? invoiceTotal : (latestEstimate ? cleanNumber(latestEstimate.total ?? latestEstimate.grandTotal) : null)}
+        netSellingValue={jobSellingBeforeTax}
+        salesSource={jobSalesSource}
       />}
 
       {activeTab !== 'overview' && activeTab !== 'activity' && !showWorkTools && (
