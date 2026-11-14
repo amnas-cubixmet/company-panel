@@ -95,7 +95,7 @@ export function JobTotalCostPanel({
     <section className="job-total-cost-panel is-global" aria-label="Job Card total cost">
       <header className="job-total-cost-heading">
         <div>
-          <h3><Calculator size={18} aria-hidden="true" /> Total Cost</h3>
+          <h3><Calculator size={18} aria-hidden="true" /> Job Cost, Bill &amp; Profit</h3>
           <p>Workshop-only cost, customer bill and indicative margin. These figures never appear on the customer invoice.</p>
         </div>
       </header>
@@ -135,7 +135,7 @@ export function JobTotalCostPanel({
               <small>{salesSource === 'estimate' ? 'Estimate only, not invoiced' : 'Tax-exclusive value'}</small>
             </div>
             <div className="job-total-cost-card is-margin">
-              <span>Indicative Gross Margin</span>
+              <span>Estimated Gross Profit</span>
               <strong>{grossMargin !== null ? money(grossMargin) : 'Not ready'}</strong>
               <small>{grossMargin === null
                 ? 'A verified pre-tax selling figure and recorded costs are required'
