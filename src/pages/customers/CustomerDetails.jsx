@@ -9,6 +9,7 @@ import {
 import { CustomerTrackingLinkPanel } from '../../components/customers/CustomerTrackingLinkPanel';
 import { CustomerWhatsAppConsent } from '../../components/customers/CustomerWhatsAppConsent';
 import { CustomerCreditLedgerPanel } from '../../components/customers/CustomerCreditLedgerPanel';
+import { CustomerVehicleFinancePanel } from '../../components/customers/CustomerVehicleFinancePanel';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/customer-tracking-link.css';
 import { paymentService } from '../../services/payment.service';
@@ -17,18 +18,21 @@ import { assertFinanceAccount, financeAccountsForChannel, isFinanceAccount, acco
 import '../../styles/customer-profile-polished.css';
 import '../../styles/customer-workspace-compact.css';
 import {
-  customerProfileFinancials, activeCustomerInvoices, customerInvoiceLabel,
+  activeCustomerInvoices, customerProfileFinancials, customerInvoiceLabel,
   customerInvoiceTotal, customerInvoiceBalance, customerVisitLabel,
   profileCustomerType, profileMoney,
 } from './customerProfile.utils';
 import { customerContactLinks } from '../../components/jobs/customerContact.utils';
+import { invoiceMoney } from './customerDirectoryMoney.js';
+import { buildCustomerVehicleFinances, vehicleRegistration, vehicleMakeModel, resolveCustomerVehicleId, customerProfileDate } from './customerVehicleFinancials';
+import '../../styles/customer-profile-tabs.css';
 import { Wallet } from 'lucide-react';
 import { Input } from '../../components/common/Input';
 import { Select } from '../../components/common/Select';
 import { Textarea } from '../../components/common/Textarea';
 import { AmountInput } from '../../components/common/AmountInput';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
-import { User, Phone, Mail, MapPin, Car, ClipboardCheck, FileText, CreditCard, Clock, Plus, Wrench, Edit, Pencil, Archive, MoreVertical, Calendar, Building, CheckCircle2, MessageSquare, Trash2, Upload } from "lucide-react";
+import { User, Phone, Mail, MapPin, Car, ClipboardCheck, FileText, CreditCard, Clock, Plus, Wrench, Edit, Pencil, Archive, MoreVertical, Calendar, Building, CheckCircle2, MessageSquare, Trash2, ReceiptText, ExternalLink } from "lucide-react";
 
 export const CustomerDetails = () => {
   const { id } = useParams();
@@ -113,6 +117,13 @@ export const CustomerDetails = () => {
   const [editBranches, setEditBranches] = useState([]);
   const [editBranchesError, setEditBranchesError] = useState('');
 
+  const parseNotes = noteText => String(noteText || '').split(/\n(?=\[\d{4}-\d{2}-\d{2}\] )/)
+    .filter(Boolean).map((entry, index) => {
+      const match = entry.match(/^\[(\d{4}-\d{2}-\d{2})\] ([\s\S]*)$/);
+      return { id: index, text: match ? match[2] : entry,
+        addedBy: 'Workshop team', date: match ? match[1] : '' };
+    });
+
   // Customer Note form state
   const [newNoteText, setNewNoteText] = useState('');
   const [notesList, setNotesList] = useState([]);
@@ -123,10 +134,14 @@ export const CustomerDetails = () => {
   const [docExpiry, setDocExpiry] = useState('');
   const [docStatus, setDocStatus] = useState('Valid');
   const [docFileName, setDocFileName] = useState('');
+  const [documentSaving, setDocumentSaving] = useState(false);
 
   // Service History filter state
   const [serviceSearch, setServiceSearch] = useState('');
   const [serviceVehicleFilter, setServiceVehicleFilter] = useState('All');
+  const [financeVehicleFilter, setFinanceVehicleFilter] = useState('');
+  const [invoiceVehicleFilter, setInvoiceVehicleFilter] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
   const [invoicesAvailable, setInvoicesAvailable] = useState(false);
   const [vehiclesAvailable, setVehiclesAvailable] = useState(false);
   const [jobsAvailable, setJobsAvailable] = useState(false);
@@ -157,7 +172,7 @@ export const CustomerDetails = () => {
         setEditNotes(cust.notes || '');
         setDocuments(Array.isArray(cust.documents) ? cust.documents : []);
 
-        setNotesList(cust.notes ? [{ id: 'customer-note', text: cust.notes, addedBy: 'Workshop team', date: cust.createdAt || '' }] : []);
+        setNotesList(parseNotes(cust.notes));
 
         // A missing optional subresource must not make the entire customer profile fail.
         const loaders = [
@@ -362,47 +377,59 @@ export const CustomerDetails = () => {
     }
   };
 
-  const handleAddNoteSubmit = async (e) => {
-    e.preventDefault();
-    if (!newNoteText.trim()) return;
-    const noteObj = {
-      id: Date.now(),
-      text: newNoteText,
-      addedBy: 'Service Advisor',
-      date: new Date().toISOString().replace('T', ' ').substring(0, 16)
-    };
-    setNotesList([noteObj, ...notesList]);
-    setIsAddNoteOpen(false);
-    setNewNoteText('');
-    showToast('Customer note saved.');
+  const handleAddNoteSubmit = async event => {
+    event.preventDefault();
+    if (noteSaving || !newNoteText.trim()) return;
+    setNoteSaving(true);
+    try {
+      const datedNote = '[' + new Date().toISOString().slice(0,10) + '] ' + newNoteText.trim();
+      const notes = [String(customer.notes || '').trim(), datedNote].filter(Boolean).join('\n');
+      const updated = await customerService.updateCustomer(customer.id, { notes });
+      setCustomer(updated);
+      setNotesList(parseNotes(notes));
+      setEditNotes(notes);
+      setIsAddNoteOpen(false);
+      setNewNoteText('');
+      showToast('Customer note saved to the profile.');
+    } catch (error) {
+      showToast(error?.message || 'Could not save customer note.');
+    } finally {
+      setNoteSaving(false);
+    }
   };
 
-  const handleAddDocumentSubmit = async (e) => {
-    e.preventDefault();
-    if (!docName.trim()) return;
-
+  const handleAddDocumentSubmit = async event => {
+    event.preventDefault();
+    if (documentSaving || !docName.trim()) return;
+    setDocumentSaving(true);
     const nextDocument = {
-      id: `CDOC-${Date.now()}`,
+      id: 'CDOC-' + Date.now(),
       name: docName.trim(),
       type: docType,
       vehicleReg: docVehicle,
       expiryDate: docExpiry,
       status: docStatus,
-      fileName: docFileName,
-      uploadedDate: new Date().toISOString().split('T')[0]
+      fileName: docFileName.trim(),
+      uploadedDate: new Date().toISOString().split('T')[0],
     };
-
-    const nextDocuments = [nextDocument, ...documents];
-    await customerService.updateCustomer(customer.id, { documents: nextDocuments });
-    setDocuments(nextDocuments);
-    setDocName('');
-    setDocType('Vehicle RC');
-    setDocVehicle('');
-    setDocExpiry('');
-    setDocStatus('Valid');
-    setDocFileName('');
-    setIsAddDocumentOpen(false);
-    showToast('Customer document added.');
+    try {
+      const nextDocuments = [nextDocument, ...documents];
+      const updated = await customerService.updateCustomer(customer.id, { documents: nextDocuments });
+      setCustomer(updated);
+      setDocuments(Array.isArray(updated.documents) ? updated.documents : nextDocuments);
+      setDocName('');
+      setDocType('Vehicle RC');
+      setDocVehicle('');
+      setDocExpiry('');
+      setDocStatus('Valid');
+      setDocFileName('');
+      setIsAddDocumentOpen(false);
+      showToast('Document reference saved.');
+    } catch (error) {
+      showToast(error?.message || 'Unable to save document reference.');
+    } finally {
+      setDocumentSaving(false);
+    }
   };
 
   const deleteDocument = async (documentId) => {
@@ -459,8 +486,20 @@ export const CustomerDetails = () => {
 
   // The invoice already includes its paid and remaining balance; counting
   // separate payments again would double count receipts.
-  const { billed: totalBilled, paid: totalPaid, outstanding: totalOutstanding } =
-    customerProfileFinancials(invoices, invoicesAvailable);
+  const financeModel = buildCustomerVehicleFinances({ vehicles, jobs, invoices, invoicesAvailable });
+  const { billed: totalBilled, paid: totalPaid, outstanding: totalOutstanding } = financeModel.overall;
+  const finalInvoices = financeModel.finalizedInvoices;
+  const invoiceForJob = job => finalInvoices.find(inv =>
+    String(inv.jobId || inv.job_id || inv.sourceJobId || inv.source_job_id || '') === String(job.id));
+  const openVehicleFinance = vehicleId => {
+    setFinanceVehicleFilter(vehicleId || '');
+    setActiveTab('finance');
+    tabRailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+  const filteredInvoices = invoiceVehicleFilter
+    ? invoices.filter(invoice => resolveCustomerVehicleId(invoice, vehicles, jobs) === invoiceVehicleFilter)
+    : invoices;
+  const filteredInvoiceTotals = customerProfileFinancials(filteredInvoices, invoicesAvailable);
   const lastVisitDate = customerVisitLabel(customer, jobs);
   const contact = customerContactLinks({ customerPhone: customer.phone, customerWhatsapp: customer.whatsapp });
   const statusLabel = String(customer.status || '').trim() || '—';
@@ -475,6 +514,7 @@ export const CustomerDetails = () => {
     { id: 'jobs', label: `Jobs (${jobs.length})`, icon: ClipboardCheck },
     { id: 'service-history', label: 'Service History', icon: Wrench },
     { id: 'invoices', label: `Invoices (${invoices.length})`, icon: FileText },
+    { id: 'finance', label: 'Finance Summary', icon: Wallet },
     { id: 'payments', label: `Payments (${payments.length})`, icon: CreditCard },
     { id: 'notes', label: `Notes (${notesList.length})`, icon: MessageSquare },
     { id: 'documents', label: `Documents (${documents.length})`, icon: FileText },
@@ -535,7 +575,7 @@ export const CustomerDetails = () => {
             <button type="button" className="customer-profile-action is-primary"
               disabled={archived}
               onClick={() => {
-                const targetVehicle = vehicles[0]?.regNo || '';
+                const targetVehicle = vehicles[0] ? vehicleRegistration(vehicles[0]) : '';
                 navigate('/jobs/new?customerId=' + customer.id +
                   '&customerName=' + encodeURIComponent(customer.name) +
                   '&vehicle=' + encodeURIComponent(targetVehicle));
@@ -598,8 +638,10 @@ export const CustomerDetails = () => {
             icon: Car, tone: 'neutral' },
           { label: 'Job Cards', value: jobsAvailable ? String(jobs.length) : '—',
             icon: ClipboardCheck, tone: 'neutral' },
-          { label: 'Invoices', value: invoicesAvailable ? String(activeCustomerInvoices(invoices).length) : '—',
+          { label: 'Invoices', value: invoicesAvailable ? String(finalInvoices.length) : '—',
             icon: FileText, tone: 'blue' },
+          { label: 'Total Invoiced', value: formatINR(totalBilled), icon: ReceiptText, tone: 'blue' },
+          { label: 'Received', value: formatINR(totalPaid), icon: CreditCard, tone: 'green' },
           { label: 'Outstanding', value: formatINR(totalOutstanding),
             icon: Wallet, tone: totalOutstanding > 0 ? 'danger' : 'neutral' },
         ].map((item) => {
@@ -637,11 +679,19 @@ export const CustomerDetails = () => {
       </nav>
 
       {/* TAB CONTENT PANELS */}
-      <div id="customer-profile-sections" className="customer-profile-content" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div id="customer-profile-sections" className="customer-profile-content" role="tabpanel"
+        aria-labelledby={'customer-tab-' + activeTab} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         
         {/* 4. OVERVIEW TAB */}
         {activeTab === 'overview' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div className="cg-profile-overview">
+            <CustomerVehicleFinancePanel model={financeModel}
+              mode="overview" invoicesAvailable={invoicesAvailable}
+              vehiclesAvailable={vehiclesAvailable} jobsAvailable={jobsAvailable}
+              onOpenFinance={openVehicleFinance}
+              onViewVehicle={vehicleId => navigate('/vehicles/' + vehicleId)}
+              onViewInvoice={invoiceId => navigate('/invoices/' + invoiceId)}
+              onSelectVehicle={setFinanceVehicleFilter}/>
             <CustomerTrackingLinkPanel
               key={customer.id}
               customerId={customer.id}
@@ -698,8 +748,8 @@ export const CustomerDetails = () => {
                     <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{customer.address || '—'}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>City / State</span>
-                    <strong style={{ color: 'var(--text-primary)' }}>{[customer.city, customer.state, customer.pincode].filter(Boolean).join(', ') || '—'}</strong>
+                    <span style={{ color: 'var(--text-muted)' }}>PIN Code</span>
+                    <strong style={{ color: 'var(--text-primary)' }}>{customer.pincode || '—'}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Company / GST</span>
@@ -748,383 +798,336 @@ export const CustomerDetails = () => {
           </div>
         )}
 
-        {/* 6. VEHICLES TAB */}
+        {/* VEHICLES — one customer may own multiple vehicles; amounts stay separate. */}
         {activeTab === 'vehicles' && (
-          <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Linked Vehicles</h3>
-                    </div>
-              <button
-                onClick={() => setIsAddVehicleOpen(true)}
-                style={{ height: '38px', padding: '0 14px', borderRadius: '10px', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Plus size={15} /> Add Vehicle
-              </button>
+          <div className="cg-profile-stack">
+            <div className="cg-profile-pane-header">
+              <div><h3>Linked Vehicles</h3><p>Open each vehicle or review its verified service and invoice totals.</p></div>
+              <button type="button" className="cg-profile-action-primary" disabled={archived}
+                onClick={() => setIsAddVehicleOpen(true)}><Plus size={16}/> Add Vehicle</button>
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-              {vehicles.map((v) => (
-                <div key={v.id} style={{ backgroundColor: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <span style={{ fontSize: '15px', fontWeight: '800', color: 'var(--primary)' }}>{v.regNo}</span>
-                      <h4 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-primary)', margin: '2px 0 0 0' }}>{v.makeModel}</h4>
-                    </div>
-                    <span style={{ fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '6px', backgroundColor: 'var(--surface-3)', color: 'var(--text-secondary)' }}>
-                      {v.fuelType}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                    <div>Type: <strong style={{ color: 'var(--text-primary)' }}>{v.vehicleType}</strong></div>
-                    <div>Trans: <strong style={{ color: 'var(--text-primary)' }}>{v.transmission}</strong></div>
-                    <div>Year: <strong style={{ color: 'var(--text-primary)' }}>{v.year}</strong></div>
-                    <div>Current KM: <strong style={{ color: 'var(--text-primary)' }}>{v.kilometres || '—'}</strong></div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
-                    <button
-                      onClick={() => navigate(`/vehicles/${v.id}`)}
-                      style={{ flex: 1, height: '34px', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--surface)', color: 'var(--text-primary)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
-                    >
-                      View Vehicle
-                    </button>
-                    <button
-                      onClick={() => navigate(`/jobs/new?customerId=${customer.id}&vehicle=${encodeURIComponent(v.regNo)}`)}
-                      style={{ flex: 1, height: '34px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--primary-soft)', color: 'var(--primary)', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-                    >
-                      Create Job
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <CustomerVehicleFinancePanel model={financeModel} mode="vehicles"
+              vehiclesAvailable={vehiclesAvailable} jobsAvailable={jobsAvailable}
+              invoicesAvailable={invoicesAvailable}
+              onOpenFinance={openVehicleFinance}
+              onSelectVehicle={setFinanceVehicleFilter}
+              onViewVehicle={vehicleId => navigate('/vehicles/' + vehicleId)}
+              onViewInvoice={invoiceId => navigate('/invoices/' + invoiceId)}/>
           </div>
         )}
 
-        {/* 7. JOBS TAB */}
+        {/* JOBS — no invented price or demo complaint fallback. */}
         {activeTab === 'jobs' && (
-          <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Job Card History</h3>
-                
-              </div>
-              <button
-                onClick={() => navigate(`/jobs/new?customerId=${customer.id}`)}
-                style={{ height: '38px', padding: '0 14px', borderRadius: '10px', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Plus size={15} /> Create Job Card
+          <section className="cg-profile-pane">
+            <div className="cg-profile-pane-header">
+              <div><h3>Job Card History</h3><p>Service jobs for every vehicle linked to this customer.</p></div>
+              <button type="button" className="cg-profile-action-primary" disabled={archived}
+                onClick={() => navigate('/jobs/new?customerId=' + customer.id)}>
+                <Plus size={16}/> Create Job Card
               </button>
             </div>
-
-            {/* Cards for Mobile & Desktop */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {jobs.map((j) => (
-                <div
-                  key={j.id}
-                  onClick={() => navigate(`/jobs/${j.id}`)}
-                  style={{ backgroundColor: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', cursor: 'pointer', transition: 'border-color 160ms ease' }}
-                >
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <strong style={{ fontSize: '15px', color: 'var(--primary)' }}>{j.jobNumber}</strong>
-                      <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '6px', backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' }}>
-                        {j.status}
-                      </span>
+            {!jobsAvailable ? <p className="cg-profile-empty">Job cards could not be loaded.</p>
+              : !jobs.length ? <p className="cg-profile-empty">No job cards recorded for this customer yet.</p>
+              : <div className="cg-profile-record-list">
+                {jobs.map(job => {
+                  const invoice = invoiceForJob(job);
+                  return <article className="cg-profile-record" key={job.id}>
+                    <div className="cg-profile-record-main">
+                      <div className="cg-profile-record-title">
+                        <strong>{job.jobNumber || 'Job Card'}</strong>
+                        <span className="cg-profile-record-status">{job.status || '—'}</span>
+                      </div>
+                      <span>{[job.vehicleInfo, job.vehicleReg].filter(Boolean).join(' · ') || 'Vehicle unavailable'}</span>
+                      <small>{customerProfileDate(job.createdDate || job.created_at)}
+                        {' · '}{job.customerComplaint || 'No complaint recorded'}</small>
                     </div>
-                    <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>
-                      {j.vehicleInfo || j.vehicleReg} ({j.vehicleReg})
+                    <div className="cg-profile-record-right">
+                      <span>{invoice ? 'Finalized invoice' : 'Not yet invoiced'}</span>
+                      <strong>{invoicesAvailable && invoice
+                        ? formatINR(invoice.total ?? invoice.totalAmount ?? null) : '—'}</strong>
+                      <button type="button" onClick={() => navigate('/jobs/' + job.id)}>
+                        Open Job <ExternalLink size={14}/>
+                      </button>
                     </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                      Date: {j.createdDate} • Complaint: {j.customerComplaint || 'Engine vibration'}
-                    </div>
-                  </div>
-
-                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '4px', marginLeft: 'auto' }}>
-                    <span style={{ fontSize: '11px', fontWeight: '600', color: j.paymentStatus === 'Paid' ? 'var(--success)' : 'var(--warning)' }}>
-                      {j.paymentStatus || 'Partially Paid'}
-                    </span>
-                    <strong style={{ fontSize: '16px', color: 'var(--text-primary)' }}>{formatINR(j.billing?.invoiceTotal || 12500)}</strong>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/jobs/${j.id}`);
-                      }}
-                      style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--surface)', color: 'var(--primary)', fontSize: '11.5px', fontWeight: '700', cursor: 'pointer', marginTop: '2px' }}
-                    >
-                      View Job
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+                  </article>;
+                })}
+              </div>}
+          </section>
         )}
 
-        {/* 8. SERVICE HISTORY TAB */}
+        {/* SERVICE HISTORY — real service records, no mock prices. */}
         {activeTab === 'service-history' && (
-          <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-              <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Chronological Service History</h3>
-                
-              </div>
-
-              {/* Filters Toolbar */}
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <Select
-                  value={serviceVehicleFilter}
-                  onChange={(e) => setServiceVehicleFilter(e.target.value)}
-                  containerStyle={{ width: '180px' }}
-                >
+          <section className="cg-profile-pane">
+            <div className="cg-profile-pane-header">
+              <div><h3>Service History</h3><p>Chronological visits, labour and parts across linked vehicles.</p></div>
+              <div className="cg-profile-toolbar">
+                <input type="search" aria-label="Search service history"
+                  value={serviceSearch} placeholder="Job, vehicle or complaint"
+                  onChange={event => setServiceSearch(event.target.value)}/>
+                <select aria-label="Filter service history by vehicle"
+                  value={serviceVehicleFilter} onChange={event => setServiceVehicleFilter(event.target.value)}>
                   <option value="All">All Vehicles</option>
-                  {vehicles.map(v => <option key={v.id} value={v.regNo}>{v.regNo}</option>)}
-                </Select>
+                  {vehicles.map(vehicle => <option key={vehicle.id}
+                    value={vehicleRegistration(vehicle)}>{vehicleRegistration(vehicle) || 'Vehicle'}</option>)}
+                </select>
               </div>
             </div>
-
-            {/* Timeline Cards */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {jobs
-                .filter(j => serviceVehicleFilter === 'All' || j.vehicleReg === serviceVehicleFilter)
-                .map((j) => (
-                  <div key={j.id} style={{ backgroundColor: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Calendar size={15} style={{ color: 'var(--primary)' }} />
-                        <strong style={{ fontSize: '13.5px', color: 'var(--text-primary)' }}>{j.createdDate}</strong>
-                        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>• {j.vehicleInfo || 'Toyota Innova'} ({j.vehicleReg})</span>
+            {!jobsAvailable ? <p className="cg-profile-empty">Service history could not be loaded.</p>
+              : (() => {
+                const filtered = jobs.filter(job => {
+                  const registration = String(job.vehicleReg || '');
+                  const vehicleMatches = serviceVehicleFilter === 'All'
+                    || registration.replace(/[\s-]/g, '').toUpperCase() === serviceVehicleFilter.replace(/[\s-]/g, '').toUpperCase();
+                  const query = serviceSearch.trim().toLowerCase();
+                  const textMatches = !query || [
+                    job.jobNumber, registration, job.vehicleInfo, job.customerComplaint,
+                  ].some(value => String(value || '').toLowerCase().includes(query));
+                  return vehicleMatches && textMatches;
+                });
+                return filtered.length ? <div className="cg-profile-service-list">
+                  {filtered.map(job => {
+                    const serviceLines = job.services || job.labourRecords || [];
+                    const parts = job.partsUsed || job.parts || [];
+                    const issued = invoiceForJob(job);
+                    return <article className="cg-profile-service-card" key={job.id}>
+                      <div className="cg-profile-service-card-head">
+                        <div>
+                          <strong>{job.jobNumber || 'Job Card'}</strong>
+                          <span>{customerProfileDate(job.createdDate || job.created_at)}
+                            {' · '}{job.vehicleReg || job.vehicleInfo || 'Vehicle unavailable'}</span>
+                        </div>
+                        <span className="cg-profile-record-status">{job.status || '—'}</span>
                       </div>
-                      <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--primary)' }}>{j.jobNumber}</span>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12.5px' }}>
-                      <div>
-                        <strong style={{ color: 'var(--text-secondary)', display: 'block', fontSize: '11.5px', marginBottom: '4px' }}>Services Performed:</strong>
-                        <ul style={{ margin: 0, paddingLeft: '16px', color: 'var(--text-primary)' }}>
-                          {(j.services?.length ? j.services : j.labourRecords || []).slice(0, 5).map((service, index) => (
-                            <li key={service.id || index}>{service.serviceName || service.service || 'Workshop labour'}</li>
-                          ))}
-                          {!(j.services?.length || j.labourRecords?.length) ? <li>No labour items recorded</li> : null}
-                        </ul>
+                      <div className="cg-profile-service-columns">
+                        <div><h4>Services</h4>
+                          {serviceLines.length
+                            ? <ul>{serviceLines.slice(0,5).map((item,index) =>
+                              <li key={item.id || index}>{item.serviceName || item.service || item.name || 'Labour'}</li>)}</ul>
+                            : <p>No labour items recorded</p>}
+                        </div>
+                        <div><h4>Parts</h4>
+                          {parts.length
+                            ? <ul>{parts.slice(0,5).map((item,index) =>
+                              <li key={item.id || index}>{item.itemName || item.name || item.partName || 'Part'}</li>)}</ul>
+                            : <p>No parts recorded</p>}
+                        </div>
                       </div>
-
-                      <div>
-                        <strong style={{ color: 'var(--text-secondary)', display: 'block', fontSize: '11.5px', marginBottom: '4px' }}>Parts Installed:</strong>
-                        <ul style={{ margin: 0, paddingLeft: '16px', color: 'var(--text-primary)' }}>
-                          {(j.partsUsed || []).slice(0, 5).map((part, index) => (
-                            <li key={part.id || index}>{part.name || part.partName || 'Part'}</li>
-                          ))}
-                          {!j.partsUsed?.length ? <li>No replacement parts recorded</li> : null}
-                        </ul>
+                      <div className="cg-profile-service-footer">
+                        <span>{issued ? 'Finalized invoice: ' +
+                          formatINR(issued.total ?? issued.totalAmount ?? null) : 'No finalized invoice'}</span>
+                        <button type="button" onClick={() => navigate('/jobs/' + job.id)}>
+                          Open Job <ExternalLink size={15}/>
+                        </button>
                       </div>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '8px', fontSize: '12.5px', color: 'var(--text-muted)' }}>
-                      <div>Technician: <strong style={{ color: 'var(--text-primary)' }}>{j.serviceAdvisor || j.assignedEmployeeName || '—'}</strong></div>
-                      <div>
-                        Labour: <strong>{formatINR((j.labourRecords || []).reduce((sum, item) => sum + Number(item.customerCharge || 0), 0))}</strong> • Parts: <strong>{formatINR((j.partsUsed || []).reduce((sum, item) => sum + Number(item.total || (Number(item.qty || 0) * Number(item.unitPrice || 0))), 0))}</strong> • <strong style={{ color: 'var(--primary)', fontSize: '14px' }}>Total: {formatINR(j.billing?.invoiceTotal || j.estimates?.at(-1)?.grandTotal || 0)}</strong>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
+                    </article>;
+                  })}
+                </div> : <p className="cg-profile-empty">
+                  No service visits match the current filters.</p>;
+              })()}
+          </section>
         )}
 
-        {/* 9. INVOICES TAB & 10. FINANCIAL SUMMARY */}
+        {/* INVOICES — all vehicle invoices belong to one customer ledger. */}
         {activeTab === 'invoices' && (
-          <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Customer Invoices</h3>
-                
+          <section className="cg-profile-pane">
+            <div className="cg-profile-pane-header">
+              <div><h3>Customer Invoices</h3>
+                <p>Includes invoices for all linked vehicles, plus direct customer sales.</p>
               </div>
-              <button
-                onClick={() => navigate(`/invoices/create?customerId=${customer.id}`)}
-                style={{ height: '38px', padding: '0 14px', borderRadius: '10px', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Plus size={15} /> Create Invoice
+              <button type="button" className="cg-profile-action-primary" disabled={archived}
+                onClick={() => navigate('/invoices/create?customerId=' + customer.id)}>
+                <Plus size={16}/> Create Invoice
               </button>
             </div>
-
-            {/* Financial Summary Strip */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', backgroundColor: 'var(--surface-2)', padding: '12px', borderRadius: '12px' }}>
-              <div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Total Billed</span>
-                <strong style={{ fontSize: '16px', color: 'var(--primary)' }}>{formatINR(totalBilled)}</strong>
-              </div>
-              <div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Total Paid</span>
-                <strong style={{ fontSize: '16px', color: 'var(--success)' }}>{formatINR(totalPaid)}</strong>
-              </div>
-              <div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Outstanding Balance</span>
-                <strong style={{ fontSize: '16px', color: totalOutstanding > 0 ? 'var(--danger)' : 'var(--text-primary)' }}>{formatINR(totalOutstanding)}</strong>
-              </div>
+            <div className="cg-profile-toolbar">
+              <label htmlFor="cg-customer-invoice-vehicle">Vehicle</label>
+              <select id="cg-customer-invoice-vehicle" value={invoiceVehicleFilter}
+                onChange={event => setInvoiceVehicleFilter(event.target.value)}>
+                <option value="">All Vehicles &amp; Direct Invoices</option>
+                {vehicles.map(vehicle => <option value={vehicle.id} key={vehicle.id}>
+                  {vehicleRegistration(vehicle) || vehicleMakeModel(vehicle)}
+                </option>)}
+              </select>
             </div>
-
-            {/* Invoices List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {invoices.map((inv, idx) => (
-                <div key={idx} style={{ backgroundColor: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                  <div>
-                    <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{customerInvoiceLabel(inv)}</strong> {inv.jobNumber ? `(Job ${inv.jobNumber})` : ''}
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      Date: {inv.date} • Vehicle: {inv.vehicle}
-                    </div>
-                  </div>
-
-                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: '700', color: inv.status === 'Paid' ? 'var(--success)' : 'var(--warning)' }}>
-                      {inv.status}
-                    </span>
-                    <strong style={{ fontSize: '15px', color: 'var(--primary)' }}>{customerInvoiceTotal(inv)}</strong>
-                    <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Balance: {customerInvoiceBalance(inv)}</div>
-                  </div>
-                </div>
-              ))}
+            <div className="cg-profile-financial-strip">
+              <div><span>Invoiced</span><strong>{formatINR(filteredInvoiceTotals.billed)}</strong></div>
+              <div><span>Received</span><strong>{formatINR(filteredInvoiceTotals.paid)}</strong></div>
+              <div><span>Outstanding</span><strong>{formatINR(filteredInvoiceTotals.outstanding)}</strong></div>
             </div>
-          </div>
-        )}
-
-        {/* 11. PAYMENTS TAB */}
-        {activeTab === 'payments' && (
-          <>
-          <CustomerCreditLedgerPanel customerId={customer.id} onChanged={loadCustomerData}/>
-          <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Payment Records</h3>
-                
-              </div>
-              <button
-                onClick={() => { setPaymentError(''); setIsRecordPaymentOpen(true); }}
-                style={{ height: '38px', padding: '0 14px', borderRadius: '10px', backgroundColor: 'var(--success)', color: '#ffffff', border: 'none', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Plus size={15} /> Record Payment
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {payments.map((p) => (
-                <div key={p.id} style={{ backgroundColor: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{p.method}</strong>
-                      <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '6px', backgroundColor: 'var(--surface-3)', color: 'var(--text-secondary)' }}>
-                        {p.invoiceNo || '—'}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      Date: {p.date} • Ref: {p.reference} • Recorded by: {p.recordedBy || '—'}
-                    </div>
-                  </div>
-                  <strong style={{ fontSize: '16px', color: p.direction === 'OUT' ? 'var(--danger)' : 'var(--success)' }}>
-                    {p.direction === 'OUT' ? '−' : '+'}{formatINR(p.amount)}
-                  </strong>
-                </div>
-              ))}
-            </div>
-          </div>
-          </>
-        )}
-
-        {/* 12. NOTES TAB */}
-        {activeTab === 'notes' && (
-          <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Staff Internal Notes</h3>
-                
-              </div>
-              <button
-                onClick={() => setIsAddNoteOpen(true)}
-                style={{ height: '38px', padding: '0 14px', borderRadius: '10px', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Plus size={15} /> Add Note
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {notesList.map((n) => (
-                <div key={n.id} style={{ backgroundColor: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>
-                  <div style={{ color: 'var(--text-primary)', fontWeight: '500', lineHeight: 1.4 }}>"{n.text}"</div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '6px', borderTop: '1px solid var(--border)', paddingTop: '6px' }}>
-                    Added by <strong>{n.addedBy}</strong> • {n.date}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* DOCUMENTS TAB */}
-        {activeTab === 'documents' && (
-          <div className="customer-profile-documents">
-            <div className="customer-profile-documents__head">
-              <div>
-                <h3>Customer & Vehicle Documents</h3>
-                
-              </div>
-              <button onClick={() => setIsAddDocumentOpen(true)}>
-                <Plus size={15}/> Add Document
-              </button>
-            </div>
-
-            {documents.length ? (
-              <div className="customer-document-grid">
-                {documents.map((document) => (
-                  <article key={document.id} className="customer-document-card">
-                    <div className="customer-document-card__head">
-                      <span><FileText size={16}/></span>
-                      <div>
-                        <strong>{document.name}</strong>
-                        <small>{document.type}{document.vehicleReg ? ` · ${document.vehicleReg}` : ''}</small>
+            {!invoicesAvailable ? <p className="cg-profile-empty">Invoice data could not be loaded.</p>
+              : !filteredInvoices.length ? <p className="cg-profile-empty">No invoices for this selection.</p>
+              : <div className="cg-profile-record-list">
+                {filteredInvoices.map((invoice,index) => {
+                  const linkedId = resolveCustomerVehicleId(invoice, vehicles, jobs);
+                  const linkedVehicle = vehicles.find(v => String(v.id) === linkedId);
+                  const money = invoiceMoney(invoice);
+                  return <article className="cg-profile-record" key={invoice.id || index}>
+                    <div className="cg-profile-record-main">
+                      <div className="cg-profile-record-title">
+                        <strong>{customerInvoiceLabel(invoice)}</strong>
+                        <span className="cg-profile-record-status">{invoice.status || '—'}</span>
                       </div>
-                      <b className={`is-${String(document.status || 'valid').toLowerCase().replaceAll(' ', '-')}`}>
-                        {document.status || 'Valid'}
-                      </b>
+                      <span>{customerProfileDate(invoice.date || invoice.created_at)}
+                        {' · '}{linkedVehicle ? vehicleRegistration(linkedVehicle) : 'Direct / unlinked vehicle'}
+                      </span>
+                      <small>{invoice.jobCardNo || invoice.jobNumber
+                        ? 'Job: ' + (invoice.jobCardNo || invoice.jobNumber) : 'Customer invoice'}</small>
                     </div>
-                    <div className="customer-document-meta">
-                      <div><span>Uploaded</span><strong>{document.uploadedDate || '—'}</strong></div>
-                      <div><span>Expiry</span><strong>{document.expiryDate || 'No expiry'}</strong></div>
-                      <div><span>File</span><strong>{document.fileName || 'Metadata only'}</strong></div>
+                    <div className="cg-profile-record-money">
+                      <div><span>Total</span><strong>{customerInvoiceTotal(invoice)}</strong></div>
+                      <div><span>Paid</span><strong>{formatINR(money.paid)}</strong></div>
+                      <div><span>Due</span><strong>{customerInvoiceBalance(invoice)}</strong></div>
                     </div>
-                    <button className="customer-document-delete" onClick={() => deleteDocument(document.id)}>
-                      <Trash2 size={13}/> Delete
-                    </button>
-                  </article>
-                ))}
+                    {invoice.id && <button type="button" className="cg-profile-open-icon"
+                      onClick={() => navigate('/invoices/' + invoice.id)}
+                      aria-label={'Open invoice ' + customerInvoiceLabel(invoice)}>
+                      <ExternalLink size={16}/>
+                    </button>}
+                  </article>;
+                })}
+              </div>}
+          </section>
+        )}
+
+        {/* FINANCE SUMMARY — drill down from customer to vehicle, without new accounting writes. */}
+        {activeTab === 'finance' && (
+          <CustomerVehicleFinancePanel model={financeModel} mode="finance"
+            invoicesAvailable={invoicesAvailable}
+            vehiclesAvailable={vehiclesAvailable} jobsAvailable={jobsAvailable}
+            selectedVehicleId={financeVehicleFilter}
+            onSelectVehicle={setFinanceVehicleFilter}
+            onOpenFinance={openVehicleFinance}
+            onViewVehicle={vehicleId => navigate('/vehicles/' + vehicleId)}
+            onViewInvoice={invoiceId => navigate('/invoices/' + invoiceId)}/>
+        )}
+
+        {/* PAYMENTS — separate receipt history; invoice paid already includes applied receipts. */}
+        {activeTab === 'payments' && (
+          <div className="cg-profile-stack">
+            <CustomerCreditLedgerPanel customerId={customer.id} onChanged={loadCustomerData}/>
+            <section className="cg-profile-pane">
+              <div className="cg-profile-pane-header">
+                <div><h3>Payment Records</h3>
+                  <p>Actual money in/out. Payments applied to invoices are already included in the Received total.</p>
+                </div>
+                <button type="button" className="cg-profile-action-primary" disabled={archived}
+                  onClick={() => { setPaymentError(''); setIsRecordPaymentOpen(true); }}>
+                  <Plus size={16}/> Record Payment
+                </button>
               </div>
-            ) : (
-              <div className="customer-empty">No customer or vehicle documents uploaded yet.</div>
-            )}
+              <div className="cg-profile-financial-strip">
+                <div><span>Invoice Receipts</span><strong>{formatINR(totalPaid)}</strong></div>
+                <div><span>Invoice Due</span><strong>{formatINR(totalOutstanding)}</strong></div>
+                <div><span>Payment Records</span><strong>{payments.length}</strong></div>
+              </div>
+              {!payments.length ? <p className="cg-profile-empty">
+                No payment receipts or refunds have been recorded yet.</p>
+              : <div className="cg-profile-record-list">
+                  {payments.map((payment,index) => {
+                    const target = invoices.find(invoice =>
+                      String(invoice.id) === String(payment.invoiceId || payment.invoice || '') ||
+                      (payment.invoiceNo && customerInvoiceLabel(invoice) === payment.invoiceNo));
+                    const linkedId = target ? resolveCustomerVehicleId(target, vehicles, jobs) : null;
+                    const linkedVehicle = vehicles.find(v => String(v.id) === linkedId);
+                    const outgoing = String(payment.direction || '').toUpperCase() === 'OUT';
+                    return <article className="cg-profile-record" key={payment.id || index}>
+                      <div className="cg-profile-record-main">
+                        <div className="cg-profile-record-title">
+                          <strong>{payment.invoiceNo || (outgoing ? 'Refund / Outgoing' : 'Customer Receipt')}</strong>
+                          <span className="cg-profile-record-status">{payment.method || 'Payment'}</span>
+                        </div>
+                        <span>{customerProfileDate(payment.date || payment.created_at)}
+                          {' · '}{linkedVehicle ? vehicleRegistration(linkedVehicle) : 'Customer level'}
+                        </span>
+                        <small>{payment.reference ? 'Reference: ' + payment.reference : 'No reference'}
+                          {' · '}{payment.recordedBy || 'Workshop team'}</small>
+                      </div>
+                      <div className={'cg-profile-record-amount ' + (outgoing ? 'is-out' : 'is-in')}>
+                        {outgoing ? '−' : '+'}{formatINR(payment.amount)}
+                      </div>
+                    </article>;
+                  })}
+                </div>}
+            </section>
           </div>
         )}
 
-        {/* 13. ACTIVITY TAB */}
-        {activeTab === 'activity' && (
-          <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div>
-              <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Full Audit & Activity Timeline</h3>
-              
+        {/* NOTES — persisted as dated text on the customer master record. */}
+        {activeTab === 'notes' && (
+          <section className="cg-profile-pane">
+            <div className="cg-profile-pane-header">
+              <div><h3>Staff Notes &amp; Preferences</h3>
+                <p>Internal customer preferences saved to the customer profile.</p>
+              </div>
+              <button type="button" className="cg-profile-action-primary" disabled={archived}
+                onClick={() => setIsAddNoteOpen(true)}><Plus size={16}/> Add Note</button>
             </div>
+            {!notesList.length ? <p className="cg-profile-empty">No customer notes saved.</p>
+              : <div className="cg-profile-note-list">
+                  {notesList.map(note => <article className="cg-profile-note" key={note.id}>
+                    <p>{note.text}</p>
+                    <span>{note.addedBy}{note.date ? ' · ' + note.date : ''}</span>
+                  </article>)}
+                </div>}
+          </section>
+        )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', position: 'relative', paddingLeft: '22px' }}>
-              <div style={{ position: 'absolute', left: '8px', top: '10px', bottom: '10px', width: '2px', backgroundColor: 'var(--border)' }} />
-              {activity.map((act, idx) => (
-                <div key={idx} style={{ position: 'relative' }}>
-                  <div style={{ position: 'absolute', left: '-22px', top: '4px', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: 'var(--primary)', border: '2px solid var(--surface)' }} />
-                  <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--primary)' }}>{act.time || act.created_at || '—'}</span>
-                  <h4 style={{ fontSize: '13.5px', fontWeight: '700', color: 'var(--text-primary)', margin: '2px 0' }}>{act.type || act.activity_type || 'Customer Activity'}</h4>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>{act.desc || act.description || '—'}</p>
-                </div>
-              ))}
+        {/* DOCUMENT REFERENCES — metadata only; no binary upload is implied. */}
+        {activeTab === 'documents' && (
+          <section className="cg-profile-pane">
+            <div className="cg-profile-pane-header">
+              <div><h3>Customer &amp; Vehicle Documents</h3>
+                <p>Record document references and expiry dates. Files are not uploaded here.</p>
+              </div>
+              <button type="button" className="cg-profile-action-primary" disabled={archived}
+                onClick={() => setIsAddDocumentOpen(true)}><Plus size={16}/> Add Reference</button>
             </div>
-          </div>
+            {!documents.length ? <p className="cg-profile-empty">
+              No document references saved for this customer.</p>
+              : <div className="cg-profile-documents">
+                {documents.map(document => <article className="cg-profile-document" key={document.id}>
+                  <div className="cg-profile-document-main">
+                    <div className="cg-profile-document-title">
+                      <FileText size={18} aria-hidden="true"/>
+                      <strong>{document.name}</strong>
+                      <span className="cg-profile-record-status">{document.status || '—'}</span>
+                    </div>
+                    <p>{document.type || 'Reference'}
+                      {document.vehicleReg ? ' · ' + document.vehicleReg : ' · Customer level'}</p>
+                    <div className="cg-profile-document-details">
+                      <span>Recorded: {customerProfileDate(document.uploadedDate)}</span>
+                      <span>Expiry: {customerProfileDate(document.expiryDate)}</span>
+                      <span>File name: {document.fileName || 'Not recorded'}</span>
+                    </div>
+                  </div>
+                  <button className="cg-profile-delete-action" type="button"
+                    disabled={archived} onClick={() => deleteDocument(document.id)}>
+                    <Trash2 size={15}/> Delete Record
+                  </button>
+                </article>)}
+              </div>}
+          </section>
+        )}
+
+        {/* ACTIVITY — server audit events, no invented entries. */}
+        {activeTab === 'activity' && (
+          <section className="cg-profile-pane">
+            <div className="cg-profile-pane-header">
+              <div><h3>Customer Activity</h3><p>Recorded service events and workshop updates.</p></div>
+            </div>
+            {!activity.length ? <p className="cg-profile-empty">
+              No recorded activity for this customer.</p>
+            : <div className="cg-profile-timeline">
+                {activity.map((event,index) => <article className="cg-profile-event" key={event.id || index}>
+                  <span className="cg-profile-event-dot" aria-hidden="true"/>
+                  <div>
+                    <time>{event.time || customerProfileDate(event.created_at)}</time>
+                    <h4>{event.type || event.activity_type || 'Customer Activity'}</h4>
+                    <p>{event.desc || event.description || '—'}</p>
+                  </div>
+                </article>)}
+              </div>}
+          </section>
         )}
 
       </div>
@@ -1143,7 +1146,13 @@ export const CustomerDetails = () => {
             <option value="">Select unpaid invoice</option>
             {payableInvoices.map((inv) => (
               <option key={inv.id} value={inv.id}>
-                {customerInvoiceLabel(inv)} — Due {customerInvoiceBalance(inv)}
+                {customerInvoiceLabel(inv)}
+                {' · '}{(() => {
+                  const matchId = resolveCustomerVehicleId(inv, vehicles, jobs);
+                  const vehicle = vehicles.find(item => String(item.id) === matchId);
+                  return vehicle ? vehicleRegistration(vehicle) : 'Direct / unlinked';
+                })()}
+                {' · Due '}{customerInvoiceBalance(inv)}
               </option>
             ))}
           </Select>
@@ -1316,7 +1325,9 @@ export const CustomerDetails = () => {
             </Select>
             <Select label="Vehicle" value={docVehicle} onChange={(e)=>setDocVehicle(e.target.value)}>
               <option value="">Customer / Company level</option>
-              {vehicles.map((vehicle)=><option key={vehicle.id} value={vehicle.regNo}>{vehicle.regNo}</option>)}
+              {vehicles.map(vehicle => <option key={vehicle.id} value={vehicleRegistration(vehicle)}>
+                  {vehicleRegistration(vehicle) || vehicleMakeModel(vehicle)}
+                </option>)}
             </Select>
             <Input label="Expiry Date" type="date" value={docExpiry} onChange={(e)=>setDocExpiry(e.target.value)}/>
             <Select label="Status" value={docStatus} onChange={(e)=>setDocStatus(e.target.value)}>
@@ -1326,12 +1337,14 @@ export const CustomerDetails = () => {
               <option>Archived</option>
             </Select>
           </div>
-          <label className="customer-document-upload">
-            <Upload size={16}/>
-            <span>{docFileName || 'Choose attachment'}</span>
-            <input type="file" onChange={(e)=>setDocFileName(e.target.files?.[0]?.name || '')}/>
-          </label>
-          <button className="customer-document-save" type="submit">Save Document</button>
+          <Input label="File name (reference only)" value={docFileName}
+            onChange={event => setDocFileName(event.target.value)}
+            placeholder="For example, insurance.pdf"/>
+          <p className="cg-profile-form-note">This saves reference details and expiry information only.
+            No file is uploaded or stored.</p>
+          <button className="customer-document-save" type="submit" disabled={documentSaving}>
+            {documentSaving ? 'Saving…' : 'Save Document Reference'}
+          </button>
         </form>
       </ResponsiveModalSheet>
 
