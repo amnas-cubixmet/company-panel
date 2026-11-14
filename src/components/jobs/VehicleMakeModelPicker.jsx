@@ -46,10 +46,14 @@ export function VehicleMakeModelPicker({
     );
   }, [catalog, customerVehicles, make, model]);
 
+  const selectedMake = options.find(
+    (item) => item.make.toLocaleLowerCase() === make.toLocaleLowerCase()
+  )?.make || make;
   const models = useMemo(
     () => options.find((item) => item.make.toLocaleLowerCase() === make.toLocaleLowerCase())?.models || [],
     [options, make],
   );
+  const selectedModel = models.find((item) => item.toLocaleLowerCase() === model.toLocaleLowerCase()) || model;
 
   const openAdd = (kind) => {
     if (disabled || saving) return;
@@ -111,7 +115,7 @@ export function VehicleMakeModelPicker({
           <button type="button" className="job-vehicle-add-option" disabled={disabled || saving}
             onClick={() => openAdd('make')}><Plus size={15} aria-hidden="true" /> Add Make</button>
         </div>
-        <select id={id + '-make'} name="vehicleMake" value={make} disabled={disabled || saving}
+        <select id={id + '-make'} name="vehicleMake" value={selectedMake} disabled={disabled || saving}
           onChange={(event) => { onMakeChange(event.target.value); setAddKind(''); setError(''); }}
           aria-label="Vehicle make">
           <option value="">Select Make</option>
@@ -126,7 +130,7 @@ export function VehicleMakeModelPicker({
             disabled={disabled || saving || !make}
             onClick={() => openAdd('model')}><Plus size={15} aria-hidden="true" /> Add Model</button>
         </div>
-        <select id={id + '-model'} name="vehicleModel" value={model}
+        <select id={id + '-model'} name="vehicleModel" value={selectedModel}
           disabled={disabled || saving || !make}
           aria-label="Vehicle model"
           onChange={(event) => { onModelChange(event.target.value); setAddKind(''); setError(''); }}>
