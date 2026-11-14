@@ -20,6 +20,8 @@ import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { InvoicePdfShareSheet } from '../../components/invoices/InvoicePdfShareSheet';
 import '../../styles/invoice-unified-ui.css';
 import '../../styles/invoice-directory-refined.css';
+import '../../styles/invoice-list-polished.css';
+import { filterBillingDirectory } from '../../components/invoices/invoiceDirectorySummary';
 import { WhatsAppManualShareButton } from '../../components/common/WhatsAppManualShareButton';
 import {
   InvoiceFilterToolbar,
@@ -68,8 +70,13 @@ export function InvoiceRoutePage() {
   const [activeTab, setActiveTab] = useState(kindFromUrl);
   const [listQuery, setListQuery] = useState('');
   const [listStatus, setListStatus] = useState('All');
-  const hasListFilters = Boolean(listQuery.trim() || listStatus !== 'All');
-  const resetListFilters = () => { setListQuery(''); setListStatus('All'); };
+  const [listFrom, setListFrom] = useState('');
+  const [listTo, setListTo] = useState('');
+  const [listSort, setListSort] = useState('newest');
+  const hasListFilters = Boolean(listQuery.trim() || listStatus !== 'All' || listFrom || listTo || listSort !== 'newest');
+  const resetListFilters = () => {
+    setListQuery(''); setListStatus('All'); setListFrom(''); setListTo(''); setListSort('newest');
+  };
   const [form, setForm] = useState(() => blankBillingDocument(kindFromUrl, {
     emptyInputs: mode === 'create',
     jobId: new URLSearchParams(location.search).get('jobId'),
@@ -338,30 +345,9 @@ export function InvoiceRoutePage() {
     [activeDocuments],
   );
 
-  const filteredDocs = useMemo(() => {
-    const search = listQuery.trim().toLowerCase();
-
-    return activeDocuments.filter((document) => {
-      const matchesStatus =
-        listStatus === 'All' || document.status === listStatus;
-
-      const matchesSearch =
-        !search ||
-        [
-          document.number,
-          document.id,
-          document.customer?.name,
-          document.customer?.phone,
-          document.vehicle?.registration,
-          document.transportation?.vehicleNo,
-          document.jobCardNo,
-        ].some((value) =>
-          String(value || '').toLowerCase().includes(search),
-        );
-
-      return matchesStatus && matchesSearch;
-    });
-  }, [activeDocuments, listQuery, listStatus]);
+  const filteredDocs = useMemo(() => filterBillingDirectory(activeDocuments, {
+    query: listQuery, status: listStatus, from: listFrom, to: listTo, sort: listSort,
+  }), [activeDocuments, listQuery, listStatus, listFrom, listTo, listSort]);
 
   useEffect(() => {
     const shouldPrint = new URLSearchParams(location.search).get('print') === '1';
@@ -706,6 +692,9 @@ export function InvoiceRoutePage() {
         onStatusChange={setListStatus}
         statuses={listStatuses}
         resultCount={filteredDocs.length}
+        from={listFrom} onFromChange={setListFrom}
+        to={listTo} onToChange={setListTo}
+        sort={listSort} onSortChange={setListSort}
         onReset={resetListFilters}
       />
 
