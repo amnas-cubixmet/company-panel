@@ -8,7 +8,10 @@ const money = (value) => new Intl.NumberFormat('en-IN', {
   style: 'currency', currency: 'INR', maximumFractionDigits: 2
 }).format(Number(value) || 0);
 
-export function JobTotalCostPanel({ jobId, refreshVersion = 0, refreshOnTab = '', customerServiceCharges = 0 }) {
+export function JobTotalCostPanel({
+  jobId, refreshVersion = 0, refreshOnTab = '', customerServiceCharges = 0,
+  billedTotal = null, netSellingValue = null, salesSource = 'none',
+}) {
   const { user } = useAuth();
   const permitted = ['jobs.view', 'payroll.view', 'expenses.view', 'stock.view']
     .every((code) => hasPermission(user, code));
@@ -17,6 +20,15 @@ export function JobTotalCostPanel({ jobId, refreshVersion = 0, refreshOnTab = ''
   const summary = costState.jobId === jobId ? costState.data : null;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const hasBill = billedTotal !== null && billedTotal !== undefined && Number.isFinite(Number(billedTotal));
+  const hasNetSales = netSellingValue !== null && netSellingValue !== undefined
+    && Number.isFinite(Number(netSellingValue));
+  const incompleteCosts = Boolean(summary?.unallocatedDailyWages || summary?.unapprovedMechanicWork
+    || summary?.partsAtCurrentCost);
+  // This is a job-level indicative gross margin, not an accounting net profit.
+  // Never compare GST-inclusive invoice grand total against GST-exclusive costs.
+  const grossMargin = summary && hasNetSales && !incompleteCosts
+    ? Number(netSellingValue) - Number(summary.totalCost || 0) : null;
 
   useEffect(() => {
     if (!jobId || !permitted) {
@@ -82,7 +94,7 @@ export function JobTotalCostPanel({ jobId, refreshVersion = 0, refreshOnTab = ''
       <header className="job-total-cost-heading">
         <div>
           <h3><Calculator size={18} aria-hidden="true" /> Total Cost</h3>
-          <p>Recorded direct costs for this Job Card, not customer charges or invoice totals.</p>
+          <p>Workshop-only cost, customer bill and indicative margin. These figures never appear on the customer invoice.</p>
         </div>
       </header>
 
@@ -107,6 +119,27 @@ export function JobTotalCostPanel({ jobId, refreshVersion = 0, refreshOnTab = ''
                 <small>{desc}</small>
               </div>
             ))}
+          </div>
+          <div className="job-total-cost-grid job-total-finance-grid" aria-label="Internal billing and margin">
+            <div className="job-total-cost-card">
+              <span>{salesSource === 'final_invoice' ? 'Total Invoice Bill'
+                : salesSource === 'draft_invoice' ? 'Draft Invoice Total' : 'Estimated Bill'}</span>
+              <strong>{hasBill ? money(billedTotal) : 'Not invoiced'}</strong>
+              <small>Includes GST when applicable</small>
+            </div>
+            <div className="job-total-cost-card">
+              <span>Customer Selling (before GST)</span>
+              <strong>{hasNetSales ? money(netSellingValue) : 'Not available'}</strong>
+              <small>{salesSource === 'estimate' ? 'Estimate only, not invoiced' : 'Tax-exclusive value'}</small>
+            </div>
+            <div className="job-total-cost-card is-margin">
+              <span>Indicative Gross Margin</span>
+              <strong>{grossMargin !== null ? money(grossMargin) : 'Not ready'}</strong>
+              <small>{grossMargin === null
+                ? incompleteCosts ? 'Direct cost records incomplete' : 'A verified selling figure is required'
+                : salesSource === 'final_invoice' ? 'Excludes overhead and unallocated wages'
+                  : 'Provisional; bill not yet finalized'}</small>
+            </div>
           </div>
           {refreshOnTab === 'work' && (
             <div className="job-total-customer-service" aria-label="Recorded customer service charges">
