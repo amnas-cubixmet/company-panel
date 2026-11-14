@@ -1,5 +1,6 @@
 import { Car, ReceiptText, Wallet, CreditCard, ExternalLink, BriefcaseBusiness, AlertCircle } from 'lucide-react';
 import { customerInvoiceLabel, profileMoney } from '../../pages/customers/customerProfile.utils';
+import { invoiceMoney } from '../../pages/customers/customerDirectoryMoney.js';
 import {
   customerProfileDate, vehicleRegistration, vehicleMakeModel, resolveCustomerVehicleId,
 } from '../../pages/customers/customerVehicleFinancials';
@@ -125,6 +126,7 @@ export function CustomerVehicleFinancePanel({
                   model.vehicles.flatMap(bucket => bucket.jobs).concat(model.unmatchedJobs),
                 );
                 const bucket = assigned(vehicleId);
+                const amounts = invoiceMoney(invoice);
                 return <article className="cg-cvf-invoice-row" key={invoice.id || index}>
                   <div>
                     <strong>{customerInvoiceLabel(invoice)}</strong>
@@ -134,8 +136,8 @@ export function CustomerVehicleFinancePanel({
                   </div>
                   <div className="cg-cvf-invoice-numbers">
                     <span>Total <strong>{profileMoney(invoice.total ?? invoice.totalAmount)}</strong></span>
-                    <span>Paid <strong>{profileMoney(invoice.paid ?? invoice.paidAmount)}</strong></span>
-                    <span>Due <strong>{profileMoney(invoice.balance ?? invoice.balanceDue)}</strong></span>
+                    <span>Paid <strong>{profileMoney(amounts.paid)}</strong></span>
+                    <span>Due <strong>{profileMoney(amounts.balance)}</strong></span>
                   </div>
                   {invoice.id && <button type="button" onClick={() => onViewInvoice(invoice.id)}
                     aria-label={'Open invoice ' + customerInvoiceLabel(invoice)}>
