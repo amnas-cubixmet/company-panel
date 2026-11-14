@@ -78,6 +78,12 @@ export const validateEstimateCatalogDraft = (draft = {}, { registered = false } 
   return errors;
 };
 
+// DecimalFields may be serialized as "0.00", but estimate zero-GST
+// validation uses a canonical "0" representation for classifications.
+export const normalizeEstimateTaxRate = (rate) =>
+  rate === '' || rate == null || !Number.isFinite(Number(rate))
+    ? '' : String(Number(rate));
+
 export const buildEstimateCatalogSelection = (draft, created) => ({
   description: created?.partName || created?.name || String(draft.name).trim(),
   type: draft.kind === 'part' ? 'Part' : draft.workType || 'Labour',
@@ -85,7 +91,7 @@ export const buildEstimateCatalogSelection = (draft, created) => ({
   catalogId: created?.id ?? '',
   catalogCode: draft.kind === 'part' ? (created?.sku || draft.sku) : (created?.code || draft.code || ''),
   // Preserve the catalog's actual saved rate, not a second line-level tax.
-  taxRate: String(draft.kind === 'part'
+  taxRate: normalizeEstimateTaxRate(draft.kind === 'part'
     ? created?.tax ?? draft.taxRate ?? ''
     : created?.taxRate ?? draft.taxRate ?? ''),
   taxChoice: draft.taxChoice || '',
