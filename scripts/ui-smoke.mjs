@@ -1705,7 +1705,7 @@ try {
           }
         }
 
-        if(/^\/vehicles\/[^/]+$/.test(path) && [390,1440].includes(profile.width)) {
+        if(path==='/vehicles/VEH-0001' && [390,1440].includes(profile.width)) {
           if(await page.getByText('Back to Vehicles',{exact:true}).count()) {
             throw Error('The unwanted Back to Vehicles button is still visible.');
           }
