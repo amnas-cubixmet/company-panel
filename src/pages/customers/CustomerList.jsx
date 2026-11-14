@@ -672,7 +672,7 @@ export const CustomerList = () => {
             event.target?.focus();
           }}>
           {formError && <p className="customer-directory-error" role="alert">{formError}</p>}
-          <CustomerFormFields values={customerFormValues}
+          <CustomerFormFields values={customerFormValues} labelLayout="above"
             onChange={updateCustomerFormField} errors={formFieldErrors}
             branches={branchChoices} branchError={branchLoadError}
             disabled={formBusy || duplicateChecking}
