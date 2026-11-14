@@ -93,3 +93,24 @@
 }
 .cg-supplier-debit-preview strong{font-weight:700;color:var(--text-primary,inherit)}
 .cg-supplier-debit-preview a{color:var(--primary,#2870dc);text-decoration:underline}
+
+/* Recover from an unconfigured Finance payment source without losing the supplier page. */
+.cg-supplier-finance-route-actions{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;
+}
+.cg-supplier-finance-route-link,
+.cg-supplier-finance-refresh{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:44px;padding:9px 13px;border-radius:9px;font-size:13px;
+  font-weight:650;line-height:1.4;text-decoration:none;cursor:pointer;
+}
+.cg-supplier-finance-route-link{
+  background:var(--primary,#3561d6);color:white !important;
+  border:1px solid var(--primary,#3561d6);
+}
+.cg-supplier-finance-refresh{
+  background:transparent;color:var(--primary,#3561d6);
+  border:1px solid var(--border,#d9e0e7);
+}
+.cg-supplier-finance-route-link:focus-visible,
+.cg-supplier-finance-refresh:focus-visible{outline:2px solid var(--primary,#3561d6);outline-offset:2px}
