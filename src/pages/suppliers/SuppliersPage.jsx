@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Building2, CreditCard, Mail, MessageCircle, Package, Pencil, Phone, Plus, Search, ShoppingBag, Wallet, ChevronRight, RefreshCw, ReceiptText } from 'lucide-react';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { supplierService } from '../../services/supplier.service';
+import { CountryPhoneField } from '../../components/common/CountryPhoneField';
+import { validInternationalPhone } from '../../utils/jobCreateAdapters';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { USE_MOCK_API } from '../../api/apiConfig';
@@ -86,6 +88,9 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
     if (!canWrite || busy) return;
     const errors = {};
     if (!form.name.trim()) errors.name = 'Supplier Name is required.';
+    if (form.phone.trim() && !validInternationalPhone(form.phone)) {
+      errors.phone = 'Enter a valid phone for the chosen country code.';
+    }
     if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
       errors.email = 'Enter a valid email address.';
     }
@@ -140,7 +145,13 @@ function SupplierEditor({ supplier, onClose, onSaved }) {
     title={supplier ? 'Edit Supplier' : 'Add Supplier'} maxWidth="680px">
     <form className="cg-supplier-form" noValidate onSubmit={submit}>
       <p className="cg-supplier-form-intro">Enter the supplier's contact details. Supplier Name is required; GSTIN and other details are optional.</p>
-      {formFields.map(key => <label key={key} className="cg-supplier-field">
+      {formFields.map(key => key === 'phone' ? (
+        <div key={key} className="cg-supplier-field">
+          <CountryPhoneField label="Phone" value={form.phone}
+            disabled={busy} error={formErrors.phone}
+            onChange={value => setField('phone', value)}/>
+        </div>
+      ) : <label key={key} className="cg-supplier-field">
         <span>{labels[key]}</span>
         {key === 'address'
           ? <textarea ref={node => { inputRefs.current[key] = node; }} rows={2}
