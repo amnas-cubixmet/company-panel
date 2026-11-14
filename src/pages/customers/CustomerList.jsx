@@ -442,7 +442,7 @@ export const CustomerList = () => {
             <Search aria-label="Search customers"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, phone, WhatsApp, email or vehicle..."
+              placeholder="Search customer, phone, email or vehicle..."
             />
           </div>
           
