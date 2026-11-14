@@ -866,8 +866,9 @@ export default function SupplierPurchaseFlow({
               {settlement.channel && !accountsLoading && !accountsError &&
                 !resolvedAccountFor(settlement.channel) &&
                 financeAccountsForChannel(accounts, settlement.channel).length > 0 &&
-                <p className="cg-supplier-debit-preview" role="alert">
-                  Multiple accounts found. Set the Bank / UPI account you want to use for this payment.
+                <div className="cg-supplier-debit-preview" role="alert">
+                  Multiple accounts found. Set the {settlement.channel === 'Cash' ? 'Cash' : 'Bank / UPI'} account
+                  you want to use for this payment.
                   <div className="cg-supplier-finance-route-actions">
                     <Link to={accountSetupRoute(settlement.channel)} className="cg-supplier-finance-route-link">
                       Set Default {settlement.channel === 'Cash' ? 'Cash' : 'Bank'} Account
@@ -876,7 +877,7 @@ export default function SupplierPurchaseFlow({
                       Refresh Accounts
                     </button>
                   </div>
-                </p>}
+                </div>}
               {settlement.channel === 'Cash' && !accountsLoading && !accountsError &&
                 financeAccountsForChannel(accounts, 'Cash').length === 0 && (
                   <div className="wide cg-supplier-cash-setup">
