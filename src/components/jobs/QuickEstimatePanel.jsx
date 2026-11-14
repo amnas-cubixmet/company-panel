@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useFeatureAccess } from '../../context/FeatureAccessContext';
+import { USE_MOCK_API } from '../../api/apiConfig';
 import { CheckCircle2, ChevronDown, ClipboardList, Download, Package, Pencil, Plus, ReceiptText, Trash2, Wrench, SkipForward } from 'lucide-react';
 import { jobService } from '../../services/job.service';
 import { WhatsAppManualShareButton } from '../common/WhatsAppManualShareButton';
@@ -60,6 +63,10 @@ export function QuickEstimatePanel({
   job, estimates = [], findings = [], canEdit, canReopen = false, wasSkipped = false, onReopen, onSaved, onApprove, onSkip,
   onReject, onShare, onEditInspection, onGoToWork, onDownloadApproved
 }) {
+  const { can } = useFeatureAccess();
+  const canReceivePurchasedStock = !USE_MOCK_API &&
+    ['stock.view', 'stock.create', 'stock.edit', 'payments.view', 'payments.create'].every(can);
+  const [purchaseShortcut, setPurchaseShortcut] = useState(null);
   const latest = estimates.at(-1) || null;
   const approvedEstimate = latestApprovedEstimate(estimates);
   // Backend JobActivity receipts survive later quote revisions, unlike the
@@ -407,6 +414,12 @@ export function QuickEstimatePanel({
       }
       setCatalogRequest(null);
       setCatalogError('');
+      setPurchaseShortcut(draft.kind === 'part' && draft.supplier && created?.id ? {
+        itemId: String(created.id),
+        supplierId: String(draft.supplier),
+        purchaseRate: String(draft.costPrice),
+        quantity: '1',
+      } : null);
       setFeedback(draft.kind === 'part'
         ? 'New spare part saved in Stock and added to the estimate.'
         : 'New work saved in Services and added to the estimate.');
@@ -596,6 +609,15 @@ export function QuickEstimatePanel({
         Inspection has changed. Approve & Continue will save the revised estimate before approval.
       </p>}
       {feedback && <p className="job-quick-feedback" role="status">{feedback}</p>}
+      {purchaseShortcut && canReceivePurchasedStock && (
+        <div className="job-estimate-purchase-shortcut">
+          <p>Spare part saved with zero stock. Receive purchased quantity by posting a supplier bill.</p>
+          <Link to={`/suppliers/${encodeURIComponent(purchaseShortcut.supplierId)}#supplier-purchase-form`}
+            state={{ purchasePrefill: purchaseShortcut }}>
+            Buy / Receive This Part
+          </Link>
+        </div>
+      )}
 
       <div className="job-quick-grid">
         <section className="job-quick-panel job-quick-work-parts">
