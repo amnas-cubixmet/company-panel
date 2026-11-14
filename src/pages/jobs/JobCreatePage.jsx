@@ -53,7 +53,6 @@ export const JobCreatePage = () => {
   const [createdJob, setCreatedJob] = useState(null);
   const [review, setReview] = useState(false);
   const [advancedVehicleOpen, setAdvancedVehicleOpen] = useState(false);
-  const [jobMode, setJobMode] = useState('simple');
   const [complaints, setComplaints] = useState(() => [newComplaint()]);
   const [complaintErrors, setComplaintErrors] = useState({});
   const [branches, setBranches] = useState([]);
@@ -442,10 +441,6 @@ export const JobCreatePage = () => {
               </button>
             ))}
           </nav>
-          <div className="job-create-mode-switch" role="group" aria-label="Job Card mode">
-            <button type="button" aria-pressed={jobMode === 'simple'} className={jobMode === 'simple' ? 'is-active' : ''} onClick={() => setJobMode('simple')}>Simple</button>
-            <button type="button" aria-pressed={jobMode === 'advanced'} className={jobMode === 'advanced' ? 'is-active' : ''} onClick={() => setJobMode('advanced')}>Advanced</button>
-          </div>
         </div>
       </header>
 
@@ -631,7 +626,7 @@ export const JobCreatePage = () => {
                 {staff.map((item)=><option key={item.id} value={item.id}>{item.name} · {item.designation}</option>)}
               </select>
             </label>
-            {jobMode === 'advanced' && <label className={labelClass}>Service Advisor
+            <label className={labelClass}>Service Advisor
               <select name="serviceAdvisorEmployeeId" value={form.serviceAdvisorEmployeeId}
                 onChange={(event) => {
                   const selected = staff.find((row) => row.id === event.target.value);
@@ -645,26 +640,22 @@ export const JobCreatePage = () => {
                 <option value="">Current logged-in advisor</option>
                 {staff.map((item)=><option key={item.id} value={item.id}>{item.name} · {item.designation}</option>)}
               </select>
-            </label>}
+            </label>
             <label className={labelClass}>Priority
               <select value={form.priority} onChange={(e) => set('priority', e.target.value)} className={inputClass}>
                 <option>Low</option><option>Medium</option><option>High</option><option>Urgent</option>
               </select>
             </label>
-            {jobMode === 'advanced' && <label className={labelClass}>Initial Status
+            <label className={labelClass}>Initial Status
               <select value={form.status} onChange={(e) => set('status', e.target.value)} className={inputClass}>
                 <option>New</option><option>Inspection</option>
               </select>
-            </label>}
-            {jobMode === 'advanced' && <label className={labelClass + ' md:col-span-2'}>Internal Notes
+            </label>
+            <label className={labelClass + ' md:col-span-2'}>Internal Notes
               <textarea rows={3} value={form.notes} onChange={(e) => set('notes', e.target.value)}
                 className="mt-1 min-h-24 w-full rounded-xl border border-line bg-surface-2 p-3 text-sm text-content outline-none focus:border-primary"/>
-            </label>}
+            </label>
           </div>
-          {jobMode === 'advanced' && <p className="job-create-advanced-notice" role="note">
-            Additional fault codes, inspection, parts, work & labour, labour hours, estimates and invoices
-            are managed in the existing Job Card workspace after creation. All information entered here stays saved while switching modes.
-          </p>}
         </section>
 
         <section className="job-create-section rounded-2xl border border-line bg-surface p-4 md:p-5" id="job-step-photos">
