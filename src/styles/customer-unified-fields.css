@@ -154,3 +154,74 @@
 @media(max-width:600px) {
   .cg-customer-pin-only {max-width:none;width:100%;}
 }
+
+/* Top-aligned customer labels make phone, email, type and branch scan alike. */
+.cg-customer-unified-fields .cg-stacked-field {
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  gap:7px;
+}
+.cg-customer-unified-fields .cg-stacked-label {
+  display:block;
+  margin:0;
+  color:var(--text-primary,#172033);
+  font-size:14px;
+  font-weight:620;
+  line-height:1.45;
+  white-space:normal;
+}
+.cg-customer-unified-fields .cg-customer-branch-assignment {
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  gap:7px;
+}
+.cg-customer-unified-fields .cg-customer-branch-assignment .cg-customer-branch-locked {
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:9px;
+  box-sizing:border-box;
+  height:48px;
+  min-height:48px;
+  padding:0 13px;
+  border:1px solid var(--border,#e1e7ef);
+  border-radius:9px;
+  background:var(--surface-2,#f6f8fb);
+}
+.cg-customer-unified-fields .cg-customer-branch-locked strong {
+  flex:1;
+  min-width:0;
+  font-size:15px;
+  font-weight:620;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.cg-customer-unified-fields .cg-customer-branch-locked > svg {
+  color:var(--text-secondary,#64748b);
+  flex:0 0 auto;
+}
+.cg-customer-unified-fields .cg-customer-branch-locked > svg:last-child {
+  color:var(--primary,#2563eb);
+}
+.cg-customer-unified-fields .cg-customer-address-row {
+  display:grid;
+  grid-template-columns:minmax(0,1.6fr) minmax(155px,.7fr);
+  gap:11px;
+  align-items:start;
+}
+.cg-customer-unified-fields .cg-customer-address-row > * {
+  min-width:0;
+}
+.cg-customer-unified-fields .cg-customer-address-row .cg-customer-pin-only {
+  width:100%;
+  max-width:none;
+}
+@media(max-width:600px) {
+  .cg-customer-unified-fields .cg-customer-address-row {
+    grid-template-columns:minmax(0,1fr);
+    gap:11px;
+  }
+}

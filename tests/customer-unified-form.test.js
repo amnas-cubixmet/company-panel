@@ -149,3 +149,22 @@ test('staff branch assignments are explicit and limited to three', () => {
   assert.match(staffEditor, /Staff Branch Access \(up to 3\)/);
   assert.match(service, /allowedBranchIds/);
 });
+
+test('customer fields use aligned accessible labels and compact branch assignment', () => {
+  const fields = readFileSync(new URL('../src/components/customers/CustomerFormFields.jsx', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../src/styles/customer-unified-fields.css', import.meta.url), 'utf8');
+  for (const component of ['Input', 'Select', 'Textarea']) {
+    const source = readFileSync(new URL('../src/components/ui/' + component + '.jsx', import.meta.url), 'utf8');
+    assert.match(source, /labelPosition = 'floating'/);
+    assert.match(source, /className="cg-stacked-label"/);
+    assert.match(source, /htmlFor=\{inputId\}/);
+  }
+  assert.match(fields, /label="Customer Name" labelPosition="above"/);
+  assert.match(fields, /label="Email Address" labelPosition="above"/);
+  assert.match(fields, /label="Customer Type" labelPosition="above"/);
+  assert.match(fields, /label="Assigned Branch" labelPosition="above"/);
+  assert.match(fields, /cg-customer-branch-assignment/);
+  assert.match(fields, /cg-customer-address-row/);
+  assert.match(css, /grid-template-columns:minmax\(0,1\.6fr\)/);
+  assert.match(css, /cg-customer-unified-fields \.cg-customer-branch-locked/);
+});
