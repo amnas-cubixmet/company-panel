@@ -49,8 +49,10 @@ export const toCustomerFormPayload = values => ({
   email: String(values.email || '').trim(),
   customerType: normalizeCustomerType(values.customerType) === 'Individual'
     ? 'individual' : 'business',
-  companyName: String(values.companyName || '').trim(),
-  gstin: String(values.gstNo || '').trim().toUpperCase(),
+  companyName: normalizeCustomerType(values.customerType) === 'Business / Company'
+    ? String(values.companyName || '').trim() : '',
+  gstin: normalizeCustomerType(values.customerType) === 'Business / Company'
+    ? String(values.gstNo || '').trim().toUpperCase() : '',
   address: String(values.address || '').trim(),
   city: String(values.city || '').trim(),
   state: String(values.state || '').trim(),
