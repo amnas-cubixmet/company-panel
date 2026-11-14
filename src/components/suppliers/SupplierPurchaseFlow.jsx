@@ -34,7 +34,6 @@ const choices = invoiceLineTaxChoices('unknown');
 const totalRate = row => row.gstChoice === 'none' ? 0 :
   row.gstChoice === 'custom' ? n(row.customTax) : n(invoiceTotalRateFromChoice(row.gstChoice));
 // Supplier bills use the same two Cash/Bank channels as Finance Management.
-const accountMethod = account => accountChannel(account?.kind);
 const getErrorText = error => {
   const data = error?.response?.data || error?.data || {};
   if (typeof data === 'string') return data;
@@ -50,6 +49,8 @@ export default function SupplierPurchaseFlow({
 }) {
   const [stock, setStock] = useState([]);
   const [accounts, setAccounts] = useState([]);
+  const resolvedAccountFor = channel => accounts.find(account =>
+    String(account.id) === defaultFinanceAccountId(accounts, channel));
   const accountBalanceShown = account => account.recordedBalance != null
     ? ' · ' + rupees(account.recordedBalance) + ' available'
     : '';
@@ -82,7 +83,7 @@ export default function SupplierPurchaseFlow({
   const [invoiceNumber, setInvoiceNumber] = useState(purchaseReference);
   const [placeOfSupply, setPlaceOfSupply] = useState('');
   const [splits, setSplits] = useState([]);
-  const [settlement, setSettlement] = useState({ amount: '', channel: '', accountId: '', reference: '' });
+  const [settlement, setSettlement] = useState({ amount: '', channel: '', reference: '' });
   const [settling, setSettling] = useState(false);
   const settleKey = useRef(requestKey());
 
@@ -127,20 +128,6 @@ export default function SupplierPurchaseFlow({
       .finally(() => { if (alive) setAccountsLoading(false); });
     return () => { alive = false; };
   }, [supplier.id]);
-
-  // Reconcile an account selection after the finance accounts API finishes
-  // loading. Preserve an intentional selection whenever it is still active.
-  useEffect(() => {
-    setSettlement(previous => {
-      if (!previous.channel) return previous;
-      const available = financeAccountsForChannel(accounts, previous.channel);
-      if (available.some(account => String(account.id) === String(previous.accountId))) {
-        return previous;
-      }
-      const accountId = defaultFinanceAccountId(accounts, previous.channel);
-      return previous.accountId === accountId ? previous : { ...previous, accountId };
-    });
-  }, [accounts]);
 
   useEffect(() => {
     // The payment tab must work independently of stock and GST lookups.
@@ -345,10 +332,8 @@ export default function SupplierPurchaseFlow({
   const changeSplit = (index, changes) => setSplits(rows => rows.map((row, i) => i === index ? { ...row, ...changes } : row));
   const addPaymentChannel = channel => {
     if (!FINANCE_CHANNELS.includes(channel) || splits.length >= 5) return;
-    const matching = financeAccountsForChannel(accounts, channel);
     setSplits(existing => [...existing, {
-      id: requestKey(), channel, accountId: matching.length === 1 ? String(matching[0].id) : '',
-      amount: '', reference: '',
+      id: requestKey(), channel, amount: '', reference: '',
     }]);
   };
 
@@ -382,14 +367,16 @@ export default function SupplierPurchaseFlow({
     }
     const accountTotals = new Map();
     for (const row of splits) {
-      const account = accounts.find(a => String(a.id) === row.accountId);
-      if (!account || !FINANCE_CHANNELS.includes(row.channel) ||
-        accountChannel(account.kind) !== row.channel ||
-        !Number.isFinite(Number(row.amount)) ||
-        n(row.amount) <= 0 || !/^\d+(?:\.\d{1,2})?$/.test(String(row.amount))) {
-        setError('Every Cash/Bank split needs a valid account and amount.'); return;
+      if (!FINANCE_CHANNELS.includes(row.channel) ||
+        !Number.isFinite(Number(row.amount)) || n(row.amount) <= 0 ||
+        !/^\d+(?:\.\d{1,2})?$/.test(String(row.amount))) {
+        setError('Choose Cash or Bank and enter a valid amount for every payment.'); return;
       }
-      accountTotals.set(row.accountId, n(row.amount) + (accountTotals.get(row.accountId) || 0));
+      const account = resolvedAccountFor(row.channel);
+      if (!account) {
+        setError('Choose the Default Payment Account for ' + row.channel + ' in Finance > Accounts.'); return;
+      }
+      accountTotals.set(String(account.id), n(row.amount) + (accountTotals.get(String(account.id)) || 0));
     }
     for (const [id, value] of accountTotals.entries()) {
       const account = accounts.find(a => String(a.id) === id);
@@ -412,15 +399,11 @@ export default function SupplierPurchaseFlow({
           : {}),
       })),
       ...(splits.length ? {
-        payments: splits.map(row => {
-          const account = accounts.find(a => String(a.id) === row.accountId);
-          return {
-            accountId: row.accountId, amount: fixed(row.amount),
-            paidOn: purchaseDate, method: accountMethod(account),
-            kind: 'Payment', reference: row.reference.trim(),
-            idempotencyKey: row.id,
-          };
-        }),
+        // Django resolves the current default account under a DB lock.
+        payments: splits.map(row => ({
+          amount: fixed(row.amount), paidOn: purchaseDate, method: row.channel,
+          kind: 'Payment', reference: row.reference.trim(), idempotencyKey: row.id,
+        })),
       } : {}),
     };
     setPosting(true);
@@ -484,7 +467,6 @@ export default function SupplierPurchaseFlow({
       setCashSetupOpen(false);
       setSettlement(previous => ({
         ...previous, channel: 'Cash',
-        accountId: defaultFinanceAccountId(accounts, 'Cash'),
       }));
       return;
     }
@@ -499,7 +481,7 @@ export default function SupplierPurchaseFlow({
       const account = { ...created, kind: 'Cash', name: 'Cash in Hand',
         isActive: true, recordedBalance: created.recordedBalance ?? balance };
       setAccounts(previous => [...previous.filter(row => String(row.id) !== String(account.id)), account]);
-      setSettlement(previous => ({ ...previous, channel: 'Cash', accountId: String(account.id) }));
+      setSettlement(previous => ({ ...previous, channel: 'Cash' }));
       setCashSetupOpen(false);
       setCashOpeningBalance('');
       setSettlementError('');
@@ -518,7 +500,7 @@ export default function SupplierPurchaseFlow({
     setSettlementError('');
     setSettlementNotice('');
     const amount = Number(settlement.amount);
-    const account = accounts.find(a => String(a.id) === String(settlement.accountId));
+    const account = resolvedAccountFor(settlement.channel);
     if (!settlement.amount || !Number.isFinite(amount) || amount <= 0 ||
       !/^\d+(?:\.\d{1,2})?$/.test(String(settlement.amount))) {
       setSettlementError('Enter a payment amount greater than zero (up to two decimal places).');
@@ -536,10 +518,9 @@ export default function SupplierPurchaseFlow({
       setSettlementError('Payment accounts have not loaded. Reload the account list before confirming.');
       return;
     }
-    if (!account || accountChannel(account.kind) !== settlement.channel) {
-      setSettlementError(settlement.channel === 'Cash'
-        ? 'No active Cash in Hand account selected. Create or select a Cash account below.'
-        : 'Select an active Bank / UPI account below.');
+    if (!account) {
+      setSettlementError('Select a Default Payment Account for ' + settlement.channel +
+        ' in Finance > Accounts. This keeps the correct ledger balance.');
       return;
     }
     if (account.recordedBalance != null && amount > n(account.recordedBalance) + 0.001) {
@@ -560,15 +541,15 @@ export default function SupplierPurchaseFlow({
     setSettling(true);
     try {
       await supplierFinanceService.recordPayment({
-        supplierId: supplier.id, accountId: account.id, amount: fixed(amount),
-        kind: 'Payment', method: accountMethod(account),
+        supplierId: supplier.id, amount: fixed(amount),
+        kind: 'Payment', method: settlement.channel,
         paidOn: localDate(), reference: settlement.reference.trim(),
         allocations, idempotencyKey: settleKey.current,
       });
       // The write succeeded. Never suggest retrying the payment because a
       // subsequent read-only balance refresh failed.
       settleKey.current = requestKey();
-      setSettlement({ amount: '', channel: '', accountId: '', reference: '' });
+      setSettlement({ amount: '', channel: '', reference: '' });
       setSettlementNotice('Payment recorded successfully. Supplier credit and account balance have been updated.');
       const refreshes = await Promise.allSettled([Promise.resolve().then(() => onChanged()), reloadAccounts()]);
       if (refreshes.some(result => result.status === 'rejected')) {
@@ -791,21 +772,17 @@ export default function SupplierPurchaseFlow({
                   <div className="cg-supplier-purchase-split" key={row.id}>
                     <label>Payment method *
                       <select className={fieldClass} value={row.channel || ''}
-                        onChange={e => changeSplit(index, { channel: e.target.value, accountId: '' })}>
+                        onChange={e => changeSplit(index, { channel: e.target.value })}>
                         <option value="">Select method</option>
                         <option value="Cash">Cash in Hand</option>
                         <option value="Bank">Bank</option>
                       </select>
                     </label>
-                    <label>Cash / Bank account *
-                      <select className={fieldClass} value={row.accountId}
-                        onChange={e => changeSplit(index, { accountId: e.target.value })}>
-                        <option value="">Select {row.channel === 'Cash' ? 'Cash in Hand' : row.channel === 'Bank' ? 'Bank' : 'payment method'} account</option>
-                        {financeAccountsForChannel(accounts, row.channel).map(account => <option key={account.id} value={account.id}>
-                          {account.name} ({accountMethod(account)}){accountBalanceShown(account)}
-                        </option>)}
-                      </select>
-                    </label>
+                    {row.channel && <p className="cg-supplier-debit-preview">
+                      {resolvedAccountFor(row.channel)
+                        ? <>Finance debit: <strong>{resolvedAccountFor(row.channel).name}</strong></>
+                        : <Link to="/finance/accounts">Set default {row.channel} payment account in Finance</Link>}
+                    </p>}
                     <label>Amount (₹)
                       <input className={fieldClass} type="number" min="0.01" step="0.01"
                         value={row.amount} onChange={e => changeSplit(index, { amount: e.target.value })}/>
@@ -855,8 +832,7 @@ export default function SupplierPurchaseFlow({
                 <select className={fieldClass} value={settlement.channel}
                   onChange={e => {
                     const channel = e.target.value;
-                    setSettlement(old => ({ ...old, channel,
-                      accountId: defaultFinanceAccountId(accounts, channel) }));
+                    setSettlement(old => ({ ...old, channel }));
                     setCashSetupOpen(false);
                     setCashSetupError('');
                     setSettlementError('');
@@ -866,22 +842,18 @@ export default function SupplierPurchaseFlow({
                   <option value="Bank">Bank / UPI (PhonePe, GPay, transfer)</option>
                 </select>
               </label>
-              {settlement.channel && financeAccountsForChannel(accounts, settlement.channel).length === 1
-                ? <div className="cg-supplier-account-auto" role="status">
-                    <strong>{settlement.channel === 'Cash' ? 'Cash in Hand account' : 'Bank / UPI account'}</strong>
-                    <span>{financeAccountsForChannel(accounts, settlement.channel)[0].name}
-                      {accountBalanceShown(financeAccountsForChannel(accounts, settlement.channel)[0])}</span>
-                    <small>Active account selected automatically</small>
-                  </div>
-                : <label>{settlement.channel === 'Cash' ? 'Cash in Hand account' : 'Cash / Bank account'} *
-                    <select className={fieldClass} value={settlement.accountId}
-                      onChange={e => { setSettlement(old => ({ ...old, accountId: e.target.value })); setSettlementError(''); }}>
-                      <option value="">Select {settlement.channel || 'payment method'} account</option>
-                      {financeAccountsForChannel(accounts, settlement.channel).map(account => <option key={account.id} value={account.id}>
-                        {account.name} ({accountMethod(account)}){accountBalanceShown(account)}
-                      </option>)}
-                    </select>
-                  </label>}
+              {settlement.channel && resolvedAccountFor(settlement.channel) &&
+                <p className="cg-supplier-debit-preview" role="status">
+                  Automatically deducted from <strong>{resolvedAccountFor(settlement.channel).name}</strong>
+                  {accountBalanceShown(resolvedAccountFor(settlement.channel))} in <Link to="/finance">Finance</Link>.
+                </p>}
+              {settlement.channel && !accountsLoading && !accountsError &&
+                !resolvedAccountFor(settlement.channel) &&
+                financeAccountsForChannel(accounts, settlement.channel).length > 0 &&
+                <p className="cg-supplier-debit-preview" role="alert">
+                  Multiple accounts found. <Link to="/finance/accounts">Set a Default Payment Account in Finance</Link>
+                  {' '}before paying.
+                </p>}
               {settlement.channel === 'Cash' && !accountsLoading && !accountsError &&
                 financeAccountsForChannel(accounts, 'Cash').length === 0 && (
                   <div className="wide cg-supplier-cash-setup">
