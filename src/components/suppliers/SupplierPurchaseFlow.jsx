@@ -5,6 +5,7 @@ import { stockCatalogService } from '../../services/stockCatalog.service';
 import { invoiceLineTaxChoices, invoiceTotalRateFromChoice, invoiceChoiceFromTotalRate } from '../../utils/invoiceTaxUi';
 import { FINANCE_CHANNELS, accountChannel, financeAccountsForChannel } from '../../utils/financeCashBank';
 import { findPostedSupplierBillReplay } from '../../utils/supplierPurchaseReplay';
+import { purchaseProductOptions } from '../../utils/supplierProductSearch';
 import '../../styles/supplier-purchase-flow.css';
 
 const rupees = value => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(Number(value || 0));
@@ -158,23 +159,10 @@ export default function SupplierPurchaseFlow({
     return () => { current = false; window.clearTimeout(timer); };
   }, [partSearch, searchRetry, showPurchase]);
 
-  const stockOptions = useMemo(() => {
-    const query = partSearch.trim().toLowerCase();
-    const seen = new Set();
-    return [...remoteProducts, ...stock].filter(item => {
-      const id = String(item.id || '');
-      if (!id || seen.has(id)) return false;
-      seen.add(id);
-      const searchable = [item.partName, item.name, item.partNumber, item.sku,
-        item.barcode, item.brand, item.location, item.rack].filter(Boolean).join(' ').toLowerCase();
-      return !query || searchable.includes(query);
-    }).sort((a, b) => {
-      const aName = String(a.partName || a.name || '').toLowerCase();
-      const bName = String(b.partName || b.name || '').toLowerCase();
-      return Number(bName.startsWith(query)) - Number(aName.startsWith(query))
-        || aName.localeCompare(bName);
-    }).slice(0, query ? 60 : 80);
-  }, [stock, remoteProducts, partSearch]);
+  const stockOptions = useMemo(
+    () => purchaseProductOptions(stock, remoteProducts, partSearch, partSearch.trim() ? 60 : 80),
+    [stock, remoteProducts, partSearch],
+  );
 
   const postedBills = useMemo(() => bills
     .filter(bill => bill.postingStatus === 'Posted' && n(bill.outstanding) > 0)
@@ -203,8 +191,7 @@ export default function SupplierPurchaseFlow({
   const selectItem = value => {
     const item = [...remoteProducts, ...stock].find(row => String(row.id) === String(value));
     if (value === '__new__') {
-      setActivePart(emptyPart());
-      setActivePart(previous => ({ ...previous, itemId: '__new__' }));
+      setActivePart({ ...emptyPart(), itemId: '__new__', description: partSearch.trim() });
     } else if (item) {
       setStock(current => current.some(row => String(row.id) === String(item.id))
         ? current : [item, ...current]);
