@@ -16,27 +16,11 @@ import { appConfirm } from '../../components/common/appDialogs';
 import { useLocation } from 'react-router-dom';
 import { customerContactLinks } from '../../components/jobs/customerContact.utils';
 import { filterSupplierProducts } from '../../utils/supplierProductSearch';
+import { SUPPLIER_TAB_HASHES, allowedSupplierTab } from '../../utils/supplierDetailTabs';
 import '../../styles/suppliers-workspace.css';
 import '../../styles/suppliers-unified-ui.css';
 import '../../styles/supplier-detail-tabs.css';
 
-const SUPPLIER_TAB_HASHES = Object.freeze({
-  overview: '#supplier-profile',
-  purchase: '#supplier-purchase-form',
-  payments: '#supplier-pay-now',
-  products: '#supplier-products',
-  accounts: '#supplier-ledger',
-  returns: '#supplier-returns',
-});
-
-export const supplierTabForHash = hash => {
-  if (hash === '#supplier-purchase-form') return 'purchase';
-  if (hash === '#supplier-pay-now') return 'payments';
-  if (hash === '#supplier-products') return 'products';
-  if (hash === '#supplier-ledger' || hash === '#supplier-transactions') return 'accounts';
-  if (hash === '#supplier-returns') return 'returns';
-  return 'overview';
-};
 const asText = value => String(value ?? '').trim();
 const formFields = ['name', 'contact_person', 'phone', 'email', 'gstNo', 'address'];
 const money = value => value === null || value === undefined || value === '' || !Number.isFinite(Number(value))
@@ -222,9 +206,7 @@ export default function SuppliersPage({ section = 'all' }) {
     ...(canViewFinance ? [{ key: 'accounts', label: 'Accounts', icon: Wallet },
       { key: 'returns', label: 'Returns', icon: ReceiptText }] : []),
   ];
-  const requestedTab = supplierTabForHash(location.hash);
-  const activeSupplierTab = availableSupplierTabs.some(tab => tab.key === requestedTab)
-    ? requestedTab : 'overview';
+  const activeSupplierTab = allowedSupplierTab(location.hash, availableSupplierTabs);
   const chooseSupplierTab = key => {
     if (!id || !availableSupplierTabs.some(tab => tab.key === key)) return;
     navigate({
