@@ -10,6 +10,7 @@ export const ResponsiveModalSheet = ({
   children,
   maxWidth = '720px',
   className = '',
+  footer = null,
 }) => {
   const modalRef = useRef(null);
 
@@ -54,6 +55,7 @@ export const ResponsiveModalSheet = ({
         <div className="responsive-modal-body scroll-hidden">
           {children}
         </div>
+        {footer && <div className="responsive-modal-footer">{footer}</div>}
       </section>
     </div>
   );
