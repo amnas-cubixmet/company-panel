@@ -2,6 +2,10 @@ import { appConfirm } from '../../components/common/appDialogs';
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from 'react-router-dom';
 import { customerService } from '../../services/customer.service';
+import { CustomerFormFields } from '../../components/customers/CustomerFormFields';
+import {
+  normalizeCustomerPhone, toCustomerFormPayload, validateCustomerContact,
+} from '../../utils/customerFormModel';
 import { CustomerTrackingLinkPanel } from '../../components/customers/CustomerTrackingLinkPanel';
 import { CustomerWhatsAppConsent } from '../../components/customers/CustomerWhatsAppConsent';
 import { CustomerCreditLedgerPanel } from '../../components/customers/CustomerCreditLedgerPanel';
@@ -96,7 +100,6 @@ export const CustomerDetails = () => {
   // Edit Customer form state
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
-  const [editWhatsapp, setEditWhatsapp] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editAddress, setEditAddress] = useState('');
   const [editCity, setEditCity] = useState('');
@@ -106,6 +109,9 @@ export const CustomerDetails = () => {
   const [editCompany, setEditCompany] = useState('');
   const [editGst, setEditGst] = useState('');
   const [editBranch, setEditBranch] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editBranches, setEditBranches] = useState([]);
+  const [editBranchesError, setEditBranchesError] = useState('');
 
   // Customer Note form state
   const [newNoteText, setNewNoteText] = useState('');
@@ -138,8 +144,7 @@ export const CustomerDetails = () => {
       if (cust) {
         setCustomer(cust);
         setEditName(cust.name || '');
-        setEditPhone(cust.phone || '');
-        setEditWhatsapp(cust.whatsapp || cust.phone || '');
+        setEditPhone(normalizeCustomerPhone(cust.phone));
         setEditEmail(cust.email || '');
         setEditAddress(cust.address || '');
         setEditCity(cust.city || '');
@@ -148,7 +153,8 @@ export const CustomerDetails = () => {
         setEditType(profileCustomerType(cust.customerType || cust.customer_type));
         setEditCompany(cust.companyName || cust.company_name || '');
         setEditGst(cust.gstNo || cust.gstin || '');
-        setEditBranch(cust.branchName || cust.branch || '');
+        setEditBranch(cust.branchId || cust.branch || '');
+        setEditNotes(cust.notes || '');
         setDocuments(Array.isArray(cust.documents) ? cust.documents : []);
 
         setNotesList(cust.notes ? [{ id: 'customer-note', text: cust.notes, addedBy: 'Workshop team', date: cust.createdAt || '' }] : []);
@@ -277,45 +283,77 @@ export const CustomerDetails = () => {
     }
   };
 
-  const handleEditCustomerSubmit = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (!isEditCustomerOpen) return undefined;
+    let active = true;
+    customerService.getCustomerBranches()
+      .then(rows => { if (active) setEditBranches(Array.isArray(rows) ? rows : []); })
+      .catch(error => { if (active) setEditBranchesError(error?.message || 'Unable to load branches.'); });
+    return () => { active = false; };
+  }, [isEditCustomerOpen]);
+
+  const editCustomerFormValues = {
+    name: editName, phone: editPhone, email: editEmail,
+    address: editAddress, city: editCity, state: editState,
+    pincode: editPincode, customerType: editType,
+    companyName: editCompany, gstNo: editGst, branch: editBranch, notes: editNotes,
+  };
+  const updateEditCustomerField = (field, value) => {
+    const setters = {
+      name: setEditName, phone: setEditPhone, email: setEditEmail,
+      address: setEditAddress, city: setEditCity, state: setEditState,
+      pincode: setEditPincode, customerType: setEditType,
+      companyName: setEditCompany, gstNo: setEditGst,
+      branch: setEditBranch, notes: setEditNotes,
+    };
+    setters[field]?.(value);
+    setEditFieldErrors(previous => {
+      if (!previous[field]) return previous;
+      const next = { ...previous };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const handleEditCustomerSubmit = async (event) => {
+    event.preventDefault();
     if (editSaving) return;
+    const errors = validateCustomerContact(editCustomerFormValues);
+    setEditFieldErrors(errors);
+    if (Object.keys(errors).length) {
+      setEditFormError('Enter the customer name and a valid Phone Number.');
+      return;
+    }
     setEditSaving(true);
     setEditFormError('');
-    setEditFieldErrors({});
     try {
-    const updated = await customerService.updateCustomer(customer.id, {
-      name: editName,
-      phone: editPhone,
-      whatsapp: editWhatsapp,
-      email: editEmail,
-      address: editAddress,
-      city: editCity,
-      state: editState,
-      pincode: editPincode,
-      customerType: editType === 'Business' ? 'business' : 'individual',
-      companyName: editCompany,
-      gstin: editGst
-    });
-    setCustomer(updated);
-    showToast('Customer profile updated.');
-    setIsEditCustomerOpen(false);
+      const updated = await customerService.updateCustomer(customer.id,
+        toCustomerFormPayload(editCustomerFormValues));
+      setCustomer(updated);
+      showToast('Customer profile updated.');
+      setIsEditCustomerOpen(false);
     } catch (error) {
       const data = error?.response?.data || error?.data;
-      const fields = ['name', 'phone', 'whatsapp', 'email', 'customerType', 'companyName', 'gstNo'];
-      const aliases = { customer_type: 'customerType', company_name: 'companyName', gstin: 'gstNo' };
+      const fields = ['name', 'phone', 'email', 'customerType', 'companyName',
+        'gstNo', 'branch', 'address', 'city', 'state', 'pincode', 'notes'];
+      const aliases = {
+        customer_type: 'customerType', company_name: 'companyName',
+        gstin: 'gstNo', whatsapp: 'phone',
+      };
       const next = {};
       if (data && typeof data === 'object' && !Array.isArray(data)) {
         for (const [key, value] of Object.entries(data)) {
           const field = aliases[key] || key;
-          if (fields.includes(field)) next[field] = Array.isArray(value) ? String(value[0]) : String(value);
+          if (fields.includes(field)) {
+            next[field] = Array.isArray(value) ? String(value[0]) : String(value);
+          }
         }
       }
       setEditFieldErrors(next);
       setEditFormError(error?.message || 'Unable to save customer. Check the highlighted fields.');
       requestAnimationFrame(() => {
         const first = Object.keys(next)[0];
-        const input = first && editFormRef.current?.querySelector(`[data-customer-field="${first}"]`);
+        const input = first && editFormRef.current?.querySelector('[data-customer-field="' + first + '"]');
         input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         input?.focus();
       });
@@ -637,10 +675,6 @@ export const CustomerDetails = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Phone Number</span>
                     <strong style={{ color: 'var(--text-primary)' }}>{customer.phone}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>WhatsApp</span>
-                    <strong style={{ color: 'var(--success)' }}>{customer.whatsapp || customer.phone || '—'}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Email</span>
@@ -1235,41 +1269,13 @@ export const CustomerDetails = () => {
             event.target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             event.target?.focus();
           }}
-          className="customer-profile-edit-form"
+          className="customer-profile-edit-form cg-customer-standard-form"
           style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {editFormError && <p className="customer-profile-form-error" role="alert">{editFormError}</p>}
-          <Input label="Customer Name" required data-customer-field="name" error={editFieldErrors.name} value={editName} onChange={(e) => setEditName(e.target.value)} />
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <Input label="Phone Number" required data-customer-field="phone" error={editFieldErrors.phone} value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
-            <Input label="WhatsApp Number" data-customer-field="whatsapp" error={editFieldErrors.whatsapp} value={editWhatsapp} onChange={(e) => setEditWhatsapp(e.target.value)} />
-          </div>
-
-          <Input label="Email Address" type="email" data-customer-field="email" error={editFieldErrors.email} value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <Select label="Customer Type" data-customer-field="customerType" error={editFieldErrors.customerType} value={editType} onChange={(e) => setEditType(e.target.value)}>
-              <option value="Individual">Individual</option>
-              <option value="Business">Business</option>
-            </Select>
-
-
-          </div>
-
-          {editType === 'Business' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <Input label="Company Name" data-customer-field="companyName" error={editFieldErrors.companyName} value={editCompany} onChange={(e) => setEditCompany(e.target.value)} />
-              <Input label="GST Number" data-customer-field="gstNo" error={editFieldErrors.gstNo} value={editGst} onChange={(e) => setEditGst(e.target.value)} />
-            </div>
-          )}
-
-          <Textarea label="Address" rows={2} value={editAddress} onChange={(e) => setEditAddress(e.target.value)} />
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-            <Input label="City" value={editCity} onChange={(e) => setEditCity(e.target.value)} />
-            <Input label="State" value={editState} onChange={(e) => setEditState(e.target.value)} />
-            <Input label="PIN Code" value={editPincode} onChange={(e) => setEditPincode(e.target.value)} />
-          </div>
+          <CustomerFormFields values={editCustomerFormValues}
+            onChange={updateEditCustomerField}
+            errors={editFieldErrors} branches={editBranches}
+            branchError={editBranchesError} disabled={editSaving}/>
 
           <button type="submit" disabled={editSaving} style={{ height: '44px', borderRadius: '11px', border: 'none', backgroundColor: 'var(--primary)', color: '#ffffff', fontWeight: '700', marginTop: '6px', cursor: 'pointer' }}>
             {editSaving ? 'Saving…' : 'Save Profile Changes'}
