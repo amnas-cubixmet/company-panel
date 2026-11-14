@@ -807,16 +807,7 @@ export default function SuppliersPage({ section = 'all' }) {
             onClick={() => setDeleteConfirmOpen(true)} className="cg-supplier-button">Delete Supplier</button>}
         </div>
       </section>
-      {(canCreatePurchase || canPaySupplier) && (
-        <SupplierPurchaseFlow
-          supplier={supplier}
-          initialPart={location.state?.purchasePrefill || null}
-          canPurchase={canCreatePurchase}
-          canPay={canPaySupplier}
-          bills={supplierBills}
-          onChanged={refreshSupplierDetails}
-        />
-      )}
+
       {canViewFinance && (
         <div id="supplier-returns" className="cg-supplier-return-section">
         <SupplierReturnsPanel
@@ -837,14 +828,10 @@ export default function SuppliersPage({ section = 'all' }) {
           {supplierFinanceError && <p className="cg-supplier-error" role="alert">{supplierFinanceError}</p>}
           {supplierFinancials && (
             <div className="cg-supplier-fields">
-              <div><span>Total Posted Purchases</span><strong>{money(supplierFinancials.totalPurchases)}</strong></div>
-              <div><span>Paid Against Bills</span><strong>{money(supplierFinancials.totalPaymentsApplied)}</strong></div>
-              <div><span>Remaining Credit</span><strong>{money(supplierFinancials.outstanding)}</strong></div>
-              <div><span>Overdue Payable</span><strong>{money(supplierFinancials.overdue)}</strong></div>
-              <div><span>Unapplied Advances</span><strong>{money(supplierFinancials.availableAdvance)}</strong></div>
-              <div><span>Purchase Returns</span><strong>{money(supplierFinancials.totalReturns)}</strong></div>
-              <div><span>Debit Note Credit Available</span><strong>{money(supplierFinancials.availableDebitCredit)}</strong></div>
-              <div><span>Net After Available Credits</span><strong>{money(supplierFinancials.netExposureAfterAvailableCredits)}</strong></div>
+              <div><span>Total Purchases</span><strong>{money(supplierFinancials.totalPurchases)}</strong></div>
+              <div><span>Total Paid</span><strong>{money(supplierFinancials.totalPaymentsApplied)}</strong></div>
+              <div><span>Balance Due</span><strong>{money(supplierFinancials.outstanding)}</strong></div>
+              <div><span>Advance Available</span><strong>{money(supplierFinancials.availableAdvance)}</strong></div>
             </div>
           )}
           <p className="cg-supplier-ledger-note" aria-label="Credit outstanding">
