@@ -551,15 +551,13 @@ export default function SuppliersPage({ section = 'all' }) {
     <div className="cg-suppliers-head">
       <div>
         {id&&<Link className="cg-suppliers-back" to="/suppliers"><ArrowLeft size={16}/> All Suppliers</Link>}
-        <span className="cg-suppliers-eyebrow">CUBIXGEAR · WORKSHOP SUPPLIERS</span>
+        {!id && <span className="cg-suppliers-eyebrow">CUBIXGEAR · WORKSHOP SUPPLIERS</span>}
         <h1 title={id ? (supplier?.name || 'Supplier Details') : undefined}>
           {id ? (supplier?.name || 'Supplier Details') : purchaseView ? 'Supplier Purchases' : 'Suppliers'}
         </h1>
-        <p className="cg-suppliers-subtitle">{id
-          ? 'Supplier details, products and balances.'
-          : purchaseView
-            ? 'Review purchase orders separately from posted bills and supplier credit.'
-            : 'Manage supplier contacts and see the money still owed on posted purchase bills.'}</p>
+        {!id && <p className="cg-suppliers-subtitle">{purchaseView
+          ? 'Purchase history and supplier bills.'
+          : 'Supplier contacts, stock and balances.'}</p>}
       </div>
       <div className="cg-supplier-header-actions">
         {id ? canEdit && supplier && <button type="button" className="cg-supplier-button" onClick={()=>setEditor(supplier)}>Edit Supplier</button>
@@ -849,15 +847,16 @@ export default function SuppliersPage({ section = 'all' }) {
           <div><span>GSTIN</span><strong>{supplier.gstNo||'—'}</strong></div>
           <div className="full"><span>Address</span><strong>{supplier.address||'—'}</strong></div>
         </div>
-        {canViewFinance && <div className="cg-supplier-credit-highlight">
-          <div>
-            <span>Outstanding Supplier Credit</span>
-            <strong>{supplierFinancials ? money(supplierFinancials.outstanding) : 'Unavailable'}</strong>
-            <small>Unpaid balance on posted supplier bills only</small>
-          </div>
-          {canPaySupplier && <a href="#supplier-pay-now" className="cg-supplier-button primary">
-            <CreditCard size={16}/> Pay Supplier
-          </a>}
+        {canViewFinance && <div className="cg-supplier-summary-grid" aria-label="Supplier balance summary">
+          {[
+            ['Total Purchases', supplierFinancials?.totalPurchases],
+            ['Total Paid', supplierFinancials?.totalPaymentsApplied],
+            ['Balance Due', supplierFinancials?.outstanding],
+            ['Advance Available', supplierFinancials?.availableAdvance],
+          ].map(([label, amount]) =>
+            <div key={label} className="cg-supplier-summary-card">
+              <span>{label}</span><strong>{money(amount)}</strong>
+            </div>)}
         </div>}
         <div className="cg-supplier-contacts">
           <SupplierContactActions supplier={supplier}/>
