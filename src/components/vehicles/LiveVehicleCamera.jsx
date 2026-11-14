@@ -250,6 +250,8 @@ export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
             <label className="live-camera-caption">Inspection Notes
               <input value={caption} maxLength={255} onChange={(e) => setCaption(e.target.value)} placeholder="Optional photo caption" />
             </label>
+          </div>
+          <div className="live-camera-footer">
             <div className="live-camera-action-row">
               {!file && <>
                 <button type="button" onClick={switchCamera} disabled={loading} title={cameras.length > 1 ? 'Switch physical camera' : 'Toggle front/rear camera'}><SwitchCamera size={18}/> Switch</button>
