@@ -415,7 +415,7 @@ export function AccountsPage() {
           <Building2 size={40} />
           <h3>No cash or bank accounts yet</h3>
           <p>No {channel === 'Cash' ? 'Cash' : channel === 'Bank' ? 'Bank / UPI' : 'Cash or Bank'} account available. Create one to receive customer payments or pay suppliers and expenses.</p>
-          {canManage && <button className="finance-primary-btn" onClick={() => navigate('/finance/accounts/new')}>
+          {canManage && <button className="finance-primary-btn" onClick={() => navigate('/finance/accounts/new' + location.search)}>
             Add First Account
           </button>}
         </div>
