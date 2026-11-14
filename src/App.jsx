@@ -41,7 +41,6 @@ import './styles/job-parts-ui.css';
 import './styles/job-inspection-simple.css';
 import './styles/job-estimate-quick.css';
 import './styles/job-create-customer.css';
-import './styles/job-create-alignment.css';
 import './styles/job-complaint-detail.css';
 import './styles/billing-ui-unified.css';
 import './styles/account-workspace-unified.css';
