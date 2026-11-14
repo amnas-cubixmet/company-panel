@@ -1332,8 +1332,13 @@ try {
           await from.fill('2026-10-20');
           await list.getByText('No matching documents').waitFor({state:'visible'});
           await list.getByRole('button',{name:'Clear Filters'}).first().click();
-          await list.getByRole('button',{name:'View INV-0001'}).waitFor({state:'visible',
-            timeout:10000});
+          if(profile.width>767) {
+            await list.getByRole('button',{name:'View INV-0001'}).waitFor({state:'visible',
+              timeout:10000});
+          } else {
+            await list.locator('.invoice-dashboard-mobile-card').first().waitFor({state:'visible',
+              timeout:10000});
+          }
           await sort.selectOption('oldest');
           if(await sort.inputValue()!=='oldest') {
             throw Error('Invoice sort selection did not update.');
