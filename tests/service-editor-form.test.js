@@ -31,7 +31,7 @@ test('service editor retains API validation, save semantics and all GST treatmen
     assert.ok(page.includes('value="' + value + '"'), value);
   }
   assert.match(page, /<GstRateDropdown/);
-  assert.match(page, /taxRate: rate/);
+  assert.match(page, /taxRate:\s*rate/);
   assert.match(service, /price: data\.price \?\? 0/);
   assert.match(service, /taxTreatment: data\.taxTreatment/);
 });
