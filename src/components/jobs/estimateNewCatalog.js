@@ -53,7 +53,7 @@ export const validateEstimateCatalogDraft = (draft = {}, { registered = false } 
   if (registered) {
     const rate = String(draft.taxRate ?? '').trim();
     const isNone = draft.taxChoice === 'none';
-    if (!draft.taxChoice || !/^\\d+(?:\\.\\d{1,2})?$/.test(rate)
+    if (!draft.taxChoice || !/^\d+(?:\.\d{1,2})?$/.test(rate)
         || !Number.isFinite(Number(rate)) || Number(rate) > 100
         || (isNone && Number(rate) !== 0)
         || (!isNone && Number(rate) === 0)) {
