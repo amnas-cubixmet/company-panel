@@ -1079,8 +1079,13 @@ try {
               parseFloat(getComputedStyle(el).fontSize));
             const firstGrid=root.querySelector('.customer-directory-form-grid');
             const columns=firstGrid?getComputedStyle(firstGrid).gridTemplateColumns.split(' ').length:0;
-            const action=root.querySelector('.customer-directory-form-submit');
-            return {controls,notes,labels,columns,
+            const sheet=root.closest('.responsive-modal-sheet');
+            const footer=sheet?.querySelector('.responsive-modal-footer');
+            const action=sheet?.querySelector('.customer-directory-form-submit');
+            const footerRect=footer?.getBoundingClientRect();
+            const footerVisible=!!footerRect && footerRect.top>=0
+              && footerRect.bottom<=window.innerHeight+2;
+            return {controls,notes,labels,columns,footerVisible,
               actionHeight:action?Math.round(action.getBoundingClientRect().height):0};
           });
           const expectedColumns=profile.width<=520?1:2;
@@ -1089,7 +1094,8 @@ try {
               item.height<48||item.textSize<16)||
             measurements.notes.some(item=>item.border>0||item.textSize<16)||
             measurements.labels.some(size=>size<14)||
-            measurements.actionHeight<48||measurements.columns!==expectedColumns) {
+            measurements.actionHeight<48||!measurements.footerVisible||
+            measurements.columns!==expectedColumns) {
             throw Error('Workshop Customer form style mismatch: '+JSON.stringify({width:profile.width,...measurements}));
           }
           const nameInput=dialog.getByRole('textbox',{name:/Customer Name/}).first();

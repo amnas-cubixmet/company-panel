@@ -30,17 +30,19 @@ export function CustomerFormFields({
       <Input label="Customer Name" required icon={Users} autoComplete="name"
         {...fieldProps('name')} value={values.name || ''}
         placeholder="Customer full name" onChange={e => set('name')(e.target.value)} />
-      <div className="cg-customer-unified-phone">
-        <CountryPhoneField label="Phone Number" required
-          {...fieldProps('phone')} value={values.phone || ''}
-          onChange={set('phone')}/>
-        <p className="cg-customer-contact-hint">
-          One contact number for calls and optional manual WhatsApp sharing.
-        </p>
+      <div className="cg-customer-contact-row">
+        <div className="cg-customer-unified-phone">
+          <CountryPhoneField label="Phone Number" required
+            {...fieldProps('phone')} value={values.phone || ''}
+            onChange={set('phone')}/>
+          <p className="cg-customer-contact-hint">
+            One contact number for calls and optional manual WhatsApp sharing.
+          </p>
+        </div>
+        <Input label="Email Address" type="email" icon={Mail}
+          autoComplete="email" {...fieldProps('email')} value={values.email || ''}
+          placeholder="Email (optional)" onChange={e => set('email')(e.target.value)} />
       </div>
-      <Input label="Email Address" type="email" icon={Mail}
-        autoComplete="email" {...fieldProps('email')} value={values.email || ''}
-        placeholder="Email (optional)" onChange={e => set('email')(e.target.value)} />
     </section>
 
     <section className="cg-customer-unified-section" aria-label="Customer classification">

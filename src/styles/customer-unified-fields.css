@@ -115,3 +115,19 @@
   .cg-customer-standard-form .cg-customer-unified-fields {gap:11px}
   .cg-customer-standard-form .cg-customer-unified-section-heading {display:grid}
 }
+
+/* Shared customer contact row used by all customer create/edit flows. */
+.cg-customer-unified-fields .cg-customer-contact-row {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:start;
+  gap:12px;
+  min-width:0;
+}
+.cg-customer-unified-fields .cg-customer-contact-row > * {min-width:0;}
+@media(max-width:600px) {
+  .cg-customer-unified-fields .cg-customer-contact-row {
+    grid-template-columns:minmax(0,1fr);
+    gap:11px;
+  }
+}

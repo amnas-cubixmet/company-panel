@@ -112,3 +112,19 @@ test('shared customer forms use one phone field and standard responsive UI', () 
   assert.match(directory, /<CustomerFormFields /);
   assert.doesNotMatch(directory, /Search name, phone, WhatsApp/);
 });
+
+test('customer directory keeps Save and Cancel controls in the visible modal footer', () => {
+  const directory = readFileSync(new URL(
+    '../src/pages/customers/CustomerList.jsx', import.meta.url), 'utf8');
+  const modal = readFileSync(new URL(
+    '../src/components/common/ResponsiveModalSheet.jsx', import.meta.url), 'utf8');
+  const css = readFileSync(new URL(
+    '../src/styles/customer-workshop-form.css', import.meta.url), 'utf8');
+  assert.match(directory, /footer=\{/);
+  assert.match(directory, /form="cg-workshop-customer-editor"/);
+  assert.match(directory, /id="cg-workshop-customer-editor"/);
+  assert.match(modal, /responsive-modal-footer/);
+  assert.match(css, /\.cg-workshop-customer-modal \.responsive-modal-footer/);
+  assert.match(css, /flex:0 0 auto/);
+  assert.match(css, /\.cg-workshop-customer-modal \.cg-customer-contact-row/);
+});
