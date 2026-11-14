@@ -12,19 +12,22 @@ export const financeAccountsForChannel = (accounts, channel) =>
     isFinanceAccount(account) && accountChannel(account.kind) === channel
   );
 
-/** Choose an account without asking for a second selection when unambiguous.
- * Prefer the named Cash in Hand ledger if there are several cash drawers.
- * Multiple bank accounts must still be chosen explicitly.
+/** Default source for a supplier payment channel.
+ * Finance's explicit preferred account wins; a sole active account is safe
+ * to infer. Never guess among several Bank/UPI accounts.
  */
 export const defaultFinanceAccountId = (accounts, channel) => {
   const matching = financeAccountsForChannel(accounts, channel);
-  if (!matching.length) return '';
+  const preferred = matching.filter(account => account.isDefaultPayment === true);
+  if (preferred.length === 1) return String(preferred[0].id);
+  if (preferred.length > 1) return '';
+  if (matching.length === 1) return String(matching[0].id);
   if (channel === 'Cash') {
-    const cashInHand = matching.find(account =>
+    const named = matching.filter(account =>
       /^cash(?:\s+in\s+hand)?$/i.test(String(account.name || '').trim()));
-    if (cashInHand) return String(cashInHand.id);
+    return named.length === 1 ? String(named[0].id) : '';
   }
-  return matching.length === 1 ? String(matching[0].id) : '';
+  return '';
 };
 
 export const assertFinanceAccount = (accounts, accountId, channel) => {
