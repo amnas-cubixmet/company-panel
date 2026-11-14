@@ -11,6 +11,7 @@ import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalShe
 import { USE_MOCK_API } from '../../api/apiConfig';
 import SupplierPurchaseFlow from '../../components/suppliers/SupplierPurchaseFlow';
 import SupplierAccountStatement from '../../components/suppliers/SupplierAccountStatement';
+import SupplierAdvanceAddModal from '../../components/suppliers/SupplierAdvanceAddModal';
 import SupplierReturnsPanel from '../../components/suppliers/SupplierReturnsPanel';
 import { SupplierOverviewCards } from '../../components/suppliers/SupplierWorkspaceGuide';
 import { appConfirm } from '../../components/common/appDialogs';
@@ -262,6 +263,7 @@ export default function SuppliersPage({ section = 'all' }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [editor, setEditor] = useState(null);
+  const [advanceOpen, setAdvanceOpen] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [reloadList, setReloadList] = useState(0);
@@ -883,6 +885,11 @@ export default function SuppliersPage({ section = 'all' }) {
           ].map(([label, amount]) =>
             <div key={label} className="cg-supplier-summary-card">
               <span>{label}</span><strong>{money(amount)}</strong>
+              {label === 'Advance Available' && canPaySupplier && supplier?.is_active !== false &&
+                <button type="button" className="cg-supplier-advance-card-action"
+                  onClick={() => setAdvanceOpen(true)}>
+                  <Plus size={15} aria-hidden="true"/> Add Money
+                </button>}
             </div>)}
         </div>}
         <div className="cg-supplier-contacts">
@@ -944,6 +951,8 @@ export default function SuppliersPage({ section = 'all' }) {
             error={supplierFinanceError}
             onRefresh={() => refreshSupplierDetails().catch(cause =>
               setSupplierFinanceError(cause?.message || 'Unable to refresh supplier transactions.'))}
+            onAddAdvance={canPaySupplier && supplier?.is_active !== false
+              ? () => setAdvanceOpen(true) : undefined}
           />
 
           <section className="cg-supplier-ledger-purchase-bills" aria-label="Posted purchase bills">
@@ -1132,6 +1141,11 @@ export default function SuppliersPage({ section = 'all' }) {
     {id&&!detailsLoading&&!supplier&&!error&&<p className="cg-supplier-empty">Supplier not found.</p>}
     {editor&&<SupplierEditor key={editor.id||'new'} supplier={editor.create?null:editor}
       onClose={()=>setEditor(null)} onSaved={onSaved}/>}
+    {advanceOpen && supplier && canPaySupplier &&
+      <SupplierAdvanceAddModal supplier={supplier}
+        onClose={() => setAdvanceOpen(false)}
+        onSaved={() => refreshSupplierDetails()}/>}
+
     <ResponsiveModalSheet isOpen={deleteConfirmOpen}
       onClose={() => !actionBusy && setDeleteConfirmOpen(false)}
       title="Delete Supplier" maxWidth="440px">
