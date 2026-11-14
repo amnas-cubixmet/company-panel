@@ -826,3 +826,43 @@
   width: 100%;
   justify-content: flex-start;
 }
+
+
+/* New inspection photos publish to the customer by default, with opt-out. */
+@media screen {
+  .job-create-page.jobs-ui-polished .job-create-photo-publish {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    width: fit-content;
+    max-width: 100%;
+    padding: 10px 13px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-2);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 650;
+    line-height: 1.45;
+    cursor: pointer;
+  }
+  .job-create-page.jobs-ui-polished .job-create-photo-publish input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    margin: 0;
+    accent-color: var(--primary);
+    cursor: pointer;
+  }
+  .job-create-page.jobs-ui-polished .job-create-photo-publish:focus-within {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+}
+@media screen and (max-width: 700px) {
+  .job-create-page.jobs-ui-polished .job-create-photo-publish {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
