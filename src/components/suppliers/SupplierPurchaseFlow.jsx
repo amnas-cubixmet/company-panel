@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { stockCatalogService } from '../../services/stockCatalog.service';
 import { invoiceLineTaxChoices, invoiceTotalRateFromChoice, invoiceChoiceFromTotalRate } from '../../utils/invoiceTaxUi';
-import { FINANCE_CHANNELS, accountChannel, financeAccountsForChannel } from '../../utils/financeCashBank';
+import { FINANCE_CHANNELS, accountChannel, defaultFinanceAccountId, financeAccountsForChannel } from '../../utils/financeCashBank';
 import { findPostedSupplierBillReplay } from '../../utils/supplierPurchaseReplay';
 import { purchaseProductOptions } from '../../utils/supplierProductSearch';
 import { normalizeSupplierGstin, supplierGstinError, supplierGstinStateCode } from '../../utils/supplierGstin';
@@ -59,6 +59,10 @@ export default function SupplierPurchaseFlow({
   const [accountsError, setAccountsError] = useState('');
   const [settlementError, setSettlementError] = useState('');
   const [settlementNotice, setSettlementNotice] = useState('');
+  const [cashSetupOpen, setCashSetupOpen] = useState(false);
+  const [cashOpeningBalance, setCashOpeningBalance] = useState('');
+  const [cashSetupError, setCashSetupError] = useState('');
+  const [creatingCashAccount, setCreatingCashAccount] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const errorRef = useRef(null);
@@ -123,6 +127,20 @@ export default function SupplierPurchaseFlow({
       .finally(() => { if (alive) setAccountsLoading(false); });
     return () => { alive = false; };
   }, [supplier.id]);
+
+  // Reconcile an account selection after the finance accounts API finishes
+  // loading. Preserve an intentional selection whenever it is still active.
+  useEffect(() => {
+    setSettlement(previous => {
+      if (!previous.channel) return previous;
+      const available = financeAccountsForChannel(accounts, previous.channel);
+      if (available.some(account => String(account.id) === String(previous.accountId))) {
+        return previous;
+      }
+      const accountId = defaultFinanceAccountId(accounts, previous.channel);
+      return previous.accountId === accountId ? previous : { ...previous, accountId };
+    });
+  }, [accounts]);
 
   useEffect(() => {
     // The payment tab must work independently of stock and GST lookups.
@@ -452,6 +470,47 @@ export default function SupplierPurchaseFlow({
     finally { setPosting(false); }
   };
 
+  const createCashInHandAccount = async () => {
+    if (creatingCashAccount) return;
+    setCashSetupError('');
+    const balance = String(cashOpeningBalance).trim();
+    if (!/^\d+(?:\.\d{1,2})?$/.test(balance)) {
+      setCashSetupError('Enter the actual opening cash balance (₹0 or more, up to two decimals).');
+      return;
+    }
+    // A duplicate account must not be created if an active cash ledger already
+    // exists, even if the account selector was previously empty.
+    if (financeAccountsForChannel(accounts, 'Cash').length) {
+      setCashSetupOpen(false);
+      setSettlement(previous => ({
+        ...previous, channel: 'Cash',
+        accountId: defaultFinanceAccountId(accounts, 'Cash'),
+      }));
+      return;
+    }
+    setCreatingCashAccount(true);
+    try {
+      const created = await supplierFinanceService.createAccount({
+        name: 'Cash in Hand', kind: 'Cash', openingBalance: balance,
+      });
+      // Use the POST result immediately: a subsequent GET failure must not
+      // mislead the user into creating the account a second time.
+      if (!created?.id) throw new Error('The account was created but no ID was returned. Refresh Finance Accounts before retrying.');
+      const account = { ...created, kind: 'Cash', name: 'Cash in Hand',
+        isActive: true, recordedBalance: created.recordedBalance ?? balance };
+      setAccounts(previous => [...previous.filter(row => String(row.id) !== String(account.id)), account]);
+      setSettlement(previous => ({ ...previous, channel: 'Cash', accountId: String(account.id) }));
+      setCashSetupOpen(false);
+      setCashOpeningBalance('');
+      setSettlementError('');
+      setSettlementNotice('Cash in Hand account created and selected. You can now record a payment within its recorded balance.');
+    } catch (cause) {
+      setCashSetupError(getErrorText(cause) + ' Check Finance Accounts before creating another account.');
+    } finally {
+      setCreatingCashAccount(false);
+    }
+  };
+
   const settleExisting = async event => {
     event.preventDefault();
     if (settling) return;
@@ -473,8 +532,14 @@ export default function SupplierPurchaseFlow({
       setSettlementError('Select Cash or Bank / UPI as the payment method.');
       return;
     }
+    if (accountsLoading || accountsError) {
+      setSettlementError('Payment accounts have not loaded. Reload the account list before confirming.');
+      return;
+    }
     if (!account || accountChannel(account.kind) !== settlement.channel) {
-      setSettlementError('Choose an active account for the selected payment method.');
+      setSettlementError(settlement.channel === 'Cash'
+        ? 'No active Cash in Hand account selected. Create or select a Cash account below.'
+        : 'Select an active Bank / UPI account below.');
       return;
     }
     if (account.recordedBalance != null && amount > n(account.recordedBalance) + 0.001) {
@@ -790,9 +855,10 @@ export default function SupplierPurchaseFlow({
                 <select className={fieldClass} value={settlement.channel}
                   onChange={e => {
                     const channel = e.target.value;
-                    const available = financeAccountsForChannel(accounts, channel);
                     setSettlement(old => ({ ...old, channel,
-                      accountId: available.length === 1 ? String(available[0].id) : '' }));
+                      accountId: defaultFinanceAccountId(accounts, channel) }));
+                    setCashSetupOpen(false);
+                    setCashSetupError('');
                     setSettlementError('');
                   }}>
                   <option value="">Select method</option>
@@ -800,15 +866,50 @@ export default function SupplierPurchaseFlow({
                   <option value="Bank">Bank / UPI (PhonePe, GPay, transfer)</option>
                 </select>
               </label>
-              <label>Cash / Bank account *
-                <select className={fieldClass} value={settlement.accountId}
-                  onChange={e => { setSettlement(old => ({ ...old, accountId: e.target.value })); setSettlementError(''); }}>
-                  <option value="">Select {settlement.channel || 'payment method'} account</option>
-                  {financeAccountsForChannel(accounts, settlement.channel).map(account => <option key={account.id} value={account.id}>
-                    {account.name} ({accountMethod(account)}){accountBalanceShown(account)}
-                  </option>)}
-                </select>
-              </label>
+              {settlement.channel && financeAccountsForChannel(accounts, settlement.channel).length === 1
+                ? <div className="cg-supplier-account-auto" role="status">
+                    <strong>{settlement.channel === 'Cash' ? 'Cash in Hand account' : 'Bank / UPI account'}</strong>
+                    <span>{financeAccountsForChannel(accounts, settlement.channel)[0].name}
+                      {accountBalanceShown(financeAccountsForChannel(accounts, settlement.channel)[0])}</span>
+                    <small>Active account selected automatically</small>
+                  </div>
+                : <label>{settlement.channel === 'Cash' ? 'Cash in Hand account' : 'Cash / Bank account'} *
+                    <select className={fieldClass} value={settlement.accountId}
+                      onChange={e => { setSettlement(old => ({ ...old, accountId: e.target.value })); setSettlementError(''); }}>
+                      <option value="">Select {settlement.channel || 'payment method'} account</option>
+                      {financeAccountsForChannel(accounts, settlement.channel).map(account => <option key={account.id} value={account.id}>
+                        {account.name} ({accountMethod(account)}){accountBalanceShown(account)}
+                      </option>)}
+                    </select>
+                  </label>}
+              {settlement.channel === 'Cash' && !accountsLoading && !accountsError &&
+                financeAccountsForChannel(accounts, 'Cash').length === 0 && (
+                  <div className="wide cg-supplier-cash-setup">
+                    <p>No active Cash in Hand account found. Create one to track physical cash payments.</p>
+                    {!cashSetupOpen
+                      ? <button type="button" className="cg-supplier-inline-account-btn" onClick={() => {
+                          setCashSetupOpen(true); setCashSetupError('');
+                        }}>+ Create Cash in Hand account</button>
+                      : <div className="cg-supplier-cash-setup-controls">
+                          <label>Actual opening cash balance (₹) *
+                            <input className={fieldClass} type="number" min="0" step="0.01"
+                              inputMode="decimal" placeholder="e.g. 1500.00" value={cashOpeningBalance}
+                              onChange={event => { setCashOpeningBalance(event.target.value); setCashSetupError(''); }} />
+                          </label>
+                          <small>Enter only cash physically available at the workshop. It will be the account opening balance, not an expense or supplier payment.</small>
+                          {cashSetupError && <p className="cg-supplier-purchase-error" role="alert">{cashSetupError}</p>}
+                          <div className="cg-supplier-purchase-actions">
+                            <button type="button" className="primary" disabled={creatingCashAccount}
+                              onClick={createCashInHandAccount}>
+                              {creatingCashAccount ? 'Creating…' : 'Create & Select Cash Account'}
+                            </button>
+                            <button type="button" disabled={creatingCashAccount}
+                              onClick={() => { setCashSetupOpen(false); setCashSetupError(''); }}>Cancel</button>
+                          </div>
+                        </div>}
+                    <small>You can also <Link to="/finance/accounts">manage Cash / Bank accounts</Link> in Finance.</small>
+                  </div>
+                )}
               <label className="wide">Payment reference (optional)
                 <input className={fieldClass} value={settlement.reference} maxLength={120}
                   onChange={e => { setSettlement(old => ({ ...old, reference: e.target.value })); setSettlementError(''); }}/>
@@ -827,7 +928,7 @@ export default function SupplierPurchaseFlow({
                     .finally(() => setAccountsLoading(false));
                 }}>Retry loading accounts</button>
               </div>}
-              {!accountsLoading && !accountsError && !accounts.length &&
+              {!accountsLoading && !accountsError && !accounts.length && settlement.channel !== 'Cash' &&
                 <p className="wide cg-supplier-purchase-muted" role="status">
                   No payment account found. <Link to="/finance/accounts">Add a Cash / Bank / UPI account</Link> first.
                 </p>}
