@@ -415,7 +415,7 @@
   align-items: flex-start;
   gap: 9px;
   min-width: 0;
-  font-size: 13px !important;
+  font-size: 14px !important;
   font-weight: 600;
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -622,7 +622,7 @@
     grid-column: auto;
   }
   .cg-staff-management .staff-simple-metrics article > span {
-    font-size: 12px !important;
+    font-size: 14px !important;
     line-height: 1.3;
     gap: 6px;
   }
@@ -745,7 +745,7 @@
   outline: none !important;
   background: transparent !important;
   box-shadow: none !important;
-  font-size: 15px !important;
+  font-size: 16px !important;
   line-height: 1.35 !important;
   color: var(--text-primary);
 }
