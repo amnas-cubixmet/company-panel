@@ -2,9 +2,11 @@ import { appConfirm } from '../../components/common/appDialogs';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft,
+  Home,
+  ChevronRight,
+  Image,
   CalendarClock,
   Car,
   ClipboardList,
@@ -26,6 +28,7 @@ import '../../styles/vehicle-management.css';
 import '../../styles/vehicle-polish.css';
 import '../../styles/vehicle-readable.css';
 import '../../styles/vehicle-compact-cleanup.css';
+import '../../styles/vehicle-profile-refresh.css';
 import { knownVehicleMoney, vehicleInvoiceRows, vehicleTotalPaid, latestFirstVehicleJobs } from './vehicleProfileFinancials';
 
 const money = new Intl.NumberFormat('en-IN', {
@@ -51,6 +54,7 @@ const OPEN_JOB_STATUSES = new Set([
 
 const tabs = [
   { id: 'overview', label: 'Overview' },
+  { id: 'photos', label: 'Photos & Customer Sharing' },
   { id: 'service-history', label: 'Service History' },
   { id: 'parts', label: 'Parts Replaced' },
   { id: 'invoices', label: 'Invoices & Payments' },
@@ -170,26 +174,37 @@ export const VehicleDetails = () => {
     <div className="vehicle-dashboard-error" role="alert">
       <p>{error}</p>
       <button type="button" onClick={() => setReloadKey((key) => key + 1)}>Retry</button>
-      <button type="button" onClick={() => navigate('/vehicles')}>Back to Vehicles</button>
+      <Link to="/vehicles" className="vehicle-recovery-link">View Vehicle Directory</Link>
     </div>
   );
   if (!vehicle) return (
     <div className="vehicle-dashboard-error">
       <p>Vehicle not found.</p>
-      <button type="button" onClick={() => navigate('/vehicles')}>Back to Vehicles</button>
+      <Link to="/vehicles" className="vehicle-recovery-link">View Vehicle Directory</Link>
     </div>
   );
 
   return (
     <div className="vehicle-management-page vehicle-profile-page cg-vehicles">
-      <button type="button" className="vehicle-back-link" onClick={() => navigate('/vehicles')}>
-        <ArrowLeft size={16} /> Back to Vehicles
-      </button>
+      <nav className="cg-vehicle-breadcrumbs" aria-label="Breadcrumb">
+        <Link to="/"><Home size={14} aria-hidden="true"/> Home</Link>
+        <ChevronRight size={13} aria-hidden="true"/>
+        <Link to="/vehicles">Vehicles</Link>
+        <ChevronRight size={13} aria-hidden="true"/>
+        <span aria-current="page">{vehicle.registration}</span>
+      </nav>
       {error ? <div className="vehicle-dashboard-error" role="alert">{error}</div> : null}
       <header className="vehicle-profile-header">
         <div>
-          <h1>{vehicle.registration}</h1>
-          <p>{vehicle.make} {vehicle.model}{vehicle.variant ? ` · ${vehicle.variant}` : ''} · {vehicle.year || 'Year —'}</p>
+          <div className="cg-vehicle-profile-title">
+            <h1>{vehicle.registration}</h1>
+            <span className={'cg-vehicle-status ' + (archived ? 'is-archived' : 'is-active')}>
+              <span aria-hidden="true"/> {archived ? 'Archived' : 'Active'}
+            </span>
+          </div>
+          <p>{[vehicle.make, vehicle.model].filter(Boolean).join(' ') || 'Vehicle'}
+            {vehicle.variant ? ` · ${vehicle.variant}` : ''}
+            {vehicle.year ? ` · ${vehicle.year}` : ''}</p>
         </div>
 
         <div className="vehicle-profile-actions">
@@ -311,7 +326,22 @@ export const VehicleDetails = () => {
       ) : null}
 
       {activeTab === 'overview' && (
-        <VehiclePhotoGallery vehicleId={vehicle.id} canEdit={canEdit}/>
+        <section className="cg-vehicle-share-navigation">
+          <div>
+            <Image size={19} aria-hidden="true"/>
+            <div>
+              <h2>Vehicle Photos & Customer Sharing</h2>
+              <p>Manage inspection photos and choose which images customers can view.</p>
+            </div>
+          </div>
+          <button type="button" onClick={() => setActiveTab('photos')}>
+            Manage Photos <ChevronRight size={16} aria-hidden="true"/>
+          </button>
+        </section>
+      )}
+
+      {activeTab === 'photos' && (
+        <VehiclePhotoGallery vehicleId={vehicle.id} canEdit={canEdit} canPublish={canEdit}/>
       )}
 
       {activeTab === 'service-history' ? (
