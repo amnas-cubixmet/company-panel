@@ -18,11 +18,12 @@ import { assertFinanceAccount, financeAccountsForChannel, isFinanceAccount, acco
 import '../../styles/customer-profile-polished.css';
 import '../../styles/customer-workspace-compact.css';
 import {
-  activeCustomerInvoices, customerInvoiceLabel,
+  activeCustomerInvoices, customerProfileFinancials, customerInvoiceLabel,
   customerInvoiceTotal, customerInvoiceBalance, customerVisitLabel,
   profileCustomerType, profileMoney,
 } from './customerProfile.utils';
 import { customerContactLinks } from '../../components/jobs/customerContact.utils';
+import { invoiceMoney } from './customerDirectoryMoney.js';
 import { buildCustomerVehicleFinances, vehicleRegistration, vehicleMakeModel, resolveCustomerVehicleId, customerProfileDate } from './customerVehicleFinancials';
 import '../../styles/customer-profile-tabs.css';
 import { Wallet } from 'lucide-react';
@@ -478,6 +479,7 @@ export const CustomerDetails = () => {
   const filteredInvoices = invoiceVehicleFilter
     ? invoices.filter(invoice => resolveCustomerVehicleId(invoice, vehicles, jobs) === invoiceVehicleFilter)
     : invoices;
+  const filteredInvoiceTotals = customerProfileFinancials(filteredInvoices, invoicesAvailable);
   const lastVisitDate = customerVisitLabel(customer, jobs);
   const contact = customerContactLinks({ customerPhone: customer.phone, customerWhatsapp: customer.whatsapp });
   const statusLabel = String(customer.status || '').trim() || '—';
@@ -905,60 +907,78 @@ export const CustomerDetails = () => {
           </section>
         )}
 
-        {/* 9. INVOICES TAB & 10. FINANCIAL SUMMARY */}
+        {/* INVOICES — all vehicle invoices belong to one customer ledger. */}
         {activeTab === 'invoices' && (
-          <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Customer Invoices</h3>
-                
+          <section className="cg-profile-pane">
+            <div className="cg-profile-pane-header">
+              <div><h3>Customer Invoices</h3>
+                <p>Includes invoices for all linked vehicles, plus direct customer sales.</p>
               </div>
-              <button
-                onClick={() => navigate(`/invoices/create?customerId=${customer.id}`)}
-                style={{ height: '38px', padding: '0 14px', borderRadius: '10px', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Plus size={15} /> Create Invoice
+              <button type="button" className="cg-profile-action-primary" disabled={archived}
+                onClick={() => navigate('/invoices/create?customerId=' + customer.id)}>
+                <Plus size={16}/> Create Invoice
               </button>
             </div>
-
-            {/* Financial Summary Strip */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', backgroundColor: 'var(--surface-2)', padding: '12px', borderRadius: '12px' }}>
-              <div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Total Billed</span>
-                <strong style={{ fontSize: '16px', color: 'var(--primary)' }}>{formatINR(totalBilled)}</strong>
-              </div>
-              <div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Total Paid</span>
-                <strong style={{ fontSize: '16px', color: 'var(--success)' }}>{formatINR(totalPaid)}</strong>
-              </div>
-              <div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block' }}>Outstanding Balance</span>
-                <strong style={{ fontSize: '16px', color: totalOutstanding > 0 ? 'var(--danger)' : 'var(--text-primary)' }}>{formatINR(totalOutstanding)}</strong>
-              </div>
+            <div className="cg-profile-toolbar">
+              <label htmlFor="cg-customer-invoice-vehicle">Vehicle</label>
+              <select id="cg-customer-invoice-vehicle" value={invoiceVehicleFilter}
+                onChange={event => setInvoiceVehicleFilter(event.target.value)}>
+                <option value="">All Vehicles &amp; Direct Invoices</option>
+                {vehicles.map(vehicle => <option value={vehicle.id} key={vehicle.id}>
+                  {vehicleRegistration(vehicle) || vehicleMakeModel(vehicle)}
+                </option>)}
+              </select>
             </div>
-
-            {/* Invoices List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {invoices.map((inv, idx) => (
-                <div key={idx} style={{ backgroundColor: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                  <div>
-                    <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{customerInvoiceLabel(inv)}</strong> {inv.jobNumber ? `(Job ${inv.jobNumber})` : ''}
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      Date: {inv.date} • Vehicle: {inv.vehicle}
+            <div className="cg-profile-financial-strip">
+              <div><span>Invoiced</span><strong>{formatINR(filteredInvoiceTotals.billed)}</strong></div>
+              <div><span>Received</span><strong>{formatINR(filteredInvoiceTotals.paid)}</strong></div>
+              <div><span>Outstanding</span><strong>{formatINR(filteredInvoiceTotals.outstanding)}</strong></div>
+            </div>
+            {!invoicesAvailable ? <p className="cg-profile-empty">Invoice data could not be loaded.</p>
+              : !filteredInvoices.length ? <p className="cg-profile-empty">No invoices for this selection.</p>
+              : <div className="cg-profile-record-list">
+                {filteredInvoices.map((invoice,index) => {
+                  const linkedId = resolveCustomerVehicleId(invoice, vehicles, jobs);
+                  const linkedVehicle = vehicles.find(v => String(v.id) === linkedId);
+                  const money = invoiceMoney(invoice);
+                  return <article className="cg-profile-record" key={invoice.id || index}>
+                    <div className="cg-profile-record-main">
+                      <div className="cg-profile-record-title">
+                        <strong>{customerInvoiceLabel(invoice)}</strong>
+                        <span className="cg-profile-record-status">{invoice.status || '—'}</span>
+                      </div>
+                      <span>{customerProfileDate(invoice.date || invoice.created_at)}
+                        {' · '}{linkedVehicle ? vehicleRegistration(linkedVehicle) : 'Direct / unlinked vehicle'}
+                      </span>
+                      <small>{invoice.jobCardNo || invoice.jobNumber
+                        ? 'Job: ' + (invoice.jobCardNo || invoice.jobNumber) : 'Customer invoice'}</small>
                     </div>
-                  </div>
+                    <div className="cg-profile-record-money">
+                      <div><span>Total</span><strong>{customerInvoiceTotal(invoice)}</strong></div>
+                      <div><span>Paid</span><strong>{formatINR(money.paid)}</strong></div>
+                      <div><span>Due</span><strong>{customerInvoiceBalance(invoice)}</strong></div>
+                    </div>
+                    {invoice.id && <button type="button" className="cg-profile-open-icon"
+                      onClick={() => navigate('/invoices/' + invoice.id)}
+                      aria-label={'Open invoice ' + customerInvoiceLabel(invoice)}>
+                      <ExternalLink size={16}/>
+                    </button>}
+                  </article>;
+                })}
+              </div>}
+          </section>
+        )}
 
-                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: '700', color: inv.status === 'Paid' ? 'var(--success)' : 'var(--warning)' }}>
-                      {inv.status}
-                    </span>
-                    <strong style={{ fontSize: '15px', color: 'var(--primary)' }}>{customerInvoiceTotal(inv)}</strong>
-                    <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Balance: {customerInvoiceBalance(inv)}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* FINANCE SUMMARY — drill down from customer to vehicle, without new accounting writes. */}
+        {activeTab === 'finance' && (
+          <CustomerVehicleFinancePanel model={financeModel} mode="finance"
+            invoicesAvailable={invoicesAvailable}
+            vehiclesAvailable={vehiclesAvailable} jobsAvailable={jobsAvailable}
+            selectedVehicleId={financeVehicleFilter}
+            onSelectVehicle={setFinanceVehicleFilter}
+            onOpenFinance={openVehicleFinance}
+            onViewVehicle={vehicleId => navigate('/vehicles/' + vehicleId)}
+            onViewInvoice={invoiceId => navigate('/invoices/' + invoiceId)}/>
         )}
 
         {/* 11. PAYMENTS TAB */}
