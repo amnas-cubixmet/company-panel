@@ -26,6 +26,7 @@ import '../../styles/suppliers-workspace.css';
 import '../../styles/suppliers-unified-ui.css';
 import '../../styles/supplier-detail-tabs.css';
 import '../../styles/supplier-product-list.css';
+import '../../styles/supplier-ledger-workspace.css';
 
 const asText = value => String(value ?? '').trim();
 const formFields = ['name', 'contact_person', 'phone', 'email', 'gstNo', 'address'];
