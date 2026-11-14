@@ -305,6 +305,9 @@ export function JobCardWorkspace() {
   };
 
   useEffect(() => {
+    setJobInvoices([]);
+    setJobPayments([]);
+    setBillingSummaryState({ jobId: null, data: null });
     load();
   }, [id]);
 
