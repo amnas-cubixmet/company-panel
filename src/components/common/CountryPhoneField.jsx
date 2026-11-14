@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { PhoneInput } from './PhoneInput';
 import {
   JOB_PHONE_COUNTRIES, joinInternationalPhone, jobPhoneHint, jobPhoneLength,
@@ -12,7 +13,13 @@ export function CountryPhoneField({
   value = '', onChange, label = 'Phone', required = false,
   disabled = false, error = '', className = '', id, ...rest
 }) {
-  const { country, national } = splitInternationalPhone(value);
+  const [pendingCountry, setPendingCountry] = useState('+91');
+  const parsed = splitInternationalPhone(value, pendingCountry);
+  const { national } = parsed;
+  const country = value ? parsed.country : pendingCountry;
+  useEffect(() => {
+    if (value && parsed.country !== pendingCountry) setPendingCountry(parsed.country);
+  }, [value, parsed.country, pendingCountry]);
   const update = next => onChange(joinInternationalPhone(country, next));
   return <PhoneInput
     label={label} labelPosition="above" id={id}
@@ -23,6 +30,7 @@ export function CountryPhoneField({
     helper={jobPhoneHint(country, national)}
     placeholder={`${jobPhoneLength(country)}-digit phone number`}
     onCountryCodeChange={next => {
+      setPendingCountry(next);
       // Do not shorten a phone silently when switching its country code.
       const current = national.length <= jobPhoneLength(next) ? national : '';
       onChange(joinInternationalPhone(next, current));
