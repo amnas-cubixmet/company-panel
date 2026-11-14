@@ -61,3 +61,24 @@
   .cg-supplier-purchase-split>label:nth-child(3){grid-column:1}
   .cg-supplier-payment-channel-actions button{flex:1 1 135px}
 }
+
+/* Cash account resolution on previous supplier credit payments. */
+.cg-supplier-account-auto,
+.cg-supplier-cash-setup{
+  min-width:0;display:grid;align-content:center;gap:6px;
+  border:1px solid var(--border,#d9e0e7);border-radius:10px;
+  background:var(--surface-muted,rgba(127,127,127,.04));padding:12px;
+}
+.cg-supplier-account-auto strong{font-size:13px;font-weight:650}
+.cg-supplier-account-auto span{font-size:15px;font-weight:600;overflow-wrap:anywhere}
+.cg-supplier-account-auto small,
+.cg-supplier-cash-setup small{font-size:12px;line-height:1.5;color:var(--text-secondary,#667085)}
+.cg-supplier-cash-setup>p{font-size:14px;line-height:1.5}
+.cg-supplier-cash-setup-controls{display:grid;gap:10px}
+.cg-supplier-cash-setup-controls>label{display:grid;gap:6px;font-size:13px;font-weight:600}
+.cg-supplier-inline-account-btn{
+  justify-self:start;min-height:44px;padding:9px 13px;
+  border:1px solid var(--primary,#2870dc);border-radius:9px;
+  background:var(--surface,#fff);color:var(--primary,#2870dc);
+  font-size:14px;font-weight:600;cursor:pointer;
+}
