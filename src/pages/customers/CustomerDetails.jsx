@@ -9,6 +9,7 @@ import {
 import { CustomerTrackingLinkPanel } from '../../components/customers/CustomerTrackingLinkPanel';
 import { CustomerWhatsAppConsent } from '../../components/customers/CustomerWhatsAppConsent';
 import { CustomerCreditLedgerPanel } from '../../components/customers/CustomerCreditLedgerPanel';
+import { CustomerVehicleFinancePanel } from '../../components/customers/CustomerVehicleFinancePanel';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import '../../styles/customer-tracking-link.css';
 import { paymentService } from '../../services/payment.service';
@@ -17,18 +18,20 @@ import { assertFinanceAccount, financeAccountsForChannel, isFinanceAccount, acco
 import '../../styles/customer-profile-polished.css';
 import '../../styles/customer-workspace-compact.css';
 import {
-  customerProfileFinancials, activeCustomerInvoices, customerInvoiceLabel,
+  activeCustomerInvoices, customerInvoiceLabel,
   customerInvoiceTotal, customerInvoiceBalance, customerVisitLabel,
   profileCustomerType, profileMoney,
 } from './customerProfile.utils';
 import { customerContactLinks } from '../../components/jobs/customerContact.utils';
+import { buildCustomerVehicleFinances, vehicleRegistration, vehicleMakeModel, resolveCustomerVehicleId, customerProfileDate } from './customerVehicleFinancials';
+import '../../styles/customer-profile-tabs.css';
 import { Wallet } from 'lucide-react';
 import { Input } from '../../components/common/Input';
 import { Select } from '../../components/common/Select';
 import { Textarea } from '../../components/common/Textarea';
 import { AmountInput } from '../../components/common/AmountInput';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
-import { User, Phone, Mail, MapPin, Car, ClipboardCheck, FileText, CreditCard, Clock, Plus, Wrench, Edit, Pencil, Archive, MoreVertical, Calendar, Building, CheckCircle2, MessageSquare, Trash2, Upload } from "lucide-react";
+import { User, Phone, Mail, MapPin, Car, ClipboardCheck, FileText, CreditCard, Clock, Plus, Wrench, Edit, Pencil, Archive, MoreVertical, Calendar, Building, CheckCircle2, MessageSquare, Trash2, Upload, ReceiptText } from "lucide-react";
 
 export const CustomerDetails = () => {
   const { id } = useParams();
@@ -127,6 +130,9 @@ export const CustomerDetails = () => {
   // Service History filter state
   const [serviceSearch, setServiceSearch] = useState('');
   const [serviceVehicleFilter, setServiceVehicleFilter] = useState('All');
+  const [financeVehicleFilter, setFinanceVehicleFilter] = useState('');
+  const [invoiceVehicleFilter, setInvoiceVehicleFilter] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
   const [invoicesAvailable, setInvoicesAvailable] = useState(false);
   const [vehiclesAvailable, setVehiclesAvailable] = useState(false);
   const [jobsAvailable, setJobsAvailable] = useState(false);
@@ -459,8 +465,19 @@ export const CustomerDetails = () => {
 
   // The invoice already includes its paid and remaining balance; counting
   // separate payments again would double count receipts.
-  const { billed: totalBilled, paid: totalPaid, outstanding: totalOutstanding } =
-    customerProfileFinancials(invoices, invoicesAvailable);
+  const financeModel = buildCustomerVehicleFinances({ vehicles, jobs, invoices, invoicesAvailable });
+  const { billed: totalBilled, paid: totalPaid, outstanding: totalOutstanding } = financeModel.overall;
+  const finalInvoices = financeModel.finalizedInvoices;
+  const invoiceForJob = job => finalInvoices.find(inv =>
+    String(inv.jobId || inv.job_id || inv.sourceJobId || inv.source_job_id || '') === String(job.id));
+  const openVehicleFinance = vehicleId => {
+    setFinanceVehicleFilter(vehicleId || '');
+    setActiveTab('finance');
+    tabRailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+  const filteredInvoices = invoiceVehicleFilter
+    ? invoices.filter(invoice => resolveCustomerVehicleId(invoice, vehicles, jobs) === invoiceVehicleFilter)
+    : invoices;
   const lastVisitDate = customerVisitLabel(customer, jobs);
   const contact = customerContactLinks({ customerPhone: customer.phone, customerWhatsapp: customer.whatsapp });
   const statusLabel = String(customer.status || '').trim() || '—';
@@ -475,6 +492,7 @@ export const CustomerDetails = () => {
     { id: 'jobs', label: `Jobs (${jobs.length})`, icon: ClipboardCheck },
     { id: 'service-history', label: 'Service History', icon: Wrench },
     { id: 'invoices', label: `Invoices (${invoices.length})`, icon: FileText },
+    { id: 'finance', label: 'Finance Summary', icon: Wallet },
     { id: 'payments', label: `Payments (${payments.length})`, icon: CreditCard },
     { id: 'notes', label: `Notes (${notesList.length})`, icon: MessageSquare },
     { id: 'documents', label: `Documents (${documents.length})`, icon: FileText },
@@ -598,8 +616,10 @@ export const CustomerDetails = () => {
             icon: Car, tone: 'neutral' },
           { label: 'Job Cards', value: jobsAvailable ? String(jobs.length) : '—',
             icon: ClipboardCheck, tone: 'neutral' },
-          { label: 'Invoices', value: invoicesAvailable ? String(activeCustomerInvoices(invoices).length) : '—',
+          { label: 'Invoices', value: invoicesAvailable ? String(finalInvoices.length) : '—',
             icon: FileText, tone: 'blue' },
+          { label: 'Total Invoiced', value: formatINR(totalBilled), icon: ReceiptText, tone: 'blue' },
+          { label: 'Received', value: formatINR(totalPaid), icon: CreditCard, tone: 'green' },
           { label: 'Outstanding', value: formatINR(totalOutstanding),
             icon: Wallet, tone: totalOutstanding > 0 ? 'danger' : 'neutral' },
         ].map((item) => {
@@ -637,11 +657,19 @@ export const CustomerDetails = () => {
       </nav>
 
       {/* TAB CONTENT PANELS */}
-      <div id="customer-profile-sections" className="customer-profile-content" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <div id="customer-profile-sections" className="customer-profile-content" role="tabpanel"
+        aria-labelledby={'customer-tab-' + activeTab} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         
         {/* 4. OVERVIEW TAB */}
         {activeTab === 'overview' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div className="cg-profile-overview">
+            <CustomerVehicleFinancePanel model={financeModel}
+              mode="overview" invoicesAvailable={invoicesAvailable}
+              vehiclesAvailable={vehiclesAvailable} jobsAvailable={jobsAvailable}
+              onOpenFinance={openVehicleFinance}
+              onViewVehicle={vehicleId => navigate('/vehicles/' + vehicleId)}
+              onViewInvoice={invoiceId => navigate('/invoices/' + invoiceId)}
+              onSelectVehicle={setFinanceVehicleFilter}/>
             <CustomerTrackingLinkPanel
               key={customer.id}
               customerId={customer.id}
@@ -698,8 +726,8 @@ export const CustomerDetails = () => {
                     <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{customer.address || '—'}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>City / State</span>
-                    <strong style={{ color: 'var(--text-primary)' }}>{[customer.city, customer.state, customer.pincode].filter(Boolean).join(', ') || '—'}</strong>
+                    <span style={{ color: 'var(--text-muted)' }}>PIN Code</span>
+                    <strong style={{ color: 'var(--text-primary)' }}>{customer.pincode || '—'}</strong>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
                     <span style={{ color: 'var(--text-muted)' }}>Company / GST</span>
