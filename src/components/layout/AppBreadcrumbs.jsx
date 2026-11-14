@@ -162,7 +162,7 @@ export function AppBreadcrumbs() {
   }, [location.pathname]);
 
   useEffect(() => {
-    const match = location.pathname.match(/^\\/suppliers\\/([0-9a-f-]{36})$/i);
+    const match = location.pathname.match(/^\/suppliers\/([0-9a-f-]{36})$/i);
     if (!match) {
       setSupplierBreadcrumb(null);
       return undefined;
@@ -174,7 +174,7 @@ export function AppBreadcrumbs() {
     supplierService.get(identifier)
       .then((supplier) => {
         if (active) setSupplierBreadcrumb({
-          identifier, label: /^SUP-\\d{5,}$/i.test(String(supplier?.code || ''))
+          identifier, label: /^SUP-\d{5,}$/i.test(String(supplier?.code || ''))
             ? supplier.code : 'Supplier',
         });
       })
