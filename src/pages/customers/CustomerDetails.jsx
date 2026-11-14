@@ -1045,33 +1045,24 @@ export const CustomerDetails = () => {
           </div>
         )}
 
-        {/* 12. NOTES TAB */}
+        {/* NOTES — persisted as dated text on the customer master record. */}
         {activeTab === 'notes' && (
-          <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Staff Internal Notes</h3>
-                
+          <section className="cg-profile-pane">
+            <div className="cg-profile-pane-header">
+              <div><h3>Staff Notes &amp; Preferences</h3>
+                <p>Internal customer preferences saved to the customer profile.</p>
               </div>
-              <button
-                onClick={() => setIsAddNoteOpen(true)}
-                style={{ height: '38px', padding: '0 14px', borderRadius: '10px', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Plus size={15} /> Add Note
-              </button>
+              <button type="button" className="cg-profile-action-primary" disabled={archived}
+                onClick={() => setIsAddNoteOpen(true)}><Plus size={16}/> Add Note</button>
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {notesList.map((n) => (
-                <div key={n.id} style={{ backgroundColor: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', fontSize: '13px' }}>
-                  <div style={{ color: 'var(--text-primary)', fontWeight: '500', lineHeight: 1.4 }}>"{n.text}"</div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '6px', borderTop: '1px solid var(--border)', paddingTop: '6px' }}>
-                    Added by <strong>{n.addedBy}</strong> • {n.date}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+            {!notesList.length ? <p className="cg-profile-empty">No customer notes saved.</p>
+              : <div className="cg-profile-note-list">
+                  {notesList.map(note => <article className="cg-profile-note" key={note.id}>
+                    <p>{note.text}</p>
+                    <span>{note.addedBy}{note.date ? ' · ' + note.date : ''}</span>
+                  </article>)}
+                </div>}
+          </section>
         )}
 
         {/* DOCUMENTS TAB */}
