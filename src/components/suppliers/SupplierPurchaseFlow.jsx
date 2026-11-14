@@ -543,14 +543,16 @@ export default function SupplierPurchaseFlow({
                 <input className={fieldClass} type="number" min="0" step="0.01" inputMode="decimal"
                   value={activePart.sellingPrice} onChange={e => setActivePart(p => ({ ...p, sellingPrice: e.target.value }))}/>
               </label>
-              <label>GST / Tax for this product *
-                <select className={fieldClass} value={unregisteredSupplier ? 'none' : activePart.gstChoice} disabled={unregisteredSupplier}
-                  onChange={e => setActivePart(p => ({ ...p, gstChoice: e.target.value }))}>
-                  <option value="none">{unregisteredSupplier ? '0% — No GST' : '0% — Select Classification'}</option>
-                  {choices.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                  <option value="custom">Other saved / HSN-specific total %</option>
-                </select>
-              </label>
+              {!unregisteredSupplier && (
+                <label>GST / Tax for this product *
+                  <select className={fieldClass} value={activePart.gstChoice}
+                    onChange={e => setActivePart(p => ({ ...p, gstChoice: e.target.value }))}>
+                    <option value="none">0% — Select Classification</option>
+                    {choices.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    <option value="custom">Other saved / HSN-specific total %</option>
+                  </select>
+                </label>
+              )}
               {!unregisteredSupplier && activePart.gstChoice === 'custom' &&
                 <label>Custom total GST (%) *
                   <input className={fieldClass} type="number" min="0" max="100" step="0.01"
@@ -572,8 +574,8 @@ export default function SupplierPurchaseFlow({
                 </label>}
               {unregisteredSupplier && (
                  <p className="wide cg-supplier-purchase-muted">
-                   No GSTIN · 0% GST. Receive stock without choosing a buyer state.
-                   To charge GST, add the supplier's real GSTIN in Edit Supplier.
+                   No GST (Unregistered).{' '}
+                   <a href="#supplier-profile">Add supplier GSTIN</a> to enable GST purchases.
                  </p>
                )}
               <div className="wide cg-supplier-purchase-actions">
