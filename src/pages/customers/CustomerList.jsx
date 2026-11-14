@@ -641,7 +641,8 @@ export const CustomerList = () => {
         isOpen={isAddCustomerOpen}
         onClose={() => setIsAddCustomerOpen(false)}
         title={editingCustomerId ? "Edit Customer Details" : "Add Workshop Customer"}
-        maxWidth="540px"
+        className="cg-workshop-customer-modal"
+        maxWidth="560px"
       >
         <form ref={customerFormRef} className="customer-directory-form cg-customer-standard-form" onSubmit={handleFormSubmit}
           onInvalid={(event) => {
