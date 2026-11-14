@@ -113,9 +113,10 @@ export function JobTotalCostPanel({
         <p role="alert" className="job-total-cost-notice">{error}</p>
       ) : (
         <>
-          <div className="job-total-cost-grid" aria-busy={loading}>
+          <details className="cg-job-cost-breakdown">
+            <summary>Show direct cost breakdown (mechanic, outside labour and parts)</summary>
+            <div className="job-total-cost-grid" aria-busy={loading}>
             {[
-              { label: 'Total Cost', value: summary?.totalCost, desc: 'Direct recorded cost', primary: true },
               { label: 'Mechanic Cost', value: summary?.mechanicCost, desc: 'Approved worker charges' },
               { label: 'Outside Staff Cost', value: summary?.outsideStaffCost, desc: 'Agreed worker charges' },
               { label: 'Parts Cost', value: summary?.partsCost, desc: 'Issued stock + outside purchases' }
@@ -126,7 +127,8 @@ export function JobTotalCostPanel({
                 <small>{desc}</small>
               </div>
             ))}
-          </div>
+            </div>
+          </details>
           <div className="job-total-cost-grid job-total-finance-grid" aria-label="Internal billing and margin">
             <div className="job-total-cost-card">
               <span>{salesSource === 'final_invoice' ? 'Total Invoice Bill'
@@ -138,6 +140,11 @@ export function JobTotalCostPanel({
               <span>Customer Selling (before GST)</span>
               <strong>{hasNetSales ? money(netSellingValue) : 'Not available'}</strong>
               <small>{salesSource === 'estimate' ? 'Estimate only, not invoiced' : 'Tax-exclusive value'}</small>
+            </div>
+            <div className="job-total-cost-card is-primary">
+              <span>Workshop Direct Cost</span>
+              <strong>{summary ? money(summary.totalCost) : loading ? 'Loading…' : 'Unavailable'}</strong>
+              <small>Mechanic + outside labour + parts purchase cost</small>
             </div>
             <div className="job-total-cost-card is-margin">
               <span>Indicative Gross Profit (before GST)</span>
