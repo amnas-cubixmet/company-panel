@@ -5,6 +5,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
 import { USE_MOCK_API } from '../../api/apiConfig';
 import { supplierService } from '../../services/supplier.service';
+import { CountryPhoneField } from './CountryPhoneField';
+import { validInternationalPhone } from '../../utils/jobCreateAdapters';
 import './SupplierSelectField.css';
 
 const emptySupplier = () => ({ name: '', phone: '', gstNo: '', address: '' });
@@ -90,6 +92,10 @@ export default function SupplierSelectField({
     const name = draft.name.trim();
     if (!name) { setError('Supplier Name is required.'); return; }
     const phone = draft.phone.trim();
+    if (phone && !validInternationalPhone(phone)) {
+      setError('Enter a valid phone number for the selected country.');
+      return;
+    }
     const gstNo = draft.gstNo.trim().toUpperCase();
     const existing = suppliers.find(row =>
       (gstNo && String(row.gstNo || row.gstin || '').toUpperCase() === gstNo) ||
@@ -176,8 +182,9 @@ export default function SupplierSelectField({
       <strong>New Supplier</strong>
       <label>Supplier Name *<input value={draft.name} maxLength={180} disabled={creating || disabled}
         onChange={event => setDraft(old => ({ ...old, name: event.target.value }))}/></label>
-      <label>Mobile / Phone<input type="tel" maxLength={30} value={draft.phone}
-        disabled={creating || disabled} onChange={event => setDraft(old => ({ ...old, phone: event.target.value }))}/></label>
+      <CountryPhoneField label="Phone" value={draft.phone}
+        disabled={creating || disabled}
+        onChange={value => setDraft(old => ({ ...old, phone: value }))}/>
       <label>GSTIN (optional)<input maxLength={20} value={draft.gstNo}
         disabled={creating || disabled} onChange={event => setDraft(old => ({ ...old, gstNo: event.target.value.toUpperCase() }))}/></label>
       <label>Address (optional)<input maxLength={240} value={draft.address}
