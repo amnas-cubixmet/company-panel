@@ -17,10 +17,15 @@ import { appConfirm } from '../../components/common/appDialogs';
 import { useLocation } from 'react-router-dom';
 import { customerContactLinks } from '../../components/jobs/customerContact.utils';
 import { filterSupplierProducts } from '../../utils/supplierProductSearch';
+import {
+  arrangeSupplierProducts, supplierProductStockQuantity,
+  supplierProductStockStatus, supplierProductStockSummary,
+} from '../../utils/supplierProductListView';
 import { SUPPLIER_TAB_HASHES, allowedSupplierTab } from '../../utils/supplierDetailTabs';
 import '../../styles/suppliers-workspace.css';
 import '../../styles/suppliers-unified-ui.css';
 import '../../styles/supplier-detail-tabs.css';
+import '../../styles/supplier-product-list.css';
 
 const asText = value => String(value ?? '').trim();
 const formFields = ['name', 'contact_person', 'phone', 'email', 'gstNo', 'address'];
@@ -245,6 +250,9 @@ export default function SuppliersPage({ section = 'all' }) {
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [supplierProductSearch, setSupplierProductSearch] = useState('');
+  const [supplierProductAvailability, setSupplierProductAvailability] = useState('all');
+  const [supplierProductSort, setSupplierProductSort] = useState('name');
+  const [supplierProductVisibleLimit, setSupplierProductVisibleLimit] = useState(24);
   const [remoteSupplierProducts, setRemoteSupplierProducts] = useState([]);
   const [searchingSupplierProducts, setSearchingSupplierProducts] = useState(false);
   const [supplierProductSearchError, setSupplierProductSearchError] = useState('');
@@ -440,6 +448,19 @@ export default function SuppliersPage({ section = 'all' }) {
     }
     return filterSupplierProducts([...combined.values()], supplierProductSearch);
   }, [products, remoteSupplierProducts, supplierProductSearch]);
+
+  const supplierProductStockCounts = useMemo(() =>
+    supplierProductStockSummary(supplierProductsFiltered), [supplierProductsFiltered]);
+  const supplierProductRows = useMemo(() =>
+    arrangeSupplierProducts(supplierProductsFiltered, supplierProductAvailability, supplierProductSort),
+  [supplierProductsFiltered, supplierProductAvailability, supplierProductSort]);
+  const visibleSupplierProducts = useMemo(() =>
+    supplierProductRows.slice(0, supplierProductVisibleLimit),
+  [supplierProductRows, supplierProductVisibleLimit]);
+
+  useEffect(() => {
+    setSupplierProductVisibleLimit(24);
+  }, [id, supplierProductSearch, supplierProductAvailability, supplierProductSort]);
 
   const supplierBalanceTotals = useMemo(() => {
     if (!creditBalances) return null;
@@ -943,34 +964,143 @@ export default function SuppliersPage({ section = 'all' }) {
         </div>
       )}
       {activeSupplierTab === 'products' && (
-      <div className="cg-supplier-details-grid cg-supplier-tab-panel" id="supplier-products">
-        <section className="cg-supplier-profile">
-          <div className="cg-supplier-profile-head"><ShoppingBag size={20}/><h2>Purchase Orders</h2><span>{orders.length} loaded</span></div>
-          {orders.length? orders.map(order=><div className="cg-supplier-record" key={order.id}>
-            <div><strong>{order.purchaseNo||order.number||'Purchase Order'}</strong><small>{order.status||'—'}</small></div>
-            <b>{money(order.total)}</b>
-          </div>):<p className="cg-supplier-empty">No purchase orders found.</p>}
-        </section>
-        <section className="cg-supplier-profile">
-          <div className="cg-supplier-profile-head"><Package size={20}/><h2>Supplied Products</h2><span>{supplierProductsFiltered.length} products</span></div>
-          <label className="cg-supplier-products-search">
-            <Search size={17} aria-hidden="true"/>
-            <input type="search" aria-label="Search supplier products" value={supplierProductSearch}
-              placeholder="Search part, SKU, brand or HSN…"
-              onChange={event => setSupplierProductSearch(event.target.value)}/>
-          </label>
-          {searchingSupplierProducts && <p role="status" className="cg-supplier-search-feedback">Searching products…</p>}
-          {supplierProductSearchError && <p role="alert" className="cg-supplier-search-feedback">{supplierProductSearchError}</p>}
-          {supplierProductsFiltered.length ? supplierProductsFiltered.map(item=><div className="cg-supplier-record" key={item.id}>
-            <div>
-              <strong>{item.partName||item.name}</strong>
-              <small>{item.sku||'—'} · Purchase {money(item.costPrice ?? item.cost)} · Selling {money(item.sellingPrice ?? item.price)}</small>
-              <small>GST {item.tax ?? 0}% · {item.hsnCode || item.hsn_code || 'No HSN'}</small>
+      <div className="cg-supplier-products-layout cg-supplier-tab-panel" id="supplier-products">
+        <section className="cg-supplier-profile cg-supplier-products-panel" aria-label="Products supplied by this supplier">
+          <div className="cg-supplier-products-heading">
+            <div className="cg-supplier-products-heading-title">
+              <span className="cg-supplier-products-heading-icon"><Package size={19} aria-hidden="true"/></span>
+              <div>
+                <h2>Supplied Products</h2>
+                <p>Product details, stock and prices in one place.</p>
+              </div>
             </div>
-            <span>{item.onHand??'—'} in stock</span>
-          </div>):<p className="cg-supplier-empty">
-            {products.length ? 'No matching products.' : 'No products linked yet.'}
-          </p>}
+            <Link className="cg-supplier-products-inventory-link" to={'/stock?supplier=' + encodeURIComponent(supplier.id)}>
+              View Inventory <ChevronRight size={16} aria-hidden="true"/>
+            </Link>
+          </div>
+
+          <div className="cg-supplier-products-toolbar">
+            <label className="cg-supplier-products-search">
+              <Search size={18} aria-hidden="true"/>
+              <input type="search" aria-label="Search supplier products"
+                value={supplierProductSearch}
+                placeholder="Search product, SKU, part number, brand or HSN"
+                onChange={event => setSupplierProductSearch(event.target.value)}/>
+              {supplierProductSearch && <button type="button" className="cg-supplier-products-clear"
+                aria-label="Clear product search" onClick={() => setSupplierProductSearch('')}>Clear</button>}
+            </label>
+            <label className="cg-supplier-products-sort">
+              <span>Sort by</span>
+              <select value={supplierProductSort} onChange={event => setSupplierProductSort(event.target.value)}
+                aria-label="Sort supplier products">
+                <option value="name">Name A–Z</option>
+                <option value="stock">Lowest stock first</option>
+              </select>
+            </label>
+          </div>
+          <div className="cg-supplier-products-filters" role="group" aria-label="Filter products by stock status">
+            {[
+              { key:'all', label:'All products', count:supplierProductsFiltered.length },
+              { key:'in', label:'In stock', count:supplierProductStockCounts.in },
+              { key:'out', label:'Out of stock', count:supplierProductStockCounts.out },
+              ...(supplierProductStockCounts.unknown
+                ? [{ key:'unknown', label:'Stock unknown', count:supplierProductStockCounts.unknown }] : []),
+            ].map(option => (
+              <button type="button" key={option.key}
+                className={supplierProductAvailability === option.key ? 'is-active' : ''}
+                aria-pressed={supplierProductAvailability === option.key}
+                onClick={() => setSupplierProductAvailability(option.key)}>
+                {option.label} <span>{option.count}</span>
+              </button>
+            ))}
+          </div>
+          <div className="cg-supplier-products-result-info" role="status">
+            <span>{supplierProductRows.length} {supplierProductRows.length === 1 ? 'product' : 'products'} found</span>
+            {searchingSupplierProducts && <span>Searching catalogue…</span>}
+          </div>
+          {supplierProductSearchError && <p role="alert" className="cg-supplier-search-feedback">{supplierProductSearchError}</p>}
+
+          {visibleSupplierProducts.length ? (
+            <ul className="cg-supplier-product-list">
+              {visibleSupplierProducts.map(item => {
+                const quantity = supplierProductStockQuantity(item);
+                const availability = supplierProductStockStatus(item);
+                const partName = item.partName || item.name || 'Unnamed product';
+                return (
+                  <li className="cg-supplier-product-item" key={item.id}>
+                    <div className="cg-supplier-product-main">
+                      <span className="cg-supplier-product-avatar" aria-hidden="true"><Package size={19}/></span>
+                      <div className="cg-supplier-product-identity">
+                        <strong className="cg-supplier-product-name">{partName}</strong>
+                        <div className="cg-supplier-product-meta">
+                          {item.partNumber || item.part_number
+                            ? <span>Part No: {item.partNumber || item.part_number}</span> : null}
+                          {item.sku && <span>SKU: {item.sku}</span>}
+                          {item.brand && <span>{item.brand}</span>}
+                          {(item.hsnCode || item.hsn_code) && <span>HSN: {item.hsnCode || item.hsn_code}</span>}
+                          {item.tax !== null && item.tax !== undefined && item.tax !== '' &&
+                            <span>GST: {item.tax}%</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="cg-supplier-product-values">
+                      <div className="cg-supplier-product-price">
+                        <span>Purchase / unit</span>
+                        <strong>{money(item.costPrice ?? item.cost)}</strong>
+                      </div>
+                      <div className="cg-supplier-product-price">
+                        <span>Selling / unit</span>
+                        <strong>{money(item.sellingPrice ?? item.price)}</strong>
+                      </div>
+                      <div className={'cg-supplier-product-stock is-' + availability}>
+                        <span>{availability === 'in' ? 'In stock'
+                          : availability === 'out' ? 'Out of stock' : 'Stock unknown'}</span>
+                        <strong>{quantity === null ? '—'
+                          : new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(quantity)}</strong>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div className="cg-supplier-products-empty">
+              <Package size={28} aria-hidden="true"/>
+              <strong>{supplierProductsFiltered.length
+                ? 'No products in this stock filter'
+                : supplierProductSearch ? 'No matching products' : 'No supplier products yet'}</strong>
+              <p>{supplierProductsFiltered.length
+                ? 'Try All products to view the complete list.'
+                : supplierProductSearch ? 'Try another part name, SKU or brand.'
+                  : 'Products linked to this supplier will appear here.'}</p>
+              {(supplierProductSearch || supplierProductAvailability !== 'all') &&
+                <button type="button" onClick={() => {
+                  setSupplierProductSearch('');
+                  setSupplierProductAvailability('all');
+                }}>Reset filters</button>}
+            </div>
+          )}
+          {supplierProductRows.length > supplierProductVisibleLimit &&
+            <div className="cg-supplier-products-more">
+              <span>Showing {visibleSupplierProducts.length} of {supplierProductRows.length}</span>
+              <button type="button" onClick={() => setSupplierProductVisibleLimit(value => value + 24)}>
+                Show more products <ChevronRight size={16} aria-hidden="true"/>
+              </button>
+            </div>}
+        </section>
+
+        <section className="cg-supplier-profile cg-supplier-products-orders" aria-label="Supplier purchase orders">
+          <div className="cg-supplier-profile-head">
+            <ShoppingBag size={19} aria-hidden="true"/><h2>Purchase Orders</h2>
+            <span>{orders.length} loaded</span>
+          </div>
+          {orders.length ? orders.map(order => (
+            <div className="cg-supplier-record" key={order.id}>
+              <div><strong>{order.purchaseNo || order.number || 'Purchase Order'}</strong>
+                <small>{order.status || '—'}</small></div>
+              <b>{money(order.total)}</b>
+            </div>
+          )) : <p className="cg-supplier-empty">No purchase orders found.</p>}
         </section>
       </div>
       )}
