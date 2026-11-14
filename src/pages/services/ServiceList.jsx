@@ -29,6 +29,9 @@ const money = new Intl.NumberFormat('en-IN', {
 });
 
 const pricingTypes = ['Fixed', 'Starting', 'Inspection Based'];
+const serviceRateMoney = new Intl.NumberFormat('en-IN', {
+  style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2
+});
 
 const emptyService = {
   code: '',
@@ -246,7 +249,7 @@ const ServiceForm = ({
             <strong>{values.name.trim() || 'Not named yet'}</strong>
             <small>{selectedCategory?.name || 'Category not selected'}</small>
           </div>
-          <div><span>Default rate</span><strong>{price ? money.format(Number(price) || 0) : 'Not set'}</strong></div>
+          <div><span>Default rate</span><strong>{price && Number.isFinite(Number(price)) ? serviceRateMoney.format(Number(price)) : 'Not set'}</strong></div>
           <div><span>Time</span><strong>{durationLabel(values.durationMinutes)}</strong></div>
         </div>
 
