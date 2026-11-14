@@ -988,23 +988,55 @@ export function JobCardWorkspace() {
             <WhatsAppManualShareButton targetType="ready_delivery" targetId={job.id}
               label="Share Vehicle Ready Message" />
           )}
-          {hasInvoiceAccess && !isSectionLocked('invoice') && activeTab !== 'invoice' &&
-            (linkedInvoice || canCreateInvoice) && (
-              <button type="button" onClick={() => openTab('invoice')} className="inline-flex h-10 items-center gap-2 rounded-xl border-0 bg-primary px-4 text-xs font-bold text-white">
-                <ReceiptText size={15}/>{linkedInvoice ? 'View Invoice' : 'Create Invoice'}
+          {hasInvoiceAccess && jobLinkedInvoiceId && (
+            <Link to={'/invoices/' + encodeURIComponent(jobLinkedInvoiceId)}
+              className="job-financial-header-link">
+              <ReceiptText size={15} aria-hidden="true"/> Open Invoice
+            </Link>
+          )}
+          {hasInvoiceAccess && !jobLinkedInvoiceId && !isSectionLocked('invoice') &&
+            activeTab !== 'invoice' && canCreateInvoice && (
+              <button type="button" onClick={() => openTab('invoice')}
+                className="job-financial-header-link is-primary">
+                <ReceiptText size={15} aria-hidden="true"/> Create Invoice
               </button>
             )}
         </div>
       </header>
 
+      <nav className="cg-job-connected-links" aria-label="Job Card connected records">
+        {can('customers.view') && job.customerId &&
+          <Link to={'/customers/' + encodeURIComponent(job.customerId)}>Customer Profile <ChevronRight size={14}/></Link>}
+        {can('vehicles.view') && job.vehicleId &&
+          <Link to={'/vehicles/' + encodeURIComponent(job.vehicleId)}>Vehicle History <ChevronRight size={14}/></Link>}
+        {can('staff.view') && job.assignedEmployeeId &&
+          <Link to={'/staff-management/staff/' + encodeURIComponent(job.assignedEmployeeId)}>Assigned Staff <ChevronRight size={14}/></Link>}
+        {hasInvoiceAccess && jobLinkedInvoiceId &&
+          <Link to={'/invoices/' + encodeURIComponent(jobLinkedInvoiceId)}>Linked Invoice <ChevronRight size={14}/></Link>}
+        {canViewPayments && hasPostedBilling &&
+          <Link to={'/finance/payments?invoice=' + encodeURIComponent(postedBilling.primaryInvoiceNumber || '')}>
+            Payment History <ChevronRight size={14}/>
+          </Link>}
+      </nav>
+
+      {billingSummaryError && hasInvoiceAccess && !USE_MOCK_API &&
+        <p className="cg-job-finance-warning" role="alert">
+          Invoice totals unavailable: {billingSummaryError}
+        </p>}
       {can('payroll.view') && can('expenses.view') && hasStockAccess && <JobTotalCostPanel
         jobId={job.id}
         refreshVersion={timerRefreshVersion}
         refreshOnTab={activeTab}
         customerServiceCharges={customerServiceCharges}
-        billedTotal={linkedInvoice ? invoiceTotal : (latestEstimate ? cleanNumber(latestEstimate.total ?? latestEstimate.grandTotal) : null)}
+        billedTotal={hasPostedBilling || linkedInvoice ? invoiceTotal
+          : (latestEstimate ? cleanNumber(latestEstimate.total ?? latestEstimate.grandTotal) : null)}
         netSellingValue={jobSellingBeforeTax}
         salesSource={jobSalesSource}
+        receivedTotal={hasPostedBilling ? postedBilling.paid : null}
+        outstandingTotal={hasPostedBilling ? postedBilling.outstanding : null}
+        paymentVisible={canViewPayments}
+        postedInvoiceCount={postedBilling?.postedInvoiceCount || 0}
+        billingLoading={billingSummaryLoading}
       />}
 
       {activeTab !== 'overview' && activeTab !== 'activity' && !showWorkTools && (
@@ -1026,7 +1058,7 @@ export function JobCardWorkspace() {
           ['Fuel', job.fuelLevel || '—'],
           ['Technician', job.assignedEmployeeName || 'Unassigned'],
           ['Estimate', latestEstimate ? money.format(latestEstimate.grandTotal || 0) : 'Not created'],
-          ['Payment', job.paymentStatus || 'Pending']
+          ['Payment', hasInvoiceAccess ? invoicePaymentStatus : 'Restricted']
         ].filter(([label]) => showAdvanced || ['Customer', 'Technician', 'Payment'].includes(label)).map(([label, value]) => (
           <div key={label} className="min-w-0 rounded-2xl border border-line bg-surface p-3">
             <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">{label}</div>
@@ -1298,7 +1330,7 @@ export function JobCardWorkspace() {
                 <div><dt>Check-in</dt><dd>{job.checkInTime || job.createdDate || '—'}</dd></div>
                 <div><dt>Branch</dt><dd>{job.branch || '—'}</dd></div>
                 <div><dt>Estimate</dt><dd>{latestEstimate ? money.format(latestEstimate.grandTotal || 0) : 'Not created'}</dd></div>
-                <div><dt>Payment</dt><dd>{job.paymentStatus || 'Pending'}</dd></div>
+                <div><dt>Payment</dt><dd>{hasInvoiceAccess ? invoicePaymentStatus : 'Restricted'}</dd></div>
               </dl>
               <div className="job-overview-more-grid">
                 <div className="job-overview-feedback">
@@ -1759,15 +1791,15 @@ export function JobCardWorkspace() {
 
           <div className="job-invoice-dashboard-stats">
             {[
-              ['Invoice Total', invoiceTotal, 'total'],
+              ['Posted Invoice Total', hasPostedBilling ? invoiceTotal : null, 'total'],
               ...(canViewPayments ? [
-                ['Paid Amount', invoicePaid, 'paid'],
-                ['Balance Due', invoiceBalance, 'balance']
+                ['Customer Paid', hasPostedBilling ? invoicePaid : null, 'paid'],
+                ['Outstanding Due', hasPostedBilling ? invoiceBalance : null, 'balance']
               ] : [])
             ].map(([label, amount, tone]) => (
               <div className={'job-invoice-stat is-' + tone} key={label}>
                 <span>{label}</span>
-                <strong>{money.format(amount)}</strong>
+                <strong>{amount === null ? (billingSummaryLoading ? 'Loading…' : 'Not posted') : money.format(amount)}</strong>
               </div>
             ))}
             <div className="job-invoice-stat is-status">
