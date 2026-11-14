@@ -6,7 +6,8 @@ import { StickyFormFooter } from '../../components/common/forms/StickyFormFooter
 import { Input } from '../../components/common/Input';
 import { Select } from '../../components/common/Select';
 import { Textarea } from '../../components/common/Textarea';
-import { PhoneInput } from '../../components/common/PhoneInput';
+import { CountryPhoneField } from '../../components/common/CountryPhoneField';
+import { validInternationalPhone } from '../../utils/jobCreateAdapters';
 import { customerService } from '../../services/customer.service';
 import { CustomerManagementTabs } from '../../components/customers/CustomerManagementTabs';
 import { User, Mail, Building, CheckCircle2 } from "lucide-react";
@@ -30,7 +31,6 @@ export const AddCustomer = () => {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    whatsapp: '',
     email: '',
     customerType: 'Individual',
     companyName: '',
@@ -47,8 +47,8 @@ export const AddCustomer = () => {
     e.preventDefault();
     if (submitting) return;
     setFormError('');
-    if (!formData.name.trim() || !formData.phone.trim()) {
-      setFormError('Customer name and contact number are required.');
+    if (!formData.name.trim() || !validInternationalPhone(formData.phone)) {
+      setFormError('Enter the customer name and a valid country-code phone number.');
       return;
     }
     try {
@@ -63,7 +63,7 @@ export const AddCustomer = () => {
       const created = await customerService.createCustomer({
         name: formData.name.trim(),
         phone: formData.phone.trim(),
-        whatsapp: (formData.whatsapp || formData.phone).trim(),
+        whatsapp: formData.phone.trim(),
         email: formData.email.trim(),
         customerType: formData.customerType === 'Individual' ? 'individual' : 'business',
         companyName: formData.companyName.trim(),
@@ -119,20 +119,11 @@ export const AddCustomer = () => {
             />
           </div>
 
-          <PhoneInput
-            label="Phone Number"
-            required
-            placeholder="98765 43210"
-            value={formData.phone}
-            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+          <CountryPhoneField
+            label="Phone" required value={formData.phone}
+            onChange={value => setFormData(current => ({ ...current, phone: value }))}
           />
-
-          <PhoneInput
-            label="WhatsApp Number"
-            placeholder="98765 43210"
-            value={formData.whatsapp}
-            onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
-          />
+          <small>Phone is also used for manual WhatsApp sharing.</small>
 
           <Input
             label="Email Address"
