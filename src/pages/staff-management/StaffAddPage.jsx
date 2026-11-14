@@ -9,6 +9,7 @@ import { hasPermission } from '../../utils/permissions';
 import { clearFieldValidation, showFormFieldError, showServerFormErrors } from '../../utils/formValidation';
 import { copyManualStaffInvite, shareManualStaffInvite } from '../../utils/staffManualInvite';
 import '../../styles/staff-mobile-onboarding.css';
+import '../../styles/staff-branch-access.css';
 import './staffPhoneCountry.css';
 
 const staffCountryCodes = [
