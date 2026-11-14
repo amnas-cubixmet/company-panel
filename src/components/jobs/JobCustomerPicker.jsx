@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Plus, Search, UserRound, X } from 'lucide-react';
 import { customerService } from '../../services/customer.service';
-import { PhoneInput } from '../common/PhoneInput';
-import { JOB_PHONE_COUNTRIES, splitInternationalPhone, joinInternationalPhone, validInternationalPhone, jobPhoneLength, jobPhoneHint, sanitizeJobNationalPhone, pasteJobNationalPhone } from '../../utils/jobCreateAdapters';
+import { CountryPhoneField } from '../common/CountryPhoneField';
+import {
+  splitInternationalPhone, joinInternationalPhone, sanitizeJobNationalPhone,
+} from '../../utils/jobCreateAdapters';
+import { validateCustomerContact, toCustomerFormPayload } from '../../utils/customerFormModel';
 
 const resultsOf = (data) => Array.isArray(data) ? data : data?.results || [];
 
@@ -15,7 +18,6 @@ export function JobCustomerPicker({ selectedCustomer, onSelect, onCreated, disab
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [draft, setDraft] = useState({ name: '', phone: '', email: '', address: '' });
-  const [phoneCountryCode, setPhoneCountryCode] = useState('+91');
   const containerRef = useRef(null);
 
   useEffect(() => {
@@ -86,7 +88,6 @@ export function JobCustomerPicker({ selectedCustomer, onSelect, onCreated, disab
     onSelect(null);
     const phoneQuery = /\d{6,}/.test(query) ? query.trim() : '';
     const phoneParts = splitInternationalPhone(phoneQuery);
-    setPhoneCountryCode(phoneParts.country);
     setDraft({
       name: phoneQuery ? '' : query.trim(),
       phone: phoneQuery ? joinInternationalPhone(phoneParts.country,
@@ -101,30 +102,24 @@ export function JobCustomerPicker({ selectedCustomer, onSelect, onCreated, disab
   const create = async (event) => {
     event.preventDefault();
     if (saving) return;
-    const name = draft.name.trim();
-    const phone = draft.phone.trim();
-    if (!name) {
-      setError('Enter the customer name.');
+    const errors = validateCustomerContact(draft);
+    if (Object.keys(errors).length) {
+      setError(errors.name || errors.phone || 'Check customer name and phone number.');
       return;
     }
-    if (!validInternationalPhone(phone)) {
-      const country = splitInternationalPhone(phone, phoneCountryCode).country;
-      setError(`Enter exactly ${jobPhoneLength(country)} digits for ${country}.`);
-      return;
-    }
+    const payload = toCustomerFormPayload({ ...draft, customerType: 'Individual' });
     setSaving(true);
     setError('');
     try {
-      const dupe = await customerService.checkDuplicateCustomer({ phone });
-      if (dupe?.duplicate && dupe.customer) {
-        pick(dupe.customer);
+      const dupe = await customerService.checkDuplicateCustomer({
+        phone: payload.phone, email: payload.email,
+      });
+      if (dupe?.id) {
+        pick(dupe);
         setError('Existing customer found and selected. No duplicate was created.');
         return;
       }
-      const customer = await customerService.createCustomer({
-        name, phone, email: draft.email.trim(), address: draft.address.trim(),
-        customerType: 'individual', status: 'active'
-      });
+      const customer = await customerService.createCustomer(payload);
       if (!customer?.id) throw new Error('Customer was not saved. Try again.');
       pick(customer);
       onCreated?.(customer);
@@ -136,8 +131,6 @@ export function JobCustomerPicker({ selectedCustomer, onSelect, onCreated, disab
       setSaving(false);
     }
   };
-
-  const phoneParts = splitInternationalPhone(draft.phone, phoneCountryCode);
 
   return (
     <div className="job-customer-picker" ref={containerRef}>
@@ -211,36 +204,10 @@ export function JobCustomerPicker({ selectedCustomer, onSelect, onCreated, disab
               <input required name="newCustomerName" value={draft.name} disabled={saving}
                 onChange={e => setDraft(old => ({ ...old, name: e.target.value }))} placeholder="Full name" />
             </label>
-            <PhoneInput label="Phone Number" labelPosition="above" name="newCustomerPhone" required
+            <CountryPhoneField label="Phone Number" name="newCustomerPhone" required
               className="job-create-phone job-customer-phone"
-              countryCode={phoneParts.country} countries={JOB_PHONE_COUNTRIES}
-              value={phoneParts.national} disabled={saving}
-              maxLength={jobPhoneLength(phoneParts.country)} inputMode="numeric"
-              helper={jobPhoneHint(phoneParts.country, phoneParts.national)}
-              onCountryCodeChange={(code) => {
-                setPhoneCountryCode(code);
-                const existing = phoneParts.national;
-                const national = existing.length > jobPhoneLength(code) ? '' : existing;
-                setDraft(old => ({ ...old, phone: joinInternationalPhone(code, national) }));
-                setError('');
-              }}
-              onChange={(event) => {
-                setDraft(old => ({
-                  ...old, phone: joinInternationalPhone(phoneParts.country,
-                    sanitizeJobNationalPhone(phoneParts.country, event.target.value)),
-                }));
-                setError('');
-              }}
-              onPaste={(event) => {
-                const pasted = event.clipboardData?.getData('text');
-                if (!pasted) return;
-                event.preventDefault();
-                const national = pasteJobNationalPhone(phoneParts.country, phoneParts.national,
-                  pasted, event.currentTarget.selectionStart, event.currentTarget.selectionEnd);
-                setDraft(old => ({ ...old, phone: joinInternationalPhone(phoneParts.country, national) }));
-                setError('');
-              }}
-              placeholder={`${jobPhoneLength(phoneParts.country)}-digit mobile number`} />
+              value={draft.phone} disabled={saving}
+              onChange={value => { setDraft(old => ({ ...old, phone: value })); setError(''); }}/>
             <label>Email
               <input type="email" name="newCustomerEmail" value={draft.email} disabled={saving}
                 onChange={e => setDraft(old => ({ ...old, email: e.target.value }))} placeholder="Optional" />
