@@ -373,7 +373,7 @@ export function JobCardWorkspace() {
   const jobSellingBeforeTax = linkedInvoice
     ? invoiceGST?.taxable ?? (linkedInvoice.invoiceType === 'regular'
       ? linkedInvoice.subtotal ?? linkedInvoice.total : null)
-    : (latestEstimate ? Math.max(0,
+    : (latestEstimate?.subtotal != null ? Math.max(0,
       cleanNumber(latestEstimate.subtotal) - cleanNumber(latestEstimate.discount)) : null);
   const jobSalesSource = linkedInvoice ? (isInvoiceFinalized ? 'final_invoice' : 'draft_invoice')
     : (latestEstimate ? 'estimate' : 'none');
