@@ -1,0 +1,85 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import {
+  customerFormDefaults, toCustomerFormPayload, toCustomerFormValues,
+  normalizeCustomerPhone, normalizeCustomerType, validateCustomerContact,
+} from '../src/utils/customerFormModel.js';
+
+test('new and edit customer forms use the same defaults and optional address fields', () => {
+  assert.deepEqual(customerFormDefaults(), {
+    name: '', phone: '', email: '', customerType: 'Individual',
+    companyName: '', gstNo: '', branch: '', address: '',
+    city: '', state: '', pincode: '', notes: '',
+  });
+  assert.deepEqual(toCustomerFormValues({
+    name: 'Workshop Client', phone: '9876543210', customerType: 'business',
+    gstin: '32ABCXY1234Z1Z2', branchId: 'branch-1',
+  }), {
+    ...customerFormDefaults(), name: 'Workshop Client', phone: '+919876543210',
+    customerType: 'Business / Company', gstNo: '32ABCXY1234Z1Z2', branch: 'branch-1',
+  });
+});
+
+test('phone is the only contact number entered and legacy Indian numbers normalize', () => {
+  assert.equal(normalizeCustomerPhone('9876543210'), '+919876543210');
+  assert.equal(normalizeCustomerPhone('+971501234567'), '+971501234567');
+  const valid = validateCustomerContact({ name: 'Test', phone: '9876543210' });
+  assert.deepEqual(valid, {});
+  assert.ok(validateCustomerContact({ name: '', phone: '123' }).phone);
+  assert.ok(validateCustomerContact({ name: '', phone: '123' }).name);
+});
+
+test('one normalized customer payload supports backend customer and manual WhatsApp sharing', () => {
+  const payload = toCustomerFormPayload({
+    name: '  Test Person ', phone: '9876543210', email: '  test@example.com ',
+    customerType: 'Business / Company', companyName: ' Fleet Co ',
+    gstNo: ' 32abcxy1234z1z2 ', city: 'Kochi', branch: 'branch-1',
+  });
+  assert.equal(payload.phone, '+919876543210');
+  assert.equal(payload.customerType, 'business');
+  assert.equal(payload.gstin, '32ABCXY1234Z1Z2');
+  assert.equal(payload.branch, 'branch-1');
+  assert.equal(payload.name, 'Test Person');
+  assert.equal(Object.hasOwn(payload, 'whatsapp'), false);
+  const individual = toCustomerFormPayload({
+    ...payload, customerType: 'individual', companyName: 'Old Co', gstNo: '32TEST',
+  });
+  assert.equal(individual.companyName, '');
+  assert.equal(individual.gstin, '');
+  assert.equal(Object.hasOwn(toCustomerFormPayload({
+    name: 'Client', phone: '+919876543210',
+  }), 'branch'), false);
+});
+
+test('types stay consistent across legacy individual, fleet and company labels', () => {
+  assert.equal(normalizeCustomerType('individual'), 'Individual');
+  assert.equal(normalizeCustomerType('Company/Fleet'), 'Business / Company');
+  assert.equal(normalizeCustomerType('business'), 'Business / Company');
+});
+
+test('all four workshop customer editors share one form; no duplicate WhatsApp inputs', () => {
+  const files = [
+    '../src/pages/customers/CustomerList.jsx',
+    '../src/pages/customers/AddCustomer.jsx',
+    '../src/pages/customers/EditCustomer.jsx',
+    '../src/pages/customers/CustomerDetails.jsx',
+  ];
+  for (const file of files) {
+    const src = readFileSync(new URL(file, import.meta.url), 'utf8');
+    assert.match(src, /<CustomerFormFields /, file);
+    assert.doesNotMatch(src, /label="WhatsApp Number"/, file);
+  }
+  const fields = readFileSync(new URL(
+    '../src/components/customers/CustomerFormFields.jsx', import.meta.url), 'utf8');
+  assert.match(fields, /<CountryPhoneField label="Phone Number"/);
+  assert.doesNotMatch(fields, /WhatsApp Number"/);
+});
+
+test('job quick-add shares the phone field and handles matching customers safely', () => {
+  const src = readFileSync(new URL(
+    '../src/components/jobs/JobCustomerPicker.jsx', import.meta.url), 'utf8');
+  assert.match(src, /<CountryPhoneField label="Phone Number"/);
+  assert.match(src, /if \(dupe\?\.id\)/);
+  assert.doesNotMatch(src, /<PhoneInput/);
+});
