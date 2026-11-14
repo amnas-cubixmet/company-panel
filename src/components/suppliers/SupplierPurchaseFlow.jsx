@@ -92,6 +92,7 @@ export default function SupplierPurchaseFlow({
     setAccounts(moneyAccounts.filter(account => account.isActive &&
       accountChannel(account.kind)));
     setStates(gst.states || []);
+    setPlaceOfSupply(previous => previous || gst.suggestedBuyerStateCode || '');
   };
   useEffect(() => {
     let alive = true;
@@ -103,6 +104,7 @@ export default function SupplierPurchaseFlow({
         setStock(items);
         setAccounts(moneyAccounts.filter(a => a.isActive && accountChannel(a.kind)));
         setStates(gst.states || []);
+    setPlaceOfSupply(previous => previous || gst.suggestedBuyerStateCode || '');
       })
       .catch(cause => { if (alive) setError(getErrorText(cause)); })
       .finally(() => { if (alive) setLoading(false); });
@@ -120,10 +122,10 @@ export default function SupplierPurchaseFlow({
       quantity: String(initialPart.quantity || '1'),
       purchaseRate: String(initialPart.purchaseRate ?? item.costPrice ?? 0),
       sellingPrice: String(item.sellingPrice ?? 0),
-      gstChoice: n(item.tax) === 0 ? 'none' :
-        invoiceChoiceFromTotalRate(String(item.tax), 'cgst_sgst') || 'custom',
-      customTax: String(item.tax || ''),
-      zeroClassification: item.zeroTaxClassification || '',
+      gstChoice: unregisteredSupplier || n(item.tax) === 0 ? 'none' :
+        invoiceChoiceFromTotalRate(String(item.tax), purchaseJurisdiction) || 'custom',
+      customTax: unregisteredSupplier ? '' : String(item.tax || ''),
+      zeroClassification: unregisteredSupplier ? 'unregistered' : item.zeroTaxClassification || '',
     }));
     setPartSearch(item.partName || item.name || '');
     setStep('part');
@@ -182,6 +184,9 @@ export default function SupplierPurchaseFlow({
   const supplierGstin = normalizeSupplierGstin(supplier.gstNo || supplier.gstin);
   const gstinProblem = supplierGstinError(supplierGstin);
   const supplierStateCode = supplierGstinStateCode(supplierGstin);
+  const unregisteredSupplier = !supplierGstin;
+  const purchaseJurisdiction = placeOfSupply && supplierStateCode && placeOfSupply !== supplierStateCode
+    ? 'igst' : 'cgst_sgst';
   const gstBreakup = placeOfSupply && supplierStateCode
     ? (placeOfSupply === supplierStateCode
       ? { mode: 'Intra-state', cgst: Math.round(tax * 50) / 100,
@@ -200,14 +205,16 @@ export default function SupplierPurchaseFlow({
         ? current : [item, ...current]);
       setPartSearch(item.partName || item.name || item.sku || '');
       const rate = n(item.tax);
-      const matched = invoiceChoiceFromTotalRate(String(rate), 'cgst_sgst');
+      const matched = invoiceChoiceFromTotalRate(String(rate), purchaseJurisdiction);
       setActivePart(previous => ({
         ...previous, itemId: String(item.id),
         description: item.partName || item.name || '', partNumber: item.partNumber || '',
         hsnCode: item.hsnCode || '', purchaseRate: String(item.costPrice ?? 0),
         sellingPrice: String(item.sellingPrice ?? 0),
-        gstChoice: rate === 0 ? 'none' : matched.startsWith('saved:') ? 'custom' : matched,
-        customTax: String(rate), zeroClassification: item.zeroTaxClassification || '',
+        gstChoice: unregisteredSupplier || rate === 0 ? 'none'
+          : matched.startsWith('saved:') ? 'custom' : matched,
+        customTax: unregisteredSupplier ? '' : String(rate),
+        zeroClassification: unregisteredSupplier ? 'unregistered' : item.zeroTaxClassification || '',
       }));
     } else {
       setActivePart(emptyPart());
@@ -235,8 +242,11 @@ export default function SupplierPurchaseFlow({
     if (part.gstChoice === 'custom' && (!part.customTax || rate < 0 || rate > 100)) {
       setError('Enter a valid HSN-specific total GST percentage.'); return;
     }
-    if (rate === 0 && !part.zeroClassification) {
-      setError('Choose why this product has 0% GST.'); return;
+    if (unregisteredSupplier && rate !== 0) {
+      setError('Unregistered supplier: GST must be 0%.'); return;
+    }
+    if (!unregisteredSupplier && rate === 0 && !part.zeroClassification) {
+      setError('Select the 0% GST classification.'); return;
     }
     if (parts.some(row => row.itemId === part.itemId && row.itemId !== '__new__')) {
       setError('This part is already in the purchase. Edit the quantity in the list instead.'); return;
@@ -257,7 +267,9 @@ export default function SupplierPurchaseFlow({
           partName: part.description.trim(), partNumber: part.partNumber.trim(),
           hsnCode: part.hsnCode.trim(), supplier: supplier.id,
           stockQuantity: 0, onHand: 0, costPrice: cost, sellingPrice: selling,
-          tax: rate, zeroTaxClassification: rate === 0 ? part.zeroClassification : '',
+          tax: unregisteredSupplier ? 0 : rate,
+          zeroTaxClassification: rate === 0
+            ? (unregisteredSupplier ? 'unregistered' : part.zeroClassification) : '',
           unit: 'Piece', minimumStock: 0,
         });
         if (!created?.id) throw new Error('Part creation did not return an ID.');
@@ -267,8 +279,9 @@ export default function SupplierPurchaseFlow({
       setParts(rows => [...rows, {
         itemId, description: part.description, quantity: fixed(qty),
         purchaseRate: fixed(cost), sellingPrice: fixed(selling),
-        gstRate: String(rate), gstChoice: part.gstChoice,
-        gstTreatment: rate === 0 ? part.zeroClassification : 'taxable',
+        gstRate: String(unregisteredSupplier ? 0 : rate), gstChoice: part.gstChoice,
+        gstTreatment: unregisteredSupplier ? 'unregistered'
+          : rate === 0 ? part.zeroClassification : 'taxable',
         updateItemPrices: part.updateItemPrices && part.itemId !== '__new__',
       }]);
       setActivePart(emptyPart());
@@ -295,12 +308,11 @@ export default function SupplierPurchaseFlow({
       setError('A valid purchase reference and date are required.'); return;
     }
     const positiveGst = parts.some(row => n(row.gstRate) > 0);
-    if (!placeOfSupply) {
-      setError('Choose the workshop / buyer Place of Supply for the purchase GST record.'); return;
+    if (!unregisteredSupplier && !placeOfSupply) {
+      setError('Select the buyer state for a GST-registered supplier.'); return;
     }
-    if (positiveGst && !supplierGstin) {
-      setError('This supplier has no GSTIN. An unregistered supplier cannot charge GST. '
-        + 'Use a properly classified 0% purchase, or update the real supplier GSTIN in Edit Supplier.'); return;
+    if (positiveGst && unregisteredSupplier) {
+      setError('This supplier has no GSTIN. Set GST to 0%, or add the real GSTIN in Edit Supplier.'); return;
     }
     if (gstinProblem) {
       setError(gstinProblem + ' Open Edit Supplier to correct or clear the saved GSTIN before posting.'); return;
