@@ -1320,6 +1320,43 @@ try {
             if(broken) throw Error('Wallet balance wraps or overflows');
           }
         }
+        if(path==='/invoices' && [390,1440].includes(profile.width)) {
+          const list=page.locator('.cg-invoice-refined');
+          await list.locator('.invoice-dashboard-stats').waitFor({state:'visible'});
+          const from=list.locator('#invoice-filter-from');
+          const to=list.locator('#invoice-filter-to');
+          const sort=list.getByRole('combobox',{name:'Sort billing documents'});
+          if(await from.count()!==1 || await to.count()!==1 || await sort.count()!==1) {
+            throw Error('Invoice date range and sort filters are missing.');
+          }
+          await from.fill('2026-10-20');
+          await list.getByText('No matching documents').waitFor({state:'visible'});
+          await list.getByRole('button',{name:'Clear Filters'}).first().click();
+          if(profile.width>767) {
+            await list.getByRole('button',{name:'View INV-0001'}).waitFor({state:'visible',
+              timeout:10000});
+          } else {
+            await list.locator('.invoice-dashboard-mobile-card').first().waitFor({state:'visible',
+              timeout:10000});
+          }
+          await sort.selectOption('oldest');
+          if(await sort.inputValue()!=='oldest') {
+            throw Error('Invoice sort selection did not update.');
+          }
+          const layout=await list.evaluate(el=>({
+            overflow:document.documentElement.scrollWidth>window.innerWidth+2,
+            cards:el.querySelectorAll('.invoice-dashboard-stat-card').length,
+            meta:el.querySelectorAll('.cg-invoice-mobile-meta>div').length,
+            tableHeaders:[...el.querySelectorAll('.invoice-dashboard-table thead th')]
+              .map(node=>node.textContent.trim()),
+          }));
+          if(layout.overflow || layout.cards!==4 || layout.meta<5 ||
+              !layout.tableHeaders.includes('Paid') || !layout.tableHeaders.includes('Still Due')) {
+            throw Error('Invoice directory responsive layout or payment columns mismatch: '+
+              JSON.stringify({width:profile.width,...layout}));
+          }
+        }
+
         if(path==='/invoices/INV-0001' && profile.width<=430) {
           await page.getByRole('button',{name:'Download Invoice PDF'}).click();
           const sheet=page.getByRole('dialog',{name:'Share invoice PDF'});
