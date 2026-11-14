@@ -574,11 +574,13 @@ export default function SuppliersPage({ section = 'all' }) {
   return <div className="cg-suppliers-page cg-suppliers-ui">
     <div className="cg-suppliers-head">
       <div>
-        {id&&<Link className="cg-suppliers-back" to="/suppliers"><ArrowLeft size={16}/> All Suppliers</Link>}
         {!id && <span className="cg-suppliers-eyebrow">CUBIXGEAR · WORKSHOP SUPPLIERS</span>}
         <h1 title={id ? (supplier?.name || 'Supplier Details') : undefined}>
           {id ? (supplier?.name || 'Supplier Details') : purchaseView ? 'Supplier Purchases' : 'Suppliers'}
         </h1>
+        {id && supplier && <p className="cg-supplier-public-code" aria-label="Supplier reference">
+          {/^SUP-\\d{5,}$/i.test(String(supplier.code || '')) ? supplier.code : 'Supplier'}
+        </p>}
         {!id && <p className="cg-suppliers-subtitle">{purchaseView
           ? 'Purchase history and supplier bills.'
           : 'Supplier contacts, stock and balances.'}</p>}
@@ -910,19 +912,29 @@ export default function SuppliersPage({ section = 'all' }) {
         </div>
       )}
       {canViewFinance && activeSupplierTab === 'accounts' && (
-        <section className="cg-supplier-profile cg-supplier-tab-panel" id="supplier-ledger" aria-label="Supplier credit and settlement">
-          <div className="cg-supplier-profile-head">
-            <CreditCard size={20}/><h2>Supplier Credit, Balance & Transactions</h2>
-          </div>
-          {supplierFinanceError && <p className="cg-supplier-error" role="alert">{supplierFinanceError}</p>}
-          {supplierFinancials && (
-            <div className="cg-supplier-fields">
-              <div><span>Total Purchases</span><strong>{money(supplierFinancials.totalPurchases)}</strong></div>
-              <div><span>Total Paid</span><strong>{money(supplierFinancials.totalPaymentsApplied)}</strong></div>
-              <div><span>Balance Due</span><strong>{money(supplierFinancials.outstanding)}</strong></div>
-              <div><span>Advance Available</span><strong>{money(supplierFinancials.availableAdvance)}</strong></div>
+        <section className="cg-supplier-profile cg-supplier-tab-panel cg-supplier-ledger-workspace"
+          id="supplier-ledger" aria-label="Supplier credit and transactions">
+          <header className="cg-supplier-ledger-header">
+            <div className="cg-supplier-ledger-heading">
+              <span className="cg-supplier-ledger-heading-icon"><CreditCard size={20} aria-hidden="true"/></span>
+              <div>
+                <h2>Supplier Account &amp; Transactions</h2>
+                <p>Purchase bills, payments, advances and credits in one ledger.</p>
+              </div>
             </div>
-          )}
+            <div className="cg-supplier-ledger-header-actions">
+              {supplierFinancials && <div className="cg-supplier-ledger-due">
+                <span>Balance Due</span>
+                <strong>{money(supplierFinancials.outstanding)}</strong>
+              </div>}
+              {canPaySupplier && <button type="button" className="cg-supplier-ledger-pay"
+                onClick={() => chooseSupplierTab('payments')}>
+                <CreditCard size={16} aria-hidden="true"/> Pay Supplier
+              </button>}
+            </div>
+          </header>
+          {supplierFinanceError && !supplierLedger &&
+            <p className="cg-supplier-error" role="alert">{supplierFinanceError}</p>}
 
           <SupplierAccountStatement
             supplier={supplier}
@@ -932,20 +944,30 @@ export default function SuppliersPage({ section = 'all' }) {
             onRefresh={() => refreshSupplierDetails().catch(cause =>
               setSupplierFinanceError(cause?.message || 'Unable to refresh supplier transactions.'))}
           />
-          <h3>Purchase Bills</h3>
-          {supplierBills.filter(b => b.postingStatus === 'Posted').map(bill => (
-            <div key={bill.id} className="cg-supplier-record">
-              <div><strong>{bill.invoiceNumber}</strong>
-                <small>{bill.postedAt
-                  ? new Date(bill.postedAt).toLocaleString('en-IN')
-                  : bill.invoiceDate} · Paid {money(bill.paid)} · {bill.status}</small>
-                <small>{bill.items?.map(item => item.description).join(', ') || 'Supplier purchase'} · Bought by {bill.purchasedBy || 'Workshop staff'}</small>
-              </div>
-              <b>Due {money(bill.outstanding)}</b>
-            </div>
-          ))}
-          {!supplierBills.length && <p className="cg-supplier-empty">No supplier purchase bills recorded.</p>}
 
+          <section className="cg-supplier-ledger-purchase-bills" aria-label="Posted purchase bills">
+            <div className="cg-supplier-ledger-bills-heading">
+              <div><ReceiptText size={18} aria-hidden="true"/><h3>Purchase Bills</h3></div>
+              <span>{supplierBills.filter(bill => bill.postingStatus === 'Posted').length} posted</span>
+            </div>
+            {supplierBills.filter(bill => bill.postingStatus === 'Posted').map(bill => (
+              <article key={bill.id} className="cg-supplier-ledger-bill">
+                <div className="cg-supplier-ledger-bill-main">
+                  <strong>{bill.invoiceNumber || 'Purchase Bill'}</strong>
+                  <span>{bill.postedAt
+                    ? new Date(bill.postedAt).toLocaleDateString('en-IN')
+                    : bill.invoiceDate || '—'} · {bill.status || 'Posted'}</span>
+                  <small>{bill.items?.map(item => item.description).filter(Boolean).join(', ') || 'Supplier purchase'}</small>
+                </div>
+                <div className="cg-supplier-ledger-bill-totals">
+                  <div><span>Paid</span><strong>{money(bill.paid)}</strong></div>
+                  <div><span>Due</span><strong>{money(bill.outstanding)}</strong></div>
+                </div>
+              </article>
+            ))}
+            {!supplierBills.some(bill => bill.postingStatus === 'Posted') &&
+              <p className="cg-supplier-ledger-bills-empty">No posted supplier purchase bills yet.</p>}
+          </section>
         </section>
       )}
       {(canCreatePurchase || canPaySupplier) && (
