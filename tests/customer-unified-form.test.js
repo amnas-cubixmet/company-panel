@@ -128,3 +128,24 @@ test('customer directory keeps Save and Cancel controls in the visible modal foo
   assert.match(css, /flex:0 0 auto/);
   assert.match(css, /\.cg-workshop-customer-modal \.cg-customer-contact-row/);
 });
+
+test('customer create/edit removes City and State controls but preserves PIN and branch', () => {
+  const fields = readFileSync(new URL('../src/components/customers/CustomerFormFields.jsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(fields, /<Input label="City"/);
+  assert.doesNotMatch(fields, /<Input label="State"/);
+  assert.match(fields, /<Input label="PIN Code"/);
+  assert.match(fields, /branches.length === 1/);
+  assert.match(fields, /cg-customer-branch-locked/);
+  assert.match(fields, /No authorized branch available/);
+  assert.doesNotMatch(fields, /Automatic branch assignment/);
+});
+
+test('staff branch assignments are explicit and limited to three', () => {
+  const staffNew = readFileSync(new URL('../src/pages/staff-management/StaffAddPage.jsx', import.meta.url), 'utf8');
+  const staffEditor = readFileSync(new URL('../src/components/staff-management/StaffProfileEditSheet.jsx', import.meta.url), 'utf8');
+  const service = readFileSync(new URL('../src/services/staff.service.js', import.meta.url), 'utf8');
+  assert.match(staffNew, /Staff Branch Access \(up to 3 branches\)/);
+  assert.match(staffNew, /allowedBranchIds\.length >= 3/);
+  assert.match(staffEditor, /Staff Branch Access \(up to 3\)/);
+  assert.match(service, /allowedBranchIds/);
+});

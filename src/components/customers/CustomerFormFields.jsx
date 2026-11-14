@@ -21,6 +21,7 @@ export function CustomerFormFields({
     disabled,
   });
   const isBusiness = normalizeCustomerType(values.customerType) === 'Business / Company';
+  const preferredBranch = String(values.branch || branches[0]?.id || '');
   return <div className="cg-customer-unified-fields">
     <section className="cg-customer-unified-section" aria-label="Customer contact details">
       <div className="cg-customer-unified-section-heading">
@@ -57,12 +58,18 @@ export function CustomerFormFields({
           <option value="Individual">Individual</option>
           <option value="Business / Company">Business / Company</option>
         </Select>
-        <Select label="Assigned Branch" {...fieldProps('branch')}
-          value={values.branch || ''} onChange={e => set('branch')(e.target.value)}>
-          <option value="">Automatic branch assignment</option>
-          {branches.map(branch =>
-            <option key={branch.id} value={branch.id}>{branch.name}</option>)}
-        </Select>
+        {branches.length === 1
+          ? <div className="cg-customer-branch-locked">
+              <span>Assigned Branch</span>
+              <strong>{branches[0].name}</strong>
+              <small>Assigned automatically from your staff access.</small>
+            </div>
+          : <Select label="Assigned Branch" {...fieldProps('branch')}
+              value={preferredBranch} onChange={e => set('branch')(e.target.value)}>
+              {!branches.length && <option value="">No authorized branch available</option>}
+              {branches.map(branch =>
+                <option key={branch.id} value={branch.id}>{branch.name}</option>)}
+            </Select>}
       </div>
       {branchError && <p className="cg-customer-unified-error" role="alert">{branchError}</p>}
       {isBusiness && <div className="cg-customer-unified-grid customer-directory-form-grid">
@@ -88,13 +95,7 @@ export function CustomerFormFields({
       <Textarea label="Address" rows={2} {...fieldProps('address')}
         value={values.address || ''} placeholder="Building, street and address"
         onChange={e => set('address')(e.target.value)}/>
-      <div className="cg-customer-unified-location">
-        <Input label="City" autoComplete="address-level2"
-          {...fieldProps('city')} value={values.city || ''}
-          onChange={e => set('city')(e.target.value)}/>
-        <Input label="State" autoComplete="address-level1"
-          {...fieldProps('state')} value={values.state || ''}
-          onChange={e => set('state')(e.target.value)}/>
+      <div className="cg-customer-pin-only">
         <Input label="PIN Code" inputMode="numeric" autoComplete="postal-code" maxLength={12}
           {...fieldProps('pincode')} value={values.pincode || ''}
           onChange={e => set('pincode')(e.target.value)}/>
