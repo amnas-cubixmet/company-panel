@@ -238,6 +238,9 @@ export default function SuppliersPage({ section = 'all' }) {
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
   const [supplierProductSearch, setSupplierProductSearch] = useState('');
+  const [remoteSupplierProducts, setRemoteSupplierProducts] = useState([]);
+  const [searchingSupplierProducts, setSearchingSupplierProducts] = useState(false);
+  const [supplierProductSearchError, setSupplierProductSearchError] = useState('');
   const [loading, setLoading] = useState(true);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -392,10 +395,44 @@ export default function SuppliersPage({ section = 'all' }) {
     return () => { active = false; };
   }, [canViewFinance, purchaseView]);
 
-  const supplierProductsFiltered = useMemo(
-    () => filterSupplierProducts(products, supplierProductSearch),
-    [products, supplierProductSearch],
-  );
+  // Full Django catalogue search, not just the first stock page returned on
+  // supplier load. The endpoint remains company-scoped; filter by this supplier.
+  useEffect(() => {
+    const query = supplierProductSearch.trim();
+    if (!id || activeSupplierTab !== 'products' || !query) {
+      setRemoteSupplierProducts([]);
+      setSearchingSupplierProducts(false);
+      setSupplierProductSearchError('');
+      return undefined;
+    }
+    let current = true;
+    setSearchingSupplierProducts(true);
+    setSupplierProductSearchError('');
+    const timer = window.setTimeout(async () => {
+      try {
+        const rows = await supplierService.products(query);
+        if (current) setRemoteSupplierProducts(
+          rows.filter(row => supplierIdOf(row) === String(id)),
+        );
+      } catch {
+        if (current) {
+          setRemoteSupplierProducts([]);
+          setSupplierProductSearchError('Search unavailable. Showing loaded supplier products.');
+        }
+      } finally {
+        if (current) setSearchingSupplierProducts(false);
+      }
+    }, 250);
+    return () => { current = false; window.clearTimeout(timer); };
+  }, [id, activeSupplierTab, supplierProductSearch]);
+
+  const supplierProductsFiltered = useMemo(() => {
+    const combined = new Map();
+    for (const item of [...remoteSupplierProducts, ...products]) {
+      if (item?.id && !combined.has(String(item.id))) combined.set(String(item.id), item);
+    }
+    return filterSupplierProducts([...combined.values()], supplierProductSearch);
+  }, [products, remoteSupplierProducts, supplierProductSearch]);
 
   const supplierBalanceTotals = useMemo(() => {
     if (!creditBalances) return null;
@@ -920,6 +957,8 @@ export default function SuppliersPage({ section = 'all' }) {
               placeholder="Search part, SKU, brand or HSN…"
               onChange={event => setSupplierProductSearch(event.target.value)}/>
           </label>
+          {searchingSupplierProducts && <p role="status" className="cg-supplier-search-feedback">Searching products…</p>}
+          {supplierProductSearchError && <p role="alert" className="cg-supplier-search-feedback">{supplierProductSearchError}</p>}
           {supplierProductsFiltered.length ? supplierProductsFiltered.map(item=><div className="cg-supplier-record" key={item.id}>
             <div>
               <strong>{item.partName||item.name}</strong>
