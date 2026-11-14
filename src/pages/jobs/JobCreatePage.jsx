@@ -48,6 +48,8 @@ export const JobCreatePage = () => {
   );
   const { can } = useFeatureAccess();
   const maySelectBranch = can('company.manage') || can('branches.manage');
+  // Photo visibility is a separate permission from adding a Job Card.
+  const canPublishJobPhotos = can('jobs.edit') || can('vehicles.edit');
   const formRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [createdJob, setCreatedJob] = useState(null);
@@ -58,6 +60,9 @@ export const JobCreatePage = () => {
   const [branches, setBranches] = useState([]);
   const [error, setError] = useState('');
   const [pendingPhotos, setPendingPhotos] = useState([]);
+  // Inspection photos are customer-visible by default when the staff role
+  // has publishing permission; turning this off keeps new uploads private.
+  const [publishJobPhotos, setPublishJobPhotos] = useState(true);
   const [savedJobId, setSavedJobId] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadingPhotoId, setUploadingPhotoId] = useState(null);
@@ -372,7 +377,10 @@ export const JobCreatePage = () => {
         const photo = pendingPhotos[i];
         setUploadProgress(i + 1);
         setUploadingPhotoId(photo.id);
-        await vehiclePhotoService.upload({ jobId: created.id, ...photo });
+        await vehiclePhotoService.upload({
+          jobId: created.id, ...photo,
+          published: Boolean(canPublishJobPhotos && publishJobPhotos),
+        });
         setPendingPhotos((items) => items.filter((entry) => entry.id !== photo.id));
         setUploadedPhotosCount((count) => count + 1);
       }
@@ -667,6 +675,13 @@ export const JobCreatePage = () => {
           <VehicleCameraQueue photos={pendingPhotos} hideDescription hideHeading
             onChange={(updater) => { setPendingPhotos(updater); if (!savedJobId) setReview(false); }}
             disabled={saving} uploading={uploadProgress} uploadingPhotoId={uploadingPhotoId} uploadTotal={uploadTotal}/>
+          {canPublishJobPhotos && (
+            <label className="job-create-photo-publish">
+              <input type="checkbox" checked={publishJobPhotos} disabled={saving || Boolean(savedJobId && !pendingPhotos.length)}
+                onChange={(event) => setPublishJobPhotos(event.target.checked)} />
+              Publish new inspection photos to customer
+            </label>
+          )}
         </section>
 
         {review && <div id="job-card-review" className="job-create-review-wrap">
