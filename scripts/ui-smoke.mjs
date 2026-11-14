@@ -304,11 +304,16 @@ try {
             throw Error('Add Complaint did not create another editable complaint');
           await page.locator('.job-complaint-row textarea').nth(1).fill('AC not cooling');
           await page.getByRole('button',{name:'Remove complaint 2'}).click();
-          await page.getByRole('button',{name:'Advanced',exact:true}).click();
-          await page.getByRole('button',{name:'Simple',exact:true}).click();
+          // The requested Simple/Advanced switch was removed from Job Create.
+          // There is now one form; mandatory and optional fields remain visible.
+          if(await page.getByRole('button',{name:'Advanced',exact:true}).count() ||
+            await page.getByRole('button',{name:'Simple',exact:true}).count())
+            throw Error('Legacy Job Create mode switch must not reappear');
+          if(await page.getByText('Service Advisor',{exact:true}).count()!==1)
+            throw Error('Service Advisor missing from single Job Card form');
           if(await firstComplaint.inputValue()!=='Noise when braking' ||
             await page.locator('.job-complaint-row').count()!==1)
-            throw Error('Complaints were lost after editing, removal, or switching modes');
+            throw Error('Complaints were lost after editing or removal');
 
           const accordion=page.getByRole('button',{name:/Advanced Vehicle Details/});
           if(await accordion.getAttribute('aria-expanded')!=='false' ||
