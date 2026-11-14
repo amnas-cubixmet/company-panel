@@ -246,7 +246,7 @@ export default function SupplierReturnsPanel({
           <h3><PackageMinus size={18} aria-hidden="true"/> New Purchase Return</h3>
           <p>Choose a posted invoice, enter returned quantities, and record a debit note.</p>
         </div>
-        <label>Purchase invoice *<select required value={billId} disabled={busy}
+        <label>Purchase invoice *<select required value={billId} disabled={busy || !postedBills.length}
           onChange={e => { setBillId(e.target.value); setQuantities({}); }}>
           <option value="">Select supplier bill</option>
           {postedBills.map(row => <option key={row.id} value={row.id}>
@@ -312,7 +312,7 @@ export default function SupplierReturnsPanel({
           <p>Use a credit from a return to reduce another unpaid purchase bill.</p>
         </div>
         <div className="cg-sr-grid">
-          <label>Available debit credit *<select required value={application.debitNoteId} disabled={busy}
+          <label>Available debit credit *<select required value={application.debitNoteId} disabled={busy || !availableDebitNotes.length}
             onChange={e => setApplication(v => ({ ...v, debitNoteId: e.target.value, billId: '' }))}>
             <option value="">Select available debit credit</option>
             {notes.filter(note => amount(note.creditAvailable) > 0).map(note =>
@@ -336,8 +336,14 @@ export default function SupplierReturnsPanel({
           </button>
         </div>
       </form>}
-      {!notes.some(note => amount(note.creditAvailable) > 0) &&
-        <p className="cg-sr-muted">There are no unapplied debit-note credits.</p>}
+      {!availableDebitNotes.length &&
+        <p className="cg-sr-empty" role="status">
+          No available debit credit yet. Post a purchase return first to generate supplier credit.
+        </p>}
+      {!!availableDebitNotes.length && !outstandingBills.length &&
+        <p className="cg-sr-empty" role="status">
+          No outstanding purchase bill is available to receive this credit.
+        </p>}
     </>}
     {tab === 'refund' && <>
       {canPay && <form className="cg-sr-form" onSubmit={receiveRefund}>
@@ -346,7 +352,7 @@ export default function SupplierReturnsPanel({
           <p>Record money received from the supplier into a Cash, Bank or UPI account.</p>
         </div>
         <div className="cg-sr-grid">
-          <label>Refund source *<select value={refundForm.source} required disabled={busy}
+          <label>Refund source *<select value={refundForm.source} required disabled={busy || !refundableSources.length}
             onChange={e => setRefundForm(v => ({ ...v, source: e.target.value, amount: '' }))}>
             <option value="">Select credit / unapplied advance</option>
             {refundableSources.map(source => <option key={source.id} value={source.id}>
@@ -381,6 +387,14 @@ export default function SupplierReturnsPanel({
           </button>
         </div>
       </form>}
+      {!refundableSources.length &&
+        <p className="cg-sr-empty" role="status">
+          No unapplied advance or debit-note credit is available to refund.
+        </p>}
+      {!accounts.length && !loading &&
+        <p className="cg-sr-empty" role="status">
+          No active receiving account found. Add a Cash, Bank or UPI account in Finance.
+        </p>}
       <div className="cg-sr-section-heading">
         <h3><ArrowDownLeft size={17} aria-hidden="true"/> Received Refunds</h3>
         <span>{refunds.length} {refunds.length === 1 ? 'record' : 'records'}</span>
