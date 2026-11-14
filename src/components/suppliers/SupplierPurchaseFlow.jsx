@@ -302,8 +302,8 @@ export default function SupplierPurchaseFlow({
       setError('This supplier has no GSTIN. An unregistered supplier cannot charge GST. '
         + 'Use a properly classified 0% purchase, or update the real supplier GSTIN in Edit Supplier.'); return;
     }
-    if (positiveGst && gstinProblem) {
-      setError(gstinProblem + ' Open Edit Supplier to correct the saved GSTIN before posting.'); return;
+    if (gstinProblem) {
+      setError(gstinProblem + ' Open Edit Supplier to correct or clear the saved GSTIN before posting.'); return;
     }
     const supplierState = supplierStateCode;
     if (positiveGst && parts.some(row =>
@@ -608,12 +608,12 @@ export default function SupplierPurchaseFlow({
                     </select>
                   </label>
                 </div>
-                {parts.some(row => n(row.gstRate) > 0) && (!supplierGstin || gstinProblem) &&
+                {(gstinProblem || (parts.some(row => n(row.gstRate) > 0) && !supplierGstin)) &&
                   <div className="cg-supplier-purchase-error" role="alert">
                     <strong>Supplier GSTIN needs attention.</strong>{' '}
                     {gstinProblem || 'Supplier is unregistered and cannot charge GST.'}{' '}
                     <a href="#supplier-profile">Open Supplier Details</a>, then use Edit Supplier.
-                    If unregistered, select a correctly classified 0% purchase instead.
+                    If unregistered, leave GSTIN blank and select a correctly classified 0% purchase.
                   </div>}
                 <div className="cg-supplier-purchase-total">
                   <div><span>Parts subtotal</span><strong>{rupees(subtotal)}</strong></div>
