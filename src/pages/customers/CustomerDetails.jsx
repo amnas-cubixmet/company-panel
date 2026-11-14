@@ -31,7 +31,7 @@ import { Select } from '../../components/common/Select';
 import { Textarea } from '../../components/common/Textarea';
 import { AmountInput } from '../../components/common/AmountInput';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
-import { User, Phone, Mail, MapPin, Car, ClipboardCheck, FileText, CreditCard, Clock, Plus, Wrench, Edit, Pencil, Archive, MoreVertical, Calendar, Building, CheckCircle2, MessageSquare, Trash2, Upload, ReceiptText } from "lucide-react";
+import { User, Phone, Mail, MapPin, Car, ClipboardCheck, FileText, CreditCard, Clock, Plus, Wrench, Edit, Pencil, Archive, MoreVertical, Calendar, Building, CheckCircle2, MessageSquare, Trash2, Upload, ReceiptText, ExternalLink } from "lucide-react";
 
 export const CustomerDetails = () => {
   const { id } = useParams();
@@ -776,119 +776,61 @@ export const CustomerDetails = () => {
           </div>
         )}
 
-        {/* 6. VEHICLES TAB */}
+        {/* VEHICLES — one customer may own multiple vehicles; amounts stay separate. */}
         {activeTab === 'vehicles' && (
-          <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Linked Vehicles</h3>
-                    </div>
-              <button
-                onClick={() => setIsAddVehicleOpen(true)}
-                style={{ height: '38px', padding: '0 14px', borderRadius: '10px', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Plus size={15} /> Add Vehicle
-              </button>
+          <div className="cg-profile-stack">
+            <div className="cg-profile-pane-header">
+              <div><h3>Linked Vehicles</h3><p>Open each vehicle or review its verified service and invoice totals.</p></div>
+              <button type="button" className="cg-profile-action-primary" disabled={archived}
+                onClick={() => setIsAddVehicleOpen(true)}><Plus size={16}/> Add Vehicle</button>
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-              {vehicles.map((v) => (
-                <div key={v.id} style={{ backgroundColor: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <span style={{ fontSize: '15px', fontWeight: '800', color: 'var(--primary)' }}>{v.regNo}</span>
-                      <h4 style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-primary)', margin: '2px 0 0 0' }}>{v.makeModel}</h4>
-                    </div>
-                    <span style={{ fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '6px', backgroundColor: 'var(--surface-3)', color: 'var(--text-secondary)' }}>
-                      {v.fuelType}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
-                    <div>Type: <strong style={{ color: 'var(--text-primary)' }}>{v.vehicleType}</strong></div>
-                    <div>Trans: <strong style={{ color: 'var(--text-primary)' }}>{v.transmission}</strong></div>
-                    <div>Year: <strong style={{ color: 'var(--text-primary)' }}>{v.year}</strong></div>
-                    <div>Current KM: <strong style={{ color: 'var(--text-primary)' }}>{v.kilometres || '—'}</strong></div>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '6px', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
-                    <button
-                      onClick={() => navigate(`/vehicles/${v.id}`)}
-                      style={{ flex: 1, height: '34px', borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--surface)', color: 'var(--text-primary)', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
-                    >
-                      View Vehicle
-                    </button>
-                    <button
-                      onClick={() => navigate(`/jobs/new?customerId=${customer.id}&vehicle=${encodeURIComponent(v.regNo)}`)}
-                      style={{ flex: 1, height: '34px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--primary-soft)', color: 'var(--primary)', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-                    >
-                      Create Job
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <CustomerVehicleFinancePanel model={financeModel} mode="vehicles"
+              vehiclesAvailable={vehiclesAvailable} jobsAvailable={jobsAvailable}
+              invoicesAvailable={invoicesAvailable}
+              onOpenFinance={openVehicleFinance}
+              onSelectVehicle={setFinanceVehicleFilter}
+              onViewVehicle={vehicleId => navigate('/vehicles/' + vehicleId)}
+              onViewInvoice={invoiceId => navigate('/invoices/' + invoiceId)}/>
           </div>
         )}
 
-        {/* 7. JOBS TAB */}
+        {/* JOBS — no invented price or demo complaint fallback. */}
         {activeTab === 'jobs' && (
-          <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Job Card History</h3>
-                
-              </div>
-              <button
-                onClick={() => navigate(`/jobs/new?customerId=${customer.id}`)}
-                style={{ height: '38px', padding: '0 14px', borderRadius: '10px', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Plus size={15} /> Create Job Card
+          <section className="cg-profile-pane">
+            <div className="cg-profile-pane-header">
+              <div><h3>Job Card History</h3><p>Service jobs for every vehicle linked to this customer.</p></div>
+              <button type="button" className="cg-profile-action-primary" disabled={archived}
+                onClick={() => navigate('/jobs/new?customerId=' + customer.id)}>
+                <Plus size={16}/> Create Job Card
               </button>
             </div>
-
-            {/* Cards for Mobile & Desktop */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {jobs.map((j) => (
-                <div
-                  key={j.id}
-                  onClick={() => navigate(`/jobs/${j.id}`)}
-                  style={{ backgroundColor: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', cursor: 'pointer', transition: 'border-color 160ms ease' }}
-                >
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <strong style={{ fontSize: '15px', color: 'var(--primary)' }}>{j.jobNumber}</strong>
-                      <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '6px', backgroundColor: 'var(--primary-soft)', color: 'var(--primary)' }}>
-                        {j.status}
-                      </span>
+            {!jobsAvailable ? <p className="cg-profile-empty">Job cards could not be loaded.</p>
+              : !jobs.length ? <p className="cg-profile-empty">No job cards recorded for this customer yet.</p>
+              : <div className="cg-profile-record-list">
+                {jobs.map(job => {
+                  const invoice = invoiceForJob(job);
+                  return <article className="cg-profile-record" key={job.id}>
+                    <div className="cg-profile-record-main">
+                      <div className="cg-profile-record-title">
+                        <strong>{job.jobNumber || 'Job Card'}</strong>
+                        <span className="cg-profile-record-status">{job.status || '—'}</span>
+                      </div>
+                      <span>{[job.vehicleInfo, job.vehicleReg].filter(Boolean).join(' · ') || 'Vehicle unavailable'}</span>
+                      <small>{customerProfileDate(job.createdDate || job.created_at)}
+                        {' · '}{job.customerComplaint || 'No complaint recorded'}</small>
                     </div>
-                    <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>
-                      {j.vehicleInfo || j.vehicleReg} ({j.vehicleReg})
+                    <div className="cg-profile-record-right">
+                      <span>{invoice ? 'Finalized invoice' : 'Not yet invoiced'}</span>
+                      <strong>{invoicesAvailable && invoice
+                        ? formatINR(invoice.total ?? invoice.totalAmount ?? null) : '—'}</strong>
+                      <button type="button" onClick={() => navigate('/jobs/' + job.id)}>
+                        Open Job <ExternalLink size={14}/>
+                      </button>
                     </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                      Date: {j.createdDate} • Complaint: {j.customerComplaint || 'Engine vibration'}
-                    </div>
-                  </div>
-
-                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '4px', marginLeft: 'auto' }}>
-                    <span style={{ fontSize: '11px', fontWeight: '600', color: j.paymentStatus === 'Paid' ? 'var(--success)' : 'var(--warning)' }}>
-                      {j.paymentStatus || 'Partially Paid'}
-                    </span>
-                    <strong style={{ fontSize: '16px', color: 'var(--text-primary)' }}>{formatINR(j.billing?.invoiceTotal || 12500)}</strong>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/jobs/${j.id}`);
-                      }}
-                      style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--border)', backgroundColor: 'var(--surface)', color: 'var(--primary)', fontSize: '11.5px', fontWeight: '700', cursor: 'pointer', marginTop: '2px' }}
-                    >
-                      View Job
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+                  </article>;
+                })}
+              </div>}
+          </section>
         )}
 
         {/* 8. SERVICE HISTORY TAB */}
