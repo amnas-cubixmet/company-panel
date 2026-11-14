@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Save } from 'lucide-react';
+import '../../styles/staff-branch-access.css';
 import { branchService } from '../../services/branch.service';
 import { ResponsiveModalSheet } from '../common/ResponsiveModalSheet';
 import { clearFieldValidation, showFormFieldError, showServerFormErrors } from '../../utils/formValidation';
