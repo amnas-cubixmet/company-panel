@@ -9,6 +9,7 @@ export const ResponsiveModalSheet = ({
   title,
   children,
   maxWidth = '720px',
+  className = '',
 }) => {
   const modalRef = useRef(null);
 
@@ -28,7 +29,7 @@ export const ResponsiveModalSheet = ({
     >
       <section
         ref={modalRef}
-        className="responsive-modal-sheet"
+        className={`responsive-modal-sheet ${className}`.trim()}
         tabIndex={-1}
         style={{ '--responsive-modal-max-width': maxWidth }}
         onMouseDown={(event) => event.stopPropagation()}
