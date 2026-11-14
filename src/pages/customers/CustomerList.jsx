@@ -642,37 +642,41 @@ export const CustomerList = () => {
         onClose={() => setIsAddCustomerOpen(false)}
         title={editingCustomerId ? "Edit Customer Details" : "Add Workshop Customer"}
         className="cg-workshop-customer-modal"
-        maxWidth="560px"
-      >
-        <form ref={customerFormRef} className="customer-directory-form cg-customer-standard-form" onSubmit={handleFormSubmit}
-          onInvalid={(event) => {
-            event.target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            event.target?.focus();
-          }}>
-          {formError && <p className="customer-directory-error" role="alert">{formError}</p>}
-          
-          <CustomerFormFields values={customerFormValues}
-            onChange={updateCustomerFormField} errors={formFieldErrors}
-            branches={branchChoices} branchError={branchLoadError}
-            disabled={formBusy || duplicateChecking}
-          />
-
+        maxWidth="620px"
+        footer={
           <div className="customer-directory-form-actions">
             <button
               type="button"
               onClick={() => setIsAddCustomerOpen(false)}
+              disabled={formBusy || duplicateChecking}
               className="customer-directory-form-cancel"
             >
               Cancel
             </button>
             <button
               type="submit"
+              form="cg-workshop-customer-editor"
               className="customer-directory-form-submit"
               disabled={formBusy || duplicateChecking}
             >
               {formBusy ? "Saving…" : duplicateChecking ? "Checking…" : editingCustomerId ? "Save Changes" : "Create Customer"}
             </button>
           </div>
+        }
+      >
+        <form id="cg-workshop-customer-editor" ref={customerFormRef}
+          className="customer-directory-form cg-customer-standard-form"
+          onSubmit={handleFormSubmit}
+          onInvalid={(event) => {
+            event.target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            event.target?.focus();
+          }}>
+          {formError && <p className="customer-directory-error" role="alert">{formError}</p>}
+          <CustomerFormFields values={customerFormValues}
+            onChange={updateCustomerFormField} errors={formFieldErrors}
+            branches={branchChoices} branchError={branchLoadError}
+            disabled={formBusy || duplicateChecking}
+          />
         </form>
       </ResponsiveModalSheet>
 
