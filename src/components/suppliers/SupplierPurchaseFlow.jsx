@@ -544,19 +544,19 @@ export default function SupplierPurchaseFlow({
                   value={activePart.sellingPrice} onChange={e => setActivePart(p => ({ ...p, sellingPrice: e.target.value }))}/>
               </label>
               <label>GST / Tax for this product *
-                <select className={fieldClass} value={activePart.gstChoice}
+                <select className={fieldClass} value={unregisteredSupplier ? 'none' : activePart.gstChoice} disabled={unregisteredSupplier}
                   onChange={e => setActivePart(p => ({ ...p, gstChoice: e.target.value }))}>
                   <option value="none">0% — Select Classification</option>
                   {choices.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                   <option value="custom">Other saved / HSN-specific total %</option>
                 </select>
               </label>
-              {activePart.gstChoice === 'custom' &&
+              {!unregisteredSupplier && activePart.gstChoice === 'custom' &&
                 <label>Custom total GST (%) *
                   <input className={fieldClass} type="number" min="0" max="100" step="0.01"
                     value={activePart.customTax} onChange={e => setActivePart(p => ({ ...p, customTax: e.target.value }))}/>
                 </label>}
-              {totalRate(activePart) === 0 &&
+              {!unregisteredSupplier && totalRate(activePart) === 0 &&
                 <label>0% classification *
                   <select className={fieldClass} value={activePart.zeroClassification}
                     onChange={e => setActivePart(p => ({ ...p, zeroClassification: e.target.value }))}>
@@ -570,10 +570,12 @@ export default function SupplierPurchaseFlow({
                     onChange={e => setActivePart(p => ({ ...p, updateItemPrices: e.target.checked }))}/>
                   Update catalogue purchase/selling prices for this item when posted (existing invoices stay unchanged)
                 </label>}
-              <p className="wide cg-supplier-purchase-muted">
-                GST selected: {totalRate(activePart)}% total. The server determines CGST + SGST/UTGST or IGST
-                using the verified Supplier GSTIN and Place of Supply.
-              </p>
+              {unregisteredSupplier && (
+                 <p className="wide cg-supplier-purchase-muted">
+                   No GSTIN · 0% GST. Receive stock without choosing a buyer state.
+                   To charge GST, add the supplier's real GSTIN in Edit Supplier.
+                 </p>
+               )}
               <div className="wide cg-supplier-purchase-actions">
                 <button type="button" className="primary" disabled={savingPart}
                   onClick={addPart}>{savingPart ? 'Saving part…' : 'Add This Product'}</button>
@@ -612,13 +614,15 @@ export default function SupplierPurchaseFlow({
                   <label>Purchase date (automatic)
                     <input className={fieldClass} type="date" readOnly value={purchaseDate}/>
                   </label>
-                  <label>Place of Supply (GST verification)
-                    <select className={fieldClass} value={placeOfSupply}
-                      onChange={e => setPlaceOfSupply(e.target.value)}>
-                      <option value="">Choose buyer / workshop state</option>
-                      {states.map(row => <option key={row.code} value={row.code}>{row.code} — {row.name}</option>)}
-                    </select>
-                  </label>
+                  {!unregisteredSupplier && (
+                   <label>Buyer State (GST)
+                     <select className={fieldClass} value={placeOfSupply}
+                       onChange={e => setPlaceOfSupply(e.target.value)}>
+                       <option value="">Select buyer state</option>
+                       {states.map(row => <option key={row.code} value={row.code}>{row.code} — {row.name}</option>)}
+                     </select>
+                   </label>
+                 )}
                 </div>
                 {(gstinProblem || (parts.some(row => n(row.gstRate) > 0) && !supplierGstin)) &&
                   <div className="cg-supplier-purchase-error" role="alert">
