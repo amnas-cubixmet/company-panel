@@ -1705,6 +1705,34 @@ try {
           }
         }
 
+        if(path==='/vehicles/VEH-0001' && [390,1440].includes(profile.width)) {
+          if(await page.getByText('Back to Vehicles',{exact:true}).count()) {
+            throw Error('The unwanted Back to Vehicles button is still visible.');
+          }
+          const breadcrumb=page.getByRole('navigation',{name:'Breadcrumb'});
+          if(!await breadcrumb.count() || !await breadcrumb.getByRole('link',{name:'Vehicles'}).count()) {
+            throw Error('Vehicle breadcrumbs were not rendered.');
+          }
+          await page.getByRole('tab',{name:'Photos & Customer Sharing'}).click();
+          await page.locator('.vehicle-photo-gallery').waitFor({state:'visible',timeout:10000});
+          const toggle=page.locator('.vehicle-photo-upload-publish input[type="checkbox"]');
+          if(await toggle.count()!==1 || !await toggle.isChecked()) {
+            throw Error('Customer photo publication must be the selected default for editor role.');
+          }
+          await toggle.uncheck();
+          if(await toggle.isChecked()) throw Error('Private upload option is not selectable.');
+          await toggle.check();
+          const photoLayout=await page.locator('.vehicle-photo-gallery').evaluate(el=>({
+            overflow:document.documentElement.scrollWidth>window.innerWidth+2,
+            width:Math.round(el.getBoundingClientRect().width),
+            counts:!!el.querySelector('.vehicle-photo-share-counts'),
+            filter:!!el.querySelector('#vehicle-photo-visibility-filter'),
+          }));
+          if(photoLayout.overflow || !photoLayout.counts || !photoLayout.filter) {
+            throw Error('Vehicle photo sharing UI layout is incomplete '+JSON.stringify(photoLayout));
+          }
+        }
+
         if(path==='/staff-management/overview') {
           const input=page.locator('.staff-simple-search input');
           const border=await input.evaluate(node=>getComputedStyle(node).borderTopWidth);
