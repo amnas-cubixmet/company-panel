@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { ResponsiveModalSheet } from '../common/ResponsiveModalSheet';
+import SupplierSelectField from '../common/SupplierSelectField';
 import { defaultEstimateCatalogGst, validateEstimateCatalogDraft } from './estimateNewCatalog';
 import { estimateGstOptions, ESTIMATE_ZERO_TAX_TREATMENTS } from './estimateGstRates';
 import '../../styles/estimate-catalog-gst.css';
 
 const emptyDraft = (kind, initialName = '', registered = false, taxMode = 'unknown', gstRateOptions = null) => ({
-  kind, name: initialName, sku: '', costPrice: '', price: '', brand: '',
+  kind, name: initialName, sku: '', costPrice: '', price: '', brand: '', supplier: '',
   workType: 'Labour', code: '',
   ...defaultEstimateCatalogGst(registered, taxMode, gstRateOptions),
 });
@@ -97,6 +98,9 @@ export function EstimateAddCatalogModal({
                   placeholder="Optional"/>
               </label>
             </div>
+            <SupplierSelectField label="Supplier" value={draft.supplier}
+              valueMode="id" disabled={saving}
+              onChange={supplier => change('supplier', supplier)}/>
             <div className="job-estimate-create-two">
               <label>Purchase Cost / Unit (₹) *
                 <input required type="number" min="0" max="10000000" step="0.01"
@@ -111,7 +115,11 @@ export function EstimateAddCatalogModal({
                 {fieldErrors.price && <small role="alert">{fieldErrors.price}</small>}
               </label>
             </div>
-            <p className="job-estimate-create-note">This creates a product only. Stock will be added later through Receive Stock, not through this estimate.</p>
+            <p className="job-estimate-create-note">
+              This creates a product with 0 available stock and links the selected supplier.
+              To receive purchased quantity, open the supplier's Purchase Bill and post it
+              (Cash/Bank payment, advance or credit). Creating a quote does not debit an account.
+            </p>
           </>
         ) : (
           <div className="job-estimate-create-two">
