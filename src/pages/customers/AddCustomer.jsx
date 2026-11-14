@@ -226,8 +226,8 @@ export const AddCustomer = () => {
           </div>
 
           <p className="customer-form-note">
-            WhatsApp messages are sent only through the configured workshop messaging workflow.
-            Saving a customer does not automatically send a message.
+            This Phone is used for calls and manual WhatsApp sharing.
+            Saving a customer never sends an automatic WhatsApp message.
           </p>
         </FormSection>
 
