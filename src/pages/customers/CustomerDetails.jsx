@@ -32,7 +32,7 @@ import { Select } from '../../components/common/Select';
 import { Textarea } from '../../components/common/Textarea';
 import { AmountInput } from '../../components/common/AmountInput';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
-import { User, Phone, Mail, MapPin, Car, ClipboardCheck, FileText, CreditCard, Clock, Plus, Wrench, Edit, Pencil, Archive, MoreVertical, Calendar, Building, CheckCircle2, MessageSquare, Trash2, Upload, ReceiptText, ExternalLink } from "lucide-react";
+import { User, Phone, Mail, MapPin, Car, ClipboardCheck, FileText, CreditCard, Clock, Plus, Wrench, Edit, Pencil, Archive, MoreVertical, Calendar, Building, CheckCircle2, MessageSquare, Trash2, ReceiptText, ExternalLink } from "lucide-react";
 
 export const CustomerDetails = () => {
   const { id } = useParams();
@@ -1065,48 +1065,41 @@ export const CustomerDetails = () => {
           </section>
         )}
 
-        {/* DOCUMENTS TAB */}
+        {/* DOCUMENT REFERENCES — metadata only; no binary upload is implied. */}
         {activeTab === 'documents' && (
-          <div className="customer-profile-documents">
-            <div className="customer-profile-documents__head">
-              <div>
-                <h3>Customer & Vehicle Documents</h3>
-                
+          <section className="cg-profile-pane">
+            <div className="cg-profile-pane-header">
+              <div><h3>Customer &amp; Vehicle Documents</h3>
+                <p>Record document references and expiry dates. Files are not uploaded here.</p>
               </div>
-              <button onClick={() => setIsAddDocumentOpen(true)}>
-                <Plus size={15}/> Add Document
-              </button>
+              <button type="button" className="cg-profile-action-primary" disabled={archived}
+                onClick={() => setIsAddDocumentOpen(true)}><Plus size={16}/> Add Reference</button>
             </div>
-
-            {documents.length ? (
-              <div className="customer-document-grid">
-                {documents.map((document) => (
-                  <article key={document.id} className="customer-document-card">
-                    <div className="customer-document-card__head">
-                      <span><FileText size={16}/></span>
-                      <div>
-                        <strong>{document.name}</strong>
-                        <small>{document.type}{document.vehicleReg ? ` · ${document.vehicleReg}` : ''}</small>
-                      </div>
-                      <b className={`is-${String(document.status || 'valid').toLowerCase().replaceAll(' ', '-')}`}>
-                        {document.status || 'Valid'}
-                      </b>
+            {!documents.length ? <p className="cg-profile-empty">
+              No document references saved for this customer.</p>
+              : <div className="cg-profile-documents">
+                {documents.map(document => <article className="cg-profile-document" key={document.id}>
+                  <div className="cg-profile-document-main">
+                    <div className="cg-profile-document-title">
+                      <FileText size={18} aria-hidden="true"/>
+                      <strong>{document.name}</strong>
+                      <span className="cg-profile-record-status">{document.status || '—'}</span>
                     </div>
-                    <div className="customer-document-meta">
-                      <div><span>Uploaded</span><strong>{document.uploadedDate || '—'}</strong></div>
-                      <div><span>Expiry</span><strong>{document.expiryDate || 'No expiry'}</strong></div>
-                      <div><span>File</span><strong>{document.fileName || 'Metadata only'}</strong></div>
+                    <p>{document.type || 'Reference'}
+                      {document.vehicleReg ? ' · ' + document.vehicleReg : ' · Customer level'}</p>
+                    <div className="cg-profile-document-details">
+                      <span>Recorded: {customerProfileDate(document.uploadedDate)}</span>
+                      <span>Expiry: {customerProfileDate(document.expiryDate)}</span>
+                      <span>File name: {document.fileName || 'Not recorded'}</span>
                     </div>
-                    <button className="customer-document-delete" onClick={() => deleteDocument(document.id)}>
-                      <Trash2 size={13}/> Delete
-                    </button>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="customer-empty">No customer or vehicle documents uploaded yet.</div>
-            )}
-          </div>
+                  </div>
+                  <button className="cg-profile-delete-action" type="button"
+                    disabled={archived} onClick={() => deleteDocument(document.id)}>
+                    <Trash2 size={15}/> Delete Record
+                  </button>
+                </article>)}
+              </div>}
+          </section>
         )}
 
         {/* 13. ACTIVITY TAB */}
@@ -1320,7 +1313,9 @@ export const CustomerDetails = () => {
             </Select>
             <Select label="Vehicle" value={docVehicle} onChange={(e)=>setDocVehicle(e.target.value)}>
               <option value="">Customer / Company level</option>
-              {vehicles.map((vehicle)=><option key={vehicle.id} value={vehicle.regNo}>{vehicle.regNo}</option>)}
+              {vehicles.map(vehicle => <option key={vehicle.id} value={vehicleRegistration(vehicle)}>
+                  {vehicleRegistration(vehicle) || vehicleMakeModel(vehicle)}
+                </option>)}
             </Select>
             <Input label="Expiry Date" type="date" value={docExpiry} onChange={(e)=>setDocExpiry(e.target.value)}/>
             <Select label="Status" value={docStatus} onChange={(e)=>setDocStatus(e.target.value)}>
@@ -1330,12 +1325,12 @@ export const CustomerDetails = () => {
               <option>Archived</option>
             </Select>
           </div>
-          <label className="customer-document-upload">
-            <Upload size={16}/>
-            <span>{docFileName || 'Choose attachment'}</span>
-            <input type="file" onChange={(e)=>setDocFileName(e.target.files?.[0]?.name || '')}/>
-          </label>
-          <button className="customer-document-save" type="submit">Save Document</button>
+          <Input label="File name (reference only)" value={docFileName}
+            onChange={event => setDocFileName(event.target.value)}
+            placeholder="For example, insurance.pdf"/>
+          <p className="cg-profile-form-note">This saves reference details and expiry information only.
+            No file is uploaded or stored.</p>
+          <button className="customer-document-save" type="submit">Save Document Reference</button>
         </form>
       </ResponsiveModalSheet>
 
