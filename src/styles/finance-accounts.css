@@ -532,3 +532,8 @@
   }
 }
 
+
+.finance-account-default-help{
+  margin:4px 0 12px;font-size:13px;line-height:1.6;
+  color:var(--text-secondary,#667085);
+}
