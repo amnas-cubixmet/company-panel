@@ -859,7 +859,7 @@
 .cg-staff-management .staff-directory .staff-directory-cell {
   min-width: 0;
   gap: 5px;
-  font-size: 13px !important;
+  font-size: 14px !important;
   line-height: 1.45;
 }
 .cg-staff-management .staff-directory .staff-directory-cell > span:not(.staff-directory-status) {
@@ -888,14 +888,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 42px !important;
-  height: 42px !important;
+  min-height: 44px !important;
+  height: 44px !important;
   border-radius: 9px;
   font-size: 13px !important;
 }
 .cg-staff-management .staff-directory .staff-directory-row-actions .staff-status-button {
-  width: 42px !important;
-  min-width: 42px !important;
+  width: 44px !important;
+  min-width: 44px !important;
 }
 .cg-staff-management .staff-directory .staff-directory-row:focus-within {
   outline: 2px solid var(--primary);
