@@ -239,20 +239,36 @@ export const VehicleDetails = () => {
         <div><IndianRupee size={15}/><span>Total Paid</span><strong>{displayMoney(totalSpend)}</strong></div>
       </div>
 
-      <nav className="vehicle-profile-tabs scroll-hidden" aria-label="Vehicle information sections">
-        {tabs.map((tab) => (
+      <nav className="vehicle-profile-tabs scroll-hidden" aria-label="Vehicle information sections"
+        role="tablist">
+        {tabs.map((tab, index) => (
           <button
             type="button"
             key={tab.id}
+            id={'vehicle-tab-' + tab.id}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls="vehicle-profile-tab-content"
+            tabIndex={activeTab === tab.id ? 0 : -1}
             className={activeTab === tab.id ? 'is-active' : ''}
-            aria-current={activeTab === tab.id ? 'page' : undefined}
             onClick={() => setActiveTab(tab.id)}
+            onKeyDown={event => {
+              if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+              event.preventDefault();
+              const next = event.key === 'Home' ? 0
+                : event.key === 'End' ? tabs.length - 1
+                  : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+              setActiveTab(tabs[next].id);
+              event.currentTarget.parentElement?.querySelectorAll('[role="tab"]')[next]?.focus();
+            }}
           >
             {tab.label}
           </button>
         ))}
       </nav>
 
+      <div id="vehicle-profile-tab-content" className="cg-vehicle-tab-content"
+        role="tabpanel" aria-labelledby={'vehicle-tab-' + activeTab}>
       {activeTab === 'overview' ? (
         <div className="vehicle-two-column">
           <section className="vehicle-panel">
@@ -452,6 +468,8 @@ export const VehicleDetails = () => {
 
         </div>
       ) : null}
+
+      </div>
 
       {canDelete && !archived ? (
         <button type="button" className="vehicle-delete-button" onClick={removeVehicle}>
