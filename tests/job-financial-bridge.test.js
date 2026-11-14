@@ -69,7 +69,9 @@ test('vehicle lookup does not conflate draft estimates with paid spending',()=>{
   const page=readFileSync(new URL('../src/pages/jobs/JobList.jsx',import.meta.url),'utf8');
   const lookup=readFileSync(new URL('../src/components/jobs/VehicleLookupPanel.jsx',import.meta.url),'utf8');
   assert.match(page,/const issuedInvoices/);
-  assert.match(page,/\.filter\(invoice => invoice && isPostedInvoice\(invoice\)\)/);
+  assert.match(page,/if \(!isPostedInvoice\(invoice\)\) return false/);
+  assert.match(page,/const uniquePosted = new Map/);
+  assert.match(page,/!USE_MOCK_API/);
   assert.doesNotMatch(page,/job\.estimates\?\.at\(-1\)\?\.grandTotal/);
   assert.match(lookup,/Issued Invoice Value/);
 });
