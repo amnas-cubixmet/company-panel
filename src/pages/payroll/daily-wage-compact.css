@@ -1186,3 +1186,20 @@
     transition: none;
   }
 }
+
+
+/* Payroll touch/readability contract for all four linked payroll screens. */
+.dw-page.dashboard-page:is(.dw-daily-wages,.dw-ledger-page,.dw-overtime-page) .dw-nav a {
+  font-size: 14px !important;
+}
+.dw-page.dashboard-page:is(.dw-daily-wages,.dw-ledger-page,.dw-overtime-page) .dw-card-head > span {
+  font-size: 14px !important;
+}
+.dw-page.dashboard-page.dw-ledger-page .dw-table tbody td {
+  font-size: 14px !important;
+}
+@media (max-width: 767px) {
+  .dw-page.dashboard-page:is(.dw-daily-wages,.dw-ledger-page,.dw-overtime-page) .dw-nav a {
+    font-size: 14px !important;
+  }
+}
