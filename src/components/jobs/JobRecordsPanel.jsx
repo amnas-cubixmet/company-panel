@@ -118,8 +118,14 @@ export const JobRecordsPanel = ({
                         <small>{!finance.posted ? 'Invoice not finalized'
                           : canViewPayments ? finance.outstanding > 0 ? 'Payment due' : 'Paid'
                             : 'Payment balance restricted'}</small>
-                        {canViewPayments && finance.posted &&
-                          <strong>{finance.outstanding > 0 ? 'Due ₹' + finance.outstanding.toFixed(2) : 'Settled'}</strong>}
+                        {canViewPayments && finance.posted && <>
+                          <span className="jobs-financial-amount-line">Paid
+                            <strong>₹{Number(invoice.paid || 0).toFixed(2)}</strong>
+                          </span>
+                          <span className="jobs-financial-amount-line">Due
+                            <strong>₹{finance.outstanding.toFixed(2)}</strong>
+                          </span>
+                        </>}
                         {canCollectPayments && finance.paymentUrl &&
                           <Link className="jobs-finance-receive" to={finance.paymentUrl}>Receive Payment</Link>}
                         {canViewPayments && finance.historyUrl &&
@@ -184,8 +190,14 @@ export const JobRecordsPanel = ({
                   <strong>{invoicesError ? 'Unavailable' : !finance.posted ? 'Not finalized'
                     : !canViewPayments ? 'Restricted'
                       : finance.outstanding > 0 ? 'Due' : 'Paid'}</strong>
-                  {canViewPayments && finance.posted &&
-                    <small>{finance.outstanding > 0 ? '₹' + finance.outstanding.toFixed(2) : 'Settled'}</small>}
+                  {canViewPayments && finance.posted && <>
+                    <span className="jobs-financial-amount-line">Paid
+                      <strong>₹{Number(invoice.paid || 0).toFixed(2)}</strong>
+                    </span>
+                    <span className="jobs-financial-amount-line">Due
+                      <strong>₹{finance.outstanding.toFixed(2)}</strong>
+                    </span>
+                  </>}
                 </div>
                 <nav aria-label={'Financial links for ' + jobDisplayLabel(job)}>
                   {canViewGST && finance.gstrUrl && <Link to={finance.gstrUrl}>GSTR-1</Link>}
