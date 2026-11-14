@@ -117,6 +117,13 @@ export const CustomerDetails = () => {
   const [editBranches, setEditBranches] = useState([]);
   const [editBranchesError, setEditBranchesError] = useState('');
 
+  const parseNotes = noteText => String(noteText || '').split(/\n(?=\[\d{4}-\d{2}-\d{2}\] )/)
+    .filter(Boolean).map((entry, index) => {
+      const match = entry.match(/^\[(\d{4}-\d{2}-\d{2})\] ([\s\S]*)$/);
+      return { id: index, text: match ? match[2] : entry,
+        addedBy: 'Workshop team', date: match ? match[1] : '' };
+    });
+
   // Customer Note form state
   const [newNoteText, setNewNoteText] = useState('');
   const [notesList, setNotesList] = useState([]);
@@ -164,7 +171,7 @@ export const CustomerDetails = () => {
         setEditNotes(cust.notes || '');
         setDocuments(Array.isArray(cust.documents) ? cust.documents : []);
 
-        setNotesList(cust.notes ? [{ id: 'customer-note', text: cust.notes, addedBy: 'Workshop team', date: cust.createdAt || '' }] : []);
+        setNotesList(parseNotes(cust.notes));
 
         // A missing optional subresource must not make the entire customer profile fail.
         const loaders = [
@@ -369,19 +376,25 @@ export const CustomerDetails = () => {
     }
   };
 
-  const handleAddNoteSubmit = async (e) => {
-    e.preventDefault();
-    if (!newNoteText.trim()) return;
-    const noteObj = {
-      id: Date.now(),
-      text: newNoteText,
-      addedBy: 'Service Advisor',
-      date: new Date().toISOString().replace('T', ' ').substring(0, 16)
-    };
-    setNotesList([noteObj, ...notesList]);
-    setIsAddNoteOpen(false);
-    setNewNoteText('');
-    showToast('Customer note saved.');
+  const handleAddNoteSubmit = async event => {
+    event.preventDefault();
+    if (noteSaving || !newNoteText.trim()) return;
+    setNoteSaving(true);
+    try {
+      const datedNote = '[' + new Date().toISOString().slice(0,10) + '] ' + newNoteText.trim();
+      const notes = [String(customer.notes || '').trim(), datedNote].filter(Boolean).join('\n');
+      const updated = await customerService.updateCustomer(customer.id, { notes });
+      setCustomer(updated);
+      setNotesList(parseNotes(notes));
+      setEditNotes(notes);
+      setIsAddNoteOpen(false);
+      setNewNoteText('');
+      showToast('Customer note saved to the profile.');
+    } catch (error) {
+      showToast(error?.message || 'Could not save customer note.');
+    } finally {
+      setNoteSaving(false);
+    }
   };
 
   const handleAddDocumentSubmit = async (e) => {
