@@ -43,6 +43,7 @@ const fieldClass = 'cg-supplier-purchase-input';
 
 export default function SupplierPurchaseFlow({
   supplier, initialPart = null, canPurchase = false, canPay = false,
+  showPurchase = true, showPayments = true,
   bills = [], onChanged = () => {},
 }) {
   const [stock, setStock] = useState([]);
@@ -58,6 +59,10 @@ export default function SupplierPurchaseFlow({
   const prefilled = useRef('');
   const [activePart, setActivePart] = useState(emptyPart);
   const [partSearch, setPartSearch] = useState('');
+  const [remoteProducts, setRemoteProducts] = useState([]);
+  const [searchingProducts, setSearchingProducts] = useState(false);
+  const [productSearchError, setProductSearchError] = useState('');
+  const [searchRetry, setSearchRetry] = useState(0);
   const [parts, setParts] = useState([]);
   const [step, setStep] = useState('part');
   const [savingPart, setSavingPart] = useState(false);
@@ -120,15 +125,56 @@ export default function SupplierPurchaseFlow({
     }));
     setPartSearch(item.partName || item.name || '');
     setStep('part');
-    setNotice('Part and purchase quantity loaded. Review the details, Add Part, then Post Purchase to receive stock and record supplier credit/payment.');
+    setNotice('Product and quantity ready. Add Product, then confirm purchase.');
     document.getElementById('supplier-purchase-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [initialPart, stock]);
 
-  const stockOptions = useMemo(() => stock.filter(item => {
-    const text = [item.partName, item.name, item.partNumber, item.sku].filter(Boolean).join(' ').toLowerCase();
-    const ownSupplier = !item.supplier || String(item.supplier?.id || item.supplier) === String(supplier.id);
-    return ownSupplier && text.includes(partSearch.trim().toLowerCase());
-  }).slice(0, 70), [stock, partSearch, supplier.id]);
+  // Search the authenticated Django stock endpoint; searching a cached first
+  // page could not find some products, especially ones linked to other vendors.
+  useEffect(() => {
+    const query = partSearch.trim();
+    if (!query || !showPurchase) {
+      setRemoteProducts([]);
+      setSearchingProducts(false);
+      setProductSearchError('');
+      return undefined;
+    }
+    let current = true;
+    setSearchingProducts(true);
+    setProductSearchError('');
+    const timer = window.setTimeout(async () => {
+      try {
+        const rows = await stockCatalogService.getItems(query);
+        if (current) setRemoteProducts(Array.isArray(rows) ? rows : []);
+      } catch (cause) {
+        if (current) {
+          setRemoteProducts([]);
+          setProductSearchError('Could not search stock. Retry or select a loaded product.');
+        }
+      } finally {
+        if (current) setSearchingProducts(false);
+      }
+    }, 250);
+    return () => { current = false; window.clearTimeout(timer); };
+  }, [partSearch, searchRetry, showPurchase]);
+
+  const stockOptions = useMemo(() => {
+    const query = partSearch.trim().toLowerCase();
+    const seen = new Set();
+    return [...remoteProducts, ...stock].filter(item => {
+      const id = String(item.id || '');
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      const searchable = [item.partName, item.name, item.partNumber, item.sku,
+        item.barcode, item.brand, item.location, item.rack].filter(Boolean).join(' ').toLowerCase();
+      return !query || searchable.includes(query);
+    }).sort((a, b) => {
+      const aName = String(a.partName || a.name || '').toLowerCase();
+      const bName = String(b.partName || b.name || '').toLowerCase();
+      return Number(bName.startsWith(query)) - Number(aName.startsWith(query))
+        || aName.localeCompare(bName);
+    }).slice(0, query ? 60 : 80);
+  }, [stock, remoteProducts, partSearch]);
 
   const postedBills = useMemo(() => bills
     .filter(bill => bill.postingStatus === 'Posted' && n(bill.outstanding) > 0)
@@ -155,11 +201,14 @@ export default function SupplierPurchaseFlow({
   // purchase GST components when the posted bill is created.
 
   const selectItem = value => {
-    const item = stock.find(row => String(row.id) === String(value));
+    const item = [...remoteProducts, ...stock].find(row => String(row.id) === String(value));
     if (value === '__new__') {
       setActivePart(emptyPart());
       setActivePart(previous => ({ ...previous, itemId: '__new__' }));
     } else if (item) {
+      setStock(current => current.some(row => String(row.id) === String(item.id))
+        ? current : [item, ...current]);
+      setPartSearch(item.partName || item.name || item.sku || '');
       const rate = n(item.tax);
       const matched = invoiceChoiceFromTotalRate(String(rate), 'cgst_sgst');
       setActivePart(previous => ({
@@ -414,10 +463,10 @@ export default function SupplierPurchaseFlow({
       {error && <p ref={errorRef} className="cg-supplier-purchase-error" role="alert">{error}</p>}
       {notice && <p className="cg-supplier-purchase-muted" role="status">{notice}</p>}
       {canPurchase && (
-        <section id="supplier-purchase-form" className="cg-supplier-purchase-card">
+        <section id="supplier-purchase-form" hidden={!showPurchase} className="cg-supplier-purchase-card">
           <header>
             <div><h2>Buy / Receive Spare Parts</h2>
-              <p>One product at a time. Add another, or finish on this Supplier page.</p></div>
+              <p>Add product and quantity, then confirm purchase.</p></div>
             <span className="cg-supplier-purchase-tag">Supplier: {supplier.name}</span>
           </header>
           <div className="cg-supplier-purchase-clock">
@@ -425,20 +474,42 @@ export default function SupplierPurchaseFlow({
             <span>Started: <strong>{new Date(purchaseOpenedAt).toLocaleString('en-IN', {
               day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
             })}</strong></span>
-            <span>Posting timestamp is recorded automatically on confirmation.</span>
           </div>
           {loading && <p role="status">Loading inventory and accounts…</p>}
           {!loading && step === 'part' && (
             <div className="cg-supplier-purchase-grid">
-              <label className="wide">Find an existing product
-                <input className={fieldClass} type="search" value={partSearch} onChange={e => setPartSearch(e.target.value)}
-                  placeholder="Search paint, brush, part number or SKU" />
-              </label>
+              <div className="wide cg-supplier-product-search">
+                <label htmlFor="supplier-stock-search">Search product</label>
+                <input id="supplier-stock-search" className={fieldClass} type="search" value={partSearch}
+                  onChange={event => {
+                    setPartSearch(event.target.value);
+                    setActivePart(emptyPart());
+                  }}
+                  placeholder="Product name, SKU, part number or barcode" autoComplete="off"/>
+                {searchingProducts && <small role="status">Searching products…</small>}
+                {productSearchError && <p role="alert" className="cg-supplier-purchase-error">
+                  {productSearchError} <button type="button" onClick={() => setSearchRetry(n => n + 1)}>Retry</button>
+                </p>}
+                {partSearch.trim() && !searchingProducts && (
+                  <div className="cg-supplier-product-results" role="group" aria-label="Matching products">
+                    {stockOptions.slice(0, 12).map(item => (
+                      <button key={item.id} type="button"
+                        className={String(activePart.itemId) === String(item.id) ? 'is-selected' : ''}
+                        onClick={() => selectItem(String(item.id))}>
+                        <strong>{item.partName || item.name || 'Product'}</strong>
+                        <small>{item.sku || item.partNumber || 'No SKU'} · Stock {item.onHand ?? 0}</small>
+                      </button>))}
+                    {!stockOptions.length && !productSearchError &&
+                      <small>No matching product. Choose Create New Product below.</small>}
+                  </div>
+                )}
+              </div>
               <label className="wide">Product *
-                <select className={fieldClass} value={activePart.itemId} onChange={e => selectItem(e.target.value)}>
+                <select className={fieldClass} value={activePart.itemId}
+                  onChange={e => selectItem(e.target.value)}>
                   <option value="">Choose product</option>
                   {stockOptions.map(item => <option key={item.id} value={String(item.id)}>
-                    {item.partName || item.name} — Stock {item.onHand ?? 0}
+                    {item.partName || item.name} — {item.sku || 'No SKU'} · Stock {item.onHand ?? 0}
                   </option>)}
                   <option value="__new__">+ Create New Product</option>
                 </select>
@@ -620,10 +691,7 @@ export default function SupplierPurchaseFlow({
                   No active Cash/Bank account found. <Link to="/finance/accounts">Create a Cash or Bank account</Link>,
                   or record this purchase as supplier credit.
                 </p>}
-                <p className="cg-supplier-purchase-muted">
-                  Confirm posts stock, supplier bill, payment splits and remaining credit together.
-                  Do not enter the same supplier purchase again under Expenses or generic Payments.
-                </p>
+                <p className="cg-supplier-purchase-muted">Confirm to receive stock and record payment or supplier credit.</p>
               </>}
             </div>
           )}
@@ -631,9 +699,9 @@ export default function SupplierPurchaseFlow({
       )}
 
       {canPay && (
-        <section id="supplier-pay-now" className="cg-supplier-purchase-card">
+        <section id="supplier-pay-now" hidden={!showPayments} className="cg-supplier-purchase-card">
           <header><div><h2>Pay Previous Supplier Credit</h2>
-            <p>One payment can clear several unpaid purchase bills, oldest first.</p></div>
+            <p>Pay unpaid purchase bills.</p></div>
             <strong>{rupees(remainingSupplier)} due</strong>
           </header>
           {!postedBills.length
