@@ -930,6 +930,30 @@ try {
           };
           if(path==='/services/new'){
             await checkFields('.service-form-page form.service-form',8);
+            const editor=page.locator('.cg-service-editor');
+            const layout=await editor.evaluate(el=>{
+              const sections=[...el.querySelectorAll('.service-form-section')];
+              const name=el.querySelector('input[placeholder="e.g. Front Brake Pad Replacement"]');
+              const buttons=[...el.querySelectorAll('.cg-service-editor-actions button')];
+              return {
+                sections:sections.length,
+                requiredFields:el.querySelectorAll('.cg-service-required').length,
+                nameFullWidth: name ? name.getBoundingClientRect().width > 230 : false,
+                toolbarHeight:buttons.map(button=>Math.round(button.getBoundingClientRect().height)),
+                summary:!!el.querySelector('.cg-service-editor-summary'),
+                pageOverflow:document.documentElement.scrollWidth>window.innerWidth+2,
+              };
+            });
+            if(layout.sections!==3 || layout.requiredFields!==3 ||
+                !layout.nameFullWidth || !layout.summary || layout.pageOverflow ||
+                layout.toolbarHeight.some(height=>height<48)){
+              throw Error('Add Service editor layout mismatch: '+JSON.stringify({width:profile.width,...layout}));
+            }
+            await editor.locator('input[placeholder="0.00"]').fill('999.86');
+            const preview=await editor.locator('.cg-service-editor-summary').innerText();
+            if(!preview.includes('999.86')) {
+              throw Error('Service rate preview incorrectly rounds paise: '+preview);
+            }
           } else {
             const search=page.locator('.service-dashboard-search');
             await search.waitFor({state:'visible'});
