@@ -8,6 +8,8 @@ import { stockCatalogService } from '../../services/stockCatalog.service';
 import InventoryBranchOperations from '../../components/stock/InventoryBranchOperations';
 import InventoryCategories from '../../components/stock/InventoryCategories';
 import { supplierService } from '../../services/supplier.service';
+import { CountryPhoneField } from '../../components/common/CountryPhoneField';
+import { validInternationalPhone } from '../../utils/jobCreateAdapters';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import StockFinanceConnections from '../../components/stock/StockFinanceConnections';
@@ -279,6 +281,10 @@ export default function StockEasyPage() {
   const createQuickSupplier = async () => {
     if (quickSupplierSaving || !quickSupplier.name.trim()) {
       setQuickSupplierError('Supplier Name is required.');
+      return;
+    }
+    if (quickSupplier.phone.trim() && !validInternationalPhone(quickSupplier.phone)) {
+      setQuickSupplierError('Enter the supplier phone with the correct country-code length.');
       return;
     }
     setQuickSupplierSaving(true);
@@ -665,7 +671,7 @@ export default function StockEasyPage() {
               <strong>New Supplier</strong>
               <OutlinedInput label="Supplier Name *" maxLength={180} value={quickSupplier.name} onChange={e => setQuickSupplier({ ...quickSupplier, name: e.target.value })}/>
               <div className="cg-easy-fields">
-                <OutlinedInput label="Phone" type="tel" maxLength={30} value={quickSupplier.phone} onChange={e => setQuickSupplier({ ...quickSupplier, phone: e.target.value })}/>
+                <CountryPhoneField label="Phone" value={quickSupplier.phone} onChange={value => setQuickSupplier(old => ({ ...old, phone: value }))}/>
                 <OutlinedInput label="GSTIN" maxLength={20} value={quickSupplier.gstNo} onChange={e => setQuickSupplier({ ...quickSupplier, gstNo: e.target.value })}/>
               </div>
               <OutlinedInput label="Address" value={quickSupplier.address} onChange={e => setQuickSupplier({ ...quickSupplier, address: e.target.value })}/>
