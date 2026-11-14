@@ -120,6 +120,7 @@ export default function SupplierPurchaseFlow({
     }));
     setPartSearch(item.partName || item.name || '');
     setStep('part');
+    setNotice('Part and purchase quantity loaded. Review the details, Add Part, then Post Purchase to receive stock and record supplier credit/payment.');
     document.getElementById('supplier-purchase-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [initialPart, stock]);
 
