@@ -232,12 +232,21 @@ export const JobList = () => {
 
     // Estimates are quotations, not money spent or paid by the customer.
     // Count only finalized invoices, and only when this role may read invoices.
-    const issuedInvoices = canViewInvoices && !invoicesLoading && !invoicesError
-      ? sameVehicle.map(item => jobInvoiceFor(jobInvoiceRows, item))
-        .filter(invoice => invoice && isPostedInvoice(invoice)) : [];
-    const spending = issuedInvoices.reduce((sum, invoice) =>
+    const spendingVerified = Boolean(canViewInvoices && !USE_MOCK_API &&
+      !invoicesLoading && !invoicesError);
+    const jobIds = new Set(sameVehicle.map(item => String(item.id)));
+    const jobNumbers = new Set(sameVehicle.map(item => String(item.jobNumber || '')).filter(Boolean));
+    const issuedInvoices = spendingVerified ? jobInvoiceRows.filter(invoice => {
+      if (!isPostedInvoice(invoice)) return false;
+      const invoiceJobId = String(
+        invoice.jobId || invoice.job_id || invoice.sourceJobId || invoice.source_job_id || invoice.job || '',
+      );
+      const invoiceJobNumber = String(invoice.jobCardNo || invoice.job_card_no || '');
+      return jobIds.has(invoiceJobId) || (invoiceJobNumber && jobNumbers.has(invoiceJobNumber));
+    }) : [];
+    const uniquePosted = new Map(issuedInvoices.map(invoice => [String(invoice.id), invoice]));
+    const spending = [...uniquePosted.values()].reduce((sum, invoice) =>
       sum + Number(invoice.total || 0), 0);
-    const spendingVerified = Boolean(canViewInvoices && !invoicesLoading && !invoicesError);
 
     return {
       registration,
