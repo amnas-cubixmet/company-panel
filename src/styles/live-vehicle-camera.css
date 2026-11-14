@@ -336,3 +336,82 @@
 @media (prefers-reduced-motion: reduce) {
   .live-camera-overlay * { transition: none; scroll-behavior: auto; }
 }
+
+
+/* Camera footer visibility v2 — Capture/Save always outside scrolling fields. */
+.live-camera-panel .live-camera-stage {
+  flex: 1 1 210px;
+  aspect-ratio: auto;
+  min-height: 145px;
+  max-height: min(39dvh, 360px);
+}
+.live-camera-panel .live-camera-controls {
+  flex: 0 1 auto;
+  max-height: min(31dvh, 220px);
+  padding: 12px 18px;
+  gap: 10px;
+  overflow-y: auto;
+}
+.live-camera-panel .live-camera-footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  padding: 11px 16px max(13px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--camera-border);
+  background: var(--camera-section);
+}
+.live-camera-panel .live-camera-action-row {
+  grid-column: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+}
+.live-camera-panel .live-camera-action-row button {
+  min-height: 44px;
+  padding: 9px 12px;
+  font-size: 13px;
+}
+@media (max-width: 680px) {
+  .live-camera-panel .live-camera-stage {
+    flex: 1 1 auto;
+    max-height: none;
+    min-height: 130px;
+  }
+  .live-camera-panel .live-camera-controls {
+    flex: 0 1 auto;
+    max-height: min(39dvh, 250px);
+    padding: 10px 12px;
+  }
+  .live-camera-panel .live-camera-footer {
+    padding: 10px 12px max(12px, env(safe-area-inset-bottom));
+  }
+  .live-camera-panel .live-camera-action-row button {
+    flex: 1 1 104px;
+    min-height: 44px;
+  }
+  .live-camera-panel .live-camera-action-row .live-camera-shutter {
+    flex: 0 0 78px;
+    width: 78px;
+    min-width: 78px;
+    height: 54px;
+    min-height: 54px;
+    border-radius: 27px;
+  }
+}
+@media (max-width: 420px) {
+  .live-camera-panel .live-camera-action-row {
+    gap: 7px;
+  }
+  .live-camera-panel .live-camera-action-row button {
+    padding: 9px 8px;
+    font-size: 12px;
+  }
+}
