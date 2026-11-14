@@ -6,7 +6,8 @@ import { StickyFormFooter } from '../../components/common/forms/StickyFormFooter
 import { Input } from '../../components/common/Input';
 import { Select } from '../../components/common/Select';
 import { Textarea } from '../../components/common/Textarea';
-import { PhoneInput } from '../../components/common/PhoneInput';
+import { CountryPhoneField } from '../../components/common/CountryPhoneField';
+import { validInternationalPhone } from '../../utils/jobCreateAdapters';
 import { CustomerManagementTabs } from '../../components/customers/CustomerManagementTabs';
 import { customerService } from '../../services/customer.service';
 
@@ -18,7 +19,6 @@ export const EditCustomer = () => {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    whatsapp: '',
     email: '',
     customerType: 'Individual',
     companyName: '',
@@ -39,7 +39,6 @@ export const EditCustomer = () => {
         setFormData({
           name: customer.name || '',
           phone: customer.phone || '',
-          whatsapp: customer.whatsapp || customer.phone || '',
           email: customer.email || '',
           customerType: customer.customerType || 'Individual',
           companyName: customer.companyName || '',
@@ -60,9 +59,12 @@ export const EditCustomer = () => {
 
   const submit = async (event) => {
     event.preventDefault();
+    if (!validInternationalPhone(formData.phone)) {
+      return;
+    }
     setSubmitting(true);
     try {
-      await customerService.updateCustomer(id, formData);
+      await customerService.updateCustomer(id, { ...formData, whatsapp: formData.phone });
       navigate(`/customers/${id}`);
     } finally {
       setSubmitting(false);
@@ -83,8 +85,8 @@ export const EditCustomer = () => {
           <div className="form-grid-full">
             <Input label="Customer Name" required value={formData.name} onChange={(e)=>set('name',e.target.value)}/>
           </div>
-          <PhoneInput label="Phone Number" required value={formData.phone} onChange={(e)=>set('phone',e.target.value)}/>
-          <PhoneInput label="WhatsApp Number" value={formData.whatsapp} onChange={(e)=>set('whatsapp',e.target.value)}/>
+          <CountryPhoneField label="Phone" required value={formData.phone} onChange={value => set('phone', value)}/>
+          <small>The same Phone is used for manual WhatsApp sharing.</small>
           <Input label="Email" type="email" value={formData.email} onChange={(e)=>set('email',e.target.value)}/>
           <Select label="Customer Type" value={formData.customerType} onChange={(e)=>set('customerType',e.target.value)}>
             <option>Individual</option>
