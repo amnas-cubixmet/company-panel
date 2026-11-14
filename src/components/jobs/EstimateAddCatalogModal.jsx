@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import { ResponsiveModalSheet } from '../common/ResponsiveModalSheet';
 import { defaultEstimateCatalogGst, validateEstimateCatalogDraft } from './estimateNewCatalog';
 import { estimateGstOptions, ESTIMATE_ZERO_TAX_TREATMENTS } from './estimateGstRates';
+import '../../styles/estimate-catalog-gst.css';
 
 const emptyDraft = (kind, initialName = '', registered = false, taxMode = 'unknown', gstRateOptions = null) => ({
   kind, name: initialName, sku: '', costPrice: '', price: '', brand: '',
