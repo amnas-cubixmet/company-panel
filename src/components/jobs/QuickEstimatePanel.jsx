@@ -18,7 +18,8 @@ import { invoiceTaxMode, invoiceChoiceFromTotalRate } from '../../utils/invoiceT
 const emptyLine = (type = 'Labour') => ({
   key: String(Date.now()) + '-' + String(Math.random()),
   description: '', type, quantity: '1', unitPrice: '', catalogId: '', catalogCode: '',
-  taxRate: type === 'Part' ? '' : '18', hsnSac: type === 'Part' ? '' : '998714'
+  // Editable estimate starting rate; actual HSN/SAC classification must be checked.
+  taxRate: '18', hsnSac: type === 'Part' ? '' : '998714'
 });
 const money = (value) => new Intl.NumberFormat('en-IN', {
   style: 'currency', currency: 'INR', maximumFractionDigits: 2
@@ -376,6 +377,10 @@ export function QuickEstimatePanel({
             unit: 'Piece',
             minimumStock: 0,
             onHand: 0,
+            tax: Number(draft.taxRate) || 0,
+            hsnCode: draft.hsnSac?.trim() || '',
+            zeroTaxClassification: registered && draft.taxChoice === 'none'
+              ? draft.taxTreatment : '',
           })
         : await serviceService.createService({
             name: draft.name.trim(),
@@ -383,6 +388,11 @@ export function QuickEstimatePanel({
               Math.random().toString(36).slice(2, 7).toUpperCase(),
             price: Number(draft.price),
             is_active: true,
+            ...(registered ? {
+              taxRate: Number(draft.taxRate) || 0,
+              hsnSac: draft.hsnSac?.trim() || '',
+              taxTreatment: draft.taxChoice === 'none' ? draft.taxTreatment : 'taxable',
+            } : {}),
           });
 
       const selection = buildEstimateCatalogSelection(draft, created);
@@ -766,6 +776,9 @@ export function QuickEstimatePanel({
         request={catalogRequest}
         saving={catalogSaving}
         error={catalogError}
+        registered={registered}
+        taxMode={taxMode}
+        gstRateOptions={job?.gstInfo?.gstRateOptions}
         onClose={() => { if (!catalogSaving) setCatalogRequest(null); }}
         onCreate={createCatalogItem}
       />
