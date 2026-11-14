@@ -981,46 +981,55 @@ export const CustomerDetails = () => {
             onViewInvoice={invoiceId => navigate('/invoices/' + invoiceId)}/>
         )}
 
-        {/* 11. PAYMENTS TAB */}
+        {/* PAYMENTS — separate receipt history; invoice paid already includes applied receipts. */}
         {activeTab === 'payments' && (
-          <>
-          <CustomerCreditLedgerPanel customerId={customer.id} onChanged={loadCustomerData}/>
-          <div style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>Payment Records</h3>
-                
-              </div>
-              <button
-                onClick={() => { setPaymentError(''); setIsRecordPaymentOpen(true); }}
-                style={{ height: '38px', padding: '0 14px', borderRadius: '10px', backgroundColor: 'var(--success)', color: '#ffffff', border: 'none', fontSize: '12.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <Plus size={15} /> Record Payment
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {payments.map((p) => (
-                <div key={p.id} style={{ backgroundColor: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{p.method}</strong>
-                      <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '6px', backgroundColor: 'var(--surface-3)', color: 'var(--text-secondary)' }}>
-                        {p.invoiceNo || '—'}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      Date: {p.date} • Ref: {p.reference} • Recorded by: {p.recordedBy || '—'}
-                    </div>
-                  </div>
-                  <strong style={{ fontSize: '16px', color: p.direction === 'OUT' ? 'var(--danger)' : 'var(--success)' }}>
-                    {p.direction === 'OUT' ? '−' : '+'}{formatINR(p.amount)}
-                  </strong>
+          <div className="cg-profile-stack">
+            <CustomerCreditLedgerPanel customerId={customer.id} onChanged={loadCustomerData}/>
+            <section className="cg-profile-pane">
+              <div className="cg-profile-pane-header">
+                <div><h3>Payment Records</h3>
+                  <p>Actual money in/out. Payments applied to invoices are already included in the Received total.</p>
                 </div>
-              ))}
-            </div>
+                <button type="button" className="cg-profile-action-primary" disabled={archived}
+                  onClick={() => { setPaymentError(''); setIsRecordPaymentOpen(true); }}>
+                  <Plus size={16}/> Record Payment
+                </button>
+              </div>
+              <div className="cg-profile-financial-strip">
+                <div><span>Invoice Receipts</span><strong>{formatINR(totalPaid)}</strong></div>
+                <div><span>Invoice Due</span><strong>{formatINR(totalOutstanding)}</strong></div>
+                <div><span>Payment Records</span><strong>{payments.length}</strong></div>
+              </div>
+              {!payments.length ? <p className="cg-profile-empty">
+                No payment receipts or refunds have been recorded yet.</p>
+              : <div className="cg-profile-record-list">
+                  {payments.map((payment,index) => {
+                    const target = invoices.find(invoice =>
+                      String(invoice.id) === String(payment.invoiceId || payment.invoice || '') ||
+                      (payment.invoiceNo && customerInvoiceLabel(invoice) === payment.invoiceNo));
+                    const linkedId = target ? resolveCustomerVehicleId(target, vehicles, jobs) : null;
+                    const linkedVehicle = vehicles.find(v => String(v.id) === linkedId);
+                    const outgoing = String(payment.direction || '').toUpperCase() === 'OUT';
+                    return <article className="cg-profile-record" key={payment.id || index}>
+                      <div className="cg-profile-record-main">
+                        <div className="cg-profile-record-title">
+                          <strong>{payment.invoiceNo || (outgoing ? 'Refund / Outgoing' : 'Customer Receipt')}</strong>
+                          <span className="cg-profile-record-status">{payment.method || 'Payment'}</span>
+                        </div>
+                        <span>{customerProfileDate(payment.date || payment.created_at)}
+                          {' · '}{linkedVehicle ? vehicleRegistration(linkedVehicle) : 'Customer level'}
+                        </span>
+                        <small>{payment.reference ? 'Reference: ' + payment.reference : 'No reference'}
+                          {' · '}{payment.recordedBy || 'Workshop team'}</small>
+                      </div>
+                      <div className={'cg-profile-record-amount ' + (outgoing ? 'is-out' : 'is-in')}>
+                        {outgoing ? '−' : '+'}{formatINR(payment.amount)}
+                      </div>
+                    </article>;
+                  })}
+                </div>}
+            </section>
           </div>
-          </>
         )}
 
         {/* 12. NOTES TAB */}
