@@ -103,6 +103,7 @@ export function AccountsPage() {
   const [showAdjust, setShowAdjust] = useState(false);
   const [adjustForm, setAdjustForm] = useState({ direction: 'credit', amount: '', reason: '' });
   const [adjusting, setAdjusting] = useState(false);
+  const [settingDefault, setSettingDefault] = useState(false);
 
   const loadAccounts = useCallback(async () => {
     setLoading(true);
@@ -186,6 +187,20 @@ export function AccountsPage() {
     }
   };
 
+  const toggleDefaultPayment = async () => {
+    if (!account || !canManage || settingDefault || !account.isActive) return;
+    setSettingDefault(true);
+    setError('');
+    try {
+      await financeService.updateAccount(id, { isDefaultPayment: !account.isDefaultPayment });
+      await loadAccount();
+    } catch (cause) {
+      setError(cause?.message || 'Could not update the default payment account.');
+    } finally {
+      setSettingDefault(false);
+    }
+  };
+
   const toggleActive = async () => {
     if (!account || !canManage) return;
     try {
@@ -229,6 +244,12 @@ export function AccountsPage() {
             </div>
           </div>
           {canManage && <div className="finance-account-actions">
+            {['Cash', 'Bank', 'UPI', 'Wallet'].includes(account.kind) && account.isActive &&
+              <button type="button" className="finance-secondary-btn" disabled={settingDefault}
+                onClick={toggleDefaultPayment}>
+                {settingDefault ? 'Saving…' : account.isDefaultPayment
+                  ? 'Remove Default Payment Account' : 'Set as Default Payment Account'}
+              </button>}
             <button className="finance-secondary-btn" onClick={() => setShowAdjust(!showAdjust)}>
               Adjust Balance
             </button>
@@ -239,6 +260,10 @@ export function AccountsPage() {
         </header>
 
         {error && <div className="finance-error" role="alert">{error}</div>}
+        {['Cash', 'Bank', 'UPI', 'Wallet'].includes(account.kind) && <p className="finance-account-default-help">
+          {account.isDefaultPayment ? 'Default payment source: supplier payments using this method will debit this account.' :
+            'Optional: mark this account as the default for automatic supplier payments. Cash and Bank / UPI have separate defaults.'}
+        </p>}
 
         <div className="finance-account-stats">
           <article className="finance-balance-card">
@@ -393,6 +418,8 @@ export function AccountsPage() {
               <div className="finance-account-row-right">
                 <span className={`finance-kind-badge finance-kind-${String(acc.kind || 'Other').toLowerCase()}`}>{acc.kind || 'Other'}</span>
                 {!acc.isActive && <span className="finance-status-badge is-inactive">Inactive</span>}
+                {acc.isDefaultPayment && acc.isActive &&
+                  <span className="finance-status-badge">Default Payment</span>}
                 <strong className="finance-row-balance">{fmt(acc.currentBalance)}</strong>
               </div>
             </article>
