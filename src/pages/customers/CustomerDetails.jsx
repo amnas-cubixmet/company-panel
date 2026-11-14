@@ -575,7 +575,7 @@ export const CustomerDetails = () => {
             <button type="button" className="customer-profile-action is-primary"
               disabled={archived}
               onClick={() => {
-                const targetVehicle = vehicles[0]?.regNo || '';
+                const targetVehicle = vehicles[0] ? vehicleRegistration(vehicles[0]) : '';
                 navigate('/jobs/new?customerId=' + customer.id +
                   '&customerName=' + encodeURIComponent(customer.name) +
                   '&vehicle=' + encodeURIComponent(targetVehicle));
@@ -1146,7 +1146,13 @@ export const CustomerDetails = () => {
             <option value="">Select unpaid invoice</option>
             {payableInvoices.map((inv) => (
               <option key={inv.id} value={inv.id}>
-                {customerInvoiceLabel(inv)} — Due {customerInvoiceBalance(inv)}
+                {customerInvoiceLabel(inv)}
+                {' · '}{(() => {
+                  const matchId = resolveCustomerVehicleId(inv, vehicles, jobs);
+                  const vehicle = vehicles.find(item => String(item.id) === matchId);
+                  return vehicle ? vehicleRegistration(vehicle) : 'Direct / unlinked';
+                })()}
+                {' · Due '}{customerInvoiceBalance(inv)}
               </option>
             ))}
           </Select>
