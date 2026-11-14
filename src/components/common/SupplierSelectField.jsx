@@ -7,6 +7,7 @@ import { USE_MOCK_API } from '../../api/apiConfig';
 import { supplierService } from '../../services/supplier.service';
 import { CountryPhoneField } from './CountryPhoneField';
 import { validInternationalPhone } from '../../utils/jobCreateAdapters';
+import { normalizeSupplierGstin, supplierGstinError } from '../../utils/supplierGstin';
 import './SupplierSelectField.css';
 
 const emptySupplier = () => ({ name: '', phone: '', gstNo: '', address: '' });
@@ -96,7 +97,9 @@ export default function SupplierSelectField({
       setError('Enter a valid phone number for the selected country.');
       return;
     }
-    const gstNo = draft.gstNo.trim().toUpperCase();
+    const gstNo = normalizeSupplierGstin(draft.gstNo);
+    const gstinProblem = supplierGstinError(gstNo);
+    if (gstinProblem) { setError(gstinProblem); return; }
     const existing = suppliers.find(row =>
       (gstNo && String(row.gstNo || row.gstin || '').toUpperCase() === gstNo) ||
       (String(row.name || '').trim().toLowerCase() === name.toLowerCase() &&
@@ -185,8 +188,14 @@ export default function SupplierSelectField({
       <CountryPhoneField label="Phone" value={draft.phone}
         disabled={creating || disabled}
         onChange={value => setDraft(old => ({ ...old, phone: value }))}/>
-      <label>GSTIN (optional)<input maxLength={20} value={draft.gstNo}
-        disabled={creating || disabled} onChange={event => setDraft(old => ({ ...old, gstNo: event.target.value.toUpperCase() }))}/></label>
+      <label>GSTIN (optional)<input maxLength={15} value={draft.gstNo}
+        aria-label="Supplier GSTIN" aria-invalid={Boolean(supplierGstinError(draft.gstNo))}
+        disabled={creating || disabled} onChange={event => {
+          setDraft(old => ({ ...old, gstNo: event.target.value.toUpperCase() }));
+          setError('');
+        }}/>
+        <small>15 characters · State code first (Kerala 32). Leave blank if unregistered.</small>
+      </label>
       <label>Address (optional)<input maxLength={240} value={draft.address}
         disabled={creating || disabled} onChange={event => setDraft(old => ({ ...old, address: event.target.value }))}/></label>
       <p>Supplier details are saved once to the shared directory. Stock receipt and payment are separate.</p>
