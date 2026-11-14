@@ -855,7 +855,6 @@ export default function SupplierPurchaseFlow({
                 <select className={fieldClass} value={settlement.channel}
                   onChange={e => {
                     const channel = e.target.value;
-                    const available = financeAccountsForChannel(accounts, channel);
                     setSettlement(old => ({ ...old, channel,
                       accountId: defaultFinanceAccountId(accounts, channel) }));
                     setCashSetupOpen(false);
