@@ -45,7 +45,7 @@ export function CustomerFormFields({
         <strong>Customer Details</strong>
         <span>Choose the correct customer type and branch.</span>
       </div>
-      <div className="cg-customer-unified-grid">
+      <div className="cg-customer-unified-grid customer-directory-form-grid">
         <Select label="Customer Type" {...fieldProps('customerType')}
           value={normalizeCustomerType(values.customerType)}
           onChange={e => set('customerType')(e.target.value)}>
@@ -60,7 +60,7 @@ export function CustomerFormFields({
         </Select>
       </div>
       {branchError && <p className="cg-customer-unified-error" role="alert">{branchError}</p>}
-      {isBusiness && <div className="cg-customer-unified-grid">
+      {isBusiness && <div className="cg-customer-unified-grid customer-directory-form-grid">
         <Input label="Company Name" icon={Building2}
           {...fieldProps('companyName')} value={values.companyName || ''}
           placeholder="Registered business name" onChange={e => set('companyName')(e.target.value)}/>
