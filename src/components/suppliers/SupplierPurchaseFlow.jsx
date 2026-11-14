@@ -461,7 +461,7 @@ export default function SupplierPurchaseFlow({
     const amount = Number(settlement.amount);
     const account = accounts.find(a => String(a.id) === String(settlement.accountId));
     if (!settlement.amount || !Number.isFinite(amount) || amount <= 0 ||
-      !/^\\d+(?:\\.\\d{1,2})?$/.test(String(settlement.amount))) {
+      !/^\d+(?:\.\d{1,2})?$/.test(String(settlement.amount))) {
       setSettlementError('Enter a payment amount greater than zero (up to two decimal places).');
       return;
     }
