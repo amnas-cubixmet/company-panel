@@ -372,6 +372,7 @@ export function QuickEstimatePanel({
             partName: draft.name.trim(),
             sku: draft.sku.trim(),
             brand: draft.brand.trim(),
+            supplier: draft.supplier || null,
             costPrice: Number(draft.costPrice),
             sellingPrice: Number(draft.price),
             unit: 'Piece',
