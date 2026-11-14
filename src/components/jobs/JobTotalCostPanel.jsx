@@ -12,6 +12,8 @@ const money = (value) => new Intl.NumberFormat('en-IN', {
 export function JobTotalCostPanel({
   jobId, refreshVersion = 0, refreshOnTab = '', customerServiceCharges = 0,
   billedTotal = null, netSellingValue = null, salesSource = 'none',
+  receivedTotal = null, outstandingTotal = null, paymentVisible = false,
+  postedInvoiceCount = 0, billingLoading = false,
 }) {
   const { user } = useAuth();
   const permitted = ['jobs.view', 'payroll.view', 'expenses.view', 'stock.view']
@@ -24,6 +26,9 @@ export function JobTotalCostPanel({
   const hasBill = billedTotal !== null && billedTotal !== undefined && Number.isFinite(Number(billedTotal));
   const hasNetSales = netSellingValue !== null && netSellingValue !== undefined
     && Number.isFinite(Number(netSellingValue));
+  const hasCollections = postedInvoiceCount > 0 && !billingLoading &&
+    receivedTotal !== null && outstandingTotal !== null &&
+    Number.isFinite(Number(receivedTotal)) && Number.isFinite(Number(outstandingTotal));
   const incompleteCosts = Boolean(summary?.unallocatedDailyWages || summary?.unapprovedMechanicWork
     || summary?.partsAtCurrentCost);
   // Show only the difference between known pre-tax selling and recorded direct
@@ -95,7 +100,7 @@ export function JobTotalCostPanel({
     <section className="job-total-cost-panel is-global" aria-label="Job Card total cost">
       <header className="job-total-cost-heading">
         <div>
-          <h3><Calculator size={18} aria-hidden="true" /> Job Cost, Bill &amp; Profit</h3>
+          <h3><Calculator size={18} aria-hidden="true" /> Job Cost, Selling &amp; Profit</h3>
           <p>Workshop-only cost, customer bill and indicative margin. These figures never appear on the customer invoice.</p>
         </div>
       </header>
@@ -135,7 +140,7 @@ export function JobTotalCostPanel({
               <small>{salesSource === 'estimate' ? 'Estimate only, not invoiced' : 'Tax-exclusive value'}</small>
             </div>
             <div className="job-total-cost-card is-margin">
-              <span>Estimated Gross Profit</span>
+              <span>Indicative Gross Profit (before GST)</span>
               <strong>{grossMargin !== null ? money(grossMargin) : 'Not ready'}</strong>
               <small>{grossMargin === null
                 ? 'A verified pre-tax selling figure and recorded costs are required'
@@ -144,6 +149,21 @@ export function JobTotalCostPanel({
                     : 'Provisional; bill not yet finalized'}</small>
             </div>
           </div>
+          {paymentVisible && (
+            <div className="job-total-cost-grid job-customer-payment-grid"
+              aria-label="Customer invoice settlement">
+              <div className="job-total-cost-card">
+                <span>Customer Paid</span>
+                <strong>{hasCollections ? money(receivedTotal) : billingLoading ? 'Loading…' : 'Not invoiced'}</strong>
+                <small>Confirmed receipts already applied on posted invoices</small>
+              </div>
+              <div className="job-total-cost-card is-due">
+                <span>Customer Balance Due</span>
+                <strong>{hasCollections ? money(outstandingTotal) : billingLoading ? 'Loading…' : 'Not invoiced'}</strong>
+                <small>{hasCollections ? postedInvoiceCount + ' posted invoice(s)' : 'Drafts and estimates are not due'}</small>
+              </div>
+            </div>
+          )}
           {refreshOnTab === 'work' && (
             <div className="job-total-customer-service" aria-label="Recorded customer service charges">
               <div>
