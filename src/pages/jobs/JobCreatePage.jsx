@@ -9,6 +9,7 @@ import { staffService } from '../../services/staff.service';
 import { payrollService } from '../../services/payroll.service';
 import { JobBreadcrumbs } from '../../components/jobs/JobBreadcrumbs';
 import { JobCustomerPicker } from '../../components/jobs/JobCustomerPicker';
+import { VehicleMakeModelPicker } from '../../components/jobs/VehicleMakeModelPicker';
 import { PhoneInput } from '../../components/common/PhoneInput';
 import { customerService } from '../../services/customer.service';
 import { branchService } from '../../services/branch.service';
@@ -233,6 +234,10 @@ export const JobCreatePage = () => {
     if (key === 'vehicleMake' || key === 'vehicleModel') {
       setForm((old) => {
         const next = { ...old, [key]: value };
+        // A different Make must never retain a Model from the previous Make.
+        if (key === 'vehicleMake' && old.vehicleMake !== value) {
+          next.vehicleModel = '';
+        }
         next.vehicleInfo = [next.vehicleMake, next.vehicleModel].filter(Boolean).join(' ');
         return next;
       });
@@ -555,28 +560,10 @@ export const JobCreatePage = () => {
                 value={form.vehicleReg} onChange={(e) => set('vehicleReg', e.target.value.toUpperCase())}
                 placeholder="KL 07 AB 1234" className={inputClass}/>
             </label>
-            <label className={labelClass}>Make
-              <input name="vehicleMake" list="job-vehicle-makes" value={form.vehicleMake}
-                maxLength={80} onChange={(e) => set('vehicleMake', e.target.value)}
-                placeholder="e.g. Toyota" className={inputClass}/>
-              <datalist id="job-vehicle-makes">
-                {[...new Set(['Toyota', 'Maruti Suzuki', 'Hyundai', 'Tata', 'Honda',
-                  ...customerVehicles.map((vehicle) => splitVehicleMakeModel(vehicle).make).filter(Boolean)])]
-                  .map((make) => <option key={make} value={make}/>)}
-              </datalist>
-            </label>
-            <label className={labelClass}>Model
-              <input name="vehicleModel" list="job-vehicle-models" value={form.vehicleModel}
-                maxLength={80} onChange={(e) => set('vehicleModel', e.target.value)}
-                placeholder="e.g. Innova" className={inputClass}/>
-              <datalist id="job-vehicle-models">
-                {[...new Set(customerVehicles
-                  .filter((vehicle) => !form.vehicleMake ||
-                    splitVehicleMakeModel(vehicle).make.toLowerCase() === form.vehicleMake.toLowerCase())
-                  .map((vehicle) => splitVehicleMakeModel(vehicle).model).filter(Boolean))]
-                  .map((model) => <option key={model} value={model}/>)}
-              </datalist>
-            </label>
+            <VehicleMakeModelPicker make={form.vehicleMake} model={form.vehicleModel}
+              customerVehicles={customerVehicles} disabled={saving}
+              onMakeChange={(value) => set('vehicleMake', value)}
+              onModelChange={(value) => set('vehicleModel', value)}/>
             <label className={labelClass}>Fuel Type
               <select name="fuelType" value={form.fuelType} onChange={(e) => set('fuelType',e.target.value)} className={inputClass}>
                 <option value="">Select fuel type</option>
@@ -684,10 +671,9 @@ export const JobCreatePage = () => {
           <div className="job-create-section-heading">
             <div>
               <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">{stepNumber('photos')}</span> Vehicle Photos / Inspection</h2>
-              <p>Capture on mobile or upload gallery photos. Photos are optional and stay private until published.</p>
             </div>
           </div>
-          <VehicleCameraQueue photos={pendingPhotos}
+          <VehicleCameraQueue photos={pendingPhotos} hideDescription
             onChange={(updater) => { setPendingPhotos(updater); if (!savedJobId) setReview(false); }}
             disabled={saving} uploading={uploadProgress} uploadingPhotoId={uploadingPhotoId} uploadTotal={uploadTotal}/>
         </section>
