@@ -664,7 +664,7 @@ export const JobCreatePage = () => {
               <h2 className="text-base font-extrabold text-content"><span className="job-create-title-step">{stepNumber('photos')}</span> Vehicle Photos / Inspection</h2>
             </div>
           </div>
-          <VehicleCameraQueue photos={pendingPhotos} hideDescription
+          <VehicleCameraQueue photos={pendingPhotos} hideDescription hideHeading
             onChange={(updater) => { setPendingPhotos(updater); if (!savedJobId) setReview(false); }}
             disabled={saving} uploading={uploadProgress} uploadingPhotoId={uploadingPhotoId} uploadTotal={uploadTotal}/>
         </section>
