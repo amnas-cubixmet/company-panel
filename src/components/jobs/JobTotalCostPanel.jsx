@@ -131,7 +131,7 @@ export function JobTotalCostPanel({
           </details>
           <div className="job-total-cost-grid job-total-finance-grid" aria-label="Internal billing and margin">
             <div className="job-total-cost-card">
-              <span>{salesSource === 'final_invoice' ? 'Total Invoice Bill'
+              <span>{salesSource === 'final_invoice' ? postedInvoiceCount > 1 ? 'All Posted Invoice Bills' : 'Posted Invoice Bill'
                 : salesSource === 'draft_invoice' ? 'Draft Invoice Total' : 'Estimated Bill'}</span>
               <strong>{hasBill ? money(billedTotal) : 'Not invoiced'}</strong>
               <small>Includes GST when applicable</small>
