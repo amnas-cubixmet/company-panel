@@ -643,10 +643,13 @@ try {
             await page.locator('select[name=role]').selectOption('staff-role');
             await save.click();
             await field.getByRole('alert').filter({hasText:duplicate}).waitFor();
-            const after = await phone.boundingBox();
-            const error = await field.getByRole('alert').boundingBox();
-            if (before.width < 120 || Math.abs(before.width - after.width) > 1 || error.y < after.y + after.height - 1) {
-              throw Error(`Invalid staff phone layout: ${JSON.stringify({before, after, error})}`);
+            const layout = await field.evaluate(node => {
+              const input = node.querySelector('input').getBoundingClientRect();
+              const error = node.querySelector('.cg-inline-field-error').getBoundingClientRect();
+              return { width:input.width, gap:error.top - input.bottom };
+            });
+            if (before.width < 120 || Math.abs(before.width - layout.width) > 1 || layout.gap < 0) {
+              throw Error(`Invalid staff phone layout: ${JSON.stringify({beforeWidth:before.width, ...layout})}`);
             }
             const country = field.getByRole('combobox', {name:'Mobile country code'});
             await country.selectOption('+971');
