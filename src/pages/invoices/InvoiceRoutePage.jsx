@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Download, Edit3, Plus, Printer, ReceiptText, Trash2, Truck, Wallet, FileCheck2, Settings2, XCircle } from "lucide-react";
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { billingService, blankBillingDocument, calculateDocumentTotals } from '../../services/billing.service';
 import { normalizeBackendInvoiceTotals } from '../../utils/invoiceBackendTotals';
 import { isPostedInvoice, gstrLinkForInvoice, financePaymentHistoryLink, invoiceOutstandingAmount } from '../../utils/invoiceFinanceLinks';
@@ -61,7 +61,9 @@ export function InvoiceRoutePage() {
   const { can } = useFeatureAccess();
   const { id } = useParams();
   const mode = resolveMode(location.pathname, id);
-  const kindFromUrl = new URLSearchParams(location.search).get('kind') === 'estimate' ? 'estimate' : 'invoice';
+  const query = new URLSearchParams(location.search);
+  const kindFromUrl = query.get('kind') === 'estimate' ? 'estimate' : 'invoice';
+  const requestedJobId = mode === 'create' && kindFromUrl === 'invoice' ? query.get('jobId') : null;
 
   const [documents, setDocuments] = useState([]);
   const [inventory, setInventory] = useState([]);
@@ -79,7 +81,7 @@ export function InvoiceRoutePage() {
   };
   const [form, setForm] = useState(() => blankBillingDocument(kindFromUrl, {
     emptyInputs: mode === 'create',
-    jobId: new URLSearchParams(location.search).get('jobId'),
+    jobId: requestedJobId,
   }));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -102,6 +104,13 @@ export function InvoiceRoutePage() {
   const [branchStateMismatch, setBranchStateMismatch] = useState(false);
   const [jobDraftWarnings, setJobDraftWarnings] = useState([]);
   const [jobDraftLoading, setJobDraftLoading] = useState(false);
+  const [jobDraftError, setJobDraftError] = useState('');
+  const [jobDraftRetry, setJobDraftRetry] = useState(0);
+  const linkedJobId = requestedJobId || (form.kind === 'invoice' && (form.jobId || form.sourceJobId));
+  const jobInvoicePath = linkedJobId && can('jobs.view') && can('invoices.view')
+    ? `/jobs/${encodeURIComponent(linkedJobId)}/invoice` : '';
+  const editorReady = mode === 'edit' ? !loading && form.id === id
+    : newInvoiceTaxReady && (!requestedJobId || (!jobDraftLoading && form.sourceJobId === requestedJobId && !jobDraftError));
   // GST/HSN gaps are shown next to their fields. Issued-stock information is
   // already accounted for by the server draft and needs no warning banner.
   const actionableJobDraftWarnings = jobDraftWarnings.filter((notice) =>
@@ -204,7 +213,7 @@ export function InvoiceRoutePage() {
       setSelectedCustomerId('');
       setForm(blankBillingDocument(kindFromUrl, {
         emptyInputs: true,
-        jobId: new URLSearchParams(location.search).get('jobId'),
+        jobId: requestedJobId,
       }));
       loadList({ withReferences: true });
     } else loadDocument();
@@ -213,8 +222,8 @@ export function InvoiceRoutePage() {
   // Job Card is an explicit server-scoped link, not a browser-local draft.
   // No invoice is created until the user reviews and clicks Save Draft.
   useEffect(() => {
-    const jobId = new URLSearchParams(location.search).get('jobId');
-    if (mode !== 'create' || kindFromUrl !== 'invoice' || !jobId) {
+    setJobDraftError('');
+    if (!requestedJobId) {
       setJobDraftWarnings([]);
       setJobDraftLoading(false);
       return undefined;
@@ -222,7 +231,7 @@ export function InvoiceRoutePage() {
     let active = true;
     setJobDraftWarnings([]);
     setJobDraftLoading(true);
-    billingService.getJobInvoiceDraft(jobId).then((draft) => {
+    billingService.getJobInvoiceDraft(requestedJobId).then((draft) => {
       if (!active) return;
       if (draft.existingInvoiceId) {
         navigate('/invoices/' + encodeURIComponent(draft.existingInvoiceId), { replace: true });
@@ -232,7 +241,10 @@ export function InvoiceRoutePage() {
       // verified workshop profile, never imported from Job Card claims.
       setForm((old) => ({
         ...old, sourceJobId: draft.jobId, jobCardNo: draft.jobNumber,
-        customer: { ...old.customer, ...(draft.customer || {}) },
+        customer: {
+          ...old.customer, ...draft.customer,
+          placeOfSupply: formatInvoicePlaceOfSupply(draft.customer?.state) || old.customer?.placeOfSupply || '',
+        },
         vehicle: { ...old.vehicle, ...(draft.vehicle || {}) },
         items: (draft.items || []).map((item) => ({
           ...item, inventoryId: '',
@@ -242,12 +254,10 @@ export function InvoiceRoutePage() {
       setJobDraftWarnings(draft.warnings || []);
     }).catch((err) => {
       if (!active) return;
-      const data = err?.response?.data || {};
-      setError(data?.jobId || data?.detail || err?.message ||
-        'Unable to load verified Job Card charges.');
+      setJobDraftError(err?.message || 'Unable to load verified Job Card charges.');
     }).finally(() => { if (active) setJobDraftLoading(false); });
     return () => { active = false; };
-  }, [mode, kindFromUrl, location.search, navigate]);
+  }, [requestedJobId, location.search, jobDraftRetry, navigate]);
 
   useEffect(() => {
     if (mode !== 'create') return undefined;
@@ -554,11 +564,7 @@ export function InvoiceRoutePage() {
   const highlightInvalidFields = () => setAttemptedSubmit((value) => value + 1);
 
   const save = async () => {
-    if (!newInvoiceTaxReady) {
-      setError('Verify workshop GST registration before saving.');
-      highlightInvalidFields();
-      return;
-    }
+    if (!editorReady || saving) return;
     const draft = mode === 'create' ? applyWorkshopTaxProfile(form, workshopTaxProfile) : form;
     const invalidInputs = validateInvoiceDraft(draft);
     setFieldErrors(invalidInputs);
@@ -583,11 +589,7 @@ export function InvoiceRoutePage() {
   };
 
   const finalize = async () => {
-    if (!newInvoiceTaxReady) {
-      setError('Verify workshop GST registration before finalizing.');
-      highlightInvalidFields();
-      return;
-    }
+    if (!editorReady || saving) return;
     const draft = mode === 'create' ? applyWorkshopTaxProfile(form, workshopTaxProfile) : form;
     const invalidInputs = validateInvoiceDraft(draft);
     setFieldErrors(invalidInputs);
@@ -600,8 +602,9 @@ export function InvoiceRoutePage() {
     setError('');
     setSaving(true);
     try {
-      let current = draft;
-      if (!current.id) current = await billingService.saveDraft(current);
+      const current = await billingService.saveDraft(draft);
+      // Keep the persisted ID if issuing fails, so retry updates the same draft.
+      setForm(current);
       const done = await billingService.finalize(current.id);
       navigate(`/invoices/${done.id}`, { replace: true });
     } catch (e) {
@@ -735,6 +738,7 @@ export function InvoiceRoutePage() {
         </div>
 
         <div className="billing-head-actions">
+          {!loading && jobInvoicePath && <Link className="bill-btn secondary" to={jobInvoicePath}>Back to Job Card</Link>}
           <button type="button" className="bill-btn secondary no-print"
             onClick={() => navigate(`/invoices?kind=${form.kind === 'estimate' ? 'estimate' : 'invoice'}`)}>
             Back to List
@@ -850,16 +854,17 @@ export function InvoiceRoutePage() {
           <p>{mode === 'edit' ? `Editing ID: ${id}` : form.invoiceType === 'gst' ? 'GST Tax Invoice based on verified Company Settings.' : 'Normal Invoice without GST, based on Company Settings.'}</p>
         </div>
         <div className="billing-head-actions">
+          {jobInvoicePath && <Link className="bill-btn secondary" to={jobInvoicePath}>Back to Job Card</Link>}
           <button type="button" className="bill-btn secondary" onClick={() => navigate(`/invoices?kind=${form.kind === 'estimate' ? 'estimate' : 'invoice'}`)}>Back to List</button>
           {can('company.manage') && <button type="button" className="bill-btn secondary"
             onClick={() => navigate('/account/company')}><Settings2 size={15}/>GST Settings</button>}
-          <button className="bill-btn secondary" disabled={saving || jobDraftLoading || !newInvoiceTaxReady} onClick={save}>Save Draft</button>
+          <button className="bill-btn secondary" disabled={saving || !editorReady} onClick={save}>Save Draft</button>
           <button className="bill-btn secondary" type="button" disabled={!form.id || saving || pdfLoading}
             title={form.id ? 'Download saved invoice (unsaved edits are not included)' : 'Save Draft first to download PDF'}
             onClick={() => downloadPdf(form)}>
             <Download size={16}/>{pdfLoading ? 'Generating PDF…' : 'Download Saved PDF'}
           </button>
-          <button className="bill-btn" disabled={saving || jobDraftLoading || !newInvoiceTaxReady} onClick={finalize}>
+          <button className="bill-btn" disabled={saving || !editorReady} onClick={finalize}>
             <CheckCircle2 size={16}/>{form.kind === 'estimate' ? 'Issue Estimate' : 'Finalize Invoice'}
           </button>
         </div>
@@ -871,6 +876,10 @@ export function InvoiceRoutePage() {
         <button type="button" className="bill-btn secondary" onClick={() => setWorkshopTaxRetry((n) => n + 1)}>Retry Verification</button>
       </div>}
       {jobDraftLoading && <p className="billing-empty no-print" role="status">Loading verified Job Card charges…</p>}
+      {jobDraftError && <div className="billing-error no-print" role="alert">
+        {jobDraftError}
+        <button type="button" className="bill-btn secondary" onClick={() => setJobDraftRetry((value) => value + 1)}>Retry Job Card</button>
+      </div>}
       {actionableJobDraftWarnings.length > 0 && (
         <details className="invoice-job-review no-print" aria-label="Job Card billing review">
           <summary>Job Card review required ({actionableJobDraftWarnings.length})</summary>
@@ -941,7 +950,7 @@ export function InvoiceRoutePage() {
             <span className="billing-kicker">BILL TO</span>
             <h3>Customer Details</h3>
 
-            <label>Phone / Existing Customer
+            {linkedJobId ? <div className="invoice-autofill-note">Customer and vehicle linked to Job Card {form.jobCardNo}.</div> : <label>Phone / Existing Customer
               <select
                 value={selectedCustomerId}
                 onChange={(e) => selectCustomer(e.target.value)}
@@ -953,7 +962,7 @@ export function InvoiceRoutePage() {
                   </option>
                 ))}
               </select>
-            </label>
+            </label>}
 
             {selectedCustomerId && (
               <div className="invoice-autofill-note">

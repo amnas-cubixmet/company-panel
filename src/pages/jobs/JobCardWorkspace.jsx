@@ -112,6 +112,8 @@ export function JobCardWorkspace() {
   const location = useLocation();
   const navigate = useNavigate();
   const { can } = useFeatureAccess();
+  const canEditJob = can('jobs.edit');
+  const canViewStaff = can('staff.view');
   const hasInvoiceAccess = can('invoices.view');
   const canCreateInvoice = can('invoices.create');
   const canViewPayments = can('payments.view');
@@ -119,6 +121,7 @@ export function JobCardWorkspace() {
   const canViewGST = can('gstr.view');
   const hasStockAccess = can('stock.view');
   const workflowTabsRef = useRef(null);
+  const billingRequest = useRef(null);
 
   const [job, setJob] = useState(null);
   const [workflow, setWorkflow] = useState(null);
@@ -228,11 +231,14 @@ export function JobCardWorkspace() {
   }, [job?.id, job?.status, hasInvoiceAccess, activeTab, timerRefreshVersion]);
 
   const loadBilling = async () => {
-    if (!id) return;
+    if (!id || !hasInvoiceAccess) return;
+    const request = Symbol();
+    billingRequest.current = request;
     setBillingLoading(true);
     setBillingError('');
     try {
       const invoiceResponse = await billingService.list({ jobId: id });
+      if (billingRequest.current !== request) return;
       const allInvoices = Array.isArray(invoiceResponse) ? invoiceResponse : invoiceResponse?.results || [];
       const related = allInvoices.filter((row) =>
         (row.kind || 'invoice') === 'invoice' &&
@@ -240,46 +246,40 @@ export function JobCardWorkspace() {
          (job?.jobNumber && String(row.jobCardNo || row.job_card_no || '') === String(job.jobNumber)))
       ).sort((a, b) => String(b.createdAt || b.date || '').localeCompare(String(a.createdAt || a.date || '')));
       const current = related.find(isPostedInvoice) || related.find((row) => row.status !== 'Cancelled') || related[0];
-      // Invoice read access and payment ledger read access are separate roles.
-      // A job invoice must remain viewable by invoice-only staff.
+      setJobInvoices(related);
+      setJobPayments([]);
       const paymentResponse = current && canViewPayments
         ? await paymentService.getPayments({ invoice: current.id }) : [];
+      if (billingRequest.current !== request) return;
       const allPayments = Array.isArray(paymentResponse) ? paymentResponse : paymentResponse?.results || [];
-      setJobInvoices(related);
       setJobPayments(allPayments.filter((row) => String(row.invoice || '') === String(current?.id))
         .sort((a, b) => String(b.created_at || b.date || '').localeCompare(String(a.created_at || a.date || ''))));
     } catch (requestError) {
-      setBillingError(requestError?.message || 'Unable to load invoice and payment records.');
+      if (billingRequest.current === request) {
+        setBillingError(requestError?.message || 'Unable to load invoice and payment records.');
+      }
     } finally {
-      setBillingLoading(false);
+      if (billingRequest.current === request) setBillingLoading(false);
     }
   };
 
   useEffect(() => {
-    if (activeTab === 'invoice' && job?.id) loadBilling();
-  }, [activeTab, job?.id, job?.jobNumber]);
+    if (activeTab === 'invoice' && job?.id === id && hasInvoiceAccess) loadBilling();
+    return () => { billingRequest.current = null; };
+  }, [activeTab, id, job?.id, job?.jobNumber, hasInvoiceAccess, canViewPayments]);
 
   const load = async () => {
     setLoading(true);
     setError('');
 
     try {
-      const [data, staffData, flow] = await Promise.all([
+      const [data, flow] = await Promise.all([
         jobService.getJobById(id),
-        staffService.getStaff(),
         jobService.getJobWorkflow(id)
       ]);
 
       setJob(data || null);
       setWorkflow(flow || null);
-      setStaff(Array.isArray(staffData) ? staffData.filter((item) => item.employmentStatus === 'Active') : []);
-
-      if (data?.vehicleReg) {
-        const history = await jobService.getVehicleHistory(data.vehicleReg);
-        setVehicleHistory(history.filter((item) => item.id !== data.id));
-      } else {
-        setVehicleHistory([]);
-      }
 
       setDeliveryForm({
         finalKm: data?.delivery?.finalKm ?? data?.kilometre ?? '',
@@ -310,6 +310,26 @@ export function JobCardWorkspace() {
     setBillingSummaryState({ jobId: null, data: null });
     load();
   }, [id]);
+
+  useEffect(() => {
+    setStaff([]);
+    if (!canViewStaff) return undefined;
+    let active = true;
+    staffService.getStaff().then((rows) => {
+      if (active) setStaff(rows.filter((item) => item.employmentStatus === 'Active'));
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [canViewStaff]);
+
+  useEffect(() => {
+    setVehicleHistory([]);
+    if (!job?.vehicleReg || job.id !== id) return undefined;
+    let active = true;
+    jobService.getVehicleHistory(job.vehicleReg).then((rows) => {
+      if (active) setVehicleHistory(rows.filter((item) => item.id !== id));
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [id, job?.id, job?.vehicleReg]);
 
   const persist = async (patch) => {
     if (!job) return null;
@@ -442,6 +462,7 @@ export function JobCardWorkspace() {
   const coreCompleted = workflow?.completed || [];
   const inspectionWasSkipped = workflow?.inspectionStatus === 'Skipped' || job?.inspection?.status === 'Skipped';
   const estimateWasSkipped = workflow?.estimateDecision?.status === 'Skipped' || workflow?.skipped?.includes('estimate');
+  const workWasSkipped = workflow?.skipped?.includes('work');
   const sectionComplete = {
     overview: coreCompleted.includes('overview'),
     inspection: coreCompleted.includes('inspection'),
@@ -480,18 +501,19 @@ export function JobCardWorkspace() {
   const nextVisibleTab = visibleTabs[visibleTabIndex + 1] || null;
   const activeTabComplete = Boolean(sectionComplete[activeTab]);
   const activeTabLocked = isSectionLocked(activeTab);
+  const accessibleCurrentStage = moduleTabAllowed(currentStage) ? currentStage : 'qc';
   const ActiveSectionIcon = TAB_ICONS[activeTab] || FileText;
   const activeTabLabel = TABS.find(([key]) => key === activeTab)?.[1] || 'Overview';
 
   useEffect(() => {
-    if (!job?.id || !workflow) return;
+    if (job?.id !== id || !workflow) return;
     const pieces = location.pathname.split('/').filter(Boolean);
     const requested = pieces.length > 2 ? pieces[2] : null;
     const supported = requested === 'full-log' || TABS.some(([key]) => key === requested);
-    if (!supported || isSectionLocked(requested)) {
-      navigate('/jobs/' + job.id + '/' + currentStage, { replace: true });
+    if (!supported || !moduleTabAllowed(requested) || isSectionLocked(requested)) {
+      navigate('/jobs/' + id + '/' + accessibleCurrentStage, { replace: true });
     }
-  }, [job?.id, workflow, location.pathname, currentStage, navigate]);
+  }, [id, job?.id, workflow, location.pathname, accessibleCurrentStage, hasInvoiceAccess, hasStockAccess, navigate]);
 
   const refreshJobWorkflow = async (advanceFrom = null) => {
     const [updated, flow] = await Promise.all([
@@ -501,13 +523,14 @@ export function JobCardWorkspace() {
     setJob(updated);
     setWorkflow(flow);
     if (advanceFrom && flow.current !== advanceFrom) {
-      navigate('/jobs/' + id + '/' + flow.current, { replace: true });
+      const nextStage = moduleTabAllowed(flow.current) ? flow.current : advanceFrom;
+      navigate('/jobs/' + id + '/' + nextStage, { replace: true });
     }
     return flow;
   };
 
   const completeStage = async (stage, extraOptions = {}) => {
-    if (!workflow || saving) return;
+    if (!workflow || !canEditJob || saving) return;
     const options = { ...extraOptions };
     if (stage === 'estimate') {
       const version = options.estimateVersion ? ` V${options.estimateVersion}` : '';
@@ -1080,7 +1103,7 @@ export function JobCardWorkspace() {
         <nav ref={workflowTabsRef} className="job-detail-tabs job-workflow-tabs" aria-label="Main Job Card stages">
           {visibleTabs.map(([key, label], index) => {
             const complete = Boolean(sectionComplete[key]);
-            const skipped = (key === 'inspection' && inspectionWasSkipped) || (key === 'estimate' && estimateWasSkipped);
+            const skipped = (key === 'inspection' && inspectionWasSkipped) || (key === 'estimate' && estimateWasSkipped) || (key === 'work' && workWasSkipped);
             const locked = isSectionLocked(key);
             const isActive = activeTab === key || (key === 'work' && activeExtraTab && activeTab !== 'activity' && !locked);
             return (
@@ -1162,7 +1185,7 @@ export function JobCardWorkspace() {
         </div>
         {activeTab !== 'activity' && <span className={'job-workspace-section-state ' + (activeTabLocked ? 'is-locked' : activeTabComplete ? 'is-complete' : 'is-open')}>
           {activeTabLocked ? <LockKeyhole size={13} aria-hidden="true"/> : activeTabComplete ? <CheckCircle2 size={13} aria-hidden="true"/> : <Clock3 size={13} aria-hidden="true"/>}
-          {activeTabLocked ? 'Locked' : activeTabComplete ? 'Complete' : 'In progress'}
+          {activeTabLocked ? 'Locked' : activeTab === 'work' && workWasSkipped ? 'Skipped' : activeTabComplete ? 'Complete' : 'In progress'}
         </span>}
         {!activeTabLocked && !activeTabComplete && activeTab === currentStage && activeTab === 'work' && can('jobs.edit') && (
           <button type="button" className="job-work-skip-trigger" disabled={saving}
@@ -1170,10 +1193,10 @@ export function JobCardWorkspace() {
             <SkipForward size={16} aria-hidden="true" /> Skip Work
           </button>
         )}
-        {!activeTabLocked && !activeTabComplete && activeTab === currentStage && activeTab !== 'qc' && activeTab !== 'invoice' && (
+        {!activeTabLocked && !activeTabComplete && activeTab === currentStage && activeTab === 'work' && canEditJob && (
           <button type="button" className="job-stage-complete-button" disabled={saving} onClick={() => completeStage(activeTab)}>
             <CheckCircle2 size={15} aria-hidden="true" />
-            {saving ? 'Saving…' : activeTab === 'estimate' ? 'Approve & Continue' : activeTab === 'work' ? 'Finish Work & Continue' : activeTab === 'invoice' ? 'Finish Job Card' : 'Complete & Continue'}
+            {saving ? 'Saving…' : 'Finish Work & Continue'}
           </button>
         )}
       </section>
@@ -1233,7 +1256,7 @@ export function JobCardWorkspace() {
           <LockKeyhole size={24} aria-hidden="true" />
           <h3>{activeTabLabel} is locked</h3>
           <p>Complete the current required stage to unlock this section.</p>
-          <button type="button" onClick={() => navigate('/jobs/' + job.id + '/' + currentStage, { replace: true })}>Go to current stage</button>
+          <button type="button" onClick={() => navigate('/jobs/' + job.id + '/' + accessibleCurrentStage, { replace: true })}>Go to current stage</button>
         </section>
       ) : (
         <>
@@ -1250,11 +1273,11 @@ export function JobCardWorkspace() {
                 {showAdvanced ? 'Hide details' : 'More details'}
               </button>
               {sectionComplete.overview ? (
-                <button type="button" className="job-overview-main-action" onClick={() => openTab(currentStage)}>
+                <button type="button" className="job-overview-main-action" onClick={() => openTab(accessibleCurrentStage)}>
                   <CheckCircle2 size={16} aria-hidden="true" /> {currentStage === 'overview' ? 'Overview complete' : 'Go to current stage'}
                   <ChevronRight size={15} aria-hidden="true" />
                 </button>
-              ) : (
+              ) : canEditJob && (
                 <button type="button" className="job-overview-main-action" onClick={() => completeStage('overview')} disabled={saving || activeTabLocked}>
                   <CheckCircle2 size={16} aria-hidden="true" /> {saving ? 'Saving…' : 'Complete & Continue'}
                   <ChevronRight size={15} aria-hidden="true" />
@@ -1743,7 +1766,7 @@ export function JobCardWorkspace() {
       {activeTab === 'qc' && (
         <JobQualityCheckPanel
           job={job}
-          canEdit={currentStage === 'qc' && !activeTabLocked && !activeTabComplete}
+          canEdit={canEditJob && currentStage === 'qc' && !activeTabLocked && !activeTabComplete}
           onSaved={() => refreshJobWorkflow()}
           onCompleted={() => refreshJobWorkflow('qc')}
         />
