@@ -1177,6 +1177,15 @@ try {
           }
         }
 
+        if (path === '/jobs/JOB-00251/invoice' && profile.width === 390) {
+          const billing = page.locator('.job-invoice-dashboard');
+          await billing.getByRole('button', {name:'Create Invoice', exact:true}).waitFor();
+          await billing.getByText('Create and finalize the invoice to record delivery.').waitFor();
+          if (await billing.getByLabel('Final KM').count() || await billing.getByRole('button', {name:'Complete Delivery'}).count()) {
+            throw Error('Delivery form must wait for an issued invoice.');
+          }
+        }
+
         if(/^\/jobs\/JOB-00251\/(overview|inspection|estimate|work)$/.test(path)){
           const metrics=await page.evaluate(()=>{
             const roots=[...document.querySelectorAll(

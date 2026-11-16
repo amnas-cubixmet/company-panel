@@ -116,6 +116,7 @@ export function JobCardWorkspace() {
   const canViewStaff = can('staff.view');
   const hasInvoiceAccess = can('invoices.view');
   const canCreateInvoice = can('invoices.create');
+  const canEditInvoice = can('invoices.edit');
   const canViewPayments = can('payments.view');
   const canCreatePayment = can('payments.create');
   const canViewGST = can('gstr.view');
@@ -132,6 +133,7 @@ export function JobCardWorkspace() {
   const [invoicePdfError, setInvoicePdfError] = useState('');
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingError, setBillingError] = useState('');
+  const [paymentHistoryError, setPaymentHistoryError] = useState('');
   const [billingSummaryState, setBillingSummaryState] = useState({ jobId: null, data: null });
   const [billingSummaryError, setBillingSummaryError] = useState('');
   const [staff, setStaff] = useState([]);
@@ -231,6 +233,7 @@ export function JobCardWorkspace() {
     billingRequest.current = request;
     setBillingLoading(true);
     setBillingError('');
+    setPaymentHistoryError('');
     try {
       const invoiceResponse = await billingService.list({ jobId: id });
       if (billingRequest.current !== request) return;
@@ -243,8 +246,13 @@ export function JobCardWorkspace() {
       const current = related.find(isPostedInvoice) || related.find((row) => row.status !== 'Cancelled') || related[0];
       setJobInvoices(related);
       setJobPayments([]);
-      const paymentResponse = current && canViewPayments
-        ? await paymentService.getPayments({ invoice: current.id }) : [];
+      const paymentResponse = isPostedInvoice(current) && canViewPayments
+        ? await paymentService.getPayments({ invoice: current.id }).catch((error) => {
+          if (billingRequest.current === request) {
+            setPaymentHistoryError(error?.message || 'Unable to load recent payments.');
+          }
+          return [];
+        }) : [];
       if (billingRequest.current !== request) return;
       const allPayments = Array.isArray(paymentResponse) ? paymentResponse : paymentResponse?.results || [];
       setJobPayments(allPayments.filter((row) => String(row.invoice || '') === String(current?.id))
@@ -455,6 +463,19 @@ export function JobCardWorkspace() {
     : (USE_MOCK_API ? job?.paymentStatus || 'Pending' : 'Not invoiced');
   const hasIssuedInvoice = hasPostedBilling || isInvoiceFinalized;
   const invoiceTabTotal = hasIssuedInvoice || linkedInvoice ? invoiceTotal : draftInvoiceTotal;
+  const invoiceDraftExists = (linkedInvoice?.status || postedBilling?.primaryInvoiceStatus) === 'Draft';
+  const deliveryCompleted = normalizeJobStatus(job?.status) === 'Delivered';
+  const billingActionLabel = jobLinkedInvoiceId
+    ? (invoiceDraftExists && canEditInvoice ? 'Review & Finalize Invoice' : 'View Invoice')
+    : (canCreateInvoice && !billingLoading && !billingError ? 'Create Invoice' : '');
+  const showDeliveryForm = deliveryCompleted || hasIssuedInvoice || USE_MOCK_API;
+  const deliveryEditable = !deliveryCompleted && canEditJob;
+  const deliveryMessage = deliveryCompleted ? 'Vehicle delivered.'
+    : showDeliveryForm ? (canEditJob ? 'Record the final handover details.' : 'Delivery details are read-only.')
+      : billingLoading && !jobLinkedInvoiceId ? 'Checking invoice status…'
+        : billingError && !jobLinkedInvoiceId ? 'Retry loading the invoice to check delivery eligibility.'
+          : invoiceDraftExists ? 'Finalize the draft invoice to record delivery.'
+            : 'Create and finalize the invoice to record delivery.';
 
 
   // The backend workflow endpoint is the single source of truth for
@@ -874,6 +895,12 @@ export function JobCardWorkspace() {
     navigate(`/invoices/new?kind=invoice&jobId=${encodeURIComponent(job.id)}`);
   };
 
+  const openJobInvoice = () => {
+    if (!jobLinkedInvoiceId) return createInvoice();
+    const invoicePath = `/invoices/${encodeURIComponent(jobLinkedInvoiceId)}`;
+    navigate(invoiceDraftExists && canEditInvoice ? `${invoicePath}/edit` : invoicePath);
+  };
+
   const downloadJobInvoicePdf = () => {
     if (!linkedInvoice?.id || invoicePdfLoading) return;
     setInvoicePdfError('');
@@ -935,9 +962,11 @@ export function JobCardWorkspace() {
     setPaymentForm((old) => ({ ...old, amount: '' }));
   };
 
-  const saveDelivery = async () => {
+  const saveDelivery = async (event) => {
+    event.preventDefault();
+    if (!canEditJob || deliveryCompleted || saving) return;
     if (!USE_MOCK_API) {
-      if (!isInvoiceFinalized) {
+      if (!hasIssuedInvoice) {
         setError('Finalize the linked invoice before completing delivery.');
         return;
       }
@@ -1017,7 +1046,7 @@ export function JobCardWorkspace() {
           <span className="job-overview-status-badge">{normalizeJobStatus(job.status)}</span>
           <WhatsAppManualShareButton key={`${job.id}:${shareTarget}`} targetType={shareTarget} targetId={job.id}
             label={readyForDelivery ? 'Share Vehicle Ready Message' : 'Send via WhatsApp'} buttonOnly />
-          {hasInvoiceAccess && jobLinkedInvoiceId && (
+          {hasInvoiceAccess && jobLinkedInvoiceId && activeTab !== 'invoice' && (
             <Link to={'/invoices/' + encodeURIComponent(jobLinkedInvoiceId)}
               className="job-financial-header-link">
               <ReceiptText size={15} aria-hidden="true"/> Open Invoice
@@ -1813,13 +1842,13 @@ export function JobCardWorkspace() {
                   <ReceiptText size={15} aria-hidden="true"/> Receive Payment
                 </button>
               )}
-                            {(linkedInvoice || canCreateInvoice) && <button
+              {(hasIssuedInvoice || deliveryCompleted || USE_MOCK_API) && billingActionLabel && <button
                 type="button"
-                onClick={() => linkedInvoice ? navigate('/invoices/' + linkedInvoice.id) : createInvoice()}
+                onClick={openJobInvoice}
                 className="job-primary-action"
               >
                 <ReceiptText size={15} aria-hidden="true" />
-                {linkedInvoice ? 'View Invoice' : 'Create Invoice'}
+                {billingActionLabel}
               </button>}
             </div>
           </header>
@@ -1882,21 +1911,15 @@ export function JobCardWorkspace() {
             <button type="button" onClick={loadBilling}>Retry</button>
           </div>}
 
-          {linkedInvoice && !isInvoiceFinalized && <div className="job-invoice-inline-message" role="status">
-             Invoice not finalized. <button type="button" onClick={() => navigate('/invoices/' + linkedInvoice.id)}>Open Invoice</button>
-           </div>}
            <div className="job-invoice-dashboard-columns">
             <section className="job-panel job-invoice-billing-card">
               <div className="job-invoice-section-heading">
-                <div>
-                  <h3>Billing details</h3>
-                  <p>{linkedInvoice ? 'Linked to the official invoice record' : 'Create an invoice to start billing this job'}</p>
-                </div>
-                <span className="job-invoice-status-badge">{linkedInvoice?.status || 'Not invoiced'}</span>
+                <h3>Billing details</h3>
+                <span className="job-invoice-status-badge">{linkedInvoice?.status || postedBilling?.primaryInvoiceStatus || 'Not invoiced'}</span>
               </div>
 
               <div className="job-invoice-details">
-                <div><span>Invoice Number</span><strong>{linkedInvoice?.number || (USE_MOCK_API ? job.billing?.invoiceNumber : '') || 'Not generated'}</strong></div>
+                <div><span>Invoice Number</span><strong>{linkedInvoice?.number || postedBilling?.primaryInvoiceNumber || (USE_MOCK_API ? job.billing?.invoiceNumber : '') || 'Not generated'}</strong></div>
                 <div><span>Customer</span><strong>{job.customerName || 'Walk-in'}</strong></div>
                 <div><span>Vehicle</span><strong>{job.vehicleReg || '—'}</strong></div>
                 <div><span>Payment Method</span><strong>{linkedInvoice?.paymentMode || (USE_MOCK_API ? job.billing?.paymentMethod : '') || '—'}</strong></div>
@@ -1914,25 +1937,21 @@ export function JobCardWorkspace() {
                 </div>
               )}
 
-              {(!linkedInvoice && !USE_MOCK_API) ? (
-                <div className="job-invoice-empty">
-                  <FileText size={20} aria-hidden="true" />
-                  <strong>No invoice linked yet</strong>
-                  <p>Generate an invoice from this job before recording a payment.</p>
-                </div>
-              ) : (!USE_MOCK_API && !isInvoiceFinalized) ? (
-                <p className="job-invoice-inline-message">Finalize the linked invoice to record customer payments.</p>
-              ) : (!USE_MOCK_API) ? (
+              {!USE_MOCK_API && !hasIssuedInvoice ? (
+                !deliveryCompleted && billingActionLabel && <button type="button" className="job-primary-action" onClick={openJobInvoice}>
+                  <ReceiptText size={15} aria-hidden="true" /> {billingActionLabel}
+                </button>
+              ) : !USE_MOCK_API ? (
                 <div className="job-gst-finance-collection">
                   <strong>Customer payment · Finance ledger</strong>
                   <p>Cash/Bank account selection, partial collections, idempotency and payment audit happen in Finance. No GST is added to a receipt.</p>
                   {invoiceBalance <= 0
                     ? <p className="job-invoice-inline-message">Invoice settled. No further payment is required.</p>
-                    : canCreatePayment
+                    : canCreatePayment && financial.paymentUrl
                       ? <button type="button" className="job-payment-submit" onClick={() => navigate(financial.paymentUrl)}>
                         Open Finance to Receive {canViewPayments ? money.format(invoiceBalance) : 'Payment'}
                       </button>
-                      : <p className="job-invoice-inline-message">Only authorized Finance staff can receive payments.</p>}
+                      : !canCreatePayment && <p className="job-invoice-inline-message">Only authorized Finance staff can receive payments.</p>}
                 </div>
               ) : (
                 <form className="job-payment-form" onSubmit={recordPayment}>
@@ -1972,33 +1991,34 @@ export function JobCardWorkspace() {
                   ))}
                 </div>
               )}
+              {paymentHistoryError && <p className="job-invoice-inline-message is-error" role="alert">{paymentHistoryError}</p>}
             </section>
 
             <section className="job-panel job-invoice-delivery-card">
               <div className="job-invoice-section-heading">
                 <div>
                   <h3>Vehicle delivery</h3>
-                  <p>Confirm final handover details.</p>
+                  <p>{deliveryMessage}</p>
                 </div>
               </div>
-              <div className="job-invoice-delivery-fields">
+              {showDeliveryForm && <form className="job-invoice-delivery-fields" onSubmit={saveDelivery}>
                 <label>
                   Final KM
-                  <input required inputMode="numeric" type="number" min={Number(job.kilometre || 0)} step="1" max="2147483647" disabled={normalizeJobStatus(job.status) === 'Delivered'} value={deliveryForm.finalKm} onChange={(e) => setDeliveryForm({ ...deliveryForm, finalKm: e.target.value })} placeholder="Vehicle odometer" />
+                  <input required inputMode="numeric" type="number" min={Number(job.kilometre || 0)} step="1" max="2147483647" readOnly={!deliveryEditable || saving} value={deliveryForm.finalKm} onChange={(e) => setDeliveryForm({ ...deliveryForm, finalKm: e.target.value })} placeholder="Vehicle odometer" />
                 </label>
                 <label>
                   Customer acknowledgement
-                  <input required maxLength={160} disabled={normalizeJobStatus(job.status) === 'Delivered'} value={deliveryForm.customerSignature} onChange={(e) => setDeliveryForm({ ...deliveryForm, customerSignature: e.target.value })} placeholder="Customer name" />
+                  <input required maxLength={160} readOnly={!deliveryEditable || saving} value={deliveryForm.customerSignature} onChange={(e) => setDeliveryForm({ ...deliveryForm, customerSignature: e.target.value })} placeholder="Customer name" />
                 </label>
                 <label>
                   Warranty / service notes
-                  <textarea rows={3} maxLength={1500} disabled={normalizeJobStatus(job.status) === 'Delivered'} value={deliveryForm.warrantyNotes} onChange={(e) => setDeliveryForm({ ...deliveryForm, warrantyNotes: e.target.value })} placeholder="Handover notes" />
+                  <textarea rows={3} maxLength={1500} readOnly={!deliveryEditable || saving} value={deliveryForm.warrantyNotes} onChange={(e) => setDeliveryForm({ ...deliveryForm, warrantyNotes: e.target.value })} placeholder="Handover notes" />
                 </label>
-                <button type="button" disabled={saving || !can('jobs.edit') || normalizeJobStatus(job.status) === 'Delivered' || (!USE_MOCK_API && !isInvoiceFinalized)} onClick={saveDelivery} className="job-invoice-deliver-button">
+                {deliveryEditable && <button type="submit" disabled={saving} className="job-invoice-deliver-button">
                   <CheckCircle2 size={16} aria-hidden="true" />
-                  {normalizeJobStatus(job.status) === 'Delivered' ? 'Vehicle Delivered' : 'Complete Delivery'}
-                </button>
-              </div>
+                  {saving ? 'Saving…' : 'Complete Delivery'}
+                </button>}
+              </form>}
             </section>
           </div>
         </div>
