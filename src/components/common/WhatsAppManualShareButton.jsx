@@ -19,7 +19,7 @@ function prepareWhatsAppShare(targetType, targetId) {
  * Preparing a Click-to-Chat message does NOT send a WhatsApp message.
  * Open a blank tab on the original user gesture to avoid async popup blockers.
  */
-export function WhatsAppManualShareButton({ targetType, targetId, label = 'Send via WhatsApp', className = '' }) {
+export function WhatsAppManualShareButton({ targetType, targetId, label = 'Send via WhatsApp', className = '', buttonOnly = false }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [preparedUrl, setPreparedUrl] = useState('');
@@ -43,9 +43,10 @@ export function WhatsAppManualShareButton({ targetType, targetId, label = 'Send 
     try {
       const data = await prepareWhatsAppShare(targetType, targetId);
       if (!data?.url) throw new Error('WhatsApp share link was not generated.');
-      setPreparedUrl(data.url);
-      setPreview(data.preview || '');
-      if (tab && !tab.closed) tab.location.replace(data.url);
+      const popupAvailable = tab && !tab.closed;
+      if (!buttonOnly || !popupAvailable) setPreparedUrl(data.url);
+      if (!buttonOnly) setPreview(data.preview || '');
+      if (popupAvailable) tab.location.replace(data.url);
     } catch (cause) {
       if (tab && !tab.closed) tab.close();
       const reference = cause?.requestId ? ` (Reference: ${cause.requestId})` : '';
@@ -81,18 +82,25 @@ export function WhatsAppManualShareButton({ targetType, targetId, label = 'Send 
 
   return (
     <span className={'wa-manual-share ' + className}>
-      <button type="button" className="wa-manual-share__button"
-        onClick={open} disabled={!targetId || loading}>
-        <MessageCircle size={16} aria-hidden="true" />
-        {loading ? 'Preparing…' : label}
-      </button>
-      <button type="button" className="wa-manual-share__button"
+      {buttonOnly && preparedUrl ? (
+        <a className="wa-manual-share__button" href={preparedUrl} target="_blank" rel="noopener noreferrer"
+          onClick={() => setPreparedUrl('')}>
+          <ExternalLink size={16} aria-hidden="true" /> Open WhatsApp
+        </a>
+      ) : (
+        <button type="button" className="wa-manual-share__button"
+          onClick={open} disabled={!targetId || loading}>
+          <MessageCircle size={16} aria-hidden="true" />
+          {loading ? 'Preparing…' : label}
+        </button>
+      )}
+      {!buttonOnly && <button type="button" className="wa-manual-share__button"
         onClick={copyMessage} disabled={!targetId || loading}>
         Copy Message
-      </button>
+      </button>}
       {error && <span role="alert" className="wa-manual-share__error">{error}</span>}
       {copyNotice && <span role="status" className="wa-manual-share__note">{copyNotice}</span>}
-      {preparedUrl && (
+      {!buttonOnly && preparedUrl && (
         <span role="status" className="wa-manual-share__note">
           Draft prepared. Review it in WhatsApp and press Send.
           {' '}<a href={preparedUrl} target="_blank" rel="noopener noreferrer">
