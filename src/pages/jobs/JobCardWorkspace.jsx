@@ -426,17 +426,21 @@ export function JobCardWorkspace() {
   const financial = jobInvoiceFinance(linkedInvoice);
   const invoiceGST = jobInvoiceGST(linkedInvoice);
   const isInvoiceFinalized = financial.posted;
+  const workSellingBeforeTax = postedBilling?.workSellingBeforeGST;
+  const draftSellingBeforeTax = postedBilling?.draftSellingBeforeGST;
+  const draftInvoiceTotal = postedBilling?.draftInvoiceTotal;
   // All internal margin comparisons exclude GST; the invoice total includes tax.
   const jobSellingBeforeTax = hasPostedBilling
     ? cleanNumber(postedBilling.sellingBeforeGST)
     : linkedInvoice
       ? invoiceGST?.taxable ?? (linkedInvoice.invoiceType === 'regular'
         ? linkedInvoice.taxable ?? linkedInvoice.subtotal ?? linkedInvoice.total : null)
-      : (latestEstimate?.subtotal != null ? Math.max(0,
+      : draftSellingBeforeTax ?? workSellingBeforeTax ?? (latestEstimate?.subtotal != null ? Math.max(0,
         cleanNumber(latestEstimate.subtotal) - cleanNumber(latestEstimate.discount)) : null);
   const jobSalesSource = hasPostedBilling ? 'final_invoice' : linkedInvoice
     ? (isInvoiceFinalized ? 'final_invoice' : 'draft_invoice')
-    : (latestEstimate ? 'estimate' : 'none');
+    : draftInvoiceTotal != null ? 'draft_invoice'
+      : workSellingBeforeTax != null ? 'work' : latestEstimate ? 'estimate' : 'none';
   const invoiceTotal = hasPostedBilling
     ? cleanNumber(postedBilling.invoiceTotal)
     : linkedInvoice ? cleanNumber(linkedInvoice.total)
@@ -1055,7 +1059,8 @@ export function JobCardWorkspace() {
         refreshOnTab={activeTab}
         customerServiceCharges={customerServiceCharges}
         billedTotal={hasPostedBilling || linkedInvoice ? invoiceTotal
-          : (latestEstimate ? cleanNumber(latestEstimate.total ?? latestEstimate.grandTotal) : null)}
+          : draftInvoiceTotal ?? (jobSalesSource === 'estimate'
+            ? cleanNumber(latestEstimate.total ?? latestEstimate.grandTotal) : null)}
         netSellingValue={jobSellingBeforeTax}
         salesSource={jobSalesSource}
         receivedTotal={hasPostedBilling ? postedBilling.paid : null}

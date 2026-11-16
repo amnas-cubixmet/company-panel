@@ -132,14 +132,16 @@ export function JobTotalCostPanel({
           <div className="job-total-cost-grid job-total-finance-grid" aria-label="Internal billing and margin">
             <div className="job-total-cost-card">
               <span>{salesSource === 'final_invoice' ? postedInvoiceCount > 1 ? 'All Posted Invoice Bills' : 'Posted Invoice Bill'
-                : salesSource === 'draft_invoice' ? 'Draft Invoice Total' : 'Estimated Bill'}</span>
+                : salesSource === 'draft_invoice' ? 'Draft Invoice Total'
+                  : salesSource === 'estimate' ? 'Estimated Bill' : 'Invoice Total'}</span>
               <strong>{hasBill ? money(billedTotal) : 'Not invoiced'}</strong>
               <small>Includes GST when applicable</small>
             </div>
             <div className="job-total-cost-card">
               <span>Customer Selling (before GST)</span>
               <strong>{hasNetSales ? money(netSellingValue) : 'Not available'}</strong>
-              <small>{salesSource === 'estimate' ? 'Estimate only, not invoiced' : 'Tax-exclusive value'}</small>
+              <small>{salesSource === 'work' ? 'Provisional · recorded billable work and parts'
+                : salesSource === 'estimate' ? 'From the saved estimate' : 'Tax-exclusive value'}</small>
             </div>
             <div className="job-total-cost-card is-primary">
               <span>Workshop Direct Cost</span>
@@ -175,7 +177,7 @@ export function JobTotalCostPanel({
             <div className="job-total-customer-service" aria-label="Recorded customer service charges">
               <div>
                 <strong>Customer Service Charges</strong>
-                <small>Added services selling value — not included in Total Cost, invoice or payment.</small>
+                <small>Saved billable services carry into the Job Card invoice draft.</small>
               </div>
               <strong>{money(customerServiceCharges)}</strong>
             </div>
