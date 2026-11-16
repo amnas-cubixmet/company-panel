@@ -1186,12 +1186,13 @@ try {
           }
         }
 
-        if (path === '/invoices/INV-0001' && profile.width === 1440) {
+        if (path === '/invoices/INV-0001' && [320, 390, 1440].includes(profile.width)) {
           const uuid = '00000000-0000-4000-8000-000000000099';
           const reference = 'ref-' + BigInt('0x' + uuid.replaceAll('-', ''));
           const invoiceEndpoint = `**/api/v1/billing/documents/${uuid}`;
           await page.route(invoiceEndpoint, route => route.fulfill({json:{
-            ...fixture('/billing/documents/INV-0001'), id:uuid, number:'INV-REF-TEST',
+            ...fixture('/billing/documents/INV-0001'), id:uuid, number:'INV-REF-TEST', status:'Paid',
+            finalizedAt:'2026-10-19T09:00:00Z', balance:0, jobId:'JOB-00251',
           }}));
           try {
             for (const identifier of [uuid, reference]) {
@@ -1200,6 +1201,30 @@ try {
               if (new URL(page.url()).pathname !== `/invoices/${reference}` || (await page.locator('body').innerText()).includes(uuid)) {
                 throw Error('Invoice must open by reference without displaying its UUID.');
               }
+            }
+            const header = page.locator('.invoice-detail-header');
+            await header.getByText('Paid', {exact:true}).waitFor();
+            await header.getByRole('link', {name:'Back to Job Card'}).waitFor();
+            await header.getByRole('button', {name:'Send via WhatsApp'}).waitFor();
+            if (await header.getByRole('button', {name:/Copy Message|Payment Reminder|Record Payment/}).count()) {
+              throw Error('A paid invoice should show a single WhatsApp action and no payment prompts.');
+            }
+            const layout = await header.evaluate(node => {
+              const toolbar = node.querySelector('.invoice-detail-toolbar').getBoundingClientRect();
+              const pdf = node.querySelector('.invoice-detail-pdf').getBoundingClientRect();
+              return {
+                overflow: node.scrollWidth > node.clientWidth + 2,
+                fullWidthPdf: Math.abs(pdf.width - toolbar.width) <= 2,
+              };
+            });
+            if (layout.overflow || (profile.width <= 390 && !layout.fullWidthPdf)) {
+              throw Error('Responsive invoice actions exceed the header or the mobile PDF action is too narrow.');
+            }
+            if (profile.width === 390) {
+              await page.emulateMedia({media:'print'});
+              await header.waitFor({state:'hidden'});
+              await page.locator('.invoice-print-sheet').waitFor({state:'visible'});
+              await page.emulateMedia({media:null});
             }
           } finally {
             await page.unroute(invoiceEndpoint);
