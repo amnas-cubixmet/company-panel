@@ -1,6 +1,6 @@
 import { recordLabel } from '../../utils/recordReferences.js';
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Download, Edit3, Plus, Printer, ReceiptText, Trash2, Truck, Wallet, FileCheck2, Settings2, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Download, Edit3, Plus, Printer, ReceiptText, Trash2, Truck, Wallet, FileCheck2, Settings2, XCircle } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { billingService, blankBillingDocument, calculateDocumentTotals } from '../../services/billing.service';
 import { normalizeBackendInvoiceTotals } from '../../utils/invoiceBackendTotals';
@@ -110,6 +110,7 @@ export function InvoiceRoutePage() {
   const linkedJobId = requestedJobId || (form.kind === 'invoice' && (form.jobId || form.sourceJobId));
   const jobInvoicePath = linkedJobId && can('jobs.view') && can('invoices.view')
     ? `/jobs/${encodeURIComponent(linkedJobId)}/invoice` : '';
+  const viewReady = !loading && form.id === id;
   const editorReady = mode === 'edit' ? !loading && form.id === id
     : newInvoiceTaxReady && (!requestedJobId || (!jobDraftLoading && form.sourceJobId === requestedJobId && !jobDraftError));
   // GST/HSN gaps are shown next to their fields. Issued-stock information is
@@ -731,25 +732,37 @@ export function InvoiceRoutePage() {
 
   if (mode === 'view') return (
     <div className="billing-page billing-ui-unified invoice-view-page">
-      <div className="billing-editor-head no-print">
-        <div>
-          <span className="billing-kicker">{form.kind === 'estimate' ? 'ESTIMATE / QUOTATION' : 'INVOICE'}</span>
-          <h1>{recordLabel(form.number || id)}</h1>
-          <p>{form.status}</p>
+      <header className="invoice-detail-header no-print">
+        <div className="invoice-detail-heading">
+          <nav className="invoice-detail-nav" aria-label="Billing navigation">
+            <Link className="bill-btn secondary" to={`/invoices?kind=${form.kind}`}>
+              <ArrowLeft size={16} aria-hidden="true" /> {form.kind === 'estimate' ? 'Estimates' : 'Invoices'}
+            </Link>
+            {viewReady && jobInvoicePath && (
+              <Link className="bill-btn secondary" to={jobInvoicePath}>Back to Job Card</Link>
+            )}
+          </nav>
+          <div>
+            <span className="billing-kicker">{form.kind === 'estimate' ? 'ESTIMATE / QUOTATION' : 'INVOICE'}</span>
+            <div className="invoice-detail-identity">
+              <h1>{viewReady ? recordLabel(form.number || id) : form.kind === 'estimate' ? 'Estimate' : 'Invoice'}</h1>
+              {viewReady && form.status && (
+                <span className="invoice-detail-status" data-status={form.status}>
+                  {form.status === 'Paid' && <CheckCircle2 size={14} aria-hidden="true" />}
+                  {form.status}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="billing-head-actions">
-          {!loading && jobInvoicePath && <Link className="bill-btn secondary" to={jobInvoicePath}>Back to Job Card</Link>}
-          <button type="button" className="bill-btn secondary no-print"
-            onClick={() => navigate(`/invoices?kind=${form.kind === 'estimate' ? 'estimate' : 'invoice'}`)}>
-            Back to List
-          </button>
+        {viewReady && <div className="invoice-detail-toolbar" role="group" aria-label="Document actions">
           {form.kind === "invoice" && (form.finalizedAt || ["Finalized", "Paid", "Issued"].includes(form.status)) && form.status !== "Cancelled" && (
             <>
-              <WhatsAppManualShareButton targetType="invoice" targetId={form.id || id} />
-              {Number(totals.balance) > 0 && (
-                <WhatsAppManualShareButton targetType="payment_reminder" targetId={form.id || id}
-                  label="Share Payment Reminder" />
+              <WhatsAppManualShareButton targetType="invoice" targetId={form.id} buttonOnly />
+              {invoiceOutstandingAmount(form, totals) > 0 && (
+                <WhatsAppManualShareButton targetType="payment_reminder" targetId={form.id}
+                  label="Share Payment Reminder" buttonOnly />
               )}
             </>
           )}
@@ -792,11 +805,6 @@ export function InvoiceRoutePage() {
           <button className="bill-btn secondary" onClick={() => window.print()}>
             <Printer size={16}/>Print
           </button>
-          <button className="bill-btn" type="button" disabled={loading || pdfLoading || !form.id}
-            onClick={() => downloadPdf(form)}>
-            <Download size={16}/>{pdfLoading ? 'Generating PDF…' : 'Download Invoice PDF'}
-          </button>
-
           {form.status === 'Draft' && (
             <button className="bill-btn secondary" disabled={saving} onClick={cancelDocument}>
               <XCircle size={16}/>Cancel
@@ -808,10 +816,15 @@ export function InvoiceRoutePage() {
               <ReceiptText size={16}/>Record Payment
             </button>
           )}
-        </div>
-      </div>
+          <button className="bill-btn invoice-detail-pdf" type="button" disabled={pdfLoading}
+            onClick={() => downloadPdf(form)}>
+            <Download size={16} aria-hidden="true" />
+            {pdfLoading ? 'Generating PDF…' : form.kind === 'estimate' ? 'Download Estimate PDF' : 'Download Invoice PDF'}
+          </button>
+        </div>}
+      </header>
 
-      {form.kind === 'estimate' && form.status === 'Converted' && form.convertedToInvoiceId && (
+      {viewReady && form.kind === 'estimate' && form.status === 'Converted' && form.convertedToInvoiceId && (
         <div className="estimate-converted-banner no-print">
           <div>
             <strong>Converted to Invoice</strong>
@@ -824,7 +837,7 @@ export function InvoiceRoutePage() {
       )}
 
       {error && <div className="billing-error no-print">{error}</div>}
-      {!loading && form.kind === 'invoice' && (
+      {viewReady && form.kind === 'invoice' && (
         <section className="invoice-connected-workflows no-print" aria-label="GST and Finance connections">
           <div>
             <strong>GST & Finance</strong>
@@ -841,7 +854,8 @@ export function InvoiceRoutePage() {
             onClick={() => navigate('/account/company')}><Settings2 size={15}/>GST Settings</button>}
         </section>
       )}
-      {loading ? <div className="billing-empty">Loading…</div> : <InvoicePrint doc={form} totals={totals} appearance={resolveDocumentAppearance(form.kind, documentAppearance, form.templateSnapshot, Boolean(form.finalizedAt || ['Finalized', 'Paid', 'Issued', 'Converted'].includes(form.status)))}/>}
+      {loading && <div className="billing-empty" role="status">Loading…</div>}
+      {viewReady && <InvoicePrint doc={form} totals={totals} appearance={resolveDocumentAppearance(form.kind, documentAppearance, form.templateSnapshot, Boolean(form.finalizedAt || ['Finalized', 'Paid', 'Issued', 'Converted'].includes(form.status)))}/>}
       {shareSheet}
     </div>
   );
