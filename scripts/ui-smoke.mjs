@@ -623,6 +623,41 @@ try {
             throw Error('Staff add form must not require manual WhatsApp consent fields');
           if(await page.getByRole('button',{name:'Save Staff'}).count()!==1)
             throw Error('Save Staff action is missing');
+          if ([320, 390, 1440].includes(profile.width)) {
+            const roles = /\/api\/v1\/roles\/?$/;
+            const branches = /\/api\/v1\/branches\/?$/;
+            const employees = /\/api\/v1\/employees\/?$/;
+            const duplicate = 'This mobile already has a login account in this workshop.';
+            await page.route(roles, route => route.fulfill({json:[{id:'staff-role',name:'Mechanic',is_active:true}]}));
+            await page.route(branches, route => route.fulfill({json:[{id:'staff-branch',name:'Main Branch',is_active:true}]}));
+            await page.route(employees, route => route.request().method() === 'POST'
+              ? route.fulfill({status:400,json:{phone:[duplicate]}}) : route.fallback());
+            await page.reload({waitUntil:'networkidle'});
+            const phone = page.locator('#staff-mobile-number');
+            const field = page.locator('.staff-phone-field');
+            const save = page.getByRole('button', {name:'Save Staff'});
+            await page.getByPlaceholder('Full name').fill('Fixture Staff Member');
+            const before = await phone.boundingBox();
+            await phone.fill('9876543210');
+            await page.locator('select[name=branchId]').selectOption('staff-branch');
+            await page.locator('select[name=role]').selectOption('staff-role');
+            await save.click();
+            await field.getByRole('alert').filter({hasText:duplicate}).waitFor();
+            const after = await phone.boundingBox();
+            const error = await field.getByRole('alert').boundingBox();
+            if (before.width < 120 || Math.abs(before.width - after.width) > 1 || error.y < after.y + after.height) {
+              throw Error('Invalid staff phone must keep a usable number input and show the message below it.');
+            }
+            const country = field.getByRole('combobox', {name:'Mobile country code'});
+            await country.selectOption('+971');
+            if (await field.getByRole('alert').count() || await phone.getAttribute('aria-invalid')) {
+              throw Error('Changing the country code must clear the previous mobile error.');
+            }
+            await country.selectOption('+91');
+            await phone.fill('9876543211');
+            if (await phone.inputValue() !== '9876543211') throw Error('Staff mobile input must accept all ten digits.');
+            await Promise.all([page.unroute(roles), page.unroute(branches), page.unroute(employees)]);
+          }
         }
         if(path==='/forgot-password') {
           await page.getByRole('heading',{name:'Reset your password'}).waitFor({state:'visible'});
