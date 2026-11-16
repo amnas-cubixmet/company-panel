@@ -637,6 +637,18 @@ try {
         }
         if(path==='/forgot-password') {
           await page.getByRole('heading',{name:'Reset your password'}).waitFor({state:'visible'});
+          // A saved app theme can differ from the operating system theme.
+          await page.emulateMedia({colorScheme:profile.theme==='dark'?'light':'dark'});
+          const contrast = selector => page.locator(selector).evaluate(container => {
+            const background = getComputedStyle(container).backgroundColor;
+            const text = container.querySelector('p, span') || container;
+            const luminance = color => color.match(/[\d.]+/g).slice(0,3).map(Number)
+              .map(channel => channel / 255)
+              .map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+              .reduce((sum, value, i) => sum + value * [0.2126,0.7152,0.0722][i], 0);
+            const levels = [luminance(background), luminance(getComputedStyle(text).color)];
+            return (Math.max(...levels) + 0.05) / (Math.min(...levels) + 0.05);
+          });
           const email=page.locator('#forgot-password-email');
           if(await page.locator('input[type="email"]').count()!==1)
             throw Error('Account recovery must have exactly one email input');
@@ -651,6 +663,10 @@ try {
           if(await reset.getAttribute('aria-pressed')!=='true' ||
               await magic.getAttribute('aria-pressed')!=='false')
             throw Error('Password reset must be the default recovery method');
+          if (await contrast('.auth-recovery-method.is-active') < 4.5 ||
+              await contrast('.forgot-password-page .login-submit') < 4.5) {
+            throw Error('The selected recovery method and submit button need readable text contrast.');
+          }
           if(await page.getByRole('button',{name:'Send Reset Link'}).count()!==1)
             throw Error('Password reset submit action is missing');
           await email.fill('not-an-email');
@@ -716,12 +732,14 @@ try {
                 height:status.height,
               };
             });
-            if(!presentation.message.includes('Check your email if registered') ||
-              !presentation.message.includes('No email or login link is created for an unknown address') ||
+            if(!presentation.message.includes('Check your email') ||
+              !presentation.message.includes('If this email is eligible') ||
               !presentation.belowButton ||
               presentation.borderTopWidth==='0px' ||
               presentation.fontSize<12 || presentation.height<40)
               throw Error('Neutral magic link acknowledgment must be visible and accessible: '+JSON.stringify(presentation));
+            if (await contrast('.auth-recovery-feedback.is-info') < 4.5)
+              throw Error('Recovery acknowledgement contrast must follow the app theme.');
             await reset.click();
             if(await page.locator('.auth-recovery-feedback[role="status"]').count())
               throw Error('Changing recovery method should clear stale recovery feedback');
@@ -753,6 +771,8 @@ try {
             await page.getByRole('button',{name:'Send Reset Link'}).click();
             const failure=page.locator('.auth-recovery-feedback.is-error[role="alert"]');
             await failure.waitFor({state:'visible'});
+            if (await contrast('.auth-recovery-feedback.is-error') < 4.5)
+              throw Error('Recovery error contrast must follow the app theme.');
             if(!/Too many requests/.test(await failure.innerText()) ||
                await page.locator('.auth-recovery-feedback.is-info').count())
               throw Error('Throttling must show a visible error without stale recovery confirmation');
@@ -768,6 +788,7 @@ try {
           const logo=page.locator('.login-brand-mark img.cubixgear-logo-image');
           if(await logo.count()!==1 || !await logo.evaluate(node=>node.complete && node.naturalWidth>0))
             throw Error('Cubixgear recovery page logo is missing');
+          await page.emulateMedia({colorScheme:profile.theme});
         }
         const text=await page.locator('body').innerText();
         if(text.length<20)throw Error('Blank page');
