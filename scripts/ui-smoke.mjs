@@ -1205,6 +1205,11 @@ try {
         // Work > Mechanic must be a real responsive grid, not naked
         // full-width controls. All API fixtures remain read-only.
         if(path==='/jobs/JOB-00251/work'){
+          const financial = page.locator('.job-total-cost-panel');
+          await financial.getByText('Customer Selling (before GST)', { exact: true }).waitFor();
+          if (await financial.getByText(/^(?:Invoice Total|Posted Invoice Bill|Draft Invoice Total|Estimated Bill|Customer Paid|Customer Balance Due)$/).count()) {
+            throw Error('Work summary should show selling and costs without invoice or collection cards.');
+          }
           const addService = page.locator('.job-work-simple .job-service-quick');
           await addService.waitFor({state:'visible'});
           const serviceControls=await addService.evaluate(node=>{

@@ -13,7 +13,7 @@ export function JobTotalCostPanel({
   jobId, refreshVersion = 0, refreshOnTab = '', customerServiceCharges = 0,
   billedTotal = null, netSellingValue = null, salesSource = 'none',
   receivedTotal = null, outstandingTotal = null, paymentVisible = false,
-  postedInvoiceCount = 0, billingLoading = false,
+  postedInvoiceCount = 0,
 }) {
   const { user } = useAuth();
   const permitted = ['jobs.view', 'payroll.view', 'expenses.view', 'stock.view']
@@ -24,9 +24,10 @@ export function JobTotalCostPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const hasBill = billedTotal !== null && billedTotal !== undefined && Number.isFinite(Number(billedTotal));
+  const showBill = refreshOnTab !== 'work' && hasBill;
   const hasNetSales = netSellingValue !== null && netSellingValue !== undefined
     && Number.isFinite(Number(netSellingValue));
-  const hasCollections = postedInvoiceCount > 0 && !billingLoading &&
+  const showCollections = refreshOnTab !== 'work' && paymentVisible && postedInvoiceCount > 0 &&
     receivedTotal !== null && outstandingTotal !== null &&
     Number.isFinite(Number(receivedTotal)) && Number.isFinite(Number(outstandingTotal));
   const incompleteCosts = Boolean(summary?.unallocatedDailyWages || summary?.unapprovedMechanicWork
@@ -129,14 +130,14 @@ export function JobTotalCostPanel({
             ))}
             </div>
           </details>
-          <div className="job-total-cost-grid job-total-finance-grid" aria-label="Internal billing and margin">
-            <div className="job-total-cost-card">
+          <div className={'job-total-cost-grid job-total-finance-grid' + (showBill ? ' has-bill' : '')} aria-label="Internal billing and margin">
+            {showBill && <div className="job-total-cost-card">
               <span>{salesSource === 'final_invoice' ? postedInvoiceCount > 1 ? 'All Posted Invoice Bills' : 'Posted Invoice Bill'
                 : salesSource === 'draft_invoice' ? 'Draft Invoice Total'
                   : salesSource === 'estimate' ? 'Estimated Bill' : 'Invoice Total'}</span>
-              <strong>{hasBill ? money(billedTotal) : 'Not invoiced'}</strong>
+              <strong>{money(billedTotal)}</strong>
               <small>Includes GST when applicable</small>
-            </div>
+            </div>}
             <div className="job-total-cost-card">
               <span>Customer Selling (before GST)</span>
               <strong>{hasNetSales ? money(netSellingValue) : 'Not available'}</strong>
@@ -158,18 +159,16 @@ export function JobTotalCostPanel({
                     : 'Provisional; bill not yet finalized'}</small>
             </div>
           </div>
-          {paymentVisible && (
+          {showCollections && (
             <div className="job-total-cost-grid job-customer-payment-grid"
               aria-label="Customer invoice settlement">
               <div className="job-total-cost-card">
                 <span>Customer Paid</span>
-                <strong>{hasCollections ? money(receivedTotal) : billingLoading ? 'Loading…' : 'Not invoiced'}</strong>
-                <small>Confirmed receipts already applied on posted invoices</small>
+                <strong>{money(receivedTotal)}</strong>
               </div>
               <div className="job-total-cost-card is-due">
                 <span>Customer Balance Due</span>
-                <strong>{hasCollections ? money(outstandingTotal) : billingLoading ? 'Loading…' : 'Not invoiced'}</strong>
-                <small>{hasCollections ? postedInvoiceCount + ' posted invoice(s)' : 'Drafts and estimates are not due'}</small>
+                <strong>{money(outstandingTotal)}</strong>
               </div>
             </div>
           )}

@@ -134,7 +134,6 @@ export function JobCardWorkspace() {
   const [billingError, setBillingError] = useState('');
   const [billingSummaryState, setBillingSummaryState] = useState({ jobId: null, data: null });
   const [billingSummaryError, setBillingSummaryError] = useState('');
-  const [billingSummaryLoading, setBillingSummaryLoading] = useState(false);
   const [staff, setStaff] = useState([]);
   const [timerRefreshVersion, setTimerRefreshVersion] = useState(0);
   const [workQuickSection, setWorkQuickSection] = useState('service');
@@ -211,11 +210,9 @@ export function JobCardWorkspace() {
     if (!job?.id || !hasInvoiceAccess || USE_MOCK_API) {
       setBillingSummaryState({ jobId: null, data: null });
       setBillingSummaryError('');
-      setBillingSummaryLoading(false);
       return undefined;
     }
     let active = true;
-    setBillingSummaryLoading(true);
     setBillingSummaryError('');
     jobService.getJobBillingSummary(job.id).then(data => {
       if (active) setBillingSummaryState({ jobId: job.id, data });
@@ -224,8 +221,6 @@ export function JobCardWorkspace() {
         setBillingSummaryState({ jobId: job.id, data: null });
         setBillingSummaryError(err?.message || 'Could not load posted invoice balances.');
       }
-    }).finally(() => {
-      if (active) setBillingSummaryLoading(false);
     });
     return () => { active = false; };
   }, [job?.id, job?.status, hasInvoiceAccess, activeTab, timerRefreshVersion]);
@@ -458,6 +453,8 @@ export function JobCardWorkspace() {
       : invoiceTotal <= 0 ? 'No amount due'
         : invoiceBalance <= 0 ? 'Paid' : invoicePaid > 0 ? 'Partially Paid' : 'Unpaid')
     : (USE_MOCK_API ? job?.paymentStatus || 'Pending' : 'Not invoiced');
+  const hasIssuedInvoice = hasPostedBilling || isInvoiceFinalized;
+  const invoiceTabTotal = hasIssuedInvoice || linkedInvoice ? invoiceTotal : draftInvoiceTotal;
 
 
   // The backend workflow endpoint is the single source of truth for
@@ -1067,7 +1064,6 @@ export function JobCardWorkspace() {
         outstandingTotal={hasPostedBilling ? postedBilling.outstanding : null}
         paymentVisible={canViewPayments}
         postedInvoiceCount={postedBilling?.postedInvoiceCount || 0}
-        billingLoading={billingSummaryLoading}
       />}
 
       {activeTab !== 'overview' && activeTab !== 'activity' && !showWorkTools && (
@@ -1820,24 +1816,24 @@ export function JobCardWorkspace() {
             </div>
           </header>
 
-          <div className="job-invoice-dashboard-stats">
+          {invoiceTabTotal != null && <div className="job-invoice-dashboard-stats">
             {[
-              ['Posted Invoice Total', hasPostedBilling ? invoiceTotal : null, 'total'],
-              ...(canViewPayments ? [
-                ['Customer Paid', hasPostedBilling ? invoicePaid : null, 'paid'],
-                ['Outstanding Due', hasPostedBilling ? invoiceBalance : null, 'balance']
+              [hasIssuedInvoice ? 'Posted Invoice Total' : 'Draft Invoice Total', invoiceTabTotal, 'total'],
+              ...(canViewPayments && hasIssuedInvoice ? [
+                ['Customer Paid', invoicePaid, 'paid'],
+                ['Outstanding Due', invoiceBalance, 'balance']
               ] : [])
             ].map(([label, amount, tone]) => (
               <div className={'job-invoice-stat is-' + tone} key={label}>
                 <span>{label}</span>
-                <strong>{amount === null ? (billingSummaryLoading ? 'Loading…' : 'Not posted') : money.format(amount)}</strong>
+                <strong>{money.format(amount)}</strong>
               </div>
             ))}
-            <div className="job-invoice-stat is-status">
+            {canViewPayments && <div className="job-invoice-stat is-status">
               <span>Payment Status</span>
-              <strong>{canViewPayments ? invoicePaymentStatus : 'Restricted'}</strong>
-            </div>
-          </div>
+              <strong>{hasIssuedInvoice ? invoicePaymentStatus : 'Draft'}</strong>
+            </div>}
+          </div>}
 
           {linkedInvoice && (
             <section className="job-gst-summary" aria-label="Job invoice GST and finance">
