@@ -464,6 +464,7 @@ export function JobCardWorkspace() {
   const inspectionWasSkipped = workflow?.inspectionStatus === 'Skipped' || job?.inspection?.status === 'Skipped';
   const estimateWasSkipped = workflow?.estimateDecision?.status === 'Skipped' || workflow?.skipped?.includes('estimate');
   const workWasSkipped = workflow?.skipped?.includes('work');
+  const qcWasSkipped = workflow?.skipped?.includes('qc');
   const sectionComplete = {
     overview: coreCompleted.includes('overview'),
     inspection: coreCompleted.includes('inspection'),
@@ -502,6 +503,7 @@ export function JobCardWorkspace() {
   const nextVisibleTab = visibleTabs[visibleTabIndex + 1] || null;
   const activeTabComplete = Boolean(sectionComplete[activeTab]);
   const activeTabLocked = isSectionLocked(activeTab);
+  const activeStageSkipped = (activeTab === 'work' && workWasSkipped) || (activeTab === 'qc' && qcWasSkipped);
   const accessibleCurrentStage = moduleTabAllowed(currentStage) ? currentStage : 'qc';
   const ActiveSectionIcon = TAB_ICONS[activeTab] || FileText;
   const activeTabLabel = TABS.find(([key]) => key === activeTab)?.[1] || 'Overview';
@@ -1104,7 +1106,8 @@ export function JobCardWorkspace() {
         <nav ref={workflowTabsRef} className="job-detail-tabs job-workflow-tabs" aria-label="Main Job Card stages">
           {visibleTabs.map(([key, label], index) => {
             const complete = Boolean(sectionComplete[key]);
-            const skipped = (key === 'inspection' && inspectionWasSkipped) || (key === 'estimate' && estimateWasSkipped) || (key === 'work' && workWasSkipped);
+            const skipped = workflow?.skipped?.includes(key) ||
+              (key === 'inspection' && inspectionWasSkipped) || (key === 'estimate' && estimateWasSkipped);
             const locked = isSectionLocked(key);
             const isActive = activeTab === key || (key === 'work' && activeExtraTab && activeTab !== 'activity' && !locked);
             return (
@@ -1185,8 +1188,8 @@ export function JobCardWorkspace() {
           <h2>{activeTabLabel}</h2>
         </div>
         {activeTab !== 'activity' && <span className={'job-workspace-section-state ' + (activeTabLocked ? 'is-locked' : activeTabComplete ? 'is-complete' : 'is-open')}>
-          {activeTabLocked ? <LockKeyhole size={13} aria-hidden="true"/> : activeTabComplete ? <CheckCircle2 size={13} aria-hidden="true"/> : <Clock3 size={13} aria-hidden="true"/>}
-          {activeTabLocked ? 'Locked' : activeTab === 'work' && workWasSkipped ? 'Skipped' : activeTabComplete ? 'Complete' : 'In progress'}
+          {activeTabLocked ? <LockKeyhole size={13} aria-hidden="true"/> : activeStageSkipped ? <SkipForward size={13} aria-hidden="true"/> : activeTabComplete ? <CheckCircle2 size={13} aria-hidden="true"/> : <Clock3 size={13} aria-hidden="true"/>}
+          {activeTabLocked ? 'Locked' : activeStageSkipped ? 'Skipped' : activeTabComplete ? 'Complete' : 'In progress'}
         </span>}
         {!activeTabLocked && !activeTabComplete && activeTab === currentStage && activeTab === 'work' && can('jobs.edit') && (
           <button type="button" className="job-work-skip-trigger" disabled={saving}
@@ -1766,10 +1769,15 @@ export function JobCardWorkspace() {
 
       {activeTab === 'qc' && (
         <JobQualityCheckPanel
+          key={job.id}
           job={job}
           canEdit={canEditJob && currentStage === 'qc' && !activeTabLocked && !activeTabComplete}
           onSaved={() => refreshJobWorkflow()}
-          onCompleted={() => refreshJobWorkflow('qc')}
+          onCompleted={(result) => {
+            if (result.job) setJob(result.job);
+            setWorkflow(result);
+            if (moduleTabAllowed(result.current)) navigate(`/jobs/${job.id}/${result.current}`, { replace: true });
+          }}
         />
       )}
 
