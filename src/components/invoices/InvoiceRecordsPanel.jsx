@@ -1,3 +1,4 @@
+import { recordLabel } from '../../utils/recordReferences.js';
 
 import { Download, Edit3, Eye, FileText, AlertCircle, RefreshCw, Plus } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -81,8 +82,8 @@ export const InvoiceRecordsPanel = ({
                     <tr key={document.id}>
                       <td>
                         <button type="button" onClick={() => onView(document)}>
-                          <strong>{document.number || document.id}</strong>
-                          <span>{document.jobCardNo || document.id}</span>
+                          <strong>{recordLabel(document.number || document.id)}</strong>
+                          <span>{recordLabel(document.jobCardNo)}</span>
                         </button>
                       </td>
                       <td>
@@ -105,10 +106,10 @@ export const InvoiceRecordsPanel = ({
                       </td>
                       <td>
                         <div className="invoice-dashboard-actions">
-                          <button type="button" title="View" aria-label={`View ${document.number || document.id}`} onClick={() => onView(document)}><Eye size={13} /></button>
-                          <button type="button" title="Save or share PDF" aria-label={`Save or share PDF for ${document.number || document.id}`} onClick={() => onPdf(document)}><Download size={15} /></button>
+                          <button type="button" title="View" aria-label={`View ${recordLabel(document.number || document.id)}`} onClick={() => onView(document)}><Eye size={13} /></button>
+                          <button type="button" title="Save or share PDF" aria-label={`Save or share PDF for ${recordLabel(document.number || document.id)}`} onClick={() => onPdf(document)}><Download size={15} /></button>
                           {canEdit && document.status === 'Draft' && (
-                            <button type="button" title="Edit" aria-label={`Edit ${document.number || document.id}`} onClick={() => onEdit(document)}><Edit3 size={13} /></button>
+                            <button type="button" title="Edit" aria-label={`Edit ${recordLabel(document.number || document.id)}`} onClick={() => onEdit(document)}><Edit3 size={13} /></button>
                           )}
                         </div>
                       </td>
@@ -126,7 +127,7 @@ export const InvoiceRecordsPanel = ({
                 <article key={document.id} className="invoice-dashboard-mobile-card">
                   <div className="invoice-dashboard-mobile-head">
                     <div>
-                      <strong>{document.number || document.id}</strong>
+                      <strong>{recordLabel(document.number || document.id)}</strong>
                       <span>{document.customer?.name || 'Walk-in customer'}</span>
                     </div>
                     <span className={'invoice-dashboard-status ' + invoiceStatusClass(document.status)}>

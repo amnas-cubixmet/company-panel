@@ -1,3 +1,4 @@
+import { recordLabel } from '../../utils/recordReferences.js';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
@@ -367,7 +368,7 @@ export function AccountsPage() {
                     <tr key={row.id}>
                       <td>{row.date?.slice(0, 10)}</td>
                       <td><span className="finance-entry-type">{row.type.replace(/_/g, ' ')}</span></td>
-                      <td className="finance-ref-cell">{row.reference || '—'}</td>
+                      <td className="finance-ref-cell">{recordLabel(row.reference || row.id)}</td>
                       <td className="is-num is-credit">{parseFloat(row.credit) > 0 ? fmt(row.credit) : '—'}</td>
                       <td className="is-num is-debit">{parseFloat(row.debit) > 0 ? fmt(row.debit) : '—'}</td>
                       <td className="is-num"><strong>{fmt(row.runningBalance)}</strong></td>

@@ -1,3 +1,4 @@
+import { recordLabel } from '../../utils/recordReferences';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -185,7 +186,7 @@ export function FinanceDashboard() {
                 <div className="finance-txn-info">
                   <span className="finance-txn-type">{String(txn.type || 'Transaction').replace(/_/g, ' ')}</span>
                   <span className="finance-txn-account">{txn.account}</span>
-                  {txn.reference && <span className="finance-txn-ref">{txn.reference}</span>}
+                  {(txn.reference || txn.id) && <span className="finance-txn-ref">{recordLabel(txn.reference || txn.id)}</span>}
                 </div>
                 <div className={`finance-txn-amount ${parseFloat(txn.amount) >= 0 ? 'is-credit' : 'is-debit'}`}>
                   {parseFloat(txn.amount) >= 0 ? '+' : ''}{fmt(txn.amount)}

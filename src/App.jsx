@@ -1,5 +1,5 @@
 
-import { BrowserRouter } from 'react-router-dom';
+import { RecordReferenceRouter } from './routes/RecordReferenceRouter';
 import { AuthProvider } from './context/AuthContext';
 import { FeatureAccessProvider } from './context/FeatureAccessContext';
 import { CompanyProvider } from './context/CompanyContext';
@@ -63,7 +63,7 @@ import './styles/floating-fields.css';
 export function App() {
   return (
     <AppErrorBoundary>
-      <BrowserRouter>
+      <RecordReferenceRouter>
         <BackendConnectionBanner />
         <GlobalFormValidation />
         <ThemeProvider>
@@ -78,7 +78,7 @@ export function App() {
             </FeatureAccessProvider>
           </AuthProvider>
         </ThemeProvider>
-      </BrowserRouter>
+      </RecordReferenceRouter>
     </AppErrorBoundary>
   );
 }

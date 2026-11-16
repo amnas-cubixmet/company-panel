@@ -1,3 +1,4 @@
+import { recordLabel } from '../../utils/recordReferences';
 import { useState } from 'react';
 import { ArrowDownLeft, ArrowUpRight, Building2, Wallet, TrendingUp, RefreshCw, Plus, SlidersHorizontal, Download } from 'lucide-react';
 import { appConfirm } from '../common/appDialogs';
@@ -289,7 +290,7 @@ export default function PaymentFinanceOverview({
                 <td>{entry.date || String(entry.createdAt || '').slice(0,10)}</td>
                 <td>{entry.account}</td>
                 <td>{String(entry.type || '').replaceAll('_', ' ')}
-                  {entry.reference && <small>{entry.reference}</small>}</td>
+                  {(entry.reference || entry.id) && <small>{recordLabel(entry.reference || entry.id)}</small>}</td>
                 <td className="is-credit">{Number(entry.credit) ? fmt(entry.credit) : '—'}</td>
                 <td className="is-debit">{Number(entry.debit) ? fmt(entry.debit) : '—'}</td>
               </tr>

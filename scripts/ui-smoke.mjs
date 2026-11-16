@@ -1186,6 +1186,27 @@ try {
           }
         }
 
+        if (path === '/invoices/INV-0001' && profile.width === 1440) {
+          const uuid = '00000000-0000-4000-8000-000000000099';
+          const reference = 'ref-' + BigInt('0x' + uuid.replaceAll('-', ''));
+          const invoiceEndpoint = `**/api/v1/billing/documents/${uuid}`;
+          await page.route(invoiceEndpoint, route => route.fulfill({json:{
+            ...fixture('/billing/documents/INV-0001'), id:uuid, number:'INV-REF-TEST',
+          }}));
+          try {
+            for (const identifier of [uuid, reference]) {
+              await page.goto(`${baseURL}/invoices/${identifier}`,{waitUntil:'networkidle'});
+              await page.getByRole('heading',{name:'INV-REF-TEST',exact:true}).waitFor();
+              if (new URL(page.url()).pathname !== `/invoices/${reference}` || (await page.locator('body').innerText()).includes(uuid)) {
+                throw Error('Invoice must open by reference without displaying its UUID.');
+              }
+            }
+          } finally {
+            await page.unroute(invoiceEndpoint);
+            await page.goto(baseURL+path,{waitUntil:'networkidle'});
+          }
+        }
+
         if(/^\/jobs\/JOB-00251\/(overview|inspection|estimate|work)$/.test(path)){
           const metrics=await page.evaluate(()=>{
             const roots=[...document.querySelectorAll(

@@ -5,6 +5,7 @@ import { USE_MOCK_API } from '../../api/apiConfig';
 import { CheckCircle2, ChevronDown, ClipboardList, Download, Package, Pencil, Plus, ReceiptText, Trash2, Wrench, SkipForward } from 'lucide-react';
 import { jobService } from '../../services/job.service';
 import { WhatsAppManualShareButton } from '../common/WhatsAppManualShareButton';
+import { recordLabel } from '../../utils/recordReferences';
 import { serviceService } from '../../services/service.service';
 import { stockCatalogService } from '../../services/stockCatalog.service';
 import { EstimateCatalogPicker } from './EstimateCatalogPicker';
@@ -600,7 +601,7 @@ export function QuickEstimatePanel({
           <p><strong>Reason:</strong> {latestDecline.reasonLabel}</p>
           {latestDecline.note && <p className="job-estimate-customer-message">{latestDecline.note}</p>}
           <small>Estimate V{latestDecline.version || latest.version} ·
-            Decision receipt: {latestDecline.receiptId}</small>
+            Decision receipt: {recordLabel(latestDecline.receiptId)}</small>
           <p>Update the work/parts above, save a new version, then share it to the customer portal.</p>
         </section>
       )}
@@ -819,7 +820,7 @@ export function QuickEstimatePanel({
                   <strong>Customer feedback: {declineByEstimate.get(String(item.id)).reasonLabel}</strong>
                   {declineByEstimate.get(String(item.id)).note &&
                     <p>{declineByEstimate.get(String(item.id)).note}</p>}
-                  <small>Receipt: {declineByEstimate.get(String(item.id)).receiptId}</small>
+                  <small>Receipt: {recordLabel(declineByEstimate.get(String(item.id)).receiptId)}</small>
                 </div>
               )}
               {canEdit && item.id === latest?.id && item.status === 'Draft' &&

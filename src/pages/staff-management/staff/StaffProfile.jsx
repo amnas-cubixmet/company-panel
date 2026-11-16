@@ -1,3 +1,4 @@
+import { recordLabel } from '../../../utils/recordReferences.js';
 import '../../../styles/staff-payment-settings.css';
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -768,7 +769,7 @@ export const StaffProfile = ({ staffId: staffIdProp }) => {
               {jobs.map((job) => (
                 <article key={job.id} className="staff360-job-card">
                   <div>
-                    <span>{job.jobNumber || job.id}</span>
+                    <span>{recordLabel(job.jobNumber || job.id)}</span>
                     <strong>{displayText(job.vehicle || job.vehicleReg || job.vehicleInfo, 'Vehicle')}</strong>
                     <p>{displayText(job.work || job.notes, 'Assigned workshop work')}</p>
                   </div>

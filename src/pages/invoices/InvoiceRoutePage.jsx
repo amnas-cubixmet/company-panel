@@ -1,3 +1,4 @@
+import { recordLabel } from '../../utils/recordReferences.js';
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Download, Edit3, Plus, Printer, ReceiptText, Trash2, Truck, Wallet, FileCheck2, Settings2, XCircle } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -722,7 +723,7 @@ export function InvoiceRoutePage() {
 
   if (mode === 'delete') return (
     <div className="billing-page billing-ui-unified">
-      <header className="billing-page-head"><div><span className="billing-kicker">DOCUMENT HISTORY</span><h1>{form.number || id}</h1><p>Document ID: {id}</p></div></header>
+      <header className="billing-page-head"><div><span className="billing-kicker">DOCUMENT HISTORY</span><h1>{recordLabel(form.number || id)}</h1></div></header>
       {error && <div className="billing-error">{error}</div>}
       {loading ? <div className="billing-empty">Loading…</div> : <section className="billing-card"><h3>Keep invoice audit history</h3><p>Invoice numbers, payment references and issued PDFs must remain available. Draft documents can be cancelled, but never permanently deleted.</p><div className="billing-head-actions"><button type="button" className="bill-btn secondary" onClick={() => navigate(`/invoices/${id}`)}>Back to document</button></div></section>}
     </div>
@@ -733,8 +734,8 @@ export function InvoiceRoutePage() {
       <div className="billing-editor-head no-print">
         <div>
           <span className="billing-kicker">{form.kind === 'estimate' ? 'ESTIMATE / QUOTATION' : 'INVOICE'}</span>
-          <h1>{form.number || id}</h1>
-          <p>ID: {id} · Status: {form.status}</p>
+          <h1>{recordLabel(form.number || id)}</h1>
+          <p>{form.status}</p>
         </div>
 
         <div className="billing-head-actions">
@@ -814,7 +815,7 @@ export function InvoiceRoutePage() {
         <div className="estimate-converted-banner no-print">
           <div>
             <strong>Converted to Invoice</strong>
-            <span>This quotation is now linked to {form.convertedToInvoiceNo || form.convertedToInvoiceId}. No re-entry is required.</span>
+            <span>This quotation is now linked to {recordLabel(form.convertedToInvoiceNo || form.convertedToInvoiceId)}. No re-entry is required.</span>
           </div>
           <button className="bill-btn" onClick={() => navigate(`/invoices/${form.convertedToInvoiceId}`)}>
             Open Invoice
@@ -850,8 +851,8 @@ export function InvoiceRoutePage() {
       <div className="billing-editor-head no-print">
         <div>
           <span className="billing-kicker">{form.kind === 'estimate' ? 'ESTIMATE' : 'TAX / SALES INVOICE'}</span>
-          <h1>{mode === 'edit' ? `Edit ${form.number || id}` : form.kind === 'estimate' ? 'New Estimate' : 'New Invoice'}</h1>
-          <p>{mode === 'edit' ? `Editing ID: ${id}` : form.invoiceType === 'gst' ? 'GST Tax Invoice based on verified Company Settings.' : 'Normal Invoice without GST, based on Company Settings.'}</p>
+          <h1>{mode === 'edit' ? `Edit ${recordLabel(form.number || id)}` : form.kind === 'estimate' ? 'New Estimate' : 'New Invoice'}</h1>
+          <p>{mode === 'edit' ? 'Review document details' : form.invoiceType === 'gst' ? 'GST Tax Invoice based on verified Company Settings.' : 'Normal Invoice without GST, based on Company Settings.'}</p>
         </div>
         <div className="billing-head-actions">
           {jobInvoicePath && <Link className="bill-btn secondary" to={jobInvoicePath}>Back to Job Card</Link>}

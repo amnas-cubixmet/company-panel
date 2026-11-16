@@ -1,3 +1,4 @@
+import { recordLabel } from '../../utils/recordReferences.js';
 import React, { useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { attendanceManagerService } from '../../services/attendanceManager.service';
@@ -176,9 +177,9 @@ export const MonthlyAttendanceCalendar = () => {
 
                   {employees.map((staff) => (
                     <React.Fragment key={staff.employeeId || staff.staffId}>
-                      <div className="am-calendar-employee" title={`${staff.name} · ${staff.staffId}`}>
+                      <div className="am-calendar-employee" title={`${staff.name} · ${recordLabel(staff.staffId)}`}>
                         <strong>{staff.name}</strong>
-                        <span>{staff.staffId}</span>
+                        <span>{recordLabel(staff.staffId)}</span>
                       </div>
 
                       {blockDays.map((day) => {

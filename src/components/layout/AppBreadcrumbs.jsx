@@ -1,3 +1,4 @@
+import { recordLabel } from '../../utils/recordReferences.js';
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { getStaffLandingPath } from '../../utils/staffLanding';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
@@ -87,6 +88,8 @@ const LABELS = {
 const prettify = (value) => {
   if (!value) return '';
   if (LABELS[value]) return LABELS[value];
+  const reference = recordLabel(value);
+  if (reference !== value) return reference;
   if (/^[A-Z]{2,}-/i.test(value) || /^\d+$/.test(value)) return decodeURIComponent(value);
   return decodeURIComponent(value)
     .replace(/[-_]+/g, ' ')
