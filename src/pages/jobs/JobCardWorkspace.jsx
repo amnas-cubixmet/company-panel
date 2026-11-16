@@ -999,6 +999,9 @@ export function JobCardWorkspace() {
     </div>
   );
 
+  const readyForDelivery = job.status === 'Ready for Delivery';
+  const shareTarget = readyForDelivery ? 'ready_delivery' : 'job';
+
   return (
     <div className="job-management-page cg-job-detail jobs-ui-polished job-workspace-dashboard flex w-full min-w-0 flex-col gap-4 pb-4">
       <JobBreadcrumbs current={TABS.find(([key]) => key === activeTab)?.[1] || "Overview"} jobLabel={jobDisplayLabel(job)} jobId={job.id} />
@@ -1012,11 +1015,8 @@ export function JobCardWorkspace() {
 
         <div className="flex flex-wrap items-center gap-2">
           <span className="job-overview-status-badge">{normalizeJobStatus(job.status)}</span>
-          <WhatsAppManualShareButton targetType="job" targetId={job.id} />
-          {job.status === 'Ready for Delivery' && (
-            <WhatsAppManualShareButton targetType="ready_delivery" targetId={job.id}
-              label="Share Vehicle Ready Message" />
-          )}
+          <WhatsAppManualShareButton key={`${job.id}:${shareTarget}`} targetType={shareTarget} targetId={job.id}
+            label={readyForDelivery ? 'Share Vehicle Ready Message' : 'Send via WhatsApp'} buttonOnly />
           {hasInvoiceAccess && jobLinkedInvoiceId && (
             <Link to={'/invoices/' + encodeURIComponent(jobLinkedInvoiceId)}
               className="job-financial-header-link">

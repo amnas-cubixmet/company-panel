@@ -1154,6 +1154,11 @@ try {
         // shrink iPhone input fonts/labels after the CSS is bundled.
         if(path==='/jobs/JOB-00251/overview' && [390,1440].includes(profile.width)) {
           await page.locator('.job-workflow-tabs').waitFor({state:'visible',timeout:12000});
+          const share = page.locator('.job-detail-header .wa-manual-share');
+          await share.getByRole('button', {name:'Send via WhatsApp', exact:true}).waitFor();
+          if (await share.getByRole('button').count() !== 1) {
+            throw Error('Job Card header must have one WhatsApp action.');
+          }
           const links=page.locator('.cg-job-connected-links');
           await links.waitFor({state:'visible',timeout:12000});
           for(const dest of ['/customers/CUS-0001','/vehicles/VEH-0001']) {
