@@ -210,7 +210,9 @@ try {
   await Promise.all(profiles.map(async (profile) => {
     const context=await browser.newContext({viewport:{width:profile.width,height:profile.height},colorScheme:profile.theme==='dark'?'dark':'light'});
     await context.addInitScript(({user,theme})=>{
-      localStorage.setItem('auth_token','fixture-token');localStorage.setItem('auth_user',JSON.stringify(user));
+      if (location.pathname !== '/login' || new URLSearchParams(location.search).get('reset') !== 'success') {
+        localStorage.setItem('auth_token','fixture-token');localStorage.setItem('auth_user',JSON.stringify(user));
+      }
       if(!localStorage.getItem('cubegears-theme'))localStorage.setItem('cubegears-theme',theme);
     },{user,theme:profile.theme});
     await context.route('**/*',route=>{
@@ -1163,6 +1165,37 @@ try {
           if(await confirm.getAttribute('type')!=='text') {
             throw Error('Account Security confirmed password visibility failed');
           }
+          const newInput = form.locator('input[aria-label="New password"]');
+          await newInput.fill('NewFixturePassword123!');
+          await confirm.fill('DifferentPassword123!');
+          const savePassword = form.getByRole('button', {name:'Change Password',exact:true});
+          await savePassword.click();
+          await form.getByRole('alert').filter({hasText:'New passwords do not match.'}).waitFor();
+          await confirm.fill('NewFixturePassword123!');
+          const passwordPath = '**/api/v1/auth/change-password';
+          let attempts = 0;
+          await page.route(passwordPath, async route => {
+            attempts += 1;
+            const sent = route.request().postDataJSON();
+            if (sent.currentPassword !== 'test-password-only' || sent.newPassword !== 'NewFixturePassword123!') {
+              await route.fulfill({status:422,json:{message:'Unexpected test field mapping.'}});
+              return;
+            }
+            await route.fulfill(attempts === 1
+              ? {status:400,json:{message:'Current password is incorrect.'}}
+              : {status:200,json:{message:'Password changed successfully. Please sign in again.'}});
+          });
+          await savePassword.click();
+          await form.getByRole('alert').filter({hasText:'Current password is incorrect.'}).waitFor();
+          if (await current.getAttribute('aria-invalid') !== 'true') throw Error('Mark the current password field on a mismatch.');
+          await page.evaluate(() => localStorage.setItem('auth_refresh_token','fixture-refresh'));
+          await Promise.all([page.waitForURL('**/login?reset=success'), savePassword.click()]);
+          await page.getByRole('status').filter({hasText:'Sign in with your new password.'}).waitFor();
+          if (await page.evaluate(() => ['auth_token','auth_refresh_token','auth_user'].some(key => localStorage.getItem(key)))) {
+            throw Error('Successful password change must clear revoked credentials.');
+          }
+          await page.unroute(passwordPath);
+          await page.goto(baseURL+path,{waitUntil:'networkidle'});
         }
         // Customer creation popup: inspect rendered fields (not only CSS text).
         // Keep it read-only; never submit a customer in CI.

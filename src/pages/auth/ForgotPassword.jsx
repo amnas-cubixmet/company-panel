@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { AlertCircle, ArrowLeft, Info, KeyRound, Mail, WandSparkles } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { CubixgearLogo } from '../../components/branding/CubixgearLogo';
 import { authRecoveryService } from '../../services/authRecovery.service';
 import { getAuthErrorMessage, getAuthFieldErrors } from '../../utils/authErrors';
@@ -9,7 +9,11 @@ import '../../styles/login-system.css';
 import '../../styles/auth-recovery.css';
 
 export const ForgotPassword = () => {
-  const [email, setEmail] = useState('');
+  const { state } = useLocation();
+  const [email, setEmail] = useState(() => {
+    const suggested = normalizeEmail(state?.email);
+    return isValidEmail(suggested) ? suggested : '';
+  });
   const [mode, setMode] = useState('reset');
   const isMagicLink = mode === 'magic';
   const [loading, setLoading] = useState(false);
