@@ -1,8 +1,8 @@
 import { recordLabel } from '../../utils/recordReferences.js';
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
-  ArrowLeft, Building2, Wallet, Plus, Power
+  ArrowLeft, Building2, ChevronRight, Wallet, Plus, Power
 } from 'lucide-react';
 import { financeService } from '../../services/finance.service';
 import { supplierFinanceReturnContext, matchesFinancePaymentChannel } from '../../utils/supplierFinanceReturnRoute';
@@ -351,7 +351,7 @@ export function AccountsPage() {
             <div className="finance-empty-ledger">No transactions recorded yet.</div>
           ) : (
             <div className="finance-ledger-table-wrap">
-              <table className="finance-ledger-table">
+              <table className="finance-ledger-table finance-responsive-table" aria-label="Account transactions" role="table">
                 <thead>
                   <tr>
                     <th>Date</th>
@@ -366,13 +366,13 @@ export function AccountsPage() {
                 <tbody>
                   {account.ledger.map(row => (
                     <tr key={row.id}>
-                      <td>{row.date?.slice(0, 10)}</td>
-                      <td><span className="finance-entry-type">{row.type.replace(/_/g, ' ')}</span></td>
-                      <td className="finance-ref-cell">{recordLabel(row.reference || row.id)}</td>
-                      <td className="is-num is-credit">{parseFloat(row.credit) > 0 ? fmt(row.credit) : '—'}</td>
-                      <td className="is-num is-debit">{parseFloat(row.debit) > 0 ? fmt(row.debit) : '—'}</td>
-                      <td className="is-num"><strong>{fmt(row.runningBalance)}</strong></td>
-                      <td className="finance-by-cell">{row.createdBy || '—'}</td>
+                      <td data-label="Date"><span>{row.date?.slice(0, 10)}</span></td>
+                      <td data-label="Type"><span className="finance-entry-type">{row.type.replace(/_/g, ' ')}</span></td>
+                      <td data-label="Reference" className="finance-ref-cell"><span>{recordLabel(row.reference || row.id)}</span></td>
+                      <td data-label="Credit" className="is-num is-credit"><span>{parseFloat(row.credit) > 0 ? fmt(row.credit) : '—'}</span></td>
+                      <td data-label="Debit" className="is-num is-debit"><span>{parseFloat(row.debit) > 0 ? fmt(row.debit) : '—'}</span></td>
+                      <td data-label="Balance" className="is-num"><strong>{fmt(row.runningBalance)}</strong></td>
+                      <td data-label="Created By" className="finance-by-cell"><span>{row.createdBy || '—'}</span></td>
                     </tr>
                   ))}
                 </tbody>
@@ -388,9 +388,8 @@ export function AccountsPage() {
     <div className="finance-page">
       <header className="finance-page-header">
         <div>
-          <span className="finance-dash-kicker">FINANCE</span>
           <h1>Cash &amp; Bank Accounts</h1>
-          <p>Choose where workshop money is held or paid from. You can track each account separately.</p>
+          <p>Manage workshop cash, bank and UPI accounts.</p>
         </div>
         {canManage && <button className="finance-primary-btn" onClick={() => navigate('/finance/accounts/new' + location.search)}>
           <Plus size={16} /> Add Account
@@ -423,20 +422,8 @@ export function AccountsPage() {
       ) : (
         <div className="finance-accounts-list">
           {visibleAccounts.map(acc => (
-            <article
-              key={acc.id}
-              className={`finance-account-row ${!acc.isActive ? 'is-inactive' : ''}`}
-              onClick={() => navigate(accountDetailPath(acc.id))}
-              role="button"
-              tabIndex={0}
-              aria-label={`View account ${acc.name}`}
-              onKeyDown={e => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  navigate(accountDetailPath(acc.id));
-                }
-              }}
-            >
+            <Link key={acc.id} className={`finance-account-row ${!acc.isActive ? 'is-inactive' : ''}`}
+              to={accountDetailPath(acc.id)} aria-label={`View account ${acc.name}`}>
               <div className="finance-account-row-left">
                 {acc.kind === 'Bank' ? <Building2 size={20} /> : <Wallet size={20} />}
                 <div>
@@ -451,7 +438,8 @@ export function AccountsPage() {
                   <span className="finance-status-badge">Default Payment</span>}
                 <strong className="finance-row-balance">{fmt(acc.currentBalance)}</strong>
               </div>
-            </article>
+              <ChevronRight size={17} aria-hidden="true" />
+            </Link>
           ))}
         </div>
       )}

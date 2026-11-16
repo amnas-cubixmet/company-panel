@@ -13,7 +13,6 @@ export const PaymentRecordsPanel = ({
     <header className="payments-dashboard-section-title">
       <div>
         <h2>Payment Records</h2>
-        <p>Customer receipts, spare parts supplier payments, expense and payroll payouts.</p>
       </div>
       <span>{payments.length} record{payments.length === 1 ? '' : 's'}</span>
     </header>
@@ -31,11 +30,11 @@ export const PaymentRecordsPanel = ({
           <table className="payments-dashboard-table">
             <thead>
               <tr>
-                <th>Payment ID</th>
+                <th>Receipt / reference</th>
                 <th>Party / Related Record</th>
                 <th>Date</th>
                 <th>Method / Type</th>
-                <th>Reference</th>
+                <th>Bank / UPI reference</th>
                 <th>Amount</th>
                 <th>Status</th>
                 <th>Action</th>
@@ -58,7 +57,7 @@ export const PaymentRecordsPanel = ({
                   </td>
                   <td>{formatPaymentDate(row.date)}</td>
                   <td>{row.method || '—'}<span>{row.category || ''}</span></td>
-                  <td>{row.reference || '—'}</td>
+                  <td>{recordLabel(row.reference)}</td>
                   <td><strong>{row.direction === 'OUT' ? '−' : '+'}{formatMoney(row.amount || 0)}</strong></td>
                   <td>
                     <span className={'payments-dashboard-status ' + paymentStatusClass(row.status)}>
@@ -100,7 +99,7 @@ export const PaymentRecordsPanel = ({
               {row.reference && (
                 <div className="payments-dashboard-reference">
                   <span>Reference</span>
-                  <strong>{row.reference}</strong>
+                  <strong>{recordLabel(row.reference)}</strong>
                 </div>
               )}
 

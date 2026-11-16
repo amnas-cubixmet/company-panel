@@ -28,6 +28,10 @@ const user = {id:'owner',name:'Workshop Owner',email:'owner@example.test',compan
   company:{id:'company-a',name:longWorkshopName},role:{name:'Owner',permissions:['*']},effectivePermissions:permissions,isCompanyOwner:true};
 const settings = Object.fromEntries(['company','operations','billing','inventory','attendance','payroll','notifications','security','integrations'].map(key => [key, {}]));
 settings.company = {name:'Test Workshop',country:'India',currency:'INR',timezone:'Asia/Kolkata'};
+const financeFixtureId = '00000000-0000-4000-8000-000000000094';
+const financeFixtureAccount = { id:financeFixtureId, name:'Cash in Hand', kind:'Cash', currentBalance:'6990436.00', openingBalance:'7000000.00', isActive:true };
+const financeFixtureEntry = { id:financeFixtureId, date:'2026-11-16', account:'Cash in Hand', accountKind:'Cash', createdBy:'Workshop Owner',
+  type:'customer_payment', reference:`Payment ${financeFixtureId}`, amount:'436.00', credit:'436.00', debit:'0.00' };
 const bundles = [
   {id:null,key:'customers',name:'Customers',features:[{key:'customers',label:'Customers'}],perUserCredits:'0.00',totalCredits:'0.00',billingType:'monthly',purchaseEnabled:false,purchaseDisabledReason:'MODULE_PRICE_NOT_SET'},
   {id:'jobs',name:'Jobs',features:[{key:'jobs',label:'Jobs'}],perUserCredits:'20.00',totalCredits:'20.00',billingType:'monthly',purchaseEnabled:true},
@@ -131,6 +135,16 @@ function fixture(path) {
   if(path==='/settings') return settings;
   if(path.startsWith('/settings/')) return settings[path.split('/').pop()] || {};
   if(path==='/company/me') return user.company;
+  if(path==='/finance/dashboard') return {bankBalance:'0.00',cashBalance:'6990436.00',totalReceived:'436.00',totalPaid:'10000.00',
+    outstandingCustomer:'0.00',supplierOutstanding:'1000.00',pendingExpenses:'75.00',estimatedProfit:'361.00',
+    profitNote:'Estimated result based on recorded sales and costs.',accounts:[financeFixtureAccount],recentTransactions:[financeFixtureEntry]};
+  if(path==='/finance/accounts') return [financeFixtureAccount];
+  if(path===`/finance/accounts/${financeFixtureId}`) return {...financeFixtureAccount,ledger:[{...financeFixtureEntry,runningBalance:'6990436.00'}]};
+  if(path==='/finance/ledger') return {count:1,page:1,totalPages:1,results:[financeFixtureEntry]};
+  if(path==='/finance/payment-activity') return {supplierPurchases:'11000.00',supplierPayments:'10000.00',supplierOutstanding:'1000.00',
+    results:[{id:financeFixtureId,source:'payment',direction:'IN',ledgerPosted:true,date:'2026-11-16',customer:'Fixture Customer',
+      invoice:'INV-2026-0001',method:'Cash',account:'Cash in Hand',amount:'436.00',status:'Completed'}]};
+  if(path==='/finance/chart') return [{id:financeFixtureId,code:`CASH:${financeFixtureId}`,name:'Cash in Hand',type:'Asset',isActive:true}];
   if(path==='/saas/credits/overview') return {balance:'516500.00',canManage:true,checkoutAvailable:false};
   if(path==='/saas/credits/bundles') return bundles;
   if(path==='/saas/credits/billing-cycle') return {enabled:false};
@@ -764,6 +778,58 @@ try {
           return nodes.filter(node=>node.clientWidth>0&&node.scrollWidth>node.clientWidth+2).map(node=>node.className||node.tagName);
         });
         if(overflow.length)throw Error('Horizontal page overflow: '+overflow.join(', '));
+        if (['/finance','/finance/payments','/finance/expenses','/finance/accounts','/finance/transfers','/finance/transactions','/finance/accounting'].includes(path) &&
+            [320, 390, 1440].includes(profile.width)) {
+          const workspace = page.locator('.finance-workspace');
+          await workspace.getByRole('heading', {level:1}).waitFor();
+          const active = workspace.locator('nav[aria-label="Finance sections"] [aria-current="page"]');
+          if (await active.getAttribute('href') !== path) throw Error('Finance navigation must mark the current page.');
+          await page.waitForFunction(() => {
+            const tab = document.querySelector('.finance-workspace-tabs [aria-current="page"]');
+            const rect = tab?.getBoundingClientRect();
+            const tabs = tab?.parentElement.getBoundingClientRect();
+            return rect && rect.left >= tabs.left - 1 && rect.right <= tabs.right + 1;
+          });
+          if (path === '/finance') {
+            await workspace.getByRole('region', {name:'Outstanding dues'}).getByText('₹1,000.00').waitFor();
+            await workspace.getByText('₹69,90,436.00', {exact:true}).first().waitFor();
+            if (await workspace.getByRole('link', {name:'Record Payment',exact:true}).count() !== 1) {
+              throw Error('Finance Overview must have a single Record Payment action.');
+            }
+          }
+          if (path === '/finance/payments') {
+            await workspace.getByText('Fixture Customer', {exact:true}).first().waitFor({state:'attached'});
+            const ledger = workspace.locator('.finance-payment-activity');
+            await ledger.getByRole('heading', {name:'Account ledger'}).waitFor({state:'hidden'});
+            await ledger.locator('summary').first().click();
+            await ledger.getByRole('heading', {name:'Account ledger'}).waitFor();
+          }
+          if (path === '/finance/accounts') {
+            const account = workspace.getByRole('link', {name:'View account Cash in Hand'});
+            await account.waitFor();
+            if (!(await account.getAttribute('href')).startsWith('/finance/accounts/ref-')) throw Error('Cash account links must use record references.');
+          }
+          if (path === '/finance/transfers') await workspace.getByRole('heading', {name:'No transfers yet'}).waitFor();
+          if (path === '/finance/accounting' || path === '/finance/transactions') {
+            const table = workspace.locator('.finance-responsive-table').first();
+            await table.getByText('Cash in Hand', {exact:true}).waitFor();
+            if (profile.width <= 390 && await table.evaluate(el => el.scrollWidth > el.parentElement.clientWidth + 2)) {
+              throw Error('Mobile finance ledger should fit without horizontal scrolling.');
+            }
+          }
+          if (path === '/finance/transactions' && profile.width === 390) {
+            const query = await workspace.locator('.finance-ref-cell').first().innerText();
+            await workspace.getByRole('searchbox', {name:'Search transactions'}).fill(query);
+            const applied = page.waitForRequest(request => {
+              const url = new URL(request.url());
+              return url.pathname.endsWith('/finance/ledger') && url.searchParams.get('q') === query;
+            });
+            await workspace.getByRole('button', {name:'Filter',exact:true}).click();
+            await applied;
+            await workspace.getByText('1 posted entry').waitFor();
+          }
+          if ((await workspace.innerText()).includes(financeFixtureId)) throw Error('Raw UUID exposed in Finance UI.');
+        }
         // Shared real form components: outlined labels, proper border ownership,
         // filled-state label persistence, and keyboard-accessible searchable picker.
         if ((path==='/customers/new' || path==='/vehicles/new') &&

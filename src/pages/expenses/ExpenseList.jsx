@@ -3,7 +3,7 @@ import { appConfirm, appPrompt } from '../../components/common/appDialogs';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BarChart3, Calendar, CheckCircle2, CircleDollarSign, Edit3, FileText, IndianRupee, Layers3, Receipt, Trash2, Link2, WalletCards } from "lucide-react";
 import { expenseService } from '../../services/expense.service';
 import { ExpenseBudgetPanel } from '../../components/expenses/ExpenseBudgetPanel';
@@ -714,30 +714,6 @@ export const ExpenseList = () => {
     <div className="expense-management-page cg-expenses">
       {actionError ? <div className="expense-alert" role="alert">{actionError}</div> : null}
       <ExpensesHeader onAdd={()=>navigate('/finance/expenses/new')} />
-      {canViewSupplierAccounting && (
-        <section className="expense-panel" aria-label="Linked supplier purchase accounting">
-          <div className="expense-section-header">
-            <div>
-              <h2>Supplier Purchases &amp; Pending Payments</h2>
-              <p>Parts purchases are recorded against supplier bills and inventory;
-                they are not counted again as operational expense payments.</p>
-            </div>
-          </div>
-          {linkedSupplierError && <p className="expense-alert" role="alert">{linkedSupplierError}</p>}
-          {!linkedSupplierTotals && !linkedSupplierError && <p>Loading linked supplier amounts…</p>}
-          {linkedSupplierTotals && <div className="expense-detail-kpis">
-            <div><span>Posted Supplier Purchases</span>
-              <strong>{money.format(Number(linkedSupplierTotals.supplierPurchases))}</strong></div>
-            <div><span>Supplier Payments Made</span>
-              <strong>{money.format(Number(linkedSupplierTotals.supplierPayments))}</strong></div>
-            <div><span>Credit Outstanding</span>
-              <strong>{money.format(Number(linkedSupplierTotals.supplierOutstanding))}</strong></div>
-          </div>}
-          <p>To record a supplier transaction, open that supplier from the Suppliers directory.</p>
-        </section>
-      )}
-
-
       <ExpenseOverviewStats
         currentMonthTotal={currentMonthRows.reduce((sum,item)=>sum+item.amount,0)}
         approvedTotal={approvedRows.reduce((sum,item)=>sum+item.amount,0)}
@@ -831,6 +807,24 @@ export const ExpenseList = () => {
           </div>
         </div>
       ) : null}
+      {canViewSupplierAccounting && (
+        <details className="expense-panel finance-disclosure">
+          <summary>Supplier purchases &amp; outstanding credit</summary>
+          {linkedSupplierError && <p className="expense-alert" role="alert">{linkedSupplierError}</p>}
+          {!linkedSupplierTotals && !linkedSupplierError && <p>Loading linked supplier amounts…</p>}
+          {linkedSupplierTotals && <div className="expense-detail-kpis">
+            <div><span>Posted Supplier Purchases</span>
+              <strong>{money.format(Number(linkedSupplierTotals.supplierPurchases))}</strong></div>
+            <div><span>Supplier Payments Made</span>
+              <strong>{money.format(Number(linkedSupplierTotals.supplierPayments))}</strong></div>
+            <div><span>Credit Outstanding</span>
+              <strong>{money.format(Number(linkedSupplierTotals.supplierOutstanding))}</strong></div>
+          </div>}
+          <Link to="/suppliers/purchases" className="finance-link-btn">View supplier bills</Link>
+        </details>
+      )}
+
+
     </div>
   );
 };
