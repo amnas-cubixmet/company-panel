@@ -1,4 +1,4 @@
-.staff-phone-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.staff-phone-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; container-type: inline-size; }
 .staff-phone-field > label { font-weight: 600; }
 .staff-phone-field__row {
   display: grid;
@@ -8,3 +8,6 @@
   gap: 8px;
 }
 .staff-phone-field__row :is(select, input) { width: 100%; min-width: 0; }
+@container (max-width: 235px) {
+  .staff-phone-field__row { grid-template-columns: minmax(0, 1fr); }
+}

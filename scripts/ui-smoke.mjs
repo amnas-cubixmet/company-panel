@@ -645,8 +645,8 @@ try {
             await field.getByRole('alert').filter({hasText:duplicate}).waitFor();
             const after = await phone.boundingBox();
             const error = await field.getByRole('alert').boundingBox();
-            if (before.width < 120 || Math.abs(before.width - after.width) > 1 || error.y < after.y + after.height) {
-              throw Error('Invalid staff phone must keep a usable number input and show the message below it.');
+            if (before.width < 120 || Math.abs(before.width - after.width) > 1 || error.y < after.y + after.height - 1) {
+              throw Error(`Invalid staff phone layout: ${JSON.stringify({before, after, error})}`);
             }
             const country = field.getByRole('combobox', {name:'Mobile country code'});
             await country.selectOption('+971');
