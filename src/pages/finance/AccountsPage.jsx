@@ -366,13 +366,13 @@ export function AccountsPage() {
                 <tbody>
                   {account.ledger.map(row => (
                     <tr key={row.id}>
-                      <td data-label="Date">{row.date?.slice(0, 10)}</td>
+                      <td data-label="Date"><span>{row.date?.slice(0, 10)}</span></td>
                       <td data-label="Type"><span className="finance-entry-type">{row.type.replace(/_/g, ' ')}</span></td>
-                      <td data-label="Reference" className="finance-ref-cell">{recordLabel(row.reference || row.id)}</td>
-                      <td data-label="Credit" className="is-num is-credit">{parseFloat(row.credit) > 0 ? fmt(row.credit) : '—'}</td>
-                      <td data-label="Debit" className="is-num is-debit">{parseFloat(row.debit) > 0 ? fmt(row.debit) : '—'}</td>
+                      <td data-label="Reference" className="finance-ref-cell"><span>{recordLabel(row.reference || row.id)}</span></td>
+                      <td data-label="Credit" className="is-num is-credit"><span>{parseFloat(row.credit) > 0 ? fmt(row.credit) : '—'}</span></td>
+                      <td data-label="Debit" className="is-num is-debit"><span>{parseFloat(row.debit) > 0 ? fmt(row.debit) : '—'}</span></td>
                       <td data-label="Balance" className="is-num"><strong>{fmt(row.runningBalance)}</strong></td>
-                      <td data-label="Created By" className="finance-by-cell">{row.createdBy || '—'}</td>
+                      <td data-label="Created By" className="finance-by-cell"><span>{row.createdBy || '—'}</span></td>
                     </tr>
                   ))}
                 </tbody>

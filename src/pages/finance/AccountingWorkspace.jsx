@@ -46,7 +46,7 @@ function Table({ columns, rows, empty = 'No records available.' }) {
     {columns.map(x => <th key={x}>{x}</th>)}
     </tr></thead><tbody>
     {rows.length ? rows.map((row, i) => <tr key={row.id || row.code || i}>
-      {row.cells.map((cell, j) => <td key={j} data-label={columns[j]}>{cell}</td>)}
+      {row.cells.map((cell, j) => <td key={j} data-label={columns[j]}><span>{cell}</span></td>)}
     </tr>) : <tr><td colSpan={columns.length}>{empty}</td></tr>}
     </tbody></table></div>;
 }

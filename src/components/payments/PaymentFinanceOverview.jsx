@@ -266,12 +266,12 @@ export default function PaymentFinanceOverview({
           <tbody>
             {ledger.map(entry => (
               <tr key={entry.id}>
-                <td data-label="Posted">{entry.date || String(entry.createdAt || '').slice(0,10)}</td>
-                <td data-label="Account">{entry.account}</td>
-                <td data-label="Type / Reference">{String(entry.type || '').replaceAll('_', ' ')}
-                  {(entry.reference || entry.id) && <small>{recordLabel(entry.reference || entry.id)}</small>}</td>
-                <td data-label="Credit" className="is-credit">{Number(entry.credit) ? fmt(entry.credit) : '—'}</td>
-                <td data-label="Debit" className="is-debit">{Number(entry.debit) ? fmt(entry.debit) : '—'}</td>
+                <td data-label="Posted"><span>{entry.date || String(entry.createdAt || '').slice(0,10)}</span></td>
+                <td data-label="Account"><span>{entry.account}</span></td>
+                <td data-label="Type / Reference"><span>{String(entry.type || '').replaceAll('_', ' ')}
+                  {(entry.reference || entry.id) && <small>{recordLabel(entry.reference || entry.id)}</small>}</span></td>
+                <td data-label="Credit" className="is-credit"><span>{Number(entry.credit) ? fmt(entry.credit) : '—'}</span></td>
+                <td data-label="Debit" className="is-debit"><span>{Number(entry.debit) ? fmt(entry.debit) : '—'}</span></td>
               </tr>
             ))}
             {!ledger.length && <tr><td colSpan={5}>No posted account transactions available.</td></tr>}

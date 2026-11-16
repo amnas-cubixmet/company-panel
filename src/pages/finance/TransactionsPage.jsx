@@ -153,17 +153,17 @@ export function TransactionsPage() {
             ) : (
               data.results.map(row => (
                 <tr key={row.id}>
-                  <td data-label="Date">{formatPaymentDate(row.date)}</td>
+                  <td data-label="Date"><span>{formatPaymentDate(row.date)}</span></td>
                   <td data-label="Account">
                     <span className={`finance-account-pill finance-kind-${(row.accountKind || '').toLowerCase()}`}>
                       {row.account}
                     </span>
                   </td>
                   <td data-label="Type"><span className="finance-entry-type">{String(row.type || 'Transaction').replaceAll('_', ' ')}</span></td>
-                  <td data-label="Reference" className="finance-ref-cell">{recordLabel(row.reference || row.id)}</td>
-                  <td data-label="Money In" className="is-num is-credit">{parseFloat(row.credit) > 0 ? fmt(row.credit) : '—'}</td>
-                  <td data-label="Money Out" className="is-num is-debit">{parseFloat(row.debit) > 0 ? fmt(row.debit) : '—'}</td>
-                  <td data-label="Created By">{row.createdBy || '—'}</td>
+                  <td data-label="Reference" className="finance-ref-cell"><span>{recordLabel(row.reference || row.id)}</span></td>
+                  <td data-label="Money In" className="is-num is-credit"><span>{parseFloat(row.credit) > 0 ? fmt(row.credit) : '—'}</span></td>
+                  <td data-label="Money Out" className="is-num is-debit"><span>{parseFloat(row.debit) > 0 ? fmt(row.debit) : '—'}</span></td>
+                  <td data-label="Created By"><span>{row.createdBy || '—'}</span></td>
                 </tr>
               ))
             )}
