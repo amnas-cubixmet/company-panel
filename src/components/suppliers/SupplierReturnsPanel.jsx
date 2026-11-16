@@ -1,3 +1,4 @@
+import { recordLabel } from '../../utils/recordReferences.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowDownLeft, ArrowRightLeft, BookOpen, PackageMinus, RefreshCw, ReceiptText, Wallet, Clock3 } from 'lucide-react';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
@@ -97,7 +98,7 @@ export default function SupplierReturnsPanel({
     })),
     ...payments.filter(row => row.kind === 'Advance' && amount(row.unapplied) > 0)
       .map(row => ({
-        id: 'advance:' + row.id, title: `Advance ${row.reference || row.id.slice(0, 8)}`,
+        id: 'advance:' + row.id, title: `Advance ${recordLabel(row.reference || row.id)}`,
         available: row.unapplied,
       })),
   ], [notes, payments]);

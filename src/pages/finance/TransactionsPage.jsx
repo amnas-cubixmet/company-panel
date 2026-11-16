@@ -1,3 +1,4 @@
+import { recordLabel } from '../../utils/recordReferences.js';
 import { useCallback, useEffect, useState } from 'react';
 import { Search, Download, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { financeService } from '../../services/finance.service';
@@ -156,7 +157,7 @@ export function TransactionsPage() {
                     </span>
                   </td>
                   <td><span className="finance-entry-type">{row.type.replace(/_/g, ' ')}</span></td>
-                  <td className="finance-ref-cell">{row.reference || '—'}</td>
+                  <td className="finance-ref-cell">{recordLabel(row.reference || row.id)}</td>
                   <td className="is-num is-credit">{parseFloat(row.credit) > 0 ? fmt(row.credit) : '—'}</td>
                   <td className="is-num is-debit">{parseFloat(row.debit) > 0 ? fmt(row.debit) : '—'}</td>
                   <td>{row.createdBy || '—'}</td>

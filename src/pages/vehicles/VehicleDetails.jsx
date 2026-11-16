@@ -1,3 +1,4 @@
+import { recordLabel } from '../../utils/recordReferences.js';
 import { appConfirm } from '../../components/common/appDialogs';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
@@ -133,7 +134,7 @@ export const VehicleDetails = () => {
         ...part,
         key: `${job.id}-${part.id || index}`,
         jobId: job.id,
-        jobNumber: job.jobNumber || job.id,
+        jobNumber: recordLabel(job.jobNumber || job.id),
         date: job.createdDate
       }))
     ),
@@ -225,7 +226,7 @@ export const VehicleDetails = () => {
         <button type="button" className="vehicle-current-job" onClick={() => navigate(`/jobs/${openJob.id}/overview`)}>
           <ClipboardList size={16}/>
           <div>
-            <strong>{openJob.jobNumber || openJob.id}</strong>
+            <strong>{recordLabel(openJob.jobNumber || openJob.id)}</strong>
             <span>Current Job Card · {openJob.status}</span>
           </div>
           <b>Open Job</b>
@@ -235,7 +236,7 @@ export const VehicleDetails = () => {
       <div className="vehicle-profile-kpis">
         <div><Gauge size={15}/><span>Odometer</span><strong>{latestJob?.kilometre || vehicle.odometer || '—'}</strong></div>
         <div><Wrench size={15}/><span>Service Visits</span><strong>{history.length}</strong></div>
-        <div><ClipboardList size={15}/><span>Current Job</span><strong>{openJob ? (openJob.jobNumber || openJob.id) : '—'}</strong></div>
+        <div><ClipboardList size={15}/><span>Current Job</span><strong>{openJob ? recordLabel(openJob.jobNumber || openJob.id) : '—'}</strong></div>
         <div><IndianRupee size={15}/><span>Total Paid</span><strong>{displayMoney(totalSpend)}</strong></div>
       </div>
 
@@ -373,7 +374,7 @@ export const VehicleDetails = () => {
               <button type="button" key={job.id} className="vehicle-history-card" onClick={() => navigate(`/jobs/${job.id}/overview`)}>
                 <div className="vehicle-history-card__head">
                   <div>
-                    <strong>{job.jobNumber || job.id}</strong>
+                    <strong>{recordLabel(job.jobNumber || job.id)}</strong>
                     <span>{job.createdDate} · {job.status}</span>
                   </div>
                   <b>{job.kilometre || 'KM —'}</b>

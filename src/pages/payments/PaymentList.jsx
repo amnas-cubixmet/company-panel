@@ -1,3 +1,4 @@
+import { recordLabel } from '../../utils/recordReferences.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, ShieldCheck } from "lucide-react";
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -359,7 +360,7 @@ export function PaymentList() {
                   <option value="">Select invoice</option>
                   {eligibleInvoices.map((invoice) => (
                     <option key={invoice.id} value={invoice.id}>
-                      {invoice.number || invoice.id} · {invoiceCustomer(invoice)} · Due {money.format(invoiceOutstanding(invoice, calculateDocumentTotals))}
+                      {recordLabel(invoice.number || invoice.id)} · {invoiceCustomer(invoice)} · Due {money.format(invoiceOutstanding(invoice, calculateDocumentTotals))}
                     </option>
                   ))}
                 </select>

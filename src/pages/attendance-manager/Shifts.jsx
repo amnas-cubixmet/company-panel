@@ -1,3 +1,4 @@
+import { recordLabel } from '../../utils/recordReferences.js';
 import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Clock3, Save, UsersRound } from 'lucide-react';
 import { attendanceManagerService } from '../../services/attendanceManager.service';
@@ -332,7 +333,7 @@ export const ShiftSettings = () => {
                 />
                 <span>
                   <strong>{employee.name}</strong>
-                  <small>{employee.staffId} · {employee.team || 'No team'} · {employee.shift || 'No shift'}</small>
+                  <small>{recordLabel(employee.staffId)} · {employee.team || 'No team'} · {employee.shift || 'No shift'}</small>
                 </span>
               </label>
             ))}

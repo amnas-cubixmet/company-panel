@@ -1,3 +1,4 @@
+import { recordLabel } from '../../utils/recordReferences.js';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowLeftRight, Plus } from 'lucide-react';
@@ -174,7 +175,7 @@ export function TransfersPage() {
                   <span className="finance-transfer-to">{t.toAccount}</span>
                 </div>
                 <div className="finance-transfer-meta">
-                  {t.reference && <span>{t.reference}</span>}
+                  <span>{recordLabel(t.reference || t.id)}</span>
                   <span>{t.date}</span>
                   <span className="finance-transfer-by">by {t.createdBy || 'System'}</span>
                 </div>

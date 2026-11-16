@@ -1,3 +1,4 @@
+import { recordLabel } from '../../utils/recordReferences.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, BookOpen, Building2, RefreshCw } from 'lucide-react';
 import { financeService } from '../../services/finance.service';
@@ -296,11 +297,11 @@ export default function AccountingWorkspace() {
         {candidates.length > 0 && <div className="gl-table-wrap">
           <table><thead><tr><th>Cleared</th><th>Date</th><th>Reference</th><th>Amount</th></tr></thead>
           <tbody>{candidates.map(row => <tr key={row.id}>
-            <td><input type="checkbox" aria-label={'Clear ledger entry ' + row.id}
+            <td><input type="checkbox" aria-label={'Clear ledger entry ' + recordLabel(row.reference || row.id)}
               checked={selected.includes(row.id)}
               onChange={e => setSelected(v => e.target.checked
                 ? [...v, row.id] : v.filter(id => id !== row.id))}/></td>
-            <td>{row.date}</td><td>{row.reference || row.type}</td><td>{money(row.amount)}</td>
+            <td>{row.date}</td><td>{recordLabel(row.reference || row.id, row.type)}</td><td>{money(row.amount)}</td>
           </tr>)}</tbody></table>
         </div>}
         <button type="submit" disabled={saving || !selected.length}>

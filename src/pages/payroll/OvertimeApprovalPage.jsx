@@ -1,3 +1,4 @@
+import { recordLabel } from '../../utils/recordReferences.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarDays, CheckCircle2, Clock3, RefreshCcw, Search, ShieldCheck, X, XCircle } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
@@ -253,7 +254,7 @@ export function OvertimeApprovalPage() {
                   <article className="dw-overtime-card" key={row.id}>
                     <div className="dw-overtime-card-head">
                       <div><strong>{row.staffName || 'Staff'}</strong>
-                        <small>{row.staffId || 'Employee'} · {row.branchName || row.branch || 'Workshop'}</small></div>
+                        <small>{recordLabel(row.staffId, 'Employee')} · {row.branchName || row.branch || 'Workshop'}</small></div>
                       <span className="dw-pending">Pending</span>
                     </div>
                     <div className="dw-overtime-facts">

@@ -1,3 +1,4 @@
+import { recordLabel } from '../../utils/recordReferences.js';
 import { appConfirm, appPrompt } from '../../components/common/appDialogs';
 import { useAuth } from '../../hooks/useAuth';
 import { hasPermission } from '../../utils/permissions';
@@ -496,7 +497,7 @@ export const ExpenseList = () => {
   };
 
   const removeExpense = async (expense) => {
-    if (!canDelete || !await appConfirm(`Delete expense ${expense.id}?`)) return;
+    if (!canDelete || !await appConfirm(`Delete expense ${recordLabel(expense.id)}?`)) return;
     setActionError('');
     try {
       await expenseService.deleteExpense(expense.id);
@@ -558,7 +559,7 @@ export const ExpenseList = () => {
         {actionError ? <div className="expense-alert" role="alert">{actionError}</div> : null}
         <header className="expense-detail-header">
           <div>
-            <span>{selectedExpense.id}</span>
+            <span>{recordLabel(selectedExpense.id)}</span>
             <h1>{selectedExpense.title}</h1>
             <p>{selectedExpense.category} · {selectedExpense.expenseDate}</p>
           </div>
@@ -644,7 +645,7 @@ export const ExpenseList = () => {
                 <div key={entry.id} className="expense-settlement-record">
                   <span>{new Date(entry.postedAt).toLocaleDateString('en-IN')} · {entry.accountName}</span>
                   <strong>{money.format(Number(entry.amount))}</strong>
-                  <small>{entry.method} · {entry.reference || 'No reference'}</small>
+                  <small>{entry.method} · {recordLabel(entry.reference || entry.id, 'No reference')}</small>
                   <small>{entry.reversedAt ? `Reversed: ${entry.reversalReason || 'Audited correction'}` : 'Posted'}</small>
                   {canEdit && !entry.reversedAt && (
                     <button type="button" disabled={submitting} className="is-danger"
@@ -668,7 +669,7 @@ export const ExpenseList = () => {
             </div>
 
             <div className="expense-info-grid">
-              <div><span>Expense ID</span><strong>{selectedExpense.id}</strong></div>
+              <div><span>Expense Reference</span><strong>{recordLabel(selectedExpense.id)}</strong></div>
               <div><span>Category</span><strong>{selectedExpense.category}</strong></div>
               <div><span>Vendor</span><strong>{selectedExpense.vendor}</strong></div>
               <div><span>Payment Method</span><strong>{selectedExpense.paymentMethod}</strong></div>
