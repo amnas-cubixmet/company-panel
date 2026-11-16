@@ -210,7 +210,9 @@ try {
   await Promise.all(profiles.map(async (profile) => {
     const context=await browser.newContext({viewport:{width:profile.width,height:profile.height},colorScheme:profile.theme==='dark'?'dark':'light'});
     await context.addInitScript(({user,theme})=>{
-      localStorage.setItem('auth_token','fixture-token');localStorage.setItem('auth_user',JSON.stringify(user));
+      if (location.pathname !== '/login' || new URLSearchParams(location.search).get('reset') !== 'success') {
+        localStorage.setItem('auth_token','fixture-token');localStorage.setItem('auth_user',JSON.stringify(user));
+      }
       if(!localStorage.getItem('cubegears-theme'))localStorage.setItem('cubegears-theme',theme);
     },{user,theme:profile.theme});
     await context.route('**/*',route=>{
@@ -1187,8 +1189,7 @@ try {
           await form.getByRole('alert').filter({hasText:'Current password is incorrect.'}).waitFor();
           if (await current.getAttribute('aria-invalid') !== 'true') throw Error('Mark the current password field on a mismatch.');
           await page.evaluate(() => localStorage.setItem('auth_refresh_token','fixture-refresh'));
-          await savePassword.click();
-          await page.waitForURL('**/login?reset=success');
+          await Promise.all([page.waitForURL('**/login?reset=success'), savePassword.click()]);
           await page.getByRole('status').filter({hasText:'Sign in with your new password.'}).waitFor();
           if (await page.evaluate(() => ['auth_token','auth_refresh_token','auth_user'].some(key => localStorage.getItem(key)))) {
             throw Error('Successful password change must clear revoked credentials.');

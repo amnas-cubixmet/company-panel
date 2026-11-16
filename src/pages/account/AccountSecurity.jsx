@@ -38,7 +38,7 @@ export const AccountSecurity = () => {
       await authRecoveryService.changePassword({ currentPassword, newPassword });
       // Django revokes the old session as part of a successful change.
       clearSession();
-      navigate('/login?reset=success', { replace: true });
+      window.location.replace('/login?reset=success');
     } catch (error) {
       const fields = getAuthFieldErrors(error);
       const message = getAuthErrorMessage(error, 'Unable to change password. Please try again.');
