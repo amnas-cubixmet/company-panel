@@ -15,6 +15,11 @@ npm run dev
 ```
 
 The local backend defaults to `http://127.0.0.1:8000/api/v1`.
+Set `VITE_CUSTOMER_WEBSITE_DEV_ORIGIN` in `.env` or `.env.local` to the HTTP
+origin of the locally running Customer Website, for example `http://localhost:3000`.
+Restart Vite after editing it. The local website preview and WhatsApp drafts
+use this port on the workshop's own `.localhost` subdomain. With the value
+blank, WhatsApp uses Django's configured customer portal address.
 For staging/production, configure `VITE_API_URL` to the deployed Django
 `/api/v1` endpoint. Never place secrets in `VITE_*` variables.
 

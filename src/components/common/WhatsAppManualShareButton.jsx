@@ -2,7 +2,18 @@ import { useState } from 'react';
 import { ExternalLink, MessageCircle } from 'lucide-react';
 import apiClient from '../../api/apiClient';
 import { USE_MOCK_API } from '../../api/apiConfig';
+import { isLocalCustomerWebsiteDevelopment, localCustomerWebsiteOrigin } from '../../utils/customerWebsiteAddresses';
 import '../../styles/whatsapp-manual-share.css';
+
+function prepareWhatsAppShare(targetType, targetId) {
+  if (USE_MOCK_API) throw new Error('WhatsApp sharing requires the live Django backend.');
+  const payload = { targetType, targetId };
+  if (isLocalCustomerWebsiteDevelopment(import.meta.env.DEV, window.location.hostname)) {
+    const origin = localCustomerWebsiteOrigin(import.meta.env.VITE_CUSTOMER_WEBSITE_DEV_ORIGIN);
+    if (origin) payload.customerWebsiteDevOrigin = origin;
+  }
+  return apiClient.post('/whatsapp/manual-share', payload);
+}
 
 /**
  * Preparing a Click-to-Chat message does NOT send a WhatsApp message.
@@ -30,8 +41,7 @@ export function WhatsAppManualShareButton({ targetType, targetId, label = 'Send 
     }
 
     try {
-      if (USE_MOCK_API) throw new Error('WhatsApp sharing requires the live Django backend.');
-      const data = await apiClient.post('/whatsapp/manual-share', { targetType, targetId });
+      const data = await prepareWhatsAppShare(targetType, targetId);
       if (!data?.url) throw new Error('WhatsApp share link was not generated.');
       setPreparedUrl(data.url);
       setPreview(data.preview || '');
@@ -51,8 +61,7 @@ export function WhatsAppManualShareButton({ targetType, targetId, label = 'Send 
     setError('');
     setCopyNotice('');
     try {
-      if (USE_MOCK_API) throw new Error('WhatsApp sharing requires the live Django backend.');
-      const data = await apiClient.post('/whatsapp/manual-share', { targetType, targetId });
+      const data = await prepareWhatsAppShare(targetType, targetId);
       if (!data?.preview) throw new Error('Manual WhatsApp message could not be prepared.');
       setPreview(data.preview);
       setPreparedUrl(data.url || '');
