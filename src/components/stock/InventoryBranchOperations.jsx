@@ -26,12 +26,13 @@ const errorMessage = (cause) => {
   return cause?.message || 'Unable to save this inventory transaction.';
 };
 
-export default function InventoryBranchOperations({ balances = [], onBalancesChange, onChanged }) {
+export default function InventoryBranchOperations({ onChanged }) {
   const { can } = useFeatureAccess();
   const canView = can('stock.view');
   const canEdit = can('stock.edit');
   const [branches, setBranches] = useState([]);
   const [products, setProducts] = useState([]);
+  const [balances, setBalances] = useState([]);
   const [transfers, setTransfers] = useState([]);
   const [counts, setCounts] = useState([]);
   const [error, setError] = useState('');
@@ -53,14 +54,14 @@ export default function InventoryBranchOperations({ balances = [], onBalancesCha
       const [branchRows, itemRows, stockRows, transferRows, auditRows] = await Promise.all([
         branchService.getBranches(),
         stockCatalogService.getItems(),
-        apiClient.get('/stock/branch-balances'),
+        stockCatalogService.getBranchBalances(),
         apiClient.get('/stock/transfers'),
         apiClient.get('/stock/audit'),
       ]);
       const activeBranches = rows(branchRows).filter((row) => row.is_active !== false);
       setBranches(activeBranches);
       setProducts(rows(itemRows));
-      onBalancesChange(rows(stockRows));
+      setBalances(stockRows);
       setTransfers(rows(transferRows));
       setCounts(rows(auditRows));
       setTransfer((previous) => ({
@@ -69,11 +70,10 @@ export default function InventoryBranchOperations({ balances = [], onBalancesCha
       setError('');
     } catch (cause) {
       setError(errorMessage(cause));
-      onBalancesChange(previous => previous ?? []);
     } finally {
       setLoading(false);
     }
-  }, [canView, onBalancesChange]);
+  }, [canView]);
 
   useEffect(() => { refresh(); }, [refresh]);
   const selected = useMemo(() => balances.find((row) =>
@@ -124,7 +124,7 @@ export default function InventoryBranchOperations({ balances = [], onBalancesCha
   };
 
   if (!canView || USE_MOCK_API) return null;
-  return <section className="cg-branch-inventory" aria-label="Live branch inventory operations">
+  return <section className="cg-branch-inventory" id="branch-stock" tabIndex={-1} aria-label="Live branch inventory operations">
     <div className="cg-branch-heading">
       <h2>Branch Stock &amp; Reconciliation</h2>
       <button type="button" onClick={refresh} disabled={loading || saving}>
