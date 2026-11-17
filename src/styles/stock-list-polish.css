@@ -98,9 +98,6 @@
   line-height:1.45;
   margin-top:4px;
 }
-@media (min-width:1024px) {
-  .cg-easy-stock .cg-stock-overview-description {display:none}
-}
 .cg-easy-stock > .cg-easy-panel .cg-easy-filters {
   display:flex;
   flex-wrap:wrap;

@@ -34,7 +34,6 @@ export default function InventoryCategories({ categories, loadError, onCreate })
   return <section className="cg-branch-inventory" aria-label="Inventory categories and subcategories">
     <div className="cg-branch-heading"><div>
       <h2><Layers3 size={18} aria-hidden="true"/> Categories &amp; Subcategories</h2>
-      <p className="cg-stock-overview-description">Add main categories and organize their subcategories.</p>
     </div></div>
     {(error || loadError) && <p className="cg-branch-error" role="alert">{error || loadError}</p>}
     {canCreate && <form onSubmit={save} className="cg-branch-form">
@@ -52,7 +51,7 @@ export default function InventoryCategories({ categories, loadError, onCreate })
       </button>
     </form>}
     <div className="cg-category-tree">
-      {roots.length === 0 && <p>No categories yet. Create your first main category.</p>}
+      {roots.length === 0 && <p>No categories yet.</p>}
       {roots.map((group) => <div className="cg-category-group" key={group.id}>
         <strong>{group.name}</strong>
         {categories.filter((child) => child.parent === group.id && child.is_active !== false).map((child) =>
