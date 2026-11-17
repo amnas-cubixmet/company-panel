@@ -444,10 +444,10 @@ try {
           const workshop=page.locator(mobile ? '.mobile-workshop-brand' : '.sidebar-workshop-only');
           await workshop.waitFor({state:'visible'});
           const companyName=workshop.locator('.workshop-company-name');
-          if(await companyName.innerText()!==shortName)
-            throw Error('Workshop must display only its first word in the compact header');
+          if(await companyName.innerText()!==(mobile ? longWorkshopName : shortName))
+            throw Error('Mobile header must show the workshop name and desktop sidebar must show its short name');
           if(await companyName.getAttribute('title')!==longWorkshopName)
-            throw Error('Short workshop name must preserve the full name in its tooltip');
+            throw Error('Workshop name must be available in full in the tooltip');
           const companyLogo=workshop.locator('.workshop-company-logo-image');
           await companyLogo.waitFor({state:'visible',timeout:8000});
           if(!(await companyLogo.evaluate(el=>el.complete && el.naturalWidth>0)))
@@ -463,10 +463,10 @@ try {
             const typography=await companyName.evaluate(el=>({
               fontWeight:parseInt(getComputedStyle(el).fontWeight,10),
               fontSize:parseFloat(getComputedStyle(el).fontSize),
-              textOverflow:getComputedStyle(el).textOverflow,
+              lineClamp:getComputedStyle(el).webkitLineClamp,
             }));
             if(typography.fontWeight<550 || typography.fontWeight>700 ||
-              typography.fontSize<13 || typography.fontSize>15)
+              typography.fontSize<13 || typography.fontSize>15 || typography.lineClamp!=='2')
               throw Error('Mobile workshop name should be moderately bold and compact: '+JSON.stringify(typography));
             const layout=await page.evaluate(()=>{
               const brand=document.querySelector('.mobile-workshop-brand').getBoundingClientRect();
@@ -553,7 +553,7 @@ try {
           await usage.getByText('Upload photos', {exact:true}).waitFor();
           const stats = usage.locator('.storage-overview-grid > div');
           if (await stats.count() !== 3 || !await usage.getByText('100 MB', {exact:true}).isVisible()
-              || !await usage.getByText('0.10 GB', {exact:true}).isVisible()) {
+              || !await usage.getByText('≈ 0.10 GB', {exact:true}).isVisible()) {
             throw Error('Media Storage must show the usage, file count and allowance summary.');
           }
           await usage.getByRole('button', {name:'GB',exact:true}).click();
@@ -569,6 +569,23 @@ try {
               await storagePage.getByRole('button', {name:/delete/i}).count() ||
               /Small uploads are not rounded down|Storage Billing:|Storage usage history|Storage interval logs|Advanced storage settings|Uploaded Files|Recorded storage activity|Delete selected|Credit billing cycle/i.test(await storagePage.innerText())) {
             throw Error('Removed Media Storage sections and controls should not render on the overview.');
+          }
+          if (profile.width===390 || profile.width===1440) {
+            const summaryRoute='**/api/v1/saas/storage';
+            const uploadRoute='**/api/v1/saas/storage/files';
+            const addedBytes=1024 ** 2;
+            const initial=fixture('/saas/storage');
+            await page.route(summaryRoute, route=>route.fulfill({json:{
+              ...initial, usedBytes:initial.usedBytes+addedBytes, fileCount:initial.fileCount+1,
+            }}));
+            await page.route(uploadRoute, route=>route.fulfill({status:201,json:[{sizeBytes:addedBytes}]}));
+            await usage.locator('input[type=file]').setInputFiles({
+              name:'storage-calculation.png', mimeType:'image/png', buffer:Buffer.alloc(addedBytes),
+            });
+            await usage.getByText('101 MB', {exact:true}).waitFor({state:'visible'});
+            await stats.nth(1).getByText('11', {exact:true}).waitFor({state:'visible'});
+            await page.unroute(summaryRoute);
+            await page.unroute(uploadRoute);
           }
         }
         if(path==='/account') {

@@ -37,3 +37,12 @@ test('100 MB rounds to 0.10 GB without losing the exact media byte count', () =>
   assert.equal(formatStorageBytes(0, 'GB'), '0.00 GB');
   assert.equal(formatStorageBytes(BYTES_PER_MB, 'GB'), '0.0009765625 GB');
 });
+
+test('a complete file list restores exact usage when the summary only reports rounded GB', () => {
+  const files = [{ sizeBytes: '512' }, { sizeBytes: 1536 }];
+  assert.equal(storageBytes({ usedGb: 0, fileCount: 2, files }), 2048);
+  assert.equal(storageBytes({ usedBytes: '', usedGb: 0, fileCount: 2, files }), 2048);
+  assert.equal(storageBytes({ usedBytes: 0, usedGb: 0, fileCount: 2, files }), 0);
+  assert.equal(storageBytes({ usedGb: 1, fileCount: 3, files }), BYTES_PER_GB);
+  assert.equal(storageBytes({ usedGb: 1, fileCount: 2, files: [{ sizeBytes: 512 }, {}] }), BYTES_PER_GB);
+});
