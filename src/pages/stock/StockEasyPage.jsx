@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
 import { USE_MOCK_API } from '../../api/apiConfig';
 import { AlertTriangle, Boxes, ChevronRight, History, PackageMinus, PackagePlus, Plus, RefreshCw, Search, ShoppingCart, Wrench } from 'lucide-react';
@@ -10,6 +10,7 @@ import StockProductLink from '../../components/stock/StockProductLink';
 import InventoryCategories from '../../components/stock/InventoryCategories';
 import { supplierService } from '../../services/supplier.service';
 import { CountryPhoneField } from '../../components/common/CountryPhoneField';
+import { stockState, ZERO_GST_CLASSIFICATIONS } from '../../utils/stockPresentation';
 import { validInternationalPhone } from '../../utils/jobCreateAdapters';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
@@ -27,14 +28,6 @@ const number = (value) => Number(value) || 0;
 // Inventory uses the same CGST / SGST / IGST component options as invoices.
 // StockItem.tax remains the TOTAL GST rate, never an independent CGST debit.
 const STOCK_GST_CHOICES = invoiceLineTaxChoices('unknown');
-// A 0% rate alone does not distinguish legal categories. Preserve that
-// distinction with the item; jurisdiction is determined at invoice time.
-const ZERO_GST_CLASSIFICATIONS = [
-  ['exempt', 'Exempt'],
-  ['nil_rated', 'Nil-rated'],
-  ['zero_rated', 'Zero-rated'],
-  ['non_gst', 'Non-GST'],
-];
 const validGstRate = (value) =>
   /^\d{1,3}(?:\.\d{1,2})?$/.test(String(value)) &&
   Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 100;
@@ -98,73 +91,8 @@ function RackCombobox({ value, onChange, suggestions }) {
 const inventoryRequestKey = () => globalThis.crypto?.randomUUID?.() || `stock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const initialMove = { mode: 'in', itemId: '', quantity: '1', invoiceNo: '', notes: '', costPrice: '', sellingPrice: '', priceMode: '', requestKey: '' };
 
-function stockState(item) {
-  const available = number(item.available ?? (number(item.onHand) - number(item.reserved)));
-  if (available <= 0) return { label: 'Out of stock', tone: 'out' };
-  if (available <= number(item.minimumStock)) return { label: 'Low stock', tone: 'low' };
-  return { label: 'Available', tone: 'ok' };
-}
-
-function StockProductDetails({ id, branchId, branchBalance, canManageStock, onClose }) {
-  const validId = /^[A-Za-z0-9_-]{1,80}$/.test(id);
-  const [product, setProduct] = useState(validId ? undefined : null);
-
-  useEffect(() => {
-    if (!validId) return undefined;
-    let active = true;
-    stockCatalogService.getItem(id)
-      .then((item) => { if (active) setProduct(item); })
-      .catch(() => { if (active) setProduct(null); });
-    return () => { active = false; };
-  }, [id, validId]);
-
-  const unit = product?.unit || 'PCS';
-  const stock = branchId ? branchBalance : product;
-  const stockLabel = stock && stockState({ available: stock.available, minimumStock: product?.minimumStock }).label;
-  const gstClassification = ZERO_GST_CLASSIFICATIONS.find(([code]) => code === product?.zeroTaxClassification)?.[1];
-  const fields = product && [
-    ...(branchBalance ? [
-      ['Branch', branchBalance.branchName],
-      ['On Hand', `${number(branchBalance.onHand)} ${unit}`],
-      ['Reserved', `${number(branchBalance.reserved)} ${unit}`],
-    ] : []),
-    ...(stock ? [
-      ['Available Stock', `${number(stock.available)} ${unit}`],
-      ['Stock Status', stockLabel],
-    ] : []),
-    ['Minimum Stock', `${product.minimumStock} ${unit}`],
-    ['Rack / Storage Location', product.location || product.rack],
-    ['SKU', product.sku],
-    ['Part Number', product.partNumber],
-    ['Brand', product.brand],
-    ['Category', product.categoryName || (USE_MOCK_API && product.category)],
-    ['Supplier', product.supplierName || (USE_MOCK_API && product.supplier)],
-    ['Selling Price', cash(product.sellingPrice)],
-    ['Purchase Price', canManageStock ? cash(product.costPrice) : 'Restricted'],
-    ['GST Rate', gstClassification && !product.tax ? `0% · ${gstClassification}` : `${product.tax}%`],
-    ['HSN / SAC Code', product.hsnCode],
-  ];
-
-  return (
-    <ResponsiveModalSheet isOpen onClose={onClose} title={product?.partName || 'Product Details'} maxWidth="600px">
-      {product === null && <p className="cg-easy-alert" role="alert">Product details are unavailable.</p>}
-      {product === undefined && <p role="status">Loading product details…</p>}
-      {product && branchId && branchBalance === undefined && <p role="status">Loading branch stock…</p>}
-      {product && branchId && branchBalance === null && <p className="cg-easy-alert" role="alert">Branch stock is unavailable.</p>}
-      {fields && (
-        <dl className="cg-stock-product-details">
-          {fields.map(([label, value]) => (
-            <div key={label}><dt>{label}</dt><dd>{value || '—'}</dd></div>
-          ))}
-        </dl>
-      )}
-    </ResponsiveModalSheet>
-  );
-}
-
 export default function StockEasyPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { can } = useFeatureAccess();
   const canManageStock = can('stock.edit');
   const canCreateStock = can('stock.create');
@@ -180,22 +108,7 @@ export default function StockEasyPage() {
   const filterValue = searchParams.get('filter') || 'all';
   const filter = ['all', 'low', 'out'].includes(filterValue) ? filterValue : 'all';
   const supplierId = searchParams.get('supplier') || '';
-  const productId = searchParams.get('product');
-  const productBranchId = searchParams.get('productBranch');
   const [branchBalances, setBranchBalances] = useState(USE_MOCK_API ? [] : null);
-  const branchBalance = productBranchId && branchBalances
-    ? branchBalances.find(row => row.itemId === productId && row.branchId === productBranchId) ?? null
-    : undefined;
-  const closeProductDetails = () => {
-    if (location.state?.fromStockProductList) {
-      navigate(-1);
-      return;
-    }
-    const next = new URLSearchParams(searchParams);
-    next.delete('product');
-    next.delete('productBranch');
-    setSearchParams(next, { replace: true });
-  };
   const updateQueryParam = (key, value) => {
     const next = new URLSearchParams(searchParams);
     if (!value || value === 'all') next.delete(key);
@@ -751,11 +664,6 @@ export default function StockEasyPage() {
           <div key={entry.id} className="cg-easy-history-row"><div><strong>{entry.partName || entry.itemName || 'Stock Item'}</strong><small>{entry.type || entry.movement_type || 'Movement'}</small></div><b>{number(entry.quantity ?? entry.qty) > 0 ? '+' : ''}{number(entry.quantity ?? entry.qty)}</b></div>
         )) : <p>No stock movements yet.</p>}</div>
       </section>
-
-      {productId && (
-        <StockProductDetails key={productId} id={productId} branchId={productBranchId}
-          branchBalance={branchBalance} canManageStock={canManageStock} onClose={closeProductDetails}/>
-      )}
 
       <StockPurchaseStartDialog
         isOpen={receiveOpen}

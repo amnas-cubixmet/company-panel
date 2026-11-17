@@ -59,12 +59,15 @@ export const MobileSlideSidebar = ({ isOpen, onClose }) => {
       <button
         type="button"
         aria-label="Close menu backdrop"
+        tabIndex={-1}
+        aria-hidden={!isOpen}
         onClick={onClose}
         className={`mobile-drawer-backdrop ${isOpen ? 'is-open' : ''}`}
       />
 
       <aside
         aria-hidden={!isOpen}
+        inert={!isOpen}
         className={`mobile-drawer ${isOpen ? 'is-open' : ''}`}
       >
         <header className="mobile-drawer-head">
@@ -87,7 +90,7 @@ export const MobileSlideSidebar = ({ isOpen, onClose }) => {
           <small>{visibleRoutes.length} available pages</small>
         </div>
 
-        <nav className="mobile-drawer-nav" aria-label="Mobile navigation">
+        <nav className="mobile-drawer-nav" aria-label="Workspace navigation">
           <section className="mobile-drawer-section">
             <div className="mobile-drawer-section-title">Your account</div>
             <div className="mobile-drawer-items">

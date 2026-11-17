@@ -191,6 +191,14 @@ export function AppBreadcrumbs() {
     const segments = location.pathname.split('/').filter(Boolean);
     if (!segments.length || location.pathname === '/dashboard') return [];
 
+    if (segments.length === 3 && segments[0] === 'stock' && segments[1] === 'products') {
+      return [
+        { label: 'Home', href: homePath, current: false, home: true },
+        { label: LABELS.stock, href: '/stock', current: false },
+        { label: 'Product Details', href: location.pathname, current: true },
+      ];
+    }
+
     const isStaffProfile =
       segments.length === 3 &&
       segments[0] === 'staff-management' &&
