@@ -494,7 +494,7 @@ export default function StockEasyPage() {
       <header className="cg-easy-head">
         <div>
           <h1>Inventory Management</h1>
-          <p>Find parts, receive stock and track what your workshop uses.</p>
+          <p className="cg-stock-overview-description">Find parts, receive stock and track what your workshop uses.</p>
         </div>
         <div className="cg-easy-actions">
           <button type="button" className="cg-easy-secondary" onClick={reload} disabled={loading}><RefreshCw size={16}/> Refresh</button>
@@ -562,7 +562,7 @@ export default function StockEasyPage() {
 
       <section className="cg-easy-panel">
         <div className="cg-easy-panel-header">
-          <div><h2>Parts & Products</h2><p>Choose a part to receive stock. For vehicle jobs, issue parts from the Job Card.</p></div>
+          <div><h2>Parts & Products</h2><p className="cg-stock-overview-description">Choose a part to receive stock. For vehicle jobs, issue parts from the Job Card.</p></div>
         </div>
         <div className="cg-easy-filters">
           <label className="cg-easy-search"><Search size={18} aria-hidden="true"/><input type="search" aria-label="Search stock" placeholder="Search part name, Part Number, SKU, supplier or rack" value={query} onChange={(e) => setQuery(e.target.value)}/></label>
@@ -615,7 +615,7 @@ export default function StockEasyPage() {
       </section>
 
       <section className="cg-easy-bottom" id="stock-history">
-        <div className="cg-easy-panel-header"><div><h2>Recent movements</h2><p>Received and issued stock history</p></div></div>
+        <div className="cg-easy-panel-header"><div><h2>Recent movements</h2><p className="cg-stock-overview-description">Received and issued stock history</p></div></div>
         <div className="cg-easy-history">{ledger.length ? ledger.slice(0, 5).map((entry) => (
           <div key={entry.id} className="cg-easy-history-row"><div><strong>{entry.partName || entry.itemName || 'Stock Item'}</strong><small>{entry.type || entry.movement_type || 'Movement'}</small></div><b>{number(entry.quantity ?? entry.qty) > 0 ? '+' : ''}{number(entry.quantity ?? entry.qty)}</b></div>
         )) : <p>No stock movements yet.</p>}</div>

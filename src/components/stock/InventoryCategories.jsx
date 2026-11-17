@@ -54,7 +54,7 @@ export default function InventoryCategories({ onChanged }) {
   return <section className="cg-branch-inventory" aria-label="Inventory categories and subcategories">
     <div className="cg-branch-heading"><div>
       <h2><Layers3 size={18} aria-hidden="true"/> Categories &amp; Subcategories</h2>
-      <p>Add main categories and organize their subcategories.</p>
+      <p className="cg-stock-overview-description">Add main categories and organize their subcategories.</p>
     </div></div>
     {error && <p className="cg-branch-error" role="alert">{error}</p>}
     {canCreate && <form onSubmit={save} className="cg-branch-form">

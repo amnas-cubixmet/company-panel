@@ -126,7 +126,7 @@ export default function InventoryBranchOperations({ onChanged }) {
   return <section className="cg-branch-inventory" aria-label="Live branch inventory operations">
     <div className="cg-branch-heading">
       <div><h2>Branch Stock &amp; Reconciliation</h2>
-        <p>Real branch quantities, paired transfers and physical stock counts.</p></div>
+        <p className="cg-stock-overview-description">Real branch quantities, paired transfers and physical stock counts.</p></div>
       <button type="button" onClick={refresh} disabled={loading || saving}>
         <RefreshCw size={16} aria-hidden="true"/> Refresh
       </button>
