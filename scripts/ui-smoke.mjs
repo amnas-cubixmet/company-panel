@@ -1582,7 +1582,7 @@ try {
           }
           await page.getByRole('searchbox',{name:'Search stock',exact:true}).waitFor({state:'visible'});
           // Use real browser computed styles for Stock Add New Product
-          // and verify the new Supplier receiving route. No POSTs are made.
+          // and verify the new Supplier receiving route. The category write is intercepted.
           await page.getByRole('button',{name:'Add New Part'}).first().click();
           const addDialog=page.getByRole('dialog',{name:'Add New Part'});
           await addDialog.waitFor();
@@ -1636,6 +1636,36 @@ try {
               partStyles.labels.some(x=>x<14)||partStyles.columns!==columnCount) {
             throw Error('Stock Add Product form UI mismatch: '+JSON.stringify({width:profile.width,...partStyles}));
           }
+          const guidance=await addDialog.locator('.cg-easy-gst-disclaimer, .cg-easy-part-guidance')
+            .evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).display!=='none'));
+          if(guidance.length!==2 || guidance.some(visible=>visible!==(profile.width<1024))) {
+            throw Error('Hide the long Add New Part descriptions on desktop only.');
+          }
+          const partName=addDialog.getByLabel('Part Name');
+          await partName.fill('Smoke Test Air Filter');
+          await addDialog.getByRole('button',{name:'Add Brand',exact:true}).click();
+          await addDialog.getByLabel('Brand Name', {exact:true}).fill('Smoke Test Brand');
+          await addDialog.getByRole('button',{name:'Use Brand',exact:true}).click();
+          if(await addDialog.getByRole('combobox',{name:'Brand',exact:true}).inputValue()!=='Smoke Test Brand') {
+            throw Error('New Brand must be selected on the part form.');
+          }
+          const categoryRoute='**/api/v1/stock/categories';
+          const category={id:'00000000-0000-4000-8000-000000001431',name:'Smoke Test Filters',is_active:true,parent:null};
+          await page.route(categoryRoute, route=>{
+            if(route.request().method()!=='POST') return route.fallback();
+            const payload=route.request().postDataJSON();
+            if(payload.name!==category.name || payload.parent!==null) throw Error('Invalid category payload');
+            return route.fulfill({status:201,json:category});
+          });
+          await addDialog.getByRole('button',{name:'Add Category',exact:true}).click();
+          await addDialog.getByLabel('Category Name',{exact:true}).fill(category.name);
+          await addDialog.getByRole('button',{name:'Save Category',exact:true}).click();
+          await addDialog.getByRole('group',{name:'New category',exact:true}).waitFor({state:'hidden'});
+          if(await addDialog.getByRole('combobox',{name:'Category',exact:true}).inputValue()!==category.id ||
+             await partName.inputValue()!=='Smoke Test Air Filter') {
+            throw Error('New Category must be selected and existing part fields preserved.');
+          }
+          await page.unroute(categoryRoute);
           await addDialog.getByRole('button',{name:'Close dialog'}).click();
           const supplierReceiving=page.getByRole('link',{name:'Buy / Receive from Supplier'});
           await supplierReceiving.waitFor({state:'visible'});
