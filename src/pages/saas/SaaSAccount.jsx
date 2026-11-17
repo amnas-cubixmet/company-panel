@@ -194,9 +194,10 @@ function StorageView({ storage, setStorage }) {
         <div className="storage-overview-grid">
           <div className="storage-primary-usage">
             <span>Currently stored</span>
-            <strong>{displayedUsage}</strong>
-            {equivalentUsage && <small className="storage-usage-equivalent">{equivalentUsage}</small>}
-            <small>{usedBytes.toLocaleString('en-IN')} bytes</small>
+            <div className="storage-usage-amount" aria-live="polite">
+              <strong title={`${usedBytes.toLocaleString('en-IN')} bytes`}>{displayedUsage}</strong>
+              {equivalentUsage && equivalentUsage !== displayedUsage && <small>≈ {equivalentUsage}</small>}
+            </div>
           </div>
           <div><span>Files stored</span><strong>{storage.fileCount ?? storage.files?.length ?? 0}</strong></div>
           <div><span>Storage allowance</span><strong>{storage.quotaBytes != null ? formatStorageBytes(storage.quotaBytes, unit) : storage.quotaGb != null ? formatStorageBytes(Number(storage.quotaGb) * BYTES_PER_GB, unit) : 'Not capped'}</strong></div>
