@@ -38,6 +38,10 @@ const bundles = [
 ];
 function fixture(path) {
   if(path==='/auth/me') return user;
+  if(path==='/company/customer-website') return {
+    public_name:'മലബാർ ഓട്ടോ', subdomain:'test-workshop.customer.cubixgear.tech',
+    subdomainLabel:'test-workshop', wildcardReady:true,
+  };
   // Zero-value synthetic GSTR preparation fixture; no tax liabilities are inferred.
   if(path==='/gstr/overview') return {
     company: { gstin: null },
@@ -227,10 +231,18 @@ try {
       body:'<!doctype html><html><body><main>Public workshop registration destination</main></body></html>',
     }));
     await context.route('**/api/v1/**',async route=>{
-      if(!['GET','HEAD'].includes(route.request().method())) {
+      const request=route.request();
+      const path=new URL(request.url()).pathname.replace('/api/v1','').replace(/\/$/,'');
+      if(path==='/company/customer-website/subdomain'&&request.method()==='PATCH') {
+        const {label}=request.postDataJSON();
+        await route.fulfill(label==='abc1'
+          ? {status:200,json:{subdomain:'abc1.customer.cubixgear.tech',subdomainLabel:'abc1',wildcardReady:true}}
+          : {status:400,json:{label:'This subdomain is already in use.',suggestedLabel:'abc1'}});
+        return;
+      }
+      if(!['GET','HEAD'].includes(request.method())) {
         await route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({message:'Smoke tests do not write tenant data.'})});return;
       }
-      const path=new URL(route.request().url()).pathname.replace('/api/v1','').replace(/\/$/,'');
       if(path==='/company/logo') {
         // Authenticated company branding is a private image response.
         const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/nwAAAABJRU5ErkJggg==','base64');
@@ -273,6 +285,21 @@ try {
         }
         await page.locator('.route-loading').waitFor({state:'hidden',timeout:15000});
         await page.waitForFunction(()=>document.body.innerText.length>=20);
+        if(path==='/settings/customer-website' && (profile.width===390 || profile.width===1440)) {
+          const field=page.getByLabel('Default website subdomain name');
+          const update=page.getByRole('button',{name:'Update Subdomain'});
+          await field.fill('മലബാർ');
+          await update.click();
+          await page.getByText(/Use 3–63 English letters/).waitFor();
+          await field.fill('abc');
+          await update.click();
+          await page.getByRole('dialog').getByRole('button',{name:'Continue'}).click();
+          await page.getByRole('button',{name:'Use abc1'}).click();
+          if(await field.inputValue()!=='abc1')throw Error('Available workshop address was not applied');
+          await update.click();
+          await page.getByRole('dialog').getByRole('button',{name:'Continue'}).click();
+          await page.getByText('https://abc1.customer.cubixgear.tech/',{exact:true}).waitFor();
+        }
         // Supplier directory and Purchase History are valid navigation.
         // Credits and Payments are on the supplier detail page, not old tabs.
         if(path==='/suppliers' && (profile.width===390 || profile.width===1440)) {

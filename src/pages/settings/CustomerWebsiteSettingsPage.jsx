@@ -89,8 +89,8 @@ export default function CustomerWebsiteSettingsPage(){
       setNotice(changed.message||'Default website address updated.');
     }catch(e){
       setSubdomainError({
-        message:e?.response?.data?.label||e?.message||'Could not change this website address.',
-        suggestion:e?.response?.data?.suggestedLabel,
+        message:e?.fieldErrors?.label||e?.message||'Could not change this website address.',
+        suggestion:e?.data?.suggestedLabel,
       });
     }finally{setSubdomainSaving(false);}
   }
