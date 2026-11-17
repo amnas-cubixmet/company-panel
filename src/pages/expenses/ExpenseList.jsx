@@ -88,9 +88,9 @@ const Metric = ({ label, value, icon: Icon, tone = 'primary', note }) => (
   </article>
 );
 
-const Field = ({ label, children, wide = false }) => (
+const Field = ({ label, labelId, children, wide = false }) => (
   <label className={wide ? 'expense-field is-wide' : 'expense-field'}>
-    <span>{label}</span>
+    <span id={labelId}>{label}</span>
     {children}
   </label>
 );
@@ -147,8 +147,8 @@ const ExpenseForm = ({
           </Field>
 
           <div className="expense-budget-field">
-            <Field label="Monthly Budget Item (optional)">
-              <select value={values.budgetItemId || ''}
+            <Field label="Monthly Budget Item (optional)" labelId="expense-budget-label">
+              <select value={values.budgetItemId || ''} aria-labelledby="expense-budget-label"
                 aria-invalid={Boolean(fieldErrors.budget_item)}
                 aria-describedby={fieldErrors.budget_item ? 'expense-budget-error' : undefined}
                 onChange={e => setValues({ ...values, budgetItemId: e.target.value })}>
