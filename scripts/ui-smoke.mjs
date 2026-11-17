@@ -984,6 +984,44 @@ try {
           }
           if ((await workspace.innerText()).includes(financeFixtureId)) throw Error('Raw UUID exposed in Finance UI.');
         }
+        if (path === '/finance/expenses/new' && [390, 1440].includes(profile.width)) {
+          const form = page.locator('.expense-form-page form');
+          await page.getByRole('heading', {name:'Add Expense',exact:true}).waitFor();
+          if (await form.locator('p').count() || await page.getByText('Related workshop records', {exact:true}).count()) {
+            throw Error('Add Expense should show a compact form without the explanatory paragraphs.');
+          }
+          const amount = form.getByRole('spinbutton', {name:/Expense Amount/});
+          const gst = form.getByRole('spinbutton', {name:/GST Included/});
+          const save = form.getByRole('button', {name:'Save Expense'});
+          await form.getByLabel('Expense Title', {exact:true}).fill('Workshop electricity');
+          await amount.fill('118');
+          await gst.fill('118.01');
+          await save.click();
+          await form.getByRole('alert').filter({hasText:'Included GST cannot exceed the expense amount.'}).waitFor();
+          await page.waitForFunction(() => document.activeElement?.getAttribute('aria-describedby') === 'expense-tax-error');
+          await form.getByRole('combobox', {name:'Expense GST percentage',exact:true}).selectOption({label:'CGST 9%'});
+          if (Number(await gst.inputValue()) !== 18 || await gst.getAttribute('aria-invalid') !== 'false') {
+            throw Error('Correcting GST should calculate the included tax and clear the field error.');
+          }
+          const endpoint = '**/api/v1/expenses';
+          const expenseId = '00000000-0000-4000-8000-000000000098';
+          await page.route(endpoint, async route => {
+            if (route.request().method() !== 'POST') return route.fallback();
+            const payload = route.request().postDataJSON();
+            if (payload.amount !== '118.00' || payload.tax !== '18.00' ||
+                payload.description !== 'Workshop electricity' || payload.status !== 'approved' || !payload.idempotencyKey) {
+              return route.fulfill({status:400,json:{message:'Invalid expense fixture payload.'}});
+            }
+            return route.fulfill({status:201,json:{...payload,id:expenseId,paidAmount:'0.00',balanceDue:'118.00'}});
+          });
+          try {
+            await save.click();
+            await page.waitForURL('**/finance/expenses/' + expenseId);
+            await page.getByRole('heading', {name:'Workshop electricity',exact:true}).waitFor();
+          } finally {
+            await page.unroute(endpoint);
+          }
+        }
         // Shared real form components: outlined labels, proper border ownership,
         // filled-state label persistence, and keyboard-accessible searchable picker.
         if ((path==='/customers/new' || path==='/vehicles/new') &&
