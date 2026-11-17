@@ -1004,13 +1004,49 @@ try {
           if (Number(await gst.inputValue()) !== 18 || await gst.getAttribute('aria-invalid') !== 'false') {
             throw Error('Correcting GST should calculate the included tax and clear the field error.');
           }
+          const budgetEndpoint = '**/api/v1/expenses/budgets*';
+          const budgetId = '00000000-0000-4000-8000-000000000099';
+          const month = (await form.getByLabel('Expense Date', {exact:true}).inputValue()).slice(0, 7);
+          let budget = null;
+          await page.route(budgetEndpoint, async route => {
+            if (route.request().method() === 'GET') return route.fulfill({json:budget ? [budget] : []});
+            const payload = route.request().postDataJSON();
+            if (payload.name === 'Existing electricity') {
+              return route.fulfill({status:400,json:{name:'A budget item with this name already exists for that month.'}});
+            }
+            if (payload.name !== 'Workshop electricity budget' || payload.category !== 'Utilities' ||
+                payload.month !== month || payload.plannedAmount !== '500') {
+              return route.fulfill({status:400,json:{message:'Invalid budget fixture payload.'}});
+            }
+            budget = {...payload,id:budgetId,isActive:true,spentAmount:'0.00',remainingAmount:'500.00'};
+            return route.fulfill({status:201,json:budget});
+          });
+          await form.getByRole('button', {name:'Add Budget Item',exact:true}).click();
+          const budgetDialog = page.getByRole('dialog', {name:'Add Budget Item'});
+          const name = budgetDialog.getByLabel('Budget Item Name');
+          const budgetSave = budgetDialog.getByRole('button', {name:'Save Budget Item'});
+          await budgetDialog.getByText('Utilities · ' + month, {exact:true}).waitFor();
+          await name.fill('Existing electricity');
+          await budgetDialog.getByLabel('Monthly Planned Amount (₹)').fill('500');
+          await budgetSave.click();
+          await budgetDialog.getByRole('alert').filter({hasText:'already exists'}).waitFor();
+          await name.fill('Workshop electricity budget');
+          await budgetSave.click();
+          await budgetDialog.waitFor({state:'hidden'});
+          const selectedBudget = form.getByLabel('Monthly Budget Item (optional)', {exact:true});
+          if (await selectedBudget.inputValue() !== budgetId ||
+              await form.getByLabel('Expense Title', {exact:true}).inputValue() !== 'Workshop electricity' ||
+              Number(await amount.inputValue()) !== 118) {
+            throw Error('Adding a budget must select it and preserve the expense draft.');
+          }
           const endpoint = '**/api/v1/expenses';
           const expenseId = '00000000-0000-4000-8000-000000000098';
           await page.route(endpoint, async route => {
             if (route.request().method() !== 'POST') return route.fallback();
             const payload = route.request().postDataJSON();
             if (payload.amount !== '118.00' || payload.tax !== '18.00' ||
-                payload.description !== 'Workshop electricity' || payload.status !== 'approved' || !payload.idempotencyKey) {
+                payload.description !== 'Workshop electricity' || payload.status !== 'approved' ||
+                payload.budget_item !== budgetId || !payload.idempotencyKey) {
               return route.fulfill({status:400,json:{message:'Invalid expense fixture payload.'}});
             }
             return route.fulfill({status:201,json:{...payload,id:expenseId,paidAmount:'0.00',balanceDue:'118.00'}});
@@ -1020,7 +1056,7 @@ try {
             await page.waitForURL('**/finance/expenses/' + recordReference(expenseId));
             await page.getByRole('heading', {name:'Workshop electricity',exact:true}).waitFor();
           } finally {
-            await page.unroute(endpoint);
+            await Promise.all([page.unroute(endpoint), page.unroute(budgetEndpoint)]);
           }
         }
         // Shared real form components: outlined labels, proper border ownership,
@@ -1642,10 +1678,10 @@ try {
         }
         if(path==='/stock' && [390,1440].includes(profile.width)) {
           await page.getByRole('heading',{name:'Inventory Management',exact:true}).waitFor({state:'visible'});
-          const descriptions=await page.locator('.cg-easy-stock .cg-stock-overview-description')
-            .evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).display!=='none'));
-          if(!descriptions.length || descriptions.some(visible=>visible!==(profile.width<1024))) {
-            throw Error('Stock overview descriptions must appear on mobile and be hidden on desktop.');
+          const stock = page.locator('.cg-easy-stock');
+          if(await stock.getByText('Find parts, receive stock and track what your workshop uses.', {exact:true}).count() ||
+             await stock.getByText(/A stock item's GST rate and HSN\/SAC are reference fields/).count()) {
+            throw Error('Stock overview paragraphs should be removed at all viewport sizes.');
           }
           await page.getByRole('searchbox',{name:'Search stock',exact:true}).waitFor({state:'visible'});
           // Use real browser computed styles for Stock Add New Product
@@ -1780,6 +1816,9 @@ try {
         if(path==='/invoices' && [390,1440].includes(profile.width)) {
           const list=page.locator('.cg-invoice-refined');
           await list.locator('.invoice-dashboard-stats').waitFor({state:'visible'});
+          if(await list.locator('.invoice-dashboard-header p, .invoice-dashboard-section-title p').count()) {
+            throw Error('Invoice list headers should not include introductory paragraphs.');
+          }
           const from=list.locator('#invoice-filter-from');
           const to=list.locator('#invoice-filter-to');
           const sort=list.getByRole('combobox',{name:'Sort billing documents'});
