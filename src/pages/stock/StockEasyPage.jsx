@@ -38,9 +38,10 @@ const validGstRate = (value) =>
   /^\d{1,3}(?:\.\d{1,2})?$/.test(String(value)) &&
   Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 100;
 const list = (result) => Array.isArray(result) ? result : (result?.results || []);
+const MAX_STOCK_QUANTITY = 9_999_999_999.99;
 const initialPart = { partName: '', partNumber: '', supplier: '', brand: '', category: '', unit: 'Piece',
   costPrice: '', sellingPrice: '', tax: '0', zeroTaxClassification: '', hsnCode: '', stockQuantity: '',
-  minimumStock: '5', location: '' };
+  stockSource: 'opening', minimumStock: '5', location: '' };
 const initialSupplier = { name: '', phone: '', gstNo: '', address: '' };
 
 function OutlinedInput({ label, ...props }) {
@@ -392,6 +393,11 @@ export default function StockEasyPage() {
     });
   };
 
+  const isSupplierPurchase = part.stockSource === 'purchase';
+  const quantityError = isSupplierPurchase
+    ? 'Enter a positive purchase quantity with up to two decimal places (maximum 9,999,999,999.99).'
+    : 'Enter an opening stock quantity from 0 to 9,999,999,999.99 with up to two decimal places.';
+
   const savePart = async (event) => {
     event.preventDefault();
     if (saving || partChoice) return;
@@ -418,13 +424,11 @@ export default function StockEasyPage() {
       requestAnimationFrame(() => partFormRef.current?.querySelector('[data-field="zeroTaxClassification"]')?.focus());
       return;
     }
-    const openingText = String(part.stockQuantity ?? '').trim();
-    const openingQuantity = openingText === '' ? 0 : Number(openingText);
-    if (!/^\d+(?:\.\d{1,2})?$/.test(openingText || '0') ||
-        !Number.isFinite(openingQuantity) || openingQuantity < 0) {
-      const message = 'Purchase quantity must be nonnegative with up to two decimal places.';
-      setPartErrors(previous => ({ ...previous, stockQuantity: message }));
-      setError(message);
+    const quantityText = part.stockQuantity.trim();
+    const quantity = Number(quantityText);
+    if (!/^(?:\d+(?:\.\d{1,2})?|\.\d{1,2})$/.test(quantityText || '0') ||
+        quantity > MAX_STOCK_QUANTITY || (isSupplierPurchase && quantity === 0)) {
+      setPartErrors(previous => ({ ...previous, stockQuantity: quantityError }));
       requestAnimationFrame(() => {
         const input = partFormRef.current?.querySelector('[data-field="stockQuantity"]');
         input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -432,48 +436,42 @@ export default function StockEasyPage() {
       });
       return;
     }
-    // Catalog registration is never the posting of a supplier purchase.
-    // When quantity was supplied, the supplier detail page will create the
-    // invoice, stock receipt, cash/bank payment and remaining credit together.
-    if (openingQuantity > 0 && !part.supplier) {
+    if (isSupplierPurchase && !part.supplier) {
       setError('Select or add a supplier before receiving purchased stock.');
-      partFormRef.current?.querySelector('select[name="supplier"]')?.focus();
+      partFormRef.current?.querySelector('[data-field="supplier"]')?.focus();
       return;
     }
-    if (openingQuantity > 0 && !canPurchaseStock) {
-      setError('Receiving a purchase needs Stock Edit and Payments permissions. You may save the product with quantity 0.');
+    if (isSupplierPurchase && !canPurchaseStock) {
+      setError('Receiving a purchase needs Stock Edit and Payments permissions.');
       return;
     }
     setSaving(true);
     setError('');
     try {
       const created = await stockCatalogService.createItem({
-        ...part, onHand: 0, reserved: 0, reorderLevel: number(part.minimumStock),
+        ...part, reserved: 0, reorderLevel: number(part.minimumStock),
         costPrice: number(part.costPrice), sellingPrice: number(part.sellingPrice),
         tax: Number(part.tax), zeroTaxClassification: Number(part.tax) === 0 ? part.zeroTaxClassification : '',
         hsnCode: part.hsnCode.trim(),
         minimumStock: number(part.minimumStock),
-        stockQuantity: 0,
+        stockQuantity: isSupplierPurchase ? 0 : quantity,
       });
       setPartOpen(false);
       setPart(initialPart);
       setPartLookup('');
       setPartMode('find');
-      setSuccess(openingQuantity > 0
-        ? 'Part saved. Continue to the supplier purchase form and Post the bill to receive stock.'
-        : 'Part saved to catalogue with zero stock. No purchase or supplier debt was recorded.');
-      if (openingQuantity > 0 && part.supplier && created?.id) {
-        navigate('/suppliers/' + encodeURIComponent(part.supplier) + '#supplier-purchase-form', {
-          state: {
-            purchasePrefill: {
-              itemId: String(created.id), quantity: String(openingQuantity || 1),
-              purchaseRate: String(part.costPrice),
-              supplierId: String(part.supplier),
-            },
-          },
+      if (isSupplierPurchase) {
+        continueStockPurchase({
+          itemId: String(created.id),
+          quantity: String(quantity),
+          purchaseRate: String(part.costPrice),
+          supplierId: String(part.supplier),
         });
         return;
       }
+      setSuccess(quantity > 0
+        ? `Part saved. ${created.available} ${created.unit} available in stock.`
+        : 'Part saved.');
       await reload();
     } catch (exception) {
       const details = exception?.response?.data || exception?.data || {};
@@ -716,7 +714,7 @@ export default function StockEasyPage() {
               {partErrors.partNumber && <p className="cg-easy-alert" role="alert">{partErrors.partNumber}</p>}
             </div>
             <div className="cg-easy-option-field">
-              <OutlinedSelect label="Supplier" value={part.supplier} onChange={(e) => setPart({ ...part, supplier: e.target.value })}>
+              <OutlinedSelect label="Supplier" data-field="supplier" value={part.supplier} onChange={(e) => setPart({ ...part, supplier: e.target.value })}>
                 <option value="">No supplier selected</option>
                 {suppliers.filter(x => x.is_active !== false).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
               </OutlinedSelect>
@@ -790,37 +788,21 @@ export default function StockEasyPage() {
                 </button>
               </div>
             </div>}
-            <div className="cg-easy-fields">
-              <OutlinedSelect label="GST Component / Rate *" value={partGstChoice}
-                onChange={e => {
-                  const choice = e.target.value;
-                  const tax = choice === 'none' ? '0' :
-                    choice === 'custom' ? '' : invoiceTotalRateFromChoice(choice);
-                  setPartGstChoice(choice);
-                  setPart({ ...part, tax, zeroTaxClassification: tax === '0' ? part.zeroTaxClassification : '' });
-                  setPartErrors(previous => ({ ...previous, zeroTaxClassification: '' }));
-                }}>
-                <option value="none">0% — Select Tax Classification</option>
-                {STOCK_GST_CHOICES.map(option => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-                <option value="custom">Saved/Other HSN-Specific Rate (custom %)</option>
-              </OutlinedSelect>
-              <OutlinedInput label="Purchase Quantity (Supplier Step)" type="number" min="0" step="0.01"
-                inputMode="decimal" data-field="stockQuantity" aria-invalid={Boolean(partErrors.stockQuantity)}
-                value={part.stockQuantity} onChange={e => {
-                  setPart({ ...part, stockQuantity: e.target.value });
-                  setPartErrors(previous => ({ ...previous, stockQuantity: '' }));
-                }} onInvalid={event => {
-                  event.preventDefault();
-                  const message = 'Opening stock quantity must be nonnegative with up to two decimal places.';
-                  setPartErrors(previous => ({ ...previous, stockQuantity: message }));
-                  setError(message);
-                  event.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  event.currentTarget.focus();
-                }}/>
-              {partErrors.stockQuantity && <p className="cg-easy-alert" role="alert">{partErrors.stockQuantity}</p>}
-            </div>
+            <OutlinedSelect label="GST Component / Rate *" value={partGstChoice}
+              onChange={e => {
+                const choice = e.target.value;
+                const tax = choice === 'none' ? '0' :
+                  choice === 'custom' ? '' : invoiceTotalRateFromChoice(choice);
+                setPartGstChoice(choice);
+                setPart({ ...part, tax, zeroTaxClassification: tax === '0' ? part.zeroTaxClassification : '' });
+                setPartErrors(previous => ({ ...previous, zeroTaxClassification: '' }));
+              }}>
+              <option value="none">0% — Select Tax Classification</option>
+              {STOCK_GST_CHOICES.map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+              <option value="custom">Saved/Other HSN-Specific Rate (custom %)</option>
+            </OutlinedSelect>
             {partGstChoice === 'custom' &&
               <OutlinedInput label="Custom GST Rate (%)" type="number" min="0" max="100" step="0.01" required
                 value={part.tax} onChange={e => {
@@ -862,16 +844,50 @@ export default function StockEasyPage() {
               <OutlinedInput label="Selling Price (₹) *" required type="number" min="0" step="0.01" value={part.sellingPrice} onChange={e => setPart({ ...part, sellingPrice: e.target.value })}/>
             </div>
             <div className="cg-easy-fields">
+              {canPurchaseStock && (
+                <OutlinedSelect label="Stock Source" value={part.stockSource} onChange={e => {
+                  setPart(previous => ({ ...previous, stockSource: e.target.value }));
+                  setPartErrors(previous => ({ ...previous, stockQuantity: '' }));
+                  setError('');
+                }}>
+                  <option value="opening">Opening Stock (already on hand)</option>
+                  <option value="purchase">Supplier Purchase</option>
+                </OutlinedSelect>
+              )}
+              <OutlinedInput label={isSupplierPurchase ? 'Purchase Quantity *' : 'Opening Stock Quantity'}
+                type="number" min={isSupplierPurchase ? '0.01' : '0'} max={MAX_STOCK_QUANTITY}
+                step="0.01" inputMode="decimal" required={isSupplierPurchase}
+                data-field="stockQuantity" aria-invalid={Boolean(partErrors.stockQuantity)}
+                aria-describedby={partErrors.stockQuantity ? 'part-quantity-error part-stock-hint' : 'part-stock-hint'}
+                value={part.stockQuantity} onChange={e => {
+                  setPart(previous => ({ ...previous, stockQuantity: e.target.value }));
+                  setPartErrors(previous => ({ ...previous, stockQuantity: '' }));
+                }} onInvalid={event => {
+                  event.preventDefault();
+                  setPartErrors(previous => ({ ...previous, stockQuantity: quantityError }));
+                  event.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  event.currentTarget.focus();
+                }}/>
+            </div>
+            {partErrors.stockQuantity && (
+              <p id="part-quantity-error" className="cg-easy-alert" role="alert">{partErrors.stockQuantity}</p>
+            )}
+            <p id="part-stock-hint" className="cg-easy-hint cg-easy-part-guidance">
+              {isSupplierPurchase
+                ? 'Choose a supplier and post the purchase bill to receive this quantity into stock.'
+                : 'Enter the quantity already on hand. It becomes available in Inventory as soon as you save.'}
+            </p>
+            <div className="cg-easy-fields">
               <OutlinedInput label="Minimum Stock" type="number" min="0" step="0.01" value={part.minimumStock} onChange={e => setPart({ ...part, minimumStock: e.target.value })}/>
               <RackCombobox value={part.location} suggestions={rackLocations}
                 onChange={location => setPart(previous => ({ ...previous, location }))}/>
             </div>
-            <p className="cg-easy-hint cg-easy-part-guidance">
-              Choose a Supplier first. Saving adds product details only; it does not add stock, debt or payment.
-              You will go straight to that Supplier page to confirm the purchase quantity,
-              GST, Cash/Bank payment and remaining credit. No separate purchase screen.
-            </p>
-            <div className="cg-easy-form-actions"><button type="button" disabled={partChoiceSaving} onClick={() => setPartOpen(false)}>Cancel</button><button type="submit" disabled={saving || Boolean(partChoice)}>{saving ? 'Saving...' : (Number(part.stockQuantity) > 0 ? 'Continue to Receive Stock' : 'Save Part')}</button></div>
+            <div className="cg-easy-form-actions">
+              <button type="button" disabled={saving || partChoiceSaving} onClick={() => setPartOpen(false)}>Cancel</button>
+              <button type="submit" disabled={saving || Boolean(partChoice)}>
+                {saving ? 'Saving...' : isSupplierPurchase ? 'Continue to Receive Stock' : 'Save Part'}
+              </button>
+            </div>
           </form>
         )}
       </ResponsiveModalSheet>
