@@ -69,10 +69,11 @@ const productPayload = async (payload, { creating = false } = {}) => {
   };
   // Quantity may only change through recorded stock movements.
   if (creating) {
-    // An initial quantity is recorded atomically by StockItemViewSet.perform_create.
-    // This is opening stock, NOT a supplier purchase bill or payable.
+    // Opening stock is separate from the optional posted supplier purchase.
     part.onHand = number(payload.stockQuantity);
     part.reserved = 0;
+    if (payload.requestKey) part.requestKey = payload.requestKey;
+    if (payload.purchase) part.purchase = payload.purchase;
   }
   return part;
 };
@@ -124,7 +125,8 @@ export const stockCatalogService = {
       stockMockItems.unshift(item);
       return toPart(item);
     }
-    const part = await apiClient.post('/stock', await productPayload(payload, { creating: true }));
+    const endpoint = payload.purchase ? '/stock/receive-new-part' : '/stock';
+    const part = await apiClient.post(endpoint, await productPayload(payload, { creating: true }));
     return toPart(part);
   },
   updateItem: async (id, payload) => {
