@@ -28,6 +28,26 @@ export function customerWebsiteDevParams(isDev, hostname, configuredOrigin) {
   return origin ? { customerWebsiteDevOrigin: origin } : {};
 }
 
+export function trackingUrlWithDevPort(value, configuredOrigin) {
+  const origin = localCustomerWebsiteOrigin(configuredOrigin);
+  if (!value || !origin) return value;
+
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'http:' || url.username || url.password ||
+        !isLocalCustomerWebsiteDevelopment(true, url.hostname) || !url.pathname.startsWith('/access/')) {
+      return value;
+    }
+    // Older local APIs can return a stale port. Keep the issued workshop host and token.
+    const port = new URL(origin).port;
+    if (url.port === port) return value;
+    url.port = port;
+    return url.href;
+  } catch {
+    return value;
+  }
+}
+
 export function customerWebsiteAddresses({
   subdomain = '',
   subdomainLabel = '',

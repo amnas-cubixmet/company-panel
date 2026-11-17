@@ -4,7 +4,7 @@ import { Copy, Link2, RefreshCw, ShieldOff } from 'lucide-react';
 import apiClient from '../../api/apiClient';
 import { WhatsAppManualShareButton } from '../common/WhatsAppManualShareButton';
 import { USE_MOCK_API } from '../../api/apiConfig';
-import { customerWebsiteDevParams } from '../../utils/customerWebsiteAddresses';
+import { customerWebsiteDevParams, trackingUrlWithDevPort } from '../../utils/customerWebsiteAddresses';
 
 export function CustomerTrackingLinkPanel({ customerId, canManage = false }) {
   const [link, setLink] = useState('');
@@ -27,7 +27,7 @@ export function CustomerTrackingLinkPanel({ customerId, canManage = false }) {
     try {
       if (USE_MOCK_API) throw new Error('Customer tracking links require the live Django backend.');
       const result = await apiClient.get(`/customer-portal/links/${customerId}`, { params: devParams });
-      setLink(result.url || '');
+      setLink(trackingUrlWithDevPort(result.url || '', devParams.customerWebsiteDevOrigin));
       setEnabled(Boolean(result.enabled));
     } catch (cause) {
       setNeedsRegeneration(cause?.status === 409);
@@ -50,7 +50,7 @@ export function CustomerTrackingLinkPanel({ customerId, canManage = false }) {
     setNotice('');
     try {
       const result = await apiClient.post(`/customer-portal/links/${customerId}`, { action, ...devParams });
-      setLink(result.url || '');
+      setLink(trackingUrlWithDevPort(result.url || '', devParams.customerWebsiteDevOrigin));
       setEnabled(Boolean(result.enabled));
       setNeedsRegeneration(false);
       setNotice(action === 'revoke' ? 'Tracking URL revoked.' : 'New secure tracking URL generated.');
@@ -81,7 +81,7 @@ export function CustomerTrackingLinkPanel({ customerId, canManage = false }) {
         {enabled && link ? <>
           <label htmlFor="customer-tracking-url">Customer tracking URL</label>
           <input id="customer-tracking-url" value={link} readOnly onFocus={(e) => e.target.select()}/>
-          <div className="customer-tracking-actions">
+          <div className="customer-tracking-actions customer-tracking-share-actions">
             <button type="button" onClick={copy}><Copy size={16}/> Copy Link</button>
             <WhatsAppManualShareButton targetType="customer" targetId={customerId} label="Send via WhatsApp" />
           </div>

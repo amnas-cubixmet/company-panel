@@ -38,6 +38,9 @@ const bundles = [
 ];
 function fixture(path) {
   if(path==='/auth/me') return user;
+  if(path.startsWith('/customer-portal/links/')) return {
+    enabled:true, url:'https://sample.customer.example.test/access/fixture.token',
+  };
   if(path==='/company/customer-website') return {
     public_name:'മലബാർ ഓട്ടോ', subdomain:'test-workshop.customer.cubixgear.tech',
     subdomainLabel:'test-workshop', wildcardReady:true,
@@ -240,6 +243,10 @@ try {
           : {status:400,json:{label:'This subdomain is already in use.',suggestedLabel:'abc1'}});
         return;
       }
+      if(path==='/whatsapp/manual-share'&&request.method()==='POST'&&request.postDataJSON()?.targetType==='customer') {
+        await route.fulfill({status:200,json:{preview:'Sample tracking message',url:'https://wa.me/15550100100'}});
+        return;
+      }
       if(!['GET','HEAD'].includes(request.method())) {
         await route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({message:'Smoke tests do not write tenant data.'})});return;
       }
@@ -285,6 +292,26 @@ try {
         }
         await page.locator('.route-loading').waitFor({state:'hidden',timeout:15000});
         await page.waitForFunction(()=>document.body.innerText.length>=20);
+        if(path==='/customers/CUS-0001' && (profile.width===390 || profile.width===1440)) {
+          const tracking=page.getByRole('region',{name:'Secure customer tracking'});
+          await tracking.getByRole('button',{name:'Copy Message',exact:true}).click();
+          await tracking.getByRole('link',{name:'Open draft'}).waitFor({state:'visible'});
+          const layout=await tracking.evaluate(root=>{
+            const buttons=[...root.querySelectorAll('.customer-tracking-share-actions button')]
+              .map(button=>button.getBoundingClientRect());
+            const preview=root.querySelector('.wa-manual-share__preview').getBoundingClientRect();
+            const bounds=root.getBoundingClientRect();
+            return {
+              count:buttons.length,
+              sameRow:buttons.every(rect=>Math.abs(rect.top-buttons[0].top)<=1),
+              fits:buttons.every(rect=>rect.height>=44 && rect.left>=bounds.left && rect.right<=bounds.right),
+              previewBelow:buttons.every(rect=>preview.top>=rect.bottom),
+            };
+          });
+          if(layout.count!==3 || !layout.fits || !layout.previewBelow || (profile.width===1440 && !layout.sameRow)) {
+            throw Error('Customer tracking buttons and feedback should align without overflowing: '+JSON.stringify(layout));
+          }
+        }
         if(path==='/settings/customer-website' && (profile.width===390 || profile.width===1440)) {
           const field=page.getByLabel('Default website subdomain name');
           const update=page.getByRole('button',{name:'Update Subdomain'});
@@ -1498,26 +1525,35 @@ try {
           await page.getByRole('button',{name:'Add New Part'}).first().click();
           const addDialog=page.getByRole('dialog',{name:'Add New Part'});
           await addDialog.waitFor();
-          const search=await addDialog.locator('.cg-easy-picker-search').evaluate(node=>{
+          const search=await addDialog.locator('.cg-easy-picker-search').evaluate(async node=>{
             const input=node.querySelector('input');
+            // Read the settled colors on both sides of the background transition.
+            input.focus();
+            const readBackground=async()=>{
+              // Flush styles so any pending transition is included in getAnimations().
+              const before=getComputedStyle(node).backgroundColor;
+              const animations=node.getAnimations();
+              if(!animations.length)return before;
+              await Promise.allSettled(animations.map(animation=>animation.finished));
+              return getComputedStyle(node).backgroundColor;
+            };
+            const focusedBackground=await readBackground();
             const field=getComputedStyle(input),shell=getComputedStyle(node);
-            return {
+            const styles={
               shellHeight:Math.round(node.getBoundingClientRect().height),
               font:parseFloat(field.fontSize), inputBorder:parseFloat(field.borderLeftWidth),
               inputOutline:field.outlineStyle, inputShadow:field.boxShadow,
               shellBorder:parseFloat(shell.borderLeftWidth), shellOutline:shell.outlineStyle,
-              shellShadow:shell.boxShadow, focusedBackground:shell.backgroundColor,
+              shellShadow:shell.boxShadow, focusedBackground,
             };
-          });
-          const stockIdle=await addDialog.locator('.cg-easy-picker-search').evaluate(node=>{
-            node.querySelector('input').blur();
-            return getComputedStyle(node).backgroundColor;
+            input.blur();
+            return {...styles,idleBackground:await readBackground()};
           });
           if(search.shellHeight<48||search.font<16||search.inputBorder!==0||
              search.inputOutline!=='none'||search.inputShadow!=='none'||
              search.shellBorder!==0||search.shellOutline!=='none'||
-             search.shellShadow!=='none'||search.focusedBackground===stockIdle){
-            throw Error('Stock search has nested borders or no focus tint: '+JSON.stringify({search,stockIdle}));
+             search.shellShadow!=='none'||search.focusedBackground===search.idleBackground){
+            throw Error('Stock search has nested borders or no focus tint: '+JSON.stringify(search));
           }
                     await addDialog.getByRole('button',{name:'Add as New Product'}).click();
           const partStyles=await addDialog.locator('form.cg-easy-form').evaluate(form=>{
