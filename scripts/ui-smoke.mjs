@@ -1574,6 +1574,13 @@ try {
           }
         }
         if(path==='/stock' && [390,1440].includes(profile.width)) {
+          await page.getByRole('heading',{name:'Inventory Management',exact:true}).waitFor({state:'visible'});
+          const descriptions=await page.locator('.cg-easy-stock .cg-stock-overview-description')
+            .evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).display!=='none'));
+          if(!descriptions.length || descriptions.some(visible=>visible!==(profile.width<1024))) {
+            throw Error('Stock overview descriptions must appear on mobile and be hidden on desktop.');
+          }
+          await page.getByRole('searchbox',{name:'Search stock',exact:true}).waitFor({state:'visible'});
           // Use real browser computed styles for Stock Add New Product
           // and verify the new Supplier receiving route. No POSTs are made.
           await page.getByRole('button',{name:'Add New Part'}).first().click();
