@@ -5,6 +5,7 @@ const OwnerOnboarding = lazyPage(() => import('../pages/saas/OwnerOnboarding'), 
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getStaffLandingPath } from '../utils/staffLanding';
+import { isStockProductId, stockInventoryLocation, stockProductLocation } from '../utils/stockProductRoutes';
 import { ProtectedRoute } from './ProtectedRoute';
 import { stockProductRoute } from '../utils/stockProductRoute';
 
@@ -16,6 +17,16 @@ function LegacySupplierRouteRedirect() {
   const { search } = useLocation();
   const selected = new URLSearchParams(search).get('supplier');
   return <Navigate to={selected ? '/suppliers/' + encodeURIComponent(selected) : '/suppliers'} replace />;
+}
+
+function StockInventoryRoute() {
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
+  const productId = params.get('product');
+  if (!params.has('product')) return <StockEasyPage />;
+  return <Navigate replace to={isStockProductId(productId)
+    ? stockProductLocation(productId, params, params.get('productBranch'))
+    : stockInventoryLocation(params)} />;
 }
 
 

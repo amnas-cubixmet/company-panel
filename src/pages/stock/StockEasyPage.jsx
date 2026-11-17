@@ -17,16 +17,13 @@ import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import StockFinanceConnections from '../../components/stock/StockFinanceConnections';
 import StockPurchaseStartDialog from '../../components/stock/StockPurchaseStartDialog';
 import { invoiceLineTaxChoices, invoiceTotalRateFromChoice } from '../../utils/invoiceTaxUi';
+import { formatStockPrice as cash, stockState, ZERO_GST_CLASSIFICATIONS } from '../../utils/stockPresentation';
 import '../../styles/stock-easy.css';
 import '../../styles/stock-form-polish.css';
 import '../../styles/stock-list-polish.css';
 
-const cash = (value) => new Intl.NumberFormat('en-IN', {
-  style: 'currency', currency: 'INR', maximumFractionDigits: 2,
-}).format(Number(value) || 0);
 const number = (value) => Number(value) || 0;
 // Inventory uses the same CGST / SGST / IGST component options as invoices.
-// StockItem.tax remains the TOTAL GST rate, never an independent CGST debit.
 const STOCK_GST_CHOICES = invoiceLineTaxChoices('unknown');
 const validGstRate = (value) =>
   /^\d{1,3}(?:\.\d{1,2})?$/.test(String(value)) &&
@@ -154,6 +151,13 @@ export default function StockEasyPage() {
   const [financeError, setFinanceError] = useState('');
   const [financeLoading, setFinanceLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (loading || !['#branch-stock', '#parts-products'].includes(hash)) return;
+    const section = document.getElementById(hash.slice(1));
+    section?.focus({ preventScroll: true });
+    section?.scrollIntoView({ block: 'start' });
+  }, [hash, loading]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -593,12 +597,12 @@ export default function StockEasyPage() {
         stockValue={totalValue}
       />
 
-      <InventoryBranchOperations balances={branchBalances ?? undefined} onBalancesChange={setBranchBalances} onChanged={reload}/>
+      <InventoryBranchOperations onChanged={reload}/>
       <InventoryCategories categories={categories} loadError={categoryLoadError} onCreate={createCategory}/>
 
-      <section className="cg-easy-panel">
+      <section className="cg-easy-panel" id="parts-products" tabIndex={-1} aria-labelledby="stock-parts-heading">
         <div className="cg-easy-panel-header">
-          <h2>Parts & Products</h2>
+          <h2 id="stock-parts-heading">Parts & Products</h2>
         </div>
         <div className="cg-easy-filters">
           <label className="cg-easy-search"><Search size={18} aria-hidden="true"/><input type="search" aria-label="Search stock" placeholder="Search part name, Part Number, SKU, supplier or rack" value={query} onChange={(e) => setQuery(e.target.value)}/></label>

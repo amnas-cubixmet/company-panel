@@ -67,3 +67,20 @@
 .cg-category-group { display: flex; flex-direction: column; gap: 5px; border: 1px solid var(--border, #d8dee7); border-radius: 10px; padding: 10px 14px; }
 .cg-category-group > strong { font-weight: 650; font-size: 14px; }
 .cg-category-group > span { font-size: 13px; color: var(--text-secondary, #56657a); padding-left: 10px; }
+
+
+/* Both existing part links remain keyboard reachable. The part-name link also
+   covers the balance row so the branch and quantity cells open its details. */
+.cg-branch-balance-list tbody tr { position: relative; }
+.cg-branch-balance-list td:nth-child(2) .cg-stock-product-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.cg-branch-balance-list td:nth-child(3) .cg-stock-product-link {
+  position: relative;
+  z-index: 1;
+}
+.cg-branch-balance-list tbody tr:has(.cg-stock-product-link:hover) {
+  background: var(--surface-2, #f7f9fc);
+}
