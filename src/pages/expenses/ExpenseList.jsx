@@ -7,6 +7,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BarChart3, Calendar, CheckCircle2, CircleDollarSign, Edit3, FileText, IndianRupee, Layers3, Receipt, Trash2, Link2, WalletCards } from "lucide-react";
 import { expenseService } from '../../services/expense.service';
 import { ExpenseBudgetPanel } from '../../components/expenses/ExpenseBudgetPanel';
+import { AddExpenseBudgetDialog } from '../../components/expenses/AddExpenseBudgetDialog';
 import { financeService } from '../../services/finance.service';
 import { FINANCE_CHANNELS, financeAccountsForChannel, assertFinanceAccount } from '../../utils/financeCashBank';
 import GstRateDropdown from '../../components/common/GstRateDropdown';
@@ -87,9 +88,9 @@ const Metric = ({ label, value, icon: Icon, tone = 'primary', note }) => (
   </article>
 );
 
-const Field = ({ label, children, wide = false }) => (
+const Field = ({ label, labelId, children, wide = false }) => (
   <label className={wide ? 'expense-field is-wide' : 'expense-field'}>
-    <span>{label}</span>
+    <span id={labelId}>{label}</span>
     {children}
   </label>
 );
@@ -107,9 +108,12 @@ const ExpenseForm = ({
   fieldErrors,
   accounts = [],
   budgetItems = [],
-  budgetError = ''
+  budgetError = '',
+  onBudgetCreated,
 }) => {
   const formRef = useRef(null);
+  const [budgetContext, setBudgetContext] = useState(null);
+  const budgetMonth = values.expenseDate.slice(0, 7);
 
   useEffect(() => {
     if (error || Object.keys(fieldErrors).length) {
@@ -142,22 +146,31 @@ const ExpenseForm = ({
             </select>
           </Field>
 
-          <Field label="Monthly Budget Item (optional)">
-            <select value={values.budgetItemId || ''}
-              aria-invalid={Boolean(fieldErrors.budget_item)}
-              aria-describedby={fieldErrors.budget_item ? 'expense-budget-error' : undefined}
-              onChange={e => setValues({ ...values, budgetItemId: e.target.value })}>
-              <option value="">Unbudgeted expense</option>
-              {budgetItems.filter(item => item.isActive && item.category === values.category &&
-                item.month === values.expenseDate.slice(0, 7)).map(item => (
-                <option value={item.id} key={item.id}>
-                  {item.name} (₹{Number(item.remainingAmount).toLocaleString('en-IN')} remaining)
-                </option>
-              ))}
-            </select>
-            {fieldErrors.budget_item && <small id="expense-budget-error" role="alert">{fieldErrors.budget_item}</small>}
-            {budgetError && <small role="alert">{budgetError}</small>}
-          </Field>
+          <div className="expense-budget-field">
+            <Field label="Monthly Budget Item (optional)" labelId="expense-budget-label">
+              <select value={values.budgetItemId || ''} aria-labelledby="expense-budget-label"
+                aria-invalid={Boolean(fieldErrors.budget_item)}
+                aria-describedby={fieldErrors.budget_item ? 'expense-budget-error' : undefined}
+                onChange={e => setValues({ ...values, budgetItemId: e.target.value })}>
+                <option value="">Unbudgeted expense</option>
+                {budgetItems.filter(item => item.isActive && item.category === values.category &&
+                  item.month === budgetMonth).map(item => (
+                  <option value={item.id} key={item.id}>
+                    {item.name} (₹{Number(item.remainingAmount).toLocaleString('en-IN')} remaining)
+                  </option>
+                ))}
+              </select>
+              {fieldErrors.budget_item && <small id="expense-budget-error" role="alert">{fieldErrors.budget_item}</small>}
+              {budgetError && <small role="alert">{budgetError}</small>}
+            </Field>
+            {onBudgetCreated && (
+              <button type="button" className="expense-budget-add" aria-haspopup="dialog"
+                disabled={submitting || !/^20\d{2}-(0[1-9]|1[0-2])$/.test(budgetMonth)}
+                onClick={() => setBudgetContext({ month: budgetMonth, category: values.category })}>
+                Add Budget Item
+              </button>
+            )}
+          </div>
 
           <Field label="Expense Title" wide>
             <input required value={values.title} onChange={(e)=>setValues({...values,title:e.target.value})} placeholder="e.g. Electricity bill"/>
@@ -267,6 +280,13 @@ const ExpenseForm = ({
         <button type="submit" className="is-primary" disabled={submitting}>{submitting ? 'Saving...' : 'Save Expense'}</button>
       </div>
     </form>
+    {budgetContext && onBudgetCreated && (
+      <AddExpenseBudgetDialog {...budgetContext} onClose={() => setBudgetContext(null)}
+        onSave={item => {
+          onBudgetCreated(item);
+          setBudgetContext(null);
+        }} />
+    )}
   </div>
   );
 };
@@ -287,6 +307,8 @@ export const ExpenseList = () => {
   const [expenses, setExpenses] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [budgetItems, setBudgetItems] = useState([]);
+  const [budgetRevision, setBudgetRevision] = useState(0);
+  const budgetRequest = useRef(0);
   const [budgetError, setBudgetError] = useState('');
   const [linkedSupplierTotals, setLinkedSupplierTotals] = useState(null);
   const [linkedSupplierError, setLinkedSupplierError] = useState('');
@@ -349,17 +371,18 @@ export const ExpenseList = () => {
   useEffect(() => {
     if (!isNew && !isEdit) return undefined;
     let alive = true;
+    const request = ++budgetRequest.current;
     const month = String(form.expenseDate || today()).slice(0, 7);
     expenseService.getExpenseBudgets(month).then(rows => {
-      if (alive) { setBudgetItems(rows); setBudgetError(''); }
+      if (alive && request === budgetRequest.current) { setBudgetItems(rows); setBudgetError(''); }
     }).catch(err => {
-      if (alive) {
-        setBudgetItems([]);
+      if (alive && request === budgetRequest.current) {
+        setBudgetItems(current => current.filter(item => item.month === month));
         setBudgetError(err?.message || 'Unable to load monthly budget items.');
       }
     });
     return () => { alive = false; };
-  }, [isNew, isEdit, form.expenseDate]);
+  }, [isNew, isEdit, form.expenseDate, budgetRevision]);
 
   useEffect(() => {
     if (!isEdit || !id || !expenses.length) return;
@@ -436,6 +459,17 @@ export const ExpenseList = () => {
     setForm(values);
     setActionError('');
     if (Object.keys(formErrors).length) setFormErrors({});
+  };
+
+  const selectCreatedBudget = item => {
+    ++budgetRequest.current;
+    setBudgetItems(items => [...items.filter(existing => existing.id !== item.id), item]);
+    setBudgetRevision(revision => revision + 1);
+    setBudgetError('');
+    setForm(current => current.category === item.category && current.expenseDate.slice(0, 7) === item.month
+      ? { ...current, budgetItemId: item.id }
+      : current);
+    setFormErrors(({ budget_item: _budgetError, ...remaining }) => remaining);
   };
 
   const saveExpense = async (event) => {
@@ -556,6 +590,7 @@ export const ExpenseList = () => {
         accounts={accounts}
         budgetItems={budgetItems}
         budgetError={budgetError}
+        onBudgetCreated={canEdit ? selectCreatedBudget : undefined}
       />
     );
   }
@@ -575,6 +610,7 @@ export const ExpenseList = () => {
         accounts={accounts}
         budgetItems={budgetItems}
         budgetError={budgetError}
+        onBudgetCreated={canEdit ? selectCreatedBudget : undefined}
       />
     );
   }
