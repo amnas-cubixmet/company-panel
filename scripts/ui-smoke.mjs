@@ -1678,10 +1678,10 @@ try {
         }
         if(path==='/stock' && [390,1440].includes(profile.width)) {
           await page.getByRole('heading',{name:'Inventory Management',exact:true}).waitFor({state:'visible'});
-          const descriptions=await page.locator('.cg-easy-stock .cg-stock-overview-description')
-            .evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).display!=='none'));
-          if(!descriptions.length || descriptions.some(visible=>visible!==(profile.width<1024))) {
-            throw Error('Stock overview descriptions must appear on mobile and be hidden on desktop.');
+          const stock = page.locator('.cg-easy-stock');
+          if(await stock.getByText('Find parts, receive stock and track what your workshop uses.', {exact:true}).count() ||
+             await stock.getByText(/A stock item's GST rate and HSN\/SAC are reference fields/).count()) {
+            throw Error('Stock overview paragraphs should be removed at all viewport sizes.');
           }
           await page.getByRole('searchbox',{name:'Search stock',exact:true}).waitFor({state:'visible'});
           // Use real browser computed styles for Stock Add New Product
@@ -1816,6 +1816,9 @@ try {
         if(path==='/invoices' && [390,1440].includes(profile.width)) {
           const list=page.locator('.cg-invoice-refined');
           await list.locator('.invoice-dashboard-stats').waitFor({state:'visible'});
+          if(await list.locator('.invoice-dashboard-header p, .invoice-dashboard-section-title p').count()) {
+            throw Error('Invoice list headers should not include introductory paragraphs.');
+          }
           const from=list.locator('#invoice-filter-from');
           const to=list.locator('#invoice-filter-to');
           const sort=list.getByRole('combobox',{name:'Sort billing documents'});

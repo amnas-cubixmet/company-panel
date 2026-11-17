@@ -125,8 +125,7 @@ export default function InventoryBranchOperations({ onChanged }) {
   if (!canView || USE_MOCK_API) return null;
   return <section className="cg-branch-inventory" aria-label="Live branch inventory operations">
     <div className="cg-branch-heading">
-      <div><h2>Branch Stock &amp; Reconciliation</h2>
-        <p className="cg-stock-overview-description">Real branch quantities, paired transfers and physical stock counts.</p></div>
+      <h2>Branch Stock &amp; Reconciliation</h2>
       <button type="button" onClick={refresh} disabled={loading || saving}>
         <RefreshCw size={16} aria-hidden="true"/> Refresh
       </button>
