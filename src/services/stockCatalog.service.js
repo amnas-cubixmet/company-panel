@@ -154,6 +154,9 @@ export const stockCatalogService = {
     return rows(await apiClient.get('/stock/items/rack-locations', { params: { q: search } }));
   },
   getCategories: async () => USE_MOCK_API ? mockCategories() : rows(await apiClient.get('/stock/categories')),
+  createCategory: async ({ name, parent }) => USE_MOCK_API
+    ? { id: name, name, parent: parent || null }
+    : apiClient.post('/stock/categories', { name, parent: parent || null, is_active: true }),
   getSuppliers: async () => USE_MOCK_API ? [...stockSuppliersMock] : rows(await apiClient.get('/stock/suppliers')),
   getStockDashboard: stockService.getStockDashboard,
   getLedger: stockService.getMovementLedger,

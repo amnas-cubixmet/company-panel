@@ -151,6 +151,10 @@ export default function StockEasyPage() {
   const partFormRef = useRef(null);
   const [ledger, setLedger] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [categoryLoadError, setCategoryLoadError] = useState('');
+  const [draftBrands, setDraftBrands] = useState([]);
+  const [partChoice, setPartChoice] = useState(null);
+  const [partChoiceSaving, setPartChoiceSaving] = useState(false);
   const [suppliers, setSuppliers] = useState([]);
   const [quickSupplierOpen, setQuickSupplierOpen] = useState(false);
   const [quickSupplier, setQuickSupplier] = useState(initialSupplier);
@@ -181,17 +185,19 @@ export default function StockEasyPage() {
     setFinanceError('');
     if (!canViewSupplierFinance) setSupplierBalances(null);
     try {
-      const loaded = await stockCatalogService.getItems();
-      setItems(list(loaded).sort((a, b) =>
-        String(b.created_at || b.createdAt || '').localeCompare(String(a.created_at || a.createdAt || ''))
-      ));
-      const [stats, movements, groups, vendors, supplierCredit] = await Promise.allSettled([
+      const [inventory, stats, movements, groups, vendors, supplierCredit] = await Promise.allSettled([
+        stockCatalogService.getItems(),
         stockCatalogService.getStockDashboard(),
         stockCatalogService.getLedger(),
         stockCatalogService.getCategories(),
         stockCatalogService.getSuppliers(),
         canViewSupplierFinance ? supplierFinanceService.getSupplierBalances() : Promise.resolve(null),
       ]);
+      if (inventory.status === 'fulfilled') {
+        setItems(list(inventory.value).sort((a, b) =>
+          String(b.created_at || b.createdAt || '').localeCompare(String(a.created_at || a.createdAt || ''))
+        ));
+      }
       if (canViewSupplierFinance) {
         if (supplierCredit.status === 'fulfilled' && Array.isArray(supplierCredit.value)) {
           setSupplierBalances(supplierCredit.value);
@@ -203,8 +209,9 @@ export default function StockEasyPage() {
       setDashboard(stats.status === 'fulfilled' ? stats.value : null);
       setLedger(movements.status === 'fulfilled' ? list(movements.value) : []);
       setCategories(groups.status === 'fulfilled' ? list(groups.value) : []);
+      setCategoryLoadError(groups.status === 'rejected' ? 'Unable to load inventory categories.' : '');
       setSuppliers(vendors.status === 'fulfilled' ? list(vendors.value) : []);
-      setError('');
+      setError(inventory.status === 'rejected' ? inventory.reason?.message || 'Could not load stock. Check the backend connection.' : '');
     } catch (exception) {
       setError(exception?.message || 'Could not load stock. Check the backend connection.');
     } finally {
@@ -257,6 +264,14 @@ export default function StockEasyPage() {
   const matchingParts = useMemo(() => items.filter((item) =>
     [item.partName, item.partNumber, item.sku, item.barcode, item.brand].join(' ').toLowerCase().includes(partLookup.trim().toLowerCase())
   ).slice(0, 8), [items, partLookup]);
+  const brands = useMemo(() => {
+    const names = new Map();
+    for (const value of [...items.map((item) => item.brand), ...draftBrands]) {
+      const name = String(value ?? '').trim();
+      if (name && !names.has(name.toLowerCase())) names.set(name.toLowerCase(), name);
+    }
+    return [...names.values()].sort((a, b) => a.localeCompare(b));
+  }, [items, draftBrands]);
   const receiptMatches = useMemo(() => items.filter((item) =>
     [item.partName, item.partNumber, item.sku, item.barcode, item.brand].join(' ').toLowerCase().includes(moveLookup.trim().toLowerCase())
   ).slice(0, 12), [items, moveLookup]);
@@ -275,7 +290,43 @@ export default function StockEasyPage() {
     setPartErrors({});
     setQuickSupplierOpen(false);
     setQuickSupplierError('');
+    setPartChoice(null);
+    setDraftBrands([]);
     setPartMode('find'); setPartLookup(lookup); setPartOpen(true);
+  };
+
+  const createCategory = async (name, parent) => {
+    const category = await stockCatalogService.createCategory({ name, parent });
+    setCategories(previous => [...previous.filter(row => String(row.id) !== String(category.id)), category]);
+    return category;
+  };
+
+  const openPartChoice = (kind) => {
+    setQuickSupplierOpen(false);
+    setPartChoice({ kind, name: '', parent: '', error: '' });
+  };
+
+  const savePartChoice = async () => {
+    if (!partChoice || partChoiceSaving) return;
+    const name = partChoice.name.trim();
+    if (!name) return;
+    if (partChoice.kind === 'brand') {
+      const existing = brands.find(brand => brand.toLowerCase() === name.toLowerCase());
+      if (!existing) setDraftBrands(previous => [...previous, name]);
+      setPart(previous => ({ ...previous, brand: existing || name }));
+      setPartChoice(null);
+      return;
+    }
+    setPartChoiceSaving(true);
+    try {
+      const category = await createCategory(name, partChoice.parent);
+      setPart(previous => ({ ...previous, category: String(category.id) }));
+      setPartChoice(null);
+    } catch (cause) {
+      setPartChoice(previous => ({ ...previous, error: cause?.message || 'Unable to save category.' }));
+    } finally {
+      setPartChoiceSaving(false);
+    }
   };
 
   const createQuickSupplier = async () => {
@@ -343,7 +394,7 @@ export default function StockEasyPage() {
 
   const savePart = async (event) => {
     event.preventDefault();
-    if (saving) return;
+    if (saving || partChoice) return;
     if (!part.partName.trim() ||
         part.costPrice === '' || part.sellingPrice === '' ||
         !Number.isFinite(Number(part.costPrice)) || Number(part.costPrice) < 0 ||
@@ -558,7 +609,7 @@ export default function StockEasyPage() {
       />
 
       <InventoryBranchOperations onChanged={reload}/>
-      <InventoryCategories onChanged={reload}/>
+      <InventoryCategories categories={categories} loadError={categoryLoadError} onCreate={createCategory}/>
 
       <section className="cg-easy-panel">
         <div className="cg-easy-panel-header">
@@ -631,7 +682,7 @@ export default function StockEasyPage() {
         onContinue={continueStockPurchase}
       />
 
-      <ResponsiveModalSheet isOpen={partOpen} onClose={() => !saving && setPartOpen(false)} title="Add New Part" maxWidth="600px">
+      <ResponsiveModalSheet isOpen={partOpen} onClose={() => !saving && !partChoiceSaving && setPartOpen(false)} title="Add New Part" maxWidth="600px">
         {partMode === 'find' ? (
           <div className="cg-easy-form">
             
@@ -655,8 +706,9 @@ export default function StockEasyPage() {
             {error && <p className="cg-easy-alert" role="alert">{error}</p>}
           </div>
         ) : (
-          <form className="cg-easy-form" ref={partFormRef} onSubmit={savePart}>
-            <button type="button" className="cg-easy-back-picker" onClick={() => { setPartMode('find'); setError(''); }}>← Search Existing Products</button>
+          <form className="cg-easy-form cg-easy-part-create" ref={partFormRef} onSubmit={savePart}>
+            <button type="button" className="cg-easy-back-picker" disabled={partChoiceSaving}
+              onClick={() => { setPartMode('find'); setPartChoice(null); setError(''); }}>← Search Existing Products</button>
             {error && <p className="cg-easy-alert" role="alert">{error}</p>}
             <div className="cg-easy-fields">
               <OutlinedInput label="Part Name *" required maxLength={180} value={part.partName} onChange={(e) => setPart({ ...part, partName: e.target.value })}/>
@@ -664,16 +716,17 @@ export default function StockEasyPage() {
                 maxLength={100} value={part.partNumber} onChange={(e) => { setPart({ ...part, partNumber: e.target.value }); setPartErrors({ ...partErrors, partNumber: '' }); }}/>
               {partErrors.partNumber && <p className="cg-easy-alert" role="alert">{partErrors.partNumber}</p>}
             </div>
-            <div className="cg-easy-supplier-field">
+            <div className="cg-easy-option-field">
               <OutlinedSelect label="Supplier" value={part.supplier} onChange={(e) => setPart({ ...part, supplier: e.target.value })}>
                 <option value="">No supplier selected</option>
                 {suppliers.filter(x => x.is_active !== false).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
               </OutlinedSelect>
-              <button type="button" className="cg-easy-supplier-add" onClick={() => { setQuickSupplierOpen(v => !v); setQuickSupplierError(''); }}>
+              <button type="button" className="cg-easy-option-add" disabled={partChoiceSaving}
+                onClick={() => { setPartChoice(null); setQuickSupplierOpen(v => !v); setQuickSupplierError(''); }}>
                 <Plus size={15}/> Add Supplier
               </button>
             </div>
-            {quickSupplierOpen && <div className="cg-easy-quick-supplier" aria-label="Create supplier without leaving this form">
+            {quickSupplierOpen && <div className="cg-easy-inline-editor" aria-label="Create supplier without leaving this form">
               <strong>New Supplier</strong>
               <OutlinedInput label="Supplier Name *" maxLength={180} value={quickSupplier.name} onChange={e => setQuickSupplier({ ...quickSupplier, name: e.target.value })}/>
               <div className="cg-easy-fields">
@@ -690,19 +743,54 @@ export default function StockEasyPage() {
               </div>
             </div>}
             <div className="cg-easy-fields">
-              <OutlinedInput label="Brand" maxLength={100} value={part.brand} onChange={(e) => setPart({ ...part, brand: e.target.value })}/>
+              <div className="cg-easy-option-field">
+                <OutlinedSelect label="Brand" value={part.brand}
+                  onChange={e => setPart(previous => ({ ...previous, brand: e.target.value }))}>
+                  <option value="">No brand selected</option>
+                  {brands.map(brand => <option key={brand} value={brand}>{brand}</option>)}
+                </OutlinedSelect>
+                <button type="button" className="cg-easy-option-add" disabled={partChoiceSaving || quickSupplierSaving || saving}
+                  onClick={() => openPartChoice('brand')}><Plus size={15}/> Add Brand</button>
+              </div>
               <OutlinedSelect label="Unit" value={part.unit} onChange={(e) => setPart({ ...part, unit: e.target.value })}>
                 {['Piece', 'Bottle', 'Litre', 'Millilitre', 'Kilogram', 'Gram', 'Set', 'Pair', 'Box', 'Pack', 'Metre', 'Can'].map(x => <option key={x} value={x}>{x}</option>)}
               </OutlinedSelect>
             </div>
             <div className="cg-easy-fields">
-              <OutlinedSelect label="Category" value={part.category} onChange={e => setPart({ ...part, category: e.target.value })}>
-                <option value="">Uncategorized</option>
-                {categories.filter(x => x.is_active !== false).map(x =>
-                  <option key={x.id} value={x.id}>{x.parentName ? x.parentName + ' / ' : ''}{x.name}</option>)}
-              </OutlinedSelect>
+              <div className="cg-easy-option-field">
+                <OutlinedSelect label="Category" value={part.category}
+                  onChange={e => setPart(previous => ({ ...previous, category: e.target.value }))}>
+                  <option value="">Uncategorized</option>
+                  {categories.filter(x => x.is_active !== false).map(x =>
+                    <option key={x.id} value={x.id}>{x.parentName ? x.parentName + ' / ' : ''}{x.name}</option>)}
+                </OutlinedSelect>
+                <button type="button" className="cg-easy-option-add" disabled={partChoiceSaving || quickSupplierSaving || saving}
+                  onClick={() => openPartChoice('category')}><Plus size={15}/> Add Category</button>
+              </div>
               <OutlinedInput label="HSN / SAC Code" maxLength={20} value={part.hsnCode} onChange={(e) => setPart({ ...part, hsnCode: e.target.value })}/>
             </div>
+            {partChoice && <div className="cg-easy-inline-editor" role="group" aria-label={partChoice.kind === 'brand' ? 'New brand' : 'New category'}>
+              <OutlinedInput label={partChoice.kind === 'brand' ? 'Brand Name' : 'Category Name'}
+                maxLength={partChoice.kind === 'brand' ? 100 : 120} value={partChoice.name} disabled={partChoiceSaving}
+                onChange={e => setPartChoice(previous => ({ ...previous, name: e.target.value, error: '' }))}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') { e.preventDefault(); void savePartChoice(); }
+                }}/>
+              {partChoice.kind === 'category' && <OutlinedSelect label="Parent Category (optional)"
+                value={partChoice.parent} disabled={partChoiceSaving}
+                onChange={e => setPartChoice(previous => ({ ...previous, parent: e.target.value, error: '' }))}>
+                <option value="">Main Category</option>
+                {categories.filter(x => !x.parent && x.is_active !== false).map(x =>
+                  <option key={x.id} value={x.id}>{x.name}</option>)}
+              </OutlinedSelect>}
+              {partChoice.error && <p className="cg-easy-alert" role="alert">{partChoice.error}</p>}
+              <div className="cg-easy-quick-actions">
+                <button type="button" disabled={partChoiceSaving} onClick={() => setPartChoice(null)}>Cancel</button>
+                <button type="button" disabled={partChoiceSaving || !partChoice.name.trim()} onClick={savePartChoice}>
+                  {partChoiceSaving ? 'Saving…' : partChoice.kind === 'brand' ? 'Use Brand' : 'Save Category'}
+                </button>
+              </div>
+            </div>}
             <div className="cg-easy-fields">
               <OutlinedSelect label="GST Component / Rate *" value={partGstChoice}
                 onChange={e => {
@@ -779,12 +867,12 @@ export default function StockEasyPage() {
               <RackCombobox value={part.location} suggestions={rackLocations}
                 onChange={location => setPart(previous => ({ ...previous, location }))}/>
             </div>
-            <p className="cg-easy-hint">
+            <p className="cg-easy-hint cg-easy-part-guidance">
               Choose a Supplier first. Saving adds product details only; it does not add stock, debt or payment.
               You will go straight to that Supplier page to confirm the purchase quantity,
               GST, Cash/Bank payment and remaining credit. No separate purchase screen.
             </p>
-            <div className="cg-easy-form-actions"><button type="button" onClick={() => setPartOpen(false)}>Cancel</button><button type="submit" disabled={saving}>{saving ? 'Saving...' : (Number(part.stockQuantity) > 0 ? 'Continue to Receive Stock' : 'Save Part')}</button></div>
+            <div className="cg-easy-form-actions"><button type="button" disabled={partChoiceSaving} onClick={() => setPartOpen(false)}>Cancel</button><button type="submit" disabled={saving || Boolean(partChoice)}>{saving ? 'Saving...' : (Number(part.stockQuantity) > 0 ? 'Continue to Receive Stock' : 'Save Part')}</button></div>
           </form>
         )}
       </ResponsiveModalSheet>

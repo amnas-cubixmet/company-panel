@@ -1,32 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Layers3, Plus } from 'lucide-react';
-import apiClient from '../../api/apiClient';
 import { USE_MOCK_API } from '../../api/apiConfig';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
-import { stockCatalogService } from '../../services/stockCatalog.service';
 import '../../styles/inventory-branch-operations.css';
 
-const rows = (result) => Array.isArray(result) ? result : result?.results || [];
-
-export default function InventoryCategories({ onChanged }) {
+export default function InventoryCategories({ categories, loadError, onCreate }) {
   const { can } = useFeatureAccess();
   const canView = can('stock.view');
   const canCreate = can('stock.create');
-  const [categories, setCategories] = useState([]);
   const [name, setName] = useState('');
   const [parent, setParent] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-
-  const reload = async () => {
-    const found = await stockCatalogService.getCategories();
-    setCategories(rows(found));
-  };
-  useEffect(() => {
-    if (canView && !USE_MOCK_API) {
-      reload().catch(() => setError('Unable to load inventory categories.'));
-    }
-  }, [canView]);
 
   const save = async (event) => {
     event.preventDefault();
@@ -37,15 +22,10 @@ export default function InventoryCategories({ onChanged }) {
     }
     setSaving(true); setError('');
     try {
-      await apiClient.post('/stock/categories', {
-        name: text, parent: parent || null, is_active: true,
-      });
+      await onCreate(text, parent);
       setName(''); setParent('');
-      await reload();
-      onChanged?.();
     } catch (cause) {
-      const data = cause?.response?.data || cause?.data || {};
-      setError(data?.name?.[0] || data?.parent?.[0] || cause?.message || 'Unable to save category.');
+      setError(cause?.message || 'Unable to save category.');
     } finally { setSaving(false); }
   };
 
@@ -56,7 +36,7 @@ export default function InventoryCategories({ onChanged }) {
       <h2><Layers3 size={18} aria-hidden="true"/> Categories &amp; Subcategories</h2>
       <p className="cg-stock-overview-description">Add main categories and organize their subcategories.</p>
     </div></div>
-    {error && <p className="cg-branch-error" role="alert">{error}</p>}
+    {(error || loadError) && <p className="cg-branch-error" role="alert">{error || loadError}</p>}
     {canCreate && <form onSubmit={save} className="cg-branch-form">
       <div className="cg-branch-grid">
         <label>Category Name<input required maxLength={120} value={name} disabled={saving}
