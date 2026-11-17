@@ -5,6 +5,7 @@ import { USE_MOCK_API } from '../../api/apiConfig';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import { branchService } from '../../services/branch.service';
 import { stockCatalogService } from '../../services/stockCatalog.service';
+import StockProductLink from './StockProductLink';
 import '../../styles/inventory-branch-operations.css';
 
 const rows = (result) => Array.isArray(result) ? result : result?.results || [];
@@ -25,13 +26,12 @@ const errorMessage = (cause) => {
   return cause?.message || 'Unable to save this inventory transaction.';
 };
 
-export default function InventoryBranchOperations({ onChanged }) {
+export default function InventoryBranchOperations({ balances = [], onBalancesChange, onChanged }) {
   const { can } = useFeatureAccess();
   const canView = can('stock.view');
   const canEdit = can('stock.edit');
   const [branches, setBranches] = useState([]);
   const [products, setProducts] = useState([]);
-  const [balances, setBalances] = useState([]);
   const [transfers, setTransfers] = useState([]);
   const [counts, setCounts] = useState([]);
   const [error, setError] = useState('');
@@ -60,7 +60,7 @@ export default function InventoryBranchOperations({ onChanged }) {
       const activeBranches = rows(branchRows).filter((row) => row.is_active !== false);
       setBranches(activeBranches);
       setProducts(rows(itemRows));
-      setBalances(rows(stockRows));
+      onBalancesChange(rows(stockRows));
       setTransfers(rows(transferRows));
       setCounts(rows(auditRows));
       setTransfer((previous) => ({
@@ -69,10 +69,11 @@ export default function InventoryBranchOperations({ onChanged }) {
       setError('');
     } catch (cause) {
       setError(errorMessage(cause));
+      onBalancesChange(previous => previous ?? []);
     } finally {
       setLoading(false);
     }
-  }, [canView]);
+  }, [canView, onBalancesChange]);
 
   useEffect(() => { refresh(); }, [refresh]);
   const selected = useMemo(() => balances.find((row) =>
@@ -147,7 +148,17 @@ export default function InventoryBranchOperations({ onChanged }) {
       <table><thead><tr><th>Branch</th><th>Part</th><th>SKU</th>
         <th>On hand</th><th>Reserved</th><th>Available</th></tr></thead>
         <tbody>{balances.length ? balances.map((row) => <tr key={row.branchId + row.itemId}>
-          <td>{row.branchName}</td><td>{row.name}</td><td>{row.sku}</td>
+          <td>{row.branchName}</td>
+          <td>
+            <StockProductLink itemId={row.itemId} branchId={row.branchId}>
+              <strong>{row.name || 'View Product'}</strong>
+            </StockProductLink>
+          </td>
+          <td>{row.sku ? (
+            <StockProductLink itemId={row.itemId} branchId={row.branchId}>
+              <strong>{row.sku}</strong>
+            </StockProductLink>
+          ) : '—'}</td>
           <td>{row.onHand}</td><td>{row.reserved}</td><td>{row.available}</td>
         </tr>) : <tr><td colSpan={6}>No branch balances found.</td></tr>}</tbody>
       </table>
