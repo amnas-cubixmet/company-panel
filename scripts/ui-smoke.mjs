@@ -154,7 +154,7 @@ function fixture(path) {
   if(path==='/saas/credits/billing-cycle') return {enabled:false};
   if(path==='/saas/credits/account') return {company:user.company,users:[]};
   if(path==='/saas/billing') return {plan:null,usage:{seatsUsed:0},users:[],invoices:[]};
-  if(path==='/saas/storage') return {usedGb:0,files:[],settings:{allowedTypes:['image/png'],maxFileMb:10,retentionDays:0},billing:{creditsPerGb:'10',includedGb:'0',period:'monthly',active:true}};
+  if(path==='/saas/storage') return {usedBytes:104857600,usedGb:0.098,fileCount:10,files:[],settings:{allowedTypes:['image/png'],maxFileMb:10,retentionDays:0},billing:{creditsPerGb:'10',includedGb:'0',period:'monthly',active:true}};
   if(path==='/saas/storage/events') return {count:0,results:[]};
   if(path==='/attendance-manager/approvals') return [{
     id:'LEAVE-TEST-1',type:'Leave Request',status:'Pending',staffName:'Belle Trujillo',
@@ -525,8 +525,13 @@ try {
           await usage.getByLabel('Upload category').waitFor();
           await usage.getByText('Upload photos', {exact:true}).waitFor();
           const stats = usage.locator('.storage-overview-grid > div');
-          if (await stats.count() !== 3 || !await usage.getByText('0 B', {exact:true}).isVisible()) {
+          if (await stats.count() !== 3 || !await usage.getByText('100 MB', {exact:true}).isVisible()
+              || !await usage.getByText('0.10 GB', {exact:true}).isVisible()) {
             throw Error('Media Storage must show the usage, file count and allowance summary.');
+          }
+          await usage.getByRole('button', {name:'GB',exact:true}).click();
+          if (await usage.locator('.storage-primary-usage strong').innerText() !== '0.10 GB') {
+            throw Error('The GB selector must round 100 MB to 0.10 GB.');
           }
           await usage.getByRole('button', {name:'MB',exact:true}).click();
           if (await usage.getByRole('button', {name:'MB',exact:true}).getAttribute('aria-pressed') !== 'true') {
@@ -534,6 +539,7 @@ try {
           }
           const storagePage = page.locator('.account-billing-page');
           if (await storagePage.locator('.saas-card').count() !== 1 ||
+              await storagePage.getByRole('button', {name:/delete/i}).count() ||
               /Small uploads are not rounded down|Storage Billing:|Storage usage history|Storage interval logs|Advanced storage settings|Uploaded Files|Recorded storage activity|Delete selected|Credit billing cycle/i.test(await storagePage.innerText())) {
             throw Error('Removed Media Storage sections and controls should not render on the overview.');
           }

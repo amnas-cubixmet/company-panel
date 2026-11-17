@@ -22,6 +22,12 @@ export function localCustomerWebsiteOrigin(value) {
   return '';
 }
 
+export function customerWebsiteDevParams(isDev, hostname, configuredOrigin) {
+  const origin = isLocalCustomerWebsiteDevelopment(isDev, hostname)
+    ? localCustomerWebsiteOrigin(configuredOrigin) : '';
+  return origin ? { customerWebsiteDevOrigin: origin } : {};
+}
+
 export function customerWebsiteAddresses({
   subdomain = '',
   subdomainLabel = '',
