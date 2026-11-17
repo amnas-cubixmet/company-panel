@@ -87,6 +87,7 @@ export const stockCatalogService = {
     const item = await stockService.getStockItemById(id);
     return item ? toPart(item) : null;
   },
+  getBranchBalances: async () => USE_MOCK_API ? [] : rows(await apiClient.get('/stock/branch-balances')),
   createItem: async (payload) => {
     if (USE_MOCK_API) {
       if (!payload.partName?.trim()) {

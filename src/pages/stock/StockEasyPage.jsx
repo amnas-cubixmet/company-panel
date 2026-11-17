@@ -2,13 +2,15 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
 import { USE_MOCK_API } from '../../api/apiConfig';
-import { AlertTriangle, Boxes, History, PackageMinus, PackagePlus, Plus, RefreshCw, Search, ShoppingCart, Wrench } from 'lucide-react';
+import { AlertTriangle, Boxes, ChevronRight, History, PackageMinus, PackagePlus, Plus, RefreshCw, Search, ShoppingCart, Wrench } from 'lucide-react';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { stockCatalogService } from '../../services/stockCatalog.service';
 import InventoryBranchOperations from '../../components/stock/InventoryBranchOperations';
+import StockProductLink from '../../components/stock/StockProductLink';
 import InventoryCategories from '../../components/stock/InventoryCategories';
 import { supplierService } from '../../services/supplier.service';
 import { CountryPhoneField } from '../../components/common/CountryPhoneField';
+import { stockState, ZERO_GST_CLASSIFICATIONS } from '../../utils/stockPresentation';
 import { validInternationalPhone } from '../../utils/jobCreateAdapters';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
@@ -22,25 +24,14 @@ import '../../styles/stock-easy.css';
 import '../../styles/stock-form-polish.css';
 import '../../styles/stock-list-polish.css';
 
-const cash = (value) => new Intl.NumberFormat('en-IN', {
-  style: 'currency', currency: 'INR', maximumFractionDigits: 2,
-}).format(Number(value) || 0);
 const number = (value) => Number(value) || 0;
 // Inventory uses the same CGST / SGST / IGST component options as invoices.
-// StockItem.tax remains the TOTAL GST rate, never an independent CGST debit.
 const STOCK_GST_CHOICES = invoiceLineTaxChoices('unknown');
-// A 0% rate alone does not distinguish legal categories. Preserve that
-// distinction with the item; jurisdiction is determined at invoice time.
-const ZERO_GST_CLASSIFICATIONS = [
-  ['exempt', 'Exempt'],
-  ['nil_rated', 'Nil-rated'],
-  ['zero_rated', 'Zero-rated'],
-  ['non_gst', 'Non-GST'],
-];
 const validGstRate = (value) =>
   /^\d{1,3}(?:\.\d{1,2})?$/.test(String(value)) &&
   Number.isFinite(Number(value)) && Number(value) >= 0 && Number(value) <= 100;
 const list = (result) => Array.isArray(result) ? result : (result?.results || []);
+const MAX_STOCK_QUANTITY = 9_999_999_999.99;
 const initialPart = { partName: '', partNumber: '', supplier: '', brand: '', category: '', unit: 'Piece',
   costPrice: '', sellingPrice: '', tax: '0', zeroTaxClassification: '', hsnCode: '', stockQuantity: '',
   minimumStock: '5', location: '', stockSource: '', requestKey: '', invoiceNumber: '', invoiceDate: '',
@@ -100,13 +91,6 @@ function RackCombobox({ value, onChange, suggestions }) {
 const inventoryRequestKey = () => globalThis.crypto?.randomUUID?.() || `stock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const initialMove = { mode: 'in', itemId: '', quantity: '1', invoiceNo: '', notes: '', costPrice: '', sellingPrice: '', priceMode: '', requestKey: '' };
 
-function stockState(item) {
-  const available = number(item.available ?? (number(item.onHand) - number(item.reserved)));
-  if (available <= 0) return { label: 'Out of stock', tone: 'out' };
-  if (available <= number(item.minimumStock)) return { label: 'Low stock', tone: 'low' };
-  return { label: 'Available', tone: 'ok' };
-}
-
 export default function StockEasyPage() {
   const navigate = useNavigate();
   const { can } = useFeatureAccess();
@@ -124,6 +108,7 @@ export default function StockEasyPage() {
   const filterValue = searchParams.get('filter') || 'all';
   const filter = ['all', 'low', 'out'].includes(filterValue) ? filterValue : 'all';
   const supplierId = searchParams.get('supplier') || '';
+  const [branchBalances, setBranchBalances] = useState(USE_MOCK_API ? [] : null);
   const updateQueryParam = (key, value) => {
     const next = new URLSearchParams(searchParams);
     if (!value || value === 'all') next.delete(key);
@@ -169,6 +154,13 @@ export default function StockEasyPage() {
   const [financeError, setFinanceError] = useState('');
   const [financeLoading, setFinanceLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (loading || !['#branch-stock', '#parts-products'].includes(hash)) return;
+    const section = document.getElementById(hash.slice(1));
+    section?.focus({ preventScroll: true });
+    section?.scrollIntoView({ block: 'start' });
+  }, [hash, loading]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -637,9 +629,9 @@ export default function StockEasyPage() {
       <InventoryBranchOperations onChanged={reload}/>
       <InventoryCategories categories={categories} loadError={categoryLoadError} onCreate={createCategory}/>
 
-      <section className="cg-easy-panel">
+      <section className="cg-easy-panel" id="parts-products" tabIndex={-1} aria-labelledby="stock-parts-heading">
         <div className="cg-easy-panel-header">
-          <h2>Parts & Products</h2>
+          <h2 id="stock-parts-heading">Parts & Products</h2>
         </div>
         <div className="cg-easy-filters">
           <label className="cg-easy-search"><Search size={18} aria-hidden="true"/><input type="search" aria-label="Search stock" placeholder="Search part name, Part Number, SKU, supplier or rack" value={query} onChange={(e) => setQuery(e.target.value)}/></label>
@@ -658,7 +650,15 @@ export default function StockEasyPage() {
                 <tbody>{filtered.map((item) => {
                   const state = stockState(item);
                   return <tr key={item.id}>
-                    <td data-label="Part"><strong title={item.partName || item.name}>{item.partName || item.name}</strong><small>{item.partNumber ? item.partNumber + ' · ' : ''}{item.sku}{item.brand ? ' · ' + item.brand : ''}</small></td>
+                    <td data-label="Part">
+                      <StockProductLink itemId={item.id}>
+                        <span>
+                          <strong>{item.partName || item.name}</strong>
+                          <small>{[item.partNumber, item.sku, item.brand].filter(Boolean).join(' · ')}</small>
+                        </span>
+                        <ChevronRight size={17} aria-hidden="true"/>
+                      </StockProductLink>
+                    </td>
                     <td data-label="Rack" title={item.location || item.rack || '—'}>{item.location || item.rack || '—'}</td>
                     <td data-label="Available">{number(item.available ?? (number(item.onHand) - number(item.reserved)))} {item.unit || 'PCS'}</td>
                     <td data-label="Cost">{canManageStock ? cash(item.costPrice) : 'Restricted'}</td>
@@ -920,6 +920,40 @@ export default function StockEasyPage() {
               <OutlinedInput label="Purchase Price (₹) *" required type="number" min="0" step="0.01" value={part.costPrice} onChange={e => setPart({ ...part, costPrice: e.target.value })}/>
               <OutlinedInput label="Selling Price (₹) *" required type="number" min="0" step="0.01" value={part.sellingPrice} onChange={e => setPart({ ...part, sellingPrice: e.target.value })}/>
             </div>
+            <div className="cg-easy-fields">
+              {canPurchaseStock && (
+                <OutlinedSelect label="Stock Source" value={part.stockSource} onChange={e => {
+                  setPart(previous => ({ ...previous, stockSource: e.target.value }));
+                  setPartErrors(previous => ({ ...previous, stockQuantity: '' }));
+                  setError('');
+                }}>
+                  <option value="opening">Opening Stock (already on hand)</option>
+                  <option value="purchase">Supplier Purchase</option>
+                </OutlinedSelect>
+              )}
+              <OutlinedInput label={isSupplierPurchase ? 'Purchase Quantity *' : 'Opening Stock Quantity'}
+                type="number" min={isSupplierPurchase ? '0.01' : '0'} max={MAX_STOCK_QUANTITY}
+                step="0.01" inputMode="decimal" required={isSupplierPurchase}
+                data-field="stockQuantity" aria-invalid={Boolean(partErrors.stockQuantity)}
+                aria-describedby={partErrors.stockQuantity ? 'part-quantity-error part-stock-hint' : 'part-stock-hint'}
+                value={part.stockQuantity} onChange={e => {
+                  setPart(previous => ({ ...previous, stockQuantity: e.target.value }));
+                  setPartErrors(previous => ({ ...previous, stockQuantity: '' }));
+                }} onInvalid={event => {
+                  event.preventDefault();
+                  setPartErrors(previous => ({ ...previous, stockQuantity: quantityError }));
+                  event.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  event.currentTarget.focus();
+                }}/>
+            </div>
+            {partErrors.stockQuantity && (
+              <p id="part-quantity-error" className="cg-easy-alert" role="alert">{partErrors.stockQuantity}</p>
+            )}
+            <p id="part-stock-hint" className="cg-easy-hint cg-easy-part-guidance">
+              {isSupplierPurchase
+                ? 'Choose a supplier and post the purchase bill to receive this quantity into stock.'
+                : 'Enter the quantity already on hand. It becomes available in Inventory as soon as you save.'}
+            </p>
             <div className="cg-easy-fields">
               <OutlinedInput label="Minimum Stock" type="number" min="0" step="0.01" value={part.minimumStock} onChange={e => setPart({ ...part, minimumStock: e.target.value })}/>
               <RackCombobox value={part.location} suggestions={rackLocations}
