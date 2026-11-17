@@ -998,6 +998,24 @@ try {
             await picker.click();
             const search=page.getByRole('searchbox',{name:'Search Customer Owner'});
             await search.waitFor({state:'visible'});
+            await search.focus();
+            const searchLayout=await search.evaluate(input=>{
+              const row=input.parentElement;
+              const icon=row.querySelector('svg').getBoundingClientRect();
+              const field=input.getBoundingClientRect();
+              const shell=row.getBoundingClientRect();
+              const menu=row.parentElement.getBoundingClientRect();
+              const trigger=row.closest('.searchable-select-wrapper').querySelector('[role="combobox"]').getBoundingClientRect();
+              return {
+                aligned:Math.abs((icon.top+icon.height/2)-(field.top+field.height/2))<=2 && icon.right<=field.left,
+                fillsRow:field.right<=shell.right && shell.right-field.right<=16 && field.height>=44,
+                menuFitsTrigger:Math.abs(menu.left-trigger.left)<=1 && Math.abs(menu.right-trigger.right)<=1,
+                singleFocus:getComputedStyle(input).outlineStyle==='none' && getComputedStyle(row).outlineStyle==='solid',
+              };
+            });
+            if(Object.values(searchLayout).some((value)=>!value)) {
+              throw Error('Customer Owner search layout is broken: '+JSON.stringify(searchLayout));
+            }
             await search.press('ArrowDown');
             await search.press('ArrowUp');
             await search.press('Enter');
