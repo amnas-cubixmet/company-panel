@@ -4,6 +4,7 @@ import { Copy, Link2, RefreshCw, ShieldOff } from 'lucide-react';
 import apiClient from '../../api/apiClient';
 import { WhatsAppManualShareButton } from '../common/WhatsAppManualShareButton';
 import { USE_MOCK_API } from '../../api/apiConfig';
+import { customerWebsiteDevParams } from '../../utils/customerWebsiteAddresses';
 
 export function CustomerTrackingLinkPanel({ customerId, canManage = false }) {
   const [link, setLink] = useState('');
@@ -13,6 +14,8 @@ export function CustomerTrackingLinkPanel({ customerId, canManage = false }) {
   const [error, setError] = useState('');
   const [needsRegeneration, setNeedsRegeneration] = useState(false);
   const [notice, setNotice] = useState('');
+  const devParams = customerWebsiteDevParams(import.meta.env.DEV, window.location.hostname,
+    import.meta.env.VITE_CUSTOMER_WEBSITE_DEV_ORIGIN);
 
   const load = async () => {
     if (!customerId) return;
@@ -23,7 +26,7 @@ export function CustomerTrackingLinkPanel({ customerId, canManage = false }) {
     setLoading(true);
     try {
       if (USE_MOCK_API) throw new Error('Customer tracking links require the live Django backend.');
-      const result = await apiClient.get(`/customer-portal/links/${customerId}`);
+      const result = await apiClient.get(`/customer-portal/links/${customerId}`, { params: devParams });
       setLink(result.url || '');
       setEnabled(Boolean(result.enabled));
     } catch (cause) {
@@ -46,7 +49,7 @@ export function CustomerTrackingLinkPanel({ customerId, canManage = false }) {
     setError('');
     setNotice('');
     try {
-      const result = await apiClient.post(`/customer-portal/links/${customerId}`, { action });
+      const result = await apiClient.post(`/customer-portal/links/${customerId}`, { action, ...devParams });
       setLink(result.url || '');
       setEnabled(Boolean(result.enabled));
       setNeedsRegeneration(false);

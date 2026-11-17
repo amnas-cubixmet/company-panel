@@ -28,3 +28,12 @@ test('server usedBytes is canonical; legacy usedGb only a fallback', () => {
   assert.equal(formatStorageDelta(-1024), '−1 KB');
   assert.equal(formatStorageDelta(1024), '+1 KB');
 });
+
+test('100 MB rounds to 0.10 GB without losing the exact media byte count', () => {
+  const bytes = storageBytes({ usedBytes: String(100 * BYTES_PER_MB), usedGb: 0.098 });
+  assert.equal(bytes, 104857600);
+  assert.equal(formatStorageBytes(bytes), '100 MB');
+  assert.equal(formatStorageBytes(bytes, 'GB'), '0.10 GB');
+  assert.equal(formatStorageBytes(0, 'GB'), '0.00 GB');
+  assert.equal(formatStorageBytes(BYTES_PER_MB, 'GB'), '0.0009765625 GB');
+});

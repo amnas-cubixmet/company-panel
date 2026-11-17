@@ -25,12 +25,13 @@ export function formatStorageBytes(rawBytes, selectedUnit = 'auto') {
   const factor = unit === 'GB' ? BYTES_PER_GB
     : unit === 'MB' ? BYTES_PER_MB : unit === 'KB' ? BYTES_PER_KB : 1;
   const value = bytes / factor;
-  const digits = value > 0 && value < 0.001 ? 12
+  const showFixedGb = selectedUnit === 'GB' && (value === 0 || value >= 0.01);
+  const digits = showFixedGb ? 2 : value > 0 && value < 0.001 ? 12
     : value < 0.01 ? 8
       : value < 1 ? 4 : 2;
   const amount = new Intl.NumberFormat('en-IN', {
     maximumFractionDigits: digits,
-    minimumFractionDigits: 0,
+    minimumFractionDigits: showFixedGb ? 2 : 0,
   }).format(value);
   return `${amount} ${unit}`;
 }
