@@ -38,6 +38,7 @@ const bundles = [
 ];
 function fixture(path) {
   if(path==='/auth/me') return user;
+  if(path==='/vehicle-catalog') return {makes:[{make:'Toyota',models:['Land Cruiser Prado']}]};
   if(path.startsWith('/customer-portal/links/')) return {
     enabled:true, url:'https://sample.customer.example.test/access/fixture.token',
   };
@@ -1002,6 +1003,24 @@ try {
             await search.press('Enter');
             if(await picker.getAttribute('aria-expanded')!=='false') {
               throw Error('Searchable Customer Owner select did not close after keyboard selection');
+            }
+            const make=page.locator('[data-vehicle-field="make"] select');
+            const model=page.locator('[data-vehicle-field="model"] select');
+            const registration=page.locator('[data-vehicle-field="regNo"]');
+            if(!await model.isDisabled()) throw Error('Select a Make before choosing a Model.');
+            await registration.fill('KL 10 AB 1234');
+            await make.selectOption('Maruti Suzuki');
+            await model.selectOption('Swift');
+            const models=await model.locator('option').allTextContents();
+            if(!models.includes('Eeco') || models.includes('Innova')) throw Error('Models must match the selected Make.');
+            await make.selectOption('Toyota');
+            if(await model.inputValue()!=='') throw Error('Switching Makes must reset the selected Model.');
+            await model.locator('option[value="Land Cruiser Prado"]').waitFor({state:'attached'});
+            await page.getByRole('button',{name:'Add Model',exact:true}).click();
+            await page.getByLabel('New Model for Toyota').fill('Workshop Test Model');
+            await page.getByRole('button',{name:'Use Model',exact:true}).click();
+            if(await model.inputValue()!=='Workshop Test Model' || await registration.inputValue()!=='KL 10 AB 1234') {
+              throw Error('Using a custom Model should preserve the registration number.');
             }
           }
         }
