@@ -904,6 +904,34 @@ try {
           return nodes.filter(node=>node.clientWidth>0&&node.scrollWidth>node.clientWidth+2).map(node=>node.className||node.tagName);
         });
         if(overflow.length)throw Error('Horizontal page overflow: '+overflow.join(', '));
+        if(path==='/finance/accounts/new' && [390,1440].includes(profile.width)) {
+          const query=new URLSearchParams({
+            returnTo:'/suppliers/00000000-0000-4000-8000-000000001093#supplier-pay-now',
+            channel:'Bank',
+          }).toString();
+          await page.goto(baseURL+path+'?'+query,{waitUntil:'networkidle'});
+          const kind=page.getByLabel('Account Type');
+          await kind.waitFor({state:'visible'});
+          if(await kind.inputValue()!=='Bank' || !await page.getByLabel('Bank Name').isVisible()) {
+            throw Error('Supplier Bank setup must preselect the Bank account form.');
+          }
+          let submitted;
+          const accountsApi='**/api/v1/finance/accounts';
+          await page.route(accountsApi, route=>{
+            if(route.request().method()!=='POST') return route.fallback();
+            submitted=route.request().postDataJSON();
+            return route.fulfill({status:201,json:{id:financeFixtureId,kind:'Bank'}});
+          });
+          await page.getByLabel('Account Name').fill('Supplier Payments Bank');
+          await page.getByLabel('Starting Balance (₹)').fill('750.25');
+          await page.getByLabel('Starting Date').fill('2026-11-06');
+          await page.getByRole('button',{name:'Save Account',exact:true}).click();
+          await page.waitForURL(url=>url.pathname==='/finance/accounts' && url.search===('?'+query));
+          if(submitted?.kind!=='Bank' || submitted.openingBalance!=='750.25' || submitted.openingDate!=='2026-11-06') {
+            throw Error('Bank account creation lost the selected account type or opening balance details.');
+          }
+          await page.unroute(accountsApi);
+        }
         if (['/finance','/finance/payments','/finance/expenses','/finance/accounts','/finance/transfers','/finance/transactions','/finance/accounting'].includes(path) &&
             [320, 390, 1440].includes(profile.width)) {
           const workspace = page.locator('.finance-workspace');
