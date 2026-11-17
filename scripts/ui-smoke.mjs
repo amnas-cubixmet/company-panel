@@ -1525,26 +1525,35 @@ try {
           await page.getByRole('button',{name:'Add New Part'}).first().click();
           const addDialog=page.getByRole('dialog',{name:'Add New Part'});
           await addDialog.waitFor();
-          const search=await addDialog.locator('.cg-easy-picker-search').evaluate(node=>{
+          const search=await addDialog.locator('.cg-easy-picker-search').evaluate(async node=>{
             const input=node.querySelector('input');
+            // Read the settled colors on both sides of the background transition.
+            input.focus();
+            const readBackground=async()=>{
+              // Flush styles so any pending transition is included in getAnimations().
+              const before=getComputedStyle(node).backgroundColor;
+              const animations=node.getAnimations();
+              if(!animations.length)return before;
+              await Promise.allSettled(animations.map(animation=>animation.finished));
+              return getComputedStyle(node).backgroundColor;
+            };
+            const focusedBackground=await readBackground();
             const field=getComputedStyle(input),shell=getComputedStyle(node);
-            return {
+            const styles={
               shellHeight:Math.round(node.getBoundingClientRect().height),
               font:parseFloat(field.fontSize), inputBorder:parseFloat(field.borderLeftWidth),
               inputOutline:field.outlineStyle, inputShadow:field.boxShadow,
               shellBorder:parseFloat(shell.borderLeftWidth), shellOutline:shell.outlineStyle,
-              shellShadow:shell.boxShadow, focusedBackground:shell.backgroundColor,
+              shellShadow:shell.boxShadow, focusedBackground,
             };
-          });
-          const stockIdle=await addDialog.locator('.cg-easy-picker-search').evaluate(node=>{
-            node.querySelector('input').blur();
-            return getComputedStyle(node).backgroundColor;
+            input.blur();
+            return {...styles,idleBackground:await readBackground()};
           });
           if(search.shellHeight<48||search.font<16||search.inputBorder!==0||
              search.inputOutline!=='none'||search.inputShadow!=='none'||
              search.shellBorder!==0||search.shellOutline!=='none'||
-             search.shellShadow!=='none'||search.focusedBackground===stockIdle){
-            throw Error('Stock search has nested borders or no focus tint: '+JSON.stringify({search,stockIdle}));
+             search.shellShadow!=='none'||search.focusedBackground===search.idleBackground){
+            throw Error('Stock search has nested borders or no focus tint: '+JSON.stringify(search));
           }
                     await addDialog.getByRole('button',{name:'Add as New Product'}).click();
           const partStyles=await addDialog.locator('form.cg-easy-form').evaluate(form=>{
