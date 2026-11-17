@@ -1739,10 +1739,10 @@ try {
               partStyles.labels.some(x=>x<14)||partStyles.columns!==columnCount) {
             throw Error('Stock Add Product form UI mismatch: '+JSON.stringify({width:profile.width,...partStyles}));
           }
-          const guidance=await addDialog.locator('.cg-easy-gst-disclaimer, .cg-easy-part-guidance')
+          const guidance=await addDialog.locator('.cg-easy-gst-disclaimer')
             .evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).display!=='none'));
-          if(guidance.length!==2 || guidance.some(visible=>visible!==(profile.width<1024))) {
-            throw Error('Hide the long Add New Part descriptions on desktop only.');
+          if(guidance.length!==1 || guidance[0]!==(profile.width<1024)) {
+            throw Error('Keep the GST note responsive.');
           }
           const partName=addDialog.getByLabel('Part Name');
           await partName.fill('Smoke Test Air Filter');
@@ -1769,7 +1769,43 @@ try {
             throw Error('New Category must be selected and existing part fields preserved.');
           }
           await page.unroute(categoryRoute);
-          await addDialog.getByRole('button',{name:'Close dialog'}).click();
+          const onCredit = profile.width === 1440;
+          const supplierId = '00000000-0000-4000-8000-000000000081';
+          const stockEndpoint = /\/api\/v1\/stock(?:\/receive-new-part)?(?:\?.*)?$/;
+          let saved = null;
+          await page.route(stockEndpoint, async route => {
+            if(route.request().method() === 'GET') return route.fulfill({json:saved ? [saved] : []});
+            const payload = route.request().postDataJSON();
+            const purchaseEndpoint = new URL(route.request().url()).pathname.endsWith('/receive-new-part');
+            const correctQuantity = onCredit
+              ? purchaseEndpoint && payload.onHand === 0 && payload.supplier === supplierId &&
+                payload.purchase?.quantity === '6.50' && payload.purchase?.invoiceNumber === 'STOCK-01' &&
+                /^\d{4}-\d{2}-\d{2}$/.test(payload.purchase?.invoiceDate || '')
+              : !purchaseEndpoint && payload.onHand === 6.5 && !payload.purchase;
+            if(!correctQuantity || !payload.requestKey || payload.partName !== 'Smoke Test Air Filter') {
+              return route.fulfill({status:400,json:{message:'Incorrect initial stock payload.'}});
+            }
+            saved = {...payload,id:'00000000-0000-4000-8000-000000000094',sku:'FILTER-01',
+              onHand:'6.50',branchAvailable:'6.50',reserved:'0.00'};
+            return route.fulfill({status:201,json:saved});
+          });
+          await addDialog.locator('[data-field="stockQuantity"]').fill('6.50');
+          await addDialog.locator('[data-field="zeroTaxClassification"]').selectOption('non_gst');
+          await addDialog.getByLabel(/Purchase Price/).fill('100');
+          await addDialog.getByLabel(/Selling Price/).fill('150');
+          await addDialog.getByRole('combobox',{name:'Stock Source',exact:true}).selectOption(onCredit ? 'credit' : 'opening');
+          if(onCredit) {
+            await addDialog.locator('[data-field="supplier"]').selectOption(supplierId);
+            await addDialog.locator('[data-field="invoiceNumber"]').fill('STOCK-01');
+          }
+          try {
+            await addDialog.getByRole('button',{name:onCredit ? 'Save & Receive on Credit' : 'Save Part & Stock',exact:true}).click();
+            await addDialog.waitFor({state:'hidden'});
+            const partRow = stock.locator('tr').filter({hasText:'Smoke Test Air Filter'});
+            await partRow.getByText('6.5 Piece', {exact:true}).waitFor();
+          } finally {
+            await page.unroute(stockEndpoint);
+          }
           const supplierReceiving=page.getByRole('link',{name:'Buy / Receive from Supplier'});
           await supplierReceiving.waitFor({state:'visible'});
           if (await supplierReceiving.getAttribute('href') !== '/suppliers') {

@@ -15,6 +15,9 @@ import { useFeatureAccess } from '../../context/FeatureAccessContext';
 import StockFinanceConnections from '../../components/stock/StockFinanceConnections';
 import StockPurchaseStartDialog from '../../components/stock/StockPurchaseStartDialog';
 import { invoiceLineTaxChoices, invoiceTotalRateFromChoice } from '../../utils/invoiceTaxUi';
+import { INDIA_STATES } from '../../utils/indiaGst';
+import { normalizeSupplierGstin, supplierGstinStateCode } from '../../utils/supplierGstin';
+import { localDate } from '../../services/expense.mapper';
 import '../../styles/stock-easy.css';
 import '../../styles/stock-form-polish.css';
 import '../../styles/stock-list-polish.css';
@@ -40,7 +43,8 @@ const validGstRate = (value) =>
 const list = (result) => Array.isArray(result) ? result : (result?.results || []);
 const initialPart = { partName: '', partNumber: '', supplier: '', brand: '', category: '', unit: 'Piece',
   costPrice: '', sellingPrice: '', tax: '0', zeroTaxClassification: '', hsnCode: '', stockQuantity: '',
-  minimumStock: '5', location: '' };
+  minimumStock: '5', location: '', stockSource: '', requestKey: '', invoiceNumber: '', invoiceDate: '',
+  placeOfSupply: '' };
 const initialSupplier = { name: '', phone: '', gstNo: '', address: '' };
 
 function OutlinedInput({ label, ...props }) {
@@ -392,6 +396,12 @@ export default function StockEasyPage() {
     });
   };
 
+  const selectedPartSupplier = suppliers.find(supplier => String(supplier.id) === String(part.supplier));
+  const partSupplierGstin = normalizeSupplierGstin(selectedPartSupplier?.gstin || selectedPartSupplier?.gstNo);
+  const stockSource = number(part.stockQuantity) > 0 ? part.stockSource : '';
+  const isCreditPurchase = stockSource === 'credit';
+  const isSupplierStep = stockSource === 'supplier';
+
   const savePart = async (event) => {
     event.preventDefault();
     if (saving || partChoice) return;
@@ -418,11 +428,10 @@ export default function StockEasyPage() {
       requestAnimationFrame(() => partFormRef.current?.querySelector('[data-field="zeroTaxClassification"]')?.focus());
       return;
     }
-    const openingText = String(part.stockQuantity ?? '').trim();
-    const openingQuantity = openingText === '' ? 0 : Number(openingText);
-    if (!/^\d+(?:\.\d{1,2})?$/.test(openingText || '0') ||
-        !Number.isFinite(openingQuantity) || openingQuantity < 0) {
-      const message = 'Purchase quantity must be nonnegative with up to two decimal places.';
+    const quantityText = String(part.stockQuantity ?? '').trim();
+    const quantity = number(quantityText);
+    if (!/^\d+(?:\.\d{1,2})?$/.test(quantityText || '0') || quantity < 0 || quantity > 1000000) {
+      const message = 'Enter a quantity from 0 to 1,000,000 with up to two decimal places.';
       setPartErrors(previous => ({ ...previous, stockQuantity: message }));
       setError(message);
       requestAnimationFrame(() => {
@@ -432,41 +441,55 @@ export default function StockEasyPage() {
       });
       return;
     }
-    // Catalog registration is never the posting of a supplier purchase.
-    // When quantity was supplied, the supplier detail page will create the
-    // invoice, stock receipt, cash/bank payment and remaining credit together.
-    if (openingQuantity > 0 && !part.supplier) {
-      setError('Select or add a supplier before receiving purchased stock.');
-      partFormRef.current?.querySelector('select[name="supplier"]')?.focus();
+    if (quantity > 0 && !stockSource) {
+      setError('Choose how to receive this quantity.');
+      partFormRef.current?.querySelector('[data-field="stockSource"]')?.focus();
       return;
     }
-    if (openingQuantity > 0 && !canPurchaseStock) {
+    if ((isCreditPurchase || isSupplierStep) && !canPurchaseStock) {
       setError('Receiving a purchase needs Stock Edit and Payments permissions. You may save the product with quantity 0.');
       return;
+    }
+    if ((isCreditPurchase || isSupplierStep) && !part.supplier) {
+      setError('Select or add the supplier for this purchase.');
+      partFormRef.current?.querySelector('[data-field="supplier"]')?.focus();
+      return;
+    }
+    if (isCreditPurchase && partSupplierGstin && number(part.tax) > 0) {
+      const sameState = supplierGstinStateCode(partSupplierGstin) === part.placeOfSupply;
+      const component = partGstChoice.split(':')[0];
+      if ((sameState && component === 'igst') ||
+          (!sameState && ['cgst', 'sgst'].includes(component))) {
+        setError('Choose a GST component that matches the supplier state and place of supply.');
+        partFormRef.current?.querySelector('[data-field="partTax"]')?.focus();
+        return;
+      }
     }
     setSaving(true);
     setError('');
     try {
       const created = await stockCatalogService.createItem({
-        ...part, onHand: 0, reserved: 0, reorderLevel: number(part.minimumStock),
+        ...part, reserved: 0, reorderLevel: number(part.minimumStock),
         costPrice: number(part.costPrice), sellingPrice: number(part.sellingPrice),
         tax: Number(part.tax), zeroTaxClassification: Number(part.tax) === 0 ? part.zeroTaxClassification : '',
         hsnCode: part.hsnCode.trim(),
         minimumStock: number(part.minimumStock),
-        stockQuantity: 0,
+        stockQuantity: stockSource === 'opening' ? quantity : 0,
+        requestKey: stockSource === 'opening' || isCreditPurchase ? part.requestKey : '',
+        ...(isCreditPurchase ? { purchase: {
+          quantity: quantityText, invoiceNumber: part.invoiceNumber.trim(), invoiceDate: part.invoiceDate,
+          placeOfSupply: partSupplierGstin ? part.placeOfSupply : undefined,
+        } } : {}),
       });
       setPartOpen(false);
       setPart(initialPart);
       setPartLookup('');
       setPartMode('find');
-      setSuccess(openingQuantity > 0
-        ? 'Part saved. Continue to the supplier purchase form and Post the bill to receive stock.'
-        : 'Part saved to catalogue with zero stock. No purchase or supplier debt was recorded.');
-      if (openingQuantity > 0 && part.supplier && created?.id) {
+      if (isSupplierStep && created?.id) {
         navigate('/suppliers/' + encodeURIComponent(part.supplier) + '#supplier-purchase-form', {
           state: {
             purchasePrefill: {
-              itemId: String(created.id), quantity: String(openingQuantity || 1),
+              itemId: String(created.id), quantity: quantityText,
               purchaseRate: String(part.costPrice),
               supplierId: String(part.supplier),
             },
@@ -474,13 +497,17 @@ export default function StockEasyPage() {
         });
         return;
       }
+      setSuccess(stockSource
+        ? 'Part saved. ' + quantity + ' ' + part.unit + ' added to available stock.'
+        : 'Part saved.');
       await reload();
     } catch (exception) {
       const details = exception?.response?.data || exception?.data || {};
       if (typeof details === 'object' && details && !Array.isArray(details)) {
         const next = {};
         for (const [name, value] of Object.entries(details)) {
-          const fieldName = name === 'onHand' || name === 'on_hand' ? 'stockQuantity' : name;
+          const fieldName = ['onHand', 'on_hand', 'quantity'].includes(name) ? 'stockQuantity' :
+            name === 'supplierId' ? 'supplier' : name;
           next[fieldName] = Array.isArray(value) ? value[0] : String(value);
         }
         setPartErrors(next);
@@ -700,7 +727,10 @@ export default function StockEasyPage() {
               const exists = matchingParts.some((item) =>
                 (item.partName || item.name || '').toLowerCase() === partLookup.trim().toLowerCase());
               if (exists) { setError('This part already exists. Select it from the list above.'); return; }
-              setError(''); setPart({ ...initialPart, supplier: supplierId, partName: partLookup.trim() }); setPartMode('new');
+              setError('');
+              setPart({ ...initialPart, supplier: supplierId, partName: partLookup.trim(),
+                requestKey: inventoryRequestKey(), invoiceDate: localDate() });
+              setPartMode('new');
             }}><Plus size={17}/> Add as New Product</button>
             {error && <p className="cg-easy-alert" role="alert">{error}</p>}
           </div>
@@ -716,7 +746,9 @@ export default function StockEasyPage() {
               {partErrors.partNumber && <p className="cg-easy-alert" role="alert">{partErrors.partNumber}</p>}
             </div>
             <div className="cg-easy-option-field">
-              <OutlinedSelect label="Supplier" value={part.supplier} onChange={(e) => setPart({ ...part, supplier: e.target.value })}>
+              <OutlinedSelect label="Supplier" data-field="supplier" value={part.supplier}
+                required={isCreditPurchase || isSupplierStep}
+                onChange={e => setPart({ ...part, supplier: e.target.value, placeOfSupply: '' })}>
                 <option value="">No supplier selected</option>
                 {suppliers.filter(x => x.is_active !== false).map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
               </OutlinedSelect>
@@ -791,7 +823,7 @@ export default function StockEasyPage() {
               </div>
             </div>}
             <div className="cg-easy-fields">
-              <OutlinedSelect label="GST Component / Rate *" value={partGstChoice}
+              <OutlinedSelect label="GST Component / Rate *" data-field="partTax" value={partGstChoice}
                 onChange={e => {
                   const choice = e.target.value;
                   const tax = choice === 'none' ? '0' :
@@ -806,14 +838,14 @@ export default function StockEasyPage() {
                 ))}
                 <option value="custom">Saved/Other HSN-Specific Rate (custom %)</option>
               </OutlinedSelect>
-              <OutlinedInput label="Purchase Quantity (Supplier Step)" type="number" min="0" step="0.01"
+              <OutlinedInput label="Purchase / Opening Quantity" type="number" min="0" max="1000000" step="0.01"
                 inputMode="decimal" data-field="stockQuantity" aria-invalid={Boolean(partErrors.stockQuantity)}
                 value={part.stockQuantity} onChange={e => {
                   setPart({ ...part, stockQuantity: e.target.value });
                   setPartErrors(previous => ({ ...previous, stockQuantity: '' }));
                 }} onInvalid={event => {
                   event.preventDefault();
-                  const message = 'Opening stock quantity must be nonnegative with up to two decimal places.';
+                  const message = 'Enter a quantity from 0 to 1,000,000 with up to two decimal places.';
                   setPartErrors(previous => ({ ...previous, stockQuantity: message }));
                   setError(message);
                   event.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -821,6 +853,33 @@ export default function StockEasyPage() {
                 }}/>
               {partErrors.stockQuantity && <p className="cg-easy-alert" role="alert">{partErrors.stockQuantity}</p>}
             </div>
+            {number(part.stockQuantity) > 0 && (
+              <OutlinedSelect label="Stock Source *" aria-label="Stock Source" data-field="stockSource"
+                required value={part.stockSource} onChange={e => {
+                  setPart({ ...part, stockSource: e.target.value });
+                  setError('');
+                }}>
+                <option value="">Choose stock source</option>
+                <option value="opening">Opening Stock (already on hand)</option>
+                {canPurchaseStock && <option value="credit">Supplier Purchase on Credit</option>}
+                {canPurchaseStock && <option value="supplier">Supplier Purchase with Cash / Bank</option>}
+              </OutlinedSelect>
+            )}
+            {isCreditPurchase && (
+              <div className="cg-easy-fields">
+                <OutlinedInput label="Supplier Invoice Number *" data-field="invoiceNumber" required maxLength={100}
+                  value={part.invoiceNumber} onChange={e => setPart({ ...part, invoiceNumber: e.target.value })}/>
+                <OutlinedInput label="Supplier Invoice Date *" data-field="invoiceDate" required type="date"
+                  value={part.invoiceDate} onChange={e => setPart({ ...part, invoiceDate: e.target.value })}/>
+                {partSupplierGstin && (
+                  <OutlinedSelect label="Place of Supply *" data-field="placeOfSupply" aria-label="Place of Supply" required
+                    value={part.placeOfSupply} onChange={e => setPart({ ...part, placeOfSupply: e.target.value })}>
+                    <option value="">Select state</option>
+                    {INDIA_STATES.map(([code, name]) => <option value={code} key={code}>{name}</option>)}
+                  </OutlinedSelect>
+                )}
+              </div>
+            )}
             {partGstChoice === 'custom' &&
               <OutlinedInput label="Custom GST Rate (%)" type="number" min="0" max="100" step="0.01" required
                 value={part.tax} onChange={e => {
@@ -866,12 +925,13 @@ export default function StockEasyPage() {
               <RackCombobox value={part.location} suggestions={rackLocations}
                 onChange={location => setPart(previous => ({ ...previous, location }))}/>
             </div>
-            <p className="cg-easy-hint cg-easy-part-guidance">
-              Choose a Supplier first. Saving adds product details only; it does not add stock, debt or payment.
-              You will go straight to that Supplier page to confirm the purchase quantity,
-              GST, Cash/Bank payment and remaining credit. No separate purchase screen.
-            </p>
-            <div className="cg-easy-form-actions"><button type="button" disabled={partChoiceSaving} onClick={() => setPartOpen(false)}>Cancel</button><button type="submit" disabled={saving || Boolean(partChoice)}>{saving ? 'Saving...' : (Number(part.stockQuantity) > 0 ? 'Continue to Receive Stock' : 'Save Part')}</button></div>
+            <div className="cg-easy-form-actions">
+              <button type="button" disabled={partChoiceSaving || saving} onClick={() => setPartOpen(false)}>Cancel</button>
+              <button type="submit" disabled={saving || Boolean(partChoice)}>
+                {saving ? 'Saving…' : isSupplierStep ? 'Continue to Receive Stock' :
+                  isCreditPurchase ? 'Save & Receive on Credit' : stockSource === 'opening' ? 'Save Part & Stock' : 'Save Part'}
+              </button>
+            </div>
           </form>
         )}
       </ResponsiveModalSheet>
