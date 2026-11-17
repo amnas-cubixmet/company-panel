@@ -14,6 +14,7 @@ import { jobsMock } from '../src/mock/jobs.mock.js';
 import { invoicesMock } from '../src/mock/invoices.mock.js';
 import { paymentsMock } from '../src/mock/payments.mock.js';
 import { expensesMock } from '../src/mock/expenses.mock.js';
+import { recordReference } from '../src/utils/recordReferences.js';
 
 const port = Number(process.env.UI_TEST_PORT || 5184);
 const baseURL = `http://127.0.0.1:${port}`;
@@ -1016,7 +1017,7 @@ try {
           });
           try {
             await save.click();
-            await page.waitForURL('**/finance/expenses/' + expenseId);
+            await page.waitForURL('**/finance/expenses/' + recordReference(expenseId));
             await page.getByRole('heading', {name:'Workshop electricity',exact:true}).waitFor();
           } finally {
             await page.unroute(endpoint);
