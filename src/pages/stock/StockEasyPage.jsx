@@ -1,8 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
 import { USE_MOCK_API } from '../../api/apiConfig';
-import { AlertTriangle, Boxes, History, PackageMinus, PackagePlus, Plus, RefreshCw, Search, ShoppingCart, Wrench } from 'lucide-react';
+import { AlertTriangle, Boxes, ChevronRight, History, PackageMinus, PackagePlus, Plus, RefreshCw, Search, ShoppingCart, Wrench } from 'lucide-react';
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { stockCatalogService } from '../../services/stockCatalog.service';
 import InventoryBranchOperations from '../../components/stock/InventoryBranchOperations';
@@ -104,8 +104,55 @@ function stockState(item) {
   return { label: 'Available', tone: 'ok' };
 }
 
+function StockProductDetails({ id, canManageStock, onClose }) {
+  const validId = /^[A-Za-z0-9_-]{1,80}$/.test(id);
+  const [product, setProduct] = useState(validId ? undefined : null);
+
+  useEffect(() => {
+    if (!validId) return undefined;
+    let active = true;
+    stockCatalogService.getItem(id)
+      .then((item) => { if (active) setProduct(item); })
+      .catch(() => { if (active) setProduct(null); });
+    return () => { active = false; };
+  }, [id, validId]);
+
+  const unit = product?.unit || 'PCS';
+  const gstClassification = ZERO_GST_CLASSIFICATIONS.find(([code]) => code === product?.zeroTaxClassification)?.[1];
+  const fields = product && [
+    ['Available Stock', `${product.available} ${unit}`],
+    ['Stock Status', stockState(product).label],
+    ['Minimum Stock', `${product.minimumStock} ${unit}`],
+    ['Rack / Storage Location', product.location || product.rack],
+    ['SKU', product.sku],
+    ['Part Number', product.partNumber],
+    ['Brand', product.brand],
+    ['Category', product.categoryName || (USE_MOCK_API && product.category)],
+    ['Supplier', product.supplierName || (USE_MOCK_API && product.supplier)],
+    ['Selling Price', cash(product.sellingPrice)],
+    ['Purchase Price', canManageStock ? cash(product.costPrice) : 'Restricted'],
+    ['GST Rate', gstClassification && !product.tax ? `0% · ${gstClassification}` : `${product.tax}%`],
+    ['HSN / SAC Code', product.hsnCode],
+  ];
+
+  return (
+    <ResponsiveModalSheet isOpen onClose={onClose} title={product?.partName || 'Product Details'} maxWidth="600px">
+      {product === null && <p className="cg-easy-alert" role="alert">Product details are unavailable.</p>}
+      {product === undefined && <p role="status">Loading product details…</p>}
+      {fields && (
+        <dl className="cg-stock-product-details">
+          {fields.map(([label, value]) => (
+            <div key={label}><dt>{label}</dt><dd>{value || '—'}</dd></div>
+          ))}
+        </dl>
+      )}
+    </ResponsiveModalSheet>
+  );
+}
+
 export default function StockEasyPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { can } = useFeatureAccess();
   const canManageStock = can('stock.edit');
   const canCreateStock = can('stock.create');
@@ -121,6 +168,16 @@ export default function StockEasyPage() {
   const filterValue = searchParams.get('filter') || 'all';
   const filter = ['all', 'low', 'out'].includes(filterValue) ? filterValue : 'all';
   const supplierId = searchParams.get('supplier') || '';
+  const productId = searchParams.get('product');
+  const closeProductDetails = () => {
+    if (location.state?.fromStockProductList) {
+      navigate(-1);
+      return;
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete('product');
+    setSearchParams(next, { replace: true });
+  };
   const updateQueryParam = (key, value) => {
     const next = new URLSearchParams(searchParams);
     if (!value || value === 'all') next.delete(key);
@@ -628,8 +685,19 @@ export default function StockEasyPage() {
                 <thead><tr><th scope="col">Part</th><th scope="col">Rack</th><th scope="col">Available</th><th scope="col">Cost</th><th scope="col">Selling</th><th scope="col">GST / HSN</th><th scope="col">Supplier</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead>
                 <tbody>{filtered.map((item) => {
                   const state = stockState(item);
+                  const productParams = new URLSearchParams(searchParams);
+                  productParams.set('product', item.id);
                   return <tr key={item.id}>
-                    <td data-label="Part"><strong title={item.partName || item.name}>{item.partName || item.name}</strong><small>{item.partNumber ? item.partNumber + ' · ' : ''}{item.sku}{item.brand ? ' · ' + item.brand : ''}</small></td>
+                    <td data-label="Part">
+                      <Link className="cg-stock-product-link" to={{ search: `?${productParams}` }}
+                        aria-haspopup="dialog" preventScrollReset state={{ fromStockProductList: true }}>
+                        <span>
+                          <strong>{item.partName || item.name}</strong>
+                          <small>{[item.partNumber, item.sku, item.brand].filter(Boolean).join(' · ')}</small>
+                        </span>
+                        <ChevronRight size={17} aria-hidden="true"/>
+                      </Link>
+                    </td>
                     <td data-label="Rack" title={item.location || item.rack || '—'}>{item.location || item.rack || '—'}</td>
                     <td data-label="Available">{number(item.available ?? (number(item.onHand) - number(item.reserved)))} {item.unit || 'PCS'}</td>
                     <td data-label="Cost">{canManageStock ? cash(item.costPrice) : 'Restricted'}</td>
@@ -668,6 +736,10 @@ export default function StockEasyPage() {
           <div key={entry.id} className="cg-easy-history-row"><div><strong>{entry.partName || entry.itemName || 'Stock Item'}</strong><small>{entry.type || entry.movement_type || 'Movement'}</small></div><b>{number(entry.quantity ?? entry.qty) > 0 ? '+' : ''}{number(entry.quantity ?? entry.qty)}</b></div>
         )) : <p>No stock movements yet.</p>}</div>
       </section>
+
+      {productId && (
+        <StockProductDetails key={productId} id={productId} canManageStock={canManageStock} onClose={closeProductDetails}/>
+      )}
 
       <StockPurchaseStartDialog
         isOpen={receiveOpen}
