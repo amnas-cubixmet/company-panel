@@ -293,11 +293,11 @@ try {
           await page.getByText(/Use 3–63 English letters/).waitFor();
           await field.fill('abc');
           await update.click();
-          await page.getByRole('dialog').getByRole('button',{name:'Continue'}).click();
+          await page.getByRole('alertdialog').getByRole('button',{name:'Continue'}).click();
           await page.getByRole('button',{name:'Use abc1'}).click();
           if(await field.inputValue()!=='abc1')throw Error('Available workshop address was not applied');
           await update.click();
-          await page.getByRole('dialog').getByRole('button',{name:'Continue'}).click();
+          await page.getByRole('alertdialog').getByRole('button',{name:'Continue'}).click();
           await page.getByText('https://abc1.customer.cubixgear.tech/',{exact:true}).waitFor();
         }
         // Supplier directory and Purchase History are valid navigation.
