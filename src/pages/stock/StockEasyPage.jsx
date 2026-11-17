@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import apiClient from '../../api/apiClient';
 import { USE_MOCK_API } from '../../api/apiConfig';
 import { AlertTriangle, Boxes, ChevronRight, History, PackageMinus, PackagePlus, Plus, RefreshCw, Search, ShoppingCart, Wrench } from 'lucide-react';
@@ -10,6 +10,7 @@ import StockProductLink from '../../components/stock/StockProductLink';
 import InventoryCategories from '../../components/stock/InventoryCategories';
 import { supplierService } from '../../services/supplier.service';
 import { CountryPhoneField } from '../../components/common/CountryPhoneField';
+import { stockState, ZERO_GST_CLASSIFICATIONS } from '../../utils/stockPresentation';
 import { validInternationalPhone } from '../../utils/jobCreateAdapters';
 import { supplierFinanceService } from '../../services/supplierFinance.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
@@ -89,7 +90,6 @@ const initialMove = { mode: 'in', itemId: '', quantity: '1', invoiceNo: '', note
 
 export default function StockEasyPage() {
   const navigate = useNavigate();
-  const { hash } = useLocation();
   const { can } = useFeatureAccess();
   const canManageStock = can('stock.edit');
   const canCreateStock = can('stock.create');
@@ -105,6 +105,7 @@ export default function StockEasyPage() {
   const filterValue = searchParams.get('filter') || 'all';
   const filter = ['all', 'low', 'out'].includes(filterValue) ? filterValue : 'all';
   const supplierId = searchParams.get('supplier') || '';
+  const [branchBalances, setBranchBalances] = useState(USE_MOCK_API ? [] : null);
   const updateQueryParam = (key, value) => {
     const next = new URLSearchParams(searchParams);
     if (!value || value === 'all') next.delete(key);

@@ -195,7 +195,7 @@ export function AppBreadcrumbs() {
     if (segments.length === 3 && segments[0] === 'stock' && segments[1] === 'products') {
       return [
         { label: 'Home', href: homePath, current: false, home: true },
-        { label: 'Inventory', href: createPath(stockInventoryLocation(location.search)), current: false },
+        { label: LABELS.stock, href: '/stock', current: false },
         { label: 'Product Details', href: location.pathname, current: true },
       ];
     }

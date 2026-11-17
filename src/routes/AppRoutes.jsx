@@ -7,6 +7,7 @@ import { useAuth } from '../hooks/useAuth';
 import { getStaffLandingPath } from '../utils/staffLanding';
 import { isStockProductId, stockInventoryLocation, stockProductLocation } from '../utils/stockProductRoutes';
 import { ProtectedRoute } from './ProtectedRoute';
+import { stockProductRoute } from '../utils/stockProductRoute';
 
 const CreditWorkspace = lazyPage(() => import('../pages/saas/CreditWorkspace'), 'CreditWorkspace');
 
@@ -62,7 +63,17 @@ const JobDetails = lazyPage(() => import('../pages/jobs/JobDetails'), 'JobDetail
 const JobStatus = lazyPage(() => import('../pages/jobs/JobStatus'), 'JobStatus');
 const JobReports = lazyPage(() => import('../pages/jobs/JobReports'), 'JobReports');
 const StockEasyPage = lazyPage(() => import('../pages/stock/StockEasyPage'), 'default');
-const StockProductDetailsPage = lazyPage(() => import('../pages/stock/StockProductDetailsPage'), 'default');
+const StockProductPage = lazyPage(() => import('../pages/stock/StockProductPage'), 'default');
+
+function StockIndexRoute() {
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
+  const productId = params.get('product');
+  return productId
+    ? <Navigate to={stockProductRoute(productId, params.get('productBranch'), search)} replace />
+    : <StockEasyPage />;
+}
+
 const SuppliersPage = lazyPage(() => import('../pages/suppliers/SuppliersPage'), 'default');
 const InvoiceList = lazyPage(() => import('../pages/invoices/InvoiceList'), 'InvoiceList');
 const EWayBillPage = lazyPage(() => import('../pages/invoices/EWayBillPage'), 'EWayBillPage');
@@ -249,8 +260,8 @@ export const AppRoutes = () => (
       <Route path="/suppliers/purchases" element={<SuppliersPage section="purchases" />} />
       <Route path="/suppliers/payments" element={<LegacySupplierRouteRedirect />} />
       <Route path="/suppliers/:id" element={<SuppliersPage />} />
-      <Route path="/stock" element={<StockInventoryRoute />} />
-      <Route path="/stock/products/:productId" element={<StockProductDetailsPage />} />
+      <Route path="/stock" element={<StockIndexRoute />} />
+      <Route path="/stock/products/:id" element={<StockProductPage />} />
       <Route path="/stock/suppliers" element={<LegacySupplierRouteRedirect />} />
       <Route path="/stock/*" element={<Navigate to="/stock" replace />} />
 
