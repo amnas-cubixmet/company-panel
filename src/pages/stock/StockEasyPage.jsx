@@ -6,6 +6,7 @@ import { AlertTriangle, Boxes, ChevronRight, History, PackageMinus, PackagePlus,
 import { ResponsiveModalSheet } from '../../components/common/ResponsiveModalSheet';
 import { stockCatalogService } from '../../services/stockCatalog.service';
 import InventoryBranchOperations from '../../components/stock/InventoryBranchOperations';
+import StockProductLink from '../../components/stock/StockProductLink';
 import InventoryCategories from '../../components/stock/InventoryCategories';
 import { supplierService } from '../../services/supplier.service';
 import { CountryPhoneField } from '../../components/common/CountryPhoneField';
@@ -104,7 +105,7 @@ function stockState(item) {
   return { label: 'Available', tone: 'ok' };
 }
 
-function StockProductDetails({ id, canManageStock, onClose }) {
+function StockProductDetails({ id, branchId, branchBalance, canManageStock, onClose }) {
   const validId = /^[A-Za-z0-9_-]{1,80}$/.test(id);
   const [product, setProduct] = useState(validId ? undefined : null);
 
@@ -118,10 +119,19 @@ function StockProductDetails({ id, canManageStock, onClose }) {
   }, [id, validId]);
 
   const unit = product?.unit || 'PCS';
+  const stock = branchId ? branchBalance : product;
+  const stockLabel = stock && stockState({ available: stock.available, minimumStock: product?.minimumStock }).label;
   const gstClassification = ZERO_GST_CLASSIFICATIONS.find(([code]) => code === product?.zeroTaxClassification)?.[1];
   const fields = product && [
-    ['Available Stock', `${product.available} ${unit}`],
-    ['Stock Status', stockState(product).label],
+    ...(branchBalance ? [
+      ['Branch', branchBalance.branchName],
+      ['On Hand', `${number(branchBalance.onHand)} ${unit}`],
+      ['Reserved', `${number(branchBalance.reserved)} ${unit}`],
+    ] : []),
+    ...(stock ? [
+      ['Available Stock', `${number(stock.available)} ${unit}`],
+      ['Stock Status', stockLabel],
+    ] : []),
     ['Minimum Stock', `${product.minimumStock} ${unit}`],
     ['Rack / Storage Location', product.location || product.rack],
     ['SKU', product.sku],
@@ -139,6 +149,8 @@ function StockProductDetails({ id, canManageStock, onClose }) {
     <ResponsiveModalSheet isOpen onClose={onClose} title={product?.partName || 'Product Details'} maxWidth="600px">
       {product === null && <p className="cg-easy-alert" role="alert">Product details are unavailable.</p>}
       {product === undefined && <p role="status">Loading product details…</p>}
+      {product && branchId && branchBalance === undefined && <p role="status">Loading branch stock…</p>}
+      {product && branchId && branchBalance === null && <p className="cg-easy-alert" role="alert">Branch stock is unavailable.</p>}
       {fields && (
         <dl className="cg-stock-product-details">
           {fields.map(([label, value]) => (
@@ -169,6 +181,11 @@ export default function StockEasyPage() {
   const filter = ['all', 'low', 'out'].includes(filterValue) ? filterValue : 'all';
   const supplierId = searchParams.get('supplier') || '';
   const productId = searchParams.get('product');
+  const productBranchId = searchParams.get('productBranch');
+  const [branchBalances, setBranchBalances] = useState(USE_MOCK_API ? [] : null);
+  const branchBalance = productBranchId && branchBalances
+    ? branchBalances.find(row => row.itemId === productId && row.branchId === productBranchId) ?? null
+    : undefined;
   const closeProductDetails = () => {
     if (location.state?.fromStockProductList) {
       navigate(-1);
@@ -176,6 +193,7 @@ export default function StockEasyPage() {
     }
     const next = new URLSearchParams(searchParams);
     next.delete('product');
+    next.delete('productBranch');
     setSearchParams(next, { replace: true });
   };
   const updateQueryParam = (key, value) => {
@@ -662,7 +680,7 @@ export default function StockEasyPage() {
         stockValue={totalValue}
       />
 
-      <InventoryBranchOperations onChanged={reload}/>
+      <InventoryBranchOperations balances={branchBalances ?? undefined} onBalancesChange={setBranchBalances} onChanged={reload}/>
       <InventoryCategories categories={categories} loadError={categoryLoadError} onCreate={createCategory}/>
 
       <section className="cg-easy-panel">
@@ -685,18 +703,15 @@ export default function StockEasyPage() {
                 <thead><tr><th scope="col">Part</th><th scope="col">Rack</th><th scope="col">Available</th><th scope="col">Cost</th><th scope="col">Selling</th><th scope="col">GST / HSN</th><th scope="col">Supplier</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead>
                 <tbody>{filtered.map((item) => {
                   const state = stockState(item);
-                  const productParams = new URLSearchParams(searchParams);
-                  productParams.set('product', item.id);
                   return <tr key={item.id}>
                     <td data-label="Part">
-                      <Link className="cg-stock-product-link" to={{ search: `?${productParams}` }}
-                        aria-haspopup="dialog" preventScrollReset state={{ fromStockProductList: true }}>
+                      <StockProductLink itemId={item.id}>
                         <span>
                           <strong>{item.partName || item.name}</strong>
                           <small>{[item.partNumber, item.sku, item.brand].filter(Boolean).join(' · ')}</small>
                         </span>
                         <ChevronRight size={17} aria-hidden="true"/>
-                      </Link>
+                      </StockProductLink>
                     </td>
                     <td data-label="Rack" title={item.location || item.rack || '—'}>{item.location || item.rack || '—'}</td>
                     <td data-label="Available">{number(item.available ?? (number(item.onHand) - number(item.reserved)))} {item.unit || 'PCS'}</td>
@@ -738,7 +753,8 @@ export default function StockEasyPage() {
       </section>
 
       {productId && (
-        <StockProductDetails key={productId} id={productId} canManageStock={canManageStock} onClose={closeProductDetails}/>
+        <StockProductDetails key={productId} id={productId} branchId={productBranchId}
+          branchBalance={branchBalance} canManageStock={canManageStock} onClose={closeProductDetails}/>
       )}
 
       <StockPurchaseStartDialog
