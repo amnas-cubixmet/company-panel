@@ -34,7 +34,9 @@ document.addEventListener('change', () => { edited = true; }, true);
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (state.applying) window.location.reload();
+    const reload = state.applying;
+    publish({ update: null, applying: false });
+    if (reload) window.location.reload();
   });
   navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(registration => {
     const detect = () => {
