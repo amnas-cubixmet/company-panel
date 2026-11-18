@@ -172,7 +172,7 @@ export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPubl
       <div className="vehicle-camera-heading">
         <h3><Camera size={18} aria-hidden="true"/> Vehicle Photo Gallery</h3>
         {canEdit && <div className="vehicle-photo-add-actions">
-          <LiveVehicleCamera onCapture={capture} disabled={uploading} count={photos.length} buttonLabel="Live Camera"/>
+          <LiveVehicleCamera onCapture={capture} disabled={uploading} count={photos.length}/>
           <label className="vehicle-gallery-upload-label">
             <UploadCloud size={17} aria-hidden="true"/> Upload Photos
             <input type="file" accept="image/jpeg,image/png,image/webp" multiple

@@ -82,6 +82,7 @@
 @media(max-width:650px){
   .vehicle-photo-gallery .vehicle-photo-add-actions{width:100%}
   .vehicle-photo-gallery .vehicle-photo-add-actions>*{flex:1 1 130px;min-width:0}
+  .vehicle-photo-gallery .vehicle-photo-add-actions .live-camera-trigger{gap:6px;padding-inline:8px;font-size:14px}
   .vehicle-photo-gallery .vehicle-gallery-upload-metadata{
     grid-template-columns:repeat(auto-fit,minmax(min(100%,162px),1fr))
   }
