@@ -147,6 +147,8 @@
 .cg-staff-management .roles-legacy-review { padding: 12px 14px; gap: 10px; }
 .cg-staff-management .roles-legacy-review p { font-size: 13px; }
 
+.cg-staff-management .roles-primary-button:disabled { opacity: .55; cursor: not-allowed; }
+
 /* Small, focused role editor. Works when rendered in a portal outside the staff page. */
 .role-editor-simple { display: flex; flex-direction: column; gap: 14px; padding-bottom: 4px; }
 .role-editor-simple .role-editor-card,

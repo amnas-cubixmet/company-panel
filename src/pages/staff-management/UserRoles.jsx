@@ -68,7 +68,7 @@ export const UserRoles = () => {
   }, []);
 
   const handleOpenAdd = () => {
-    if (!isCompanyOwner) return;
+    if (!isCompanyOwner || saving) return;
     setEditingRole(null);
     setFormData(createInitialForm());
     setError('');
@@ -76,7 +76,7 @@ export const UserRoles = () => {
   };
 
   const handleOpenEdit = (role) => {
-    if (!isCompanyOwner) return;
+    if (!isCompanyOwner || saving) return;
     setEditingRole(role);
     setError('');
     setFormData({
@@ -222,7 +222,7 @@ export const UserRoles = () => {
       {error && !isModalOpen && <div className="roles-dashboard-error">{error}</div>}
       {cleanupError && <div className="roles-dashboard-error" role="alert">{cleanupError}</div>}
 
-      <RolesHeader onAdd={handleOpenAdd} canManage={isCompanyOwner} />
+      <RolesHeader onAdd={handleOpenAdd} canManage={isCompanyOwner} saving={saving} />
       {!isCompanyOwner && (
         <p role="note" className="roles-dashboard-info">
           Only the company owner can create, edit or delete Roles & Permissions.
