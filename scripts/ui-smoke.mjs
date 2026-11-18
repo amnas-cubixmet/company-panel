@@ -1631,6 +1631,16 @@ try {
           }
         }
 
+        if(/^\/jobs\/JOB-00251\/(overview|inspection|estimate|work|qc)$/.test(path) && profile.width<=820){
+          const stages=page.getByRole('navigation',{name:'Main Job Card stages'});
+          const stageLayout=await stages.evaluate(node=>({
+            fits: node.scrollWidth<=node.clientWidth+1,
+            targets: [...node.querySelectorAll('button')].map(button=>button.getBoundingClientRect().height),
+            headerHeight: node.closest('.cg-job-detail').querySelector('.job-detail-header > div:first-child').getBoundingClientRect().height,
+          }));
+          if(!stageLayout.fits || stageLayout.targets.some(height=>height<44) || (profile.width<=767 && stageLayout.headerHeight>=145))
+            throw Error('Job Card stages must fit and remain tappable '+JSON.stringify(stageLayout));
+        }
         if(/^\/jobs\/JOB-00251\/(overview|inspection|estimate|work)$/.test(path)){
           const metrics=await page.evaluate(()=>{
             const roots=[...document.querySelectorAll(
