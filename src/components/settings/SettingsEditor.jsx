@@ -84,7 +84,7 @@ export const SettingsEditor = ({
               <span>{label}</span>
               {key === 'defaultTaxRate' ? (
                 <GstRateDropdown id={inputId} value={value}
-                  selectLabel="Default GST Rate (%)" disabled={saving}
+                  selectLabel="Default GST Rate (%)" disabled={saving} showTotal={false}
                   onChange={rate => onUpdate(key, rate === '' ? '' : Number(rate))}/>
               ) : type === 'select' ? (
                 <select id={inputId} value={value} disabled={saving} {...errorProps} onChange={(e) => onUpdate(key, e.target.value)}>
