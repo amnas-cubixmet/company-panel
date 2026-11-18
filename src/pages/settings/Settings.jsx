@@ -1,7 +1,7 @@
 import { InstallAppControls, InventorySyncControls } from '../../pwa/AppControls';
 import { useOffline } from '../../pwa/connectivity';
 import { useContext, useEffect, useMemo, useState } from "react";
-import { Bell, Boxes, Building2, Clock3, CreditCard, Plug, ShieldCheck, WalletCards } from 'lucide-react';
+import { Bell, Boxes, Building2, Clock3, CreditCard, ShieldCheck, WalletCards } from 'lucide-react';
 import { ThemeContext } from '../../context/ThemeContext';
 import { settingsService } from '../../services/settings.service';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -193,13 +193,6 @@ export const Settings = () => {
   return (
     <div className="settings-page">
       {appControls}
-      {(can('settings.manage') || can('company.manage')) && (
-        <button type="button" className="settings-primary-button"
-          style={{ alignSelf: 'flex-start', minHeight: '44px', marginBottom: '12px' }}
-          onClick={() => navigate('/settings/whatsapp')}>
-          <Plug size={16} aria-hidden="true"/> Manual WhatsApp Sharing
-        </button>
-      )}
       <SettingsHeader
         saving={saving}
         disabled={!dirty}
