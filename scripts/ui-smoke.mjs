@@ -36,6 +36,10 @@ const financeFixtureEntry = { id:financeFixtureId, date:'2026-11-16', account:'C
 const bundles = [
   {id:null,key:'customers',name:'Customers',features:[{key:'customers',label:'Customers'}],perUserCredits:'0.00',totalCredits:'0.00',billingType:'monthly',purchaseEnabled:false,purchaseDisabledReason:'MODULE_PRICE_NOT_SET'},
   {id:'jobs',name:'Jobs',features:[{key:'jobs',label:'Jobs'}],perUserCredits:'20.00',totalCredits:'20.00',billingType:'monthly',purchaseEnabled:true},
+  {id:71,key:'workflow-accounts_tax',name:'Accounts & Tax',features:[{key:'accounts_tax',label:'Accounts & Tax'}],
+    includedModules:['Payments','Expenses','Finance','GST','Reports'],perUserCredits:'5.00',totalCredits:'5.00',billingType:'monthly',purchaseEnabled:true},
+  {id:72,key:'workflow-business_insights',name:'Reports & Analytics',features:[{key:'business_insights',label:'Reports & Analytics'}],
+    perUserCredits:'4.00',totalCredits:'4.00',billingType:'monthly',active:true,purchaseEnabled:false,purchaseDisabledReason:'REPORTS_IN_ACCOUNTS_TAX'},
 ];
 function fixture(path) {
   if(path==='/auth/me') return user;
@@ -604,6 +608,13 @@ try {
         }
         if(path==='/account') {
           // /account renders CreditWorkspace, not the legacy AccountOverview component.
+          const marketplace=page.getByRole('region',{name:'Available modules'});
+          const accounts=marketplace.getByRole('article').filter({has:page.getByRole('heading',{name:'Accounts & Tax',exact:true})});
+          await accounts.getByText('Reports',{exact:true}).waitFor();
+          if(await marketplace.getByRole('heading',{name:'Reports & Analytics',exact:true}).count()) {
+            throw Error('Reports should be listed under Accounts & Tax without a separate pricing card');
+          }
+          await marketplace.getByRole('button',{name:'Switch off previous Reports access',exact:true}).waitFor();
           const stats=page.locator('.cg-credit-page .cg-credit-metrics article');
           await stats.first().waitFor({state:'visible',timeout:15000});
           if(await stats.count()!==3)
