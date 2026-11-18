@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Save, SlidersHorizontal } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { RolePermissionMatrix } from './RolePermissionMatrix';
 import { clearFieldValidation } from '../../utils/formValidation';
 import { buildRoleAccessPreset } from '../../config/rolePermissions';
 
 export const RoleEditorForm = ({
+  id,
   editingRole,
   formData,
   setFormData,
   modules,
-  saving,
   onSubmit,
-  onCancel,
   onPermissionToggle,
   onToggleModule,
   error,
@@ -59,7 +58,7 @@ export const RoleEditorForm = ({
   };
 
   return (
-    <form className="role-editor-form role-editor-simple" noValidate onSubmit={onSubmit}
+    <form id={id} className="role-editor-form role-editor-simple" noValidate onSubmit={onSubmit}
       onChange={event => clearFieldValidation(event.target)}>
       {error && <div className="staff-directory-message is-error" role="alert">{error}</div>}
       <section className="role-editor-card">
@@ -81,29 +80,26 @@ export const RoleEditorForm = ({
           </label>
         </div>
       </section>
-      <fieldset className="role-quick-presets" disabled={protectedRole}>
-        <legend>Access level</legend>
-        <div className="role-preset-options">
-          {[
-            { id: 'viewer', label: 'View only', help: 'Basic workshop pages, no finance or payroll' },
-            { id: 'standard', label: 'Standard access', help: 'Manage customers, vehicles and jobs' },
-            { id: 'custom', label: 'Custom', help: 'Choose permissions yourself' },
-          ].map(item => (
-            <label key={item.id} className={mode === item.id ? 'is-selected' : ''}>
-              <input type="radio" name="role-access-mode" checked={mode === item.id}
-                onChange={() => setPreset(item.id)} />
-              <span><strong>{item.label}</strong><small>{item.help}</small></span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
-      <p className="sr-only">Branch-specific restrictions are not available yet. Paid modules still require activation and permissions.</p>
+      {!protectedRole && (
+        <label className="role-editor-field">
+          <span id={`${id}-access-label`}>Access level</span>
+          <select value={mode} onChange={event => setPreset(event.target.value)}
+            aria-labelledby={`${id}-access-label`}
+            aria-describedby={mode === 'standard' ? `${id}-access-hint` : undefined}>
+            <option value="custom">Custom permissions</option>
+            <option value="viewer">View only</option>
+            <option value="standard">Workshop access</option>
+          </select>
+          {mode === 'standard' && (
+            <small id={`${id}-access-hint`} className="role-access-hint">For customer, vehicle and job card work, with personal attendance where available.</small>
+          )}
+        </label>
+      )}
       <section className="role-permission-choice">
         <button type="button" className="role-permission-expand" aria-expanded={advanced}
           aria-controls="role-permission-details" onClick={() => setAdvanced(value => !value)}>
-          <span><SlidersHorizontal size={16} aria-hidden="true" /> Permissions
-            <small>{selected} selected</small></span>
-          <span>{advanced ? 'Hide' : 'Customize'}</span>
+          <span>{advanced ? 'Hide permissions' : 'Show permissions'}</span>
+          <span><small>{selected} selected</small><ChevronDown size={16} aria-hidden="true" /></span>
         </button>
         {advanced && (
           <div id="role-permission-details">
@@ -113,13 +109,6 @@ export const RoleEditorForm = ({
           </div>
         )}
       </section>
-      <footer className="role-editor-actions">
-        <button type="button" onClick={onCancel}>Cancel</button>
-        <button type="submit" className="is-primary" disabled={saving || protectedRole}>
-          <Save size={15} aria-hidden="true" />
-          {protectedRole ? 'Protected Role' : saving ? 'Saving…' : editingRole ? 'Save Changes' : 'Create Role'}
-        </button>
-      </footer>
     </form>
   );
 };
