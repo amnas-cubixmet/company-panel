@@ -2284,6 +2284,19 @@ try {
           if(!metrics.scrollArea || !metrics.bodyRows) {
             throw Error('Payroll fixture data table not rendered '+path+': '+JSON.stringify(metrics));
           }
+          if(path==='/payroll/daily-wages' && [320,390,1440].includes(profile.width)) {
+            await page.getByRole('button',{name:'Wage Account',exact:true}).first().click();
+            const sheet=page.getByRole('dialog',{name:/^Wage Forms/});
+            const actions=sheet.getByRole('group',{name:'Wage forms'});
+            await actions.getByRole('button',{name:'Wage Rate',exact:true}).waitFor();
+            if(await actions.getByRole('button').count()!==5) throw Error('Wage forms sheet is missing payroll actions.');
+            await actions.getByRole('button',{name:'Payment',exact:true}).click();
+            await sheet.getByLabel('Pay Amount (₹)').waitFor();
+            await sheet.getByRole('button',{name:'Cancel',exact:true}).click();
+            await sheet.waitFor({state:'hidden'});
+            await page.getByRole('navigation',{name:'Payroll navigation'}).getByRole('link',{name:'Daily Wages',exact:true}).click();
+            await page.getByRole('button',{name:'Wage Account',exact:true}).first().waitFor();
+          }
         }
 
         if(path==='/vehicles' || /^\/vehicles\/[^/]+$/.test(path)) {
