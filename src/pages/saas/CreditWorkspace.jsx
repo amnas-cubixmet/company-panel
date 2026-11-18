@@ -456,7 +456,7 @@ export function CreditWorkspace({ section = 'overview' }) {
               <p className="cg-bundle-workflow">
                 <strong>Works with:</strong> {bundle.workflowDependencies.map(key => ({
                   workshop_operations: 'Workshop Operations', accounts_tax: 'Accounts & Tax',
-                  attendance_payroll: 'Attendance & Payroll', business_insights: 'Reports & Analytics',
+                  attendance_payroll: 'Attendance & Payroll',
                 }[key] || key.replaceAll('_',' '))).join(', ')}
               </p>
             )}
@@ -486,7 +486,7 @@ export function CreditWorkspace({ section = 'overview' }) {
                 onClick={() => buyBundle(bundle)}>
                 {purchaseRetryAt > Date.now() ? 'Temporarily rate limited'
                  : busy === `bundle:${bundle.id}` ? 'Saving…'
-                  : !status.allow && !bundle.active ? status.label
+                  : !status.allow && (!bundle.active || bundle.purchaseDisabledReason === 'REPORTS_IN_ACCOUNTS_TAX') ? status.label
                   : bundle.billingType === 'permanent' && bundle.active ? 'Owned permanently'
                   : bundle.purchaseDisabledReason === 'FREE_MODULES_ONLY' ? 'Included Free'
                   : bundle.billingMode === 'monthly_postpaid' ? (bundle.active ? 'Active · usage metered' : 'Switch ON · pay next month') : bundle.canResume ? 'Switch On' : bundle.active ? 'Extend access' : 'Activate access'}
