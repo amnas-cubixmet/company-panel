@@ -39,24 +39,24 @@ function PrivateVehiclePhoto({ photo, canEdit, onVisibility }) {
 
   return (
     <figure className="vehicle-photo-card">
-      <span className={'vehicle-photo-visibility-badge ' + (photo.published ? 'is-published' : 'is-private')}>
+      {!canEdit && <span className={'vehicle-photo-visibility-badge ' + (photo.published ? 'is-published' : 'is-private')}>
         {photo.published ? <Eye size={13} aria-hidden="true"/> : <EyeOff size={13} aria-hidden="true"/>}
-        {photo.published ? 'Published to Customer' : 'Private'}
-      </span>
+        {photo.published ? 'Published' : 'Private'}
+      </span>}
       {url ? <a href={url} target="_blank" rel="noopener noreferrer" aria-label="Open vehicle photo">
         <img src={url} alt={photo.caption || photo.category} loading="lazy" />
       </a> : <p role="status">{error || 'Loading photo…'}</p>}
       <figcaption>
         <strong>{photo.category} · {photo.phase}</strong>
-        <small>{photo.caption || 'Inspection photo'}</small>
-        <small>{photo.capturedAt ? new Date(photo.capturedAt).toLocaleString() : ''}</small>
+        {photo.caption && <small>{photo.caption}</small>}
+        {photo.capturedAt && <small>{new Date(photo.capturedAt).toLocaleString()}</small>}
       </figcaption>
       {canEdit && <label className="vehicle-photo-visibility">
         <input type="checkbox" checked={Boolean(photo.published)} disabled={saving}
           onChange={updateVisibility} aria-label={photo.published
-            ? 'Unpublish photo from customer portal' : 'Publish photo to customer portal'}/>
-        {saving ? 'Updating visibility…' : photo.published
-          ? 'Published to Customer' : 'Publish to Customer'}
+            ? 'Published. Unpublish photo from customer portal'
+            : 'Private. Publish photo to customer portal'}/>
+        <span role="status">{saving ? 'Updating…' : photo.published ? 'Published' : 'Private'}</span>
       </label>}
       {error && <p className="vehicle-photo-gallery-error" role="alert">{error}</p>}
     </figure>
@@ -169,10 +169,7 @@ export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPubl
   return (
     <section className="vehicle-photo-gallery" aria-label="Vehicle inspection photos">
       <div className="vehicle-camera-heading">
-        <div><h3><Camera size={18}/> Vehicle Photo Gallery</h3>
-          <p>{canPublish
-            ? 'New photos are published to this customer’s secure portal by default. Turn publishing off before uploading to save them privately.'
-            : 'Only authorized workshop staff can publish photos to the customer portal.'}</p></div>
+        <h3><Camera size={18} aria-hidden="true"/> Vehicle Photo Gallery</h3>
         {canEdit && <div className="vehicle-photo-add-actions">
           <LiveVehicleCamera onCapture={capture} disabled={uploading} count={photos.length}/>
           <label className="vehicle-gallery-upload-label">
@@ -184,7 +181,7 @@ export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPubl
         </div>}
       </div>
       {canEdit && <div className="vehicle-gallery-upload-metadata" aria-label="Photo upload details">
-        <label>Photo Category
+        <label>Category
           <select value={category} onChange={event => setCategory(event.target.value)} disabled={uploading}>
             <option value="additional">Additional Photo</option>
             <option value="front">Front View</option><option value="rear">Rear View</option>
@@ -194,22 +191,21 @@ export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPubl
             <option value="damage">Existing Damage</option>
           </select>
         </label>
-        <label>Service Phase
+        <label>Service phase
           <select value={phase} onChange={event => setPhase(event.target.value)} disabled={uploading}>
             <option value="before">Before Service</option>
             <option value="progress">Work in Progress</option>
             <option value="after">After Service</option>
           </select>
         </label>
-        <label>Caption (optional)
+        <label className="vehicle-photo-upload-caption">Caption (optional)
           <input value={caption} maxLength={255} disabled={uploading}
-            onChange={event => setCaption(event.target.value)}
-            placeholder="Describe vehicle photo"/>
+            onChange={event => setCaption(event.target.value)}/>
         </label>
         {canPublish && <label className="vehicle-photo-upload-publish">
           <input type="checkbox" checked={publishNewPhotos} disabled={uploading}
             onChange={event => setPublishNewPhotos(event.target.checked)}/>
-          <span>{publishNewPhotos ? 'Published to Customer' : 'Save privately'}</span>
+          <span>Publish new photos to customer portal</span>
         </label>}
       </div>}
       {uploadProgress && <p className="vehicle-photo-gallery-progress" role="status">{uploadProgress}</p>}
@@ -218,21 +214,16 @@ export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPubl
         {error} <button type="button" onClick={load}>Retry loading</button>
       </div>}
       <div className="vehicle-photo-gallery-toolbar">
-        <div className="vehicle-photo-share-counts" aria-label="Photo publishing summary">
-          <span><strong>{photos.length}</strong> Photos</span>
-          <span className="is-published"><Eye size={14} aria-hidden="true"/> {publishedCount} Published to Customer</span>
-          <span><EyeOff size={14} aria-hidden="true"/> {privateCount} Private</span>
-        </div>
+        <span className="vehicle-photo-share-counts">{photos.length} {photos.length === 1 ? 'photo' : 'photos'}</span>
         <div className="vehicle-photo-gallery-toolbar-actions">
-          <label htmlFor="vehicle-photo-visibility-filter">Show</label>
-          <select id="vehicle-photo-visibility-filter" value={visibilityFilter}
+          <select id="vehicle-photo-visibility-filter" value={visibilityFilter} aria-label="Filter photos by visibility"
             onChange={event => setVisibilityFilter(event.target.value)}>
-            <option value="all">All Photos</option>
-            <option value="published">Published to Customer</option>
-            <option value="private">Private Photos</option>
+            <option value="all">All photos</option>
+            <option value="published">Published ({publishedCount})</option>
+            <option value="private">Private ({privateCount})</option>
           </select>
-          <button type="button" onClick={load} disabled={loading}>
-            <RefreshCw size={16} aria-hidden="true"/> Refresh
+          <button type="button" onClick={load} disabled={loading} aria-label="Refresh photos" title="Refresh photos">
+            <RefreshCw size={16} aria-hidden="true"/>
           </button>
         </div>
       </div>
