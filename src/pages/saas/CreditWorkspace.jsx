@@ -442,11 +442,17 @@ export function CreditWorkspace({ section = 'overview' }) {
 
     {section === 'overview' && <section className="cg-credit-panel cg-bundle-marketplace" id="module-pricing" ref={modulePricingRef} tabIndex={-1} aria-label="Available modules">
       <header><div><span>MODULE PRICING</span><h2>Paid workshop modules ({paidBundles.length})</h2></div><Coins size={22}/></header>
-      <p>Free modules above do not need a purchase. Postpaid module credits accrue only while access is ON, using the period selected by the administrator. Usage is logged now and paid on the configured due date next month, not after every period.</p>
+      {paidBundles.some(bundle => bundle.cyclePostpaid || (bundle.billingMode === 'monthly_postpaid' && bundle.billingType !== 'permanent')) && (
+        <p>For recurring postpaid modules, changes to billable staff logins update the usage rate from that time. The wallet pays the accrued credits on the monthly due date.</p>
+      )}
       <div className="cg-bundle-grid">
         {paidBundles.map((bundle) => {
           const status = featureLabelStatus(bundle, wallet);
-          const period = bundle.billingMode === 'monthly_postpaid' ? 'calendar month' : ({ permanent: 'lifetime', monthly: '30 days', weekly: '7 days', daily: '24 hours', hourly: '1 hour', per_use: 'use' })[bundle.billingType] || bundle.billingType;
+          const postpaid = bundle.cyclePostpaid || bundle.billingMode === 'monthly_postpaid';
+          const period = bundle.cyclePostpaid && bundle.billingMode !== 'monthly_postpaid' ? 'billing cycle' : ({
+            permanent: 'lifetime', monthly: '30 days', weekly: '7 days', daily: '24 hours',
+            hourly: '1 hour', ten_seconds: '10 seconds', per_use: 'use',
+          })[bundle.billingType] || bundle.billingType;
           return <article key={bundle.id ?? `unpriced:${bundle.key}`} className="cg-bundle-card">
             <div className="cg-bundle-head">
               <h3>{bundle.name}</h3>
@@ -467,11 +473,11 @@ export function CreditWorkspace({ section = 'overview' }) {
             <div className="cg-bundle-price">
               {bundle.purchaseDisabledReason === 'FREE_MODULES_ONLY'
                 ? <><span>Included free</span><strong>0 <small>credits — no purchase needed</small></strong></>
-                : <><span>{bundle.cyclePostpaid || bundle.billingMode === 'monthly_postpaid' ? 'Usage rate (monthly settlement)' : 'Per user credits'}</span>
+                : <><span>{postpaid ? 'Rate per billable login' : 'Per user credits'}</span>
                   <strong>{credits(bundle.perUserCredits)} <small>credits / user / {period}</small></strong>
                   <div className="cg-bundle-summary">
-                    <span>{bundle.userCount ?? '—'} active login users</span>
-                    <b>{credits(bundle.totalCredits)} credits total</b>
+                    <span>{bundle.userCount ?? '—'} {bundle.userCount === 1 ? 'billable login' : 'billable logins'}</span>
+                    <b>{credits(bundle.totalCredits)} {postpaid ? `credits / ${period}` : 'credits total'}</b>
                   </div></>}
             </div>
             <div className="cg-bundle-feature-list">

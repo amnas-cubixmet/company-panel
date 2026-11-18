@@ -37,7 +37,8 @@ const bundles = [
   {id:null,key:'customers',name:'Customers',features:[{key:'customers',label:'Customers'}],perUserCredits:'0.00',totalCredits:'0.00',billingType:'monthly',purchaseEnabled:false,purchaseDisabledReason:'MODULE_PRICE_NOT_SET'},
   {id:'jobs',name:'Jobs',features:[{key:'jobs',label:'Jobs'}],perUserCredits:'20.00',totalCredits:'20.00',billingType:'monthly',purchaseEnabled:true},
   {id:71,key:'workflow-accounts_tax',name:'Accounts & Tax',features:[{key:'accounts_tax',label:'Accounts & Tax'}],
-    includedModules:['Payments','Expenses','Finance','GST','Reports'],perUserCredits:'5.00',totalCredits:'5.00',billingType:'monthly',purchaseEnabled:true},
+    includedModules:['Payments','Expenses','Finance','GST','Reports'],perUserCredits:'5.00',userCount:2,totalCredits:'10.00',
+    billingType:'hourly',billingMode:'monthly_postpaid',purchaseEnabled:true},
   {id:72,key:'workflow-business_insights',name:'Reports & Analytics',features:[{key:'business_insights',label:'Reports & Analytics'}],
     perUserCredits:'4.00',totalCredits:'4.00',billingType:'monthly',active:true,purchaseEnabled:false,purchaseDisabledReason:'REPORTS_IN_ACCOUNTS_TAX'},
 ];
@@ -611,6 +612,9 @@ try {
           const marketplace=page.getByRole('region',{name:'Available modules'});
           const accounts=marketplace.getByRole('article').filter({has:page.getByRole('heading',{name:'Accounts & Tax',exact:true})});
           await accounts.getByText('Reports',{exact:true}).waitFor();
+          await marketplace.getByText(/wallet pays the accrued credits on the monthly due date/).waitFor();
+          await accounts.getByText('2 billable logins',{exact:true}).waitFor();
+          await accounts.getByText(/^10(?:\.00)? credits \/ 1 hour$/).waitFor();
           if(await marketplace.getByRole('heading',{name:'Reports & Analytics',exact:true}).count()) {
             throw Error('Reports should be listed under Accounts & Tax without a separate pricing card');
           }
