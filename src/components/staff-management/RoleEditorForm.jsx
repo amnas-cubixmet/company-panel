@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { RolePermissionMatrix } from './RolePermissionMatrix';
 import { clearFieldValidation } from '../../utils/formValidation';
-import { buildRoleAccessPreset } from '../../config/rolePermissions';
+import { buildRolePresetPermissions, WORKSHOP_ROLE_PRESETS } from '../../config/rolePermissions';
 
 export const RoleEditorForm = ({
   id,
@@ -16,51 +16,45 @@ export const RoleEditorForm = ({
   error,
 }) => {
   const protectedRole = Boolean(editingRole?.isProtected);
-  const [mode, setMode] = useState('custom');
+  const [presetName, setPresetName] = useState('');
   const [advanced, setAdvanced] = useState(Boolean(editingRole));
-
-  useEffect(() => {
-    // Never overwrite existing saved permissions merely by opening Edit.
-    setMode('custom');
-    setAdvanced(Boolean(editingRole));
-  }, [editingRole?.id]);
+  const preset = WORKSHOP_ROLE_PRESETS.find(role => role.name === presetName);
 
   const selected = modules.reduce((sum, module) => sum +
     module.actions.filter(action => Boolean(formData.permissions?.[module.key]?.[action])).length, 0);
 
-  const setPreset = (value) => {
-    if (protectedRole) return;
-    setMode(value);
-    if (value === 'custom') {
-      setAdvanced(true);
-      return;
-    }
-    // Grant only explicitly permitted actions in visible modules.
-    // Presets never grant Finance, Payroll, Delete or approval permissions.
+  const selectPreset = (event) => {
+    const select = event.currentTarget;
+    const name = select.value;
+    const nextPreset = WORKSHOP_ROLE_PRESETS.find(role => role.name === name);
+    setPresetName(name);
+    clearFieldValidation(select.form?.elements.namedItem('name'));
     setFormData(current => ({
       ...current,
-      permissions: {
-        ...current.permissions,
-        ...buildRoleAccessPreset(modules, value),
-      },
+      name,
+      permissions: buildRolePresetPermissions(modules, nextPreset),
     }));
-    setAdvanced(false);
-  };
-
-  const customize = (moduleKey, actionKey) => {
-    setMode('custom');
-    onPermissionToggle(moduleKey, actionKey);
-  };
-
-  const customizeModule = (moduleKey, enable) => {
-    setMode('custom');
-    onToggleModule(moduleKey, enable);
+    setAdvanced(!nextPreset);
   };
 
   return (
     <form id={id} className="role-editor-form role-editor-simple" noValidate onSubmit={onSubmit}
       onChange={event => clearFieldValidation(event.target)}>
       {error && <div className="staff-directory-message is-error" role="alert">{error}</div>}
+      {!editingRole && (
+        <label className="role-editor-field">
+          <span id={`${id}-preset-label`}>Role</span>
+          <select value={presetName} onChange={selectPreset}
+            aria-labelledby={`${id}-preset-label`}
+            aria-describedby={preset ? `${id}-preset-hint` : undefined}>
+            <option value="">Custom role</option>
+            {WORKSHOP_ROLE_PRESETS.map(role => <option key={role.name}>{role.name}</option>)}
+          </select>
+          {preset && (
+            <small id={`${id}-preset-hint`} className="role-access-hint">{preset.description}</small>
+          )}
+        </label>
+      )}
       <section className="role-editor-card">
         <div className="role-editor-grid">
           <label className="role-editor-field">
@@ -80,21 +74,6 @@ export const RoleEditorForm = ({
           </label>
         </div>
       </section>
-      {!protectedRole && (
-        <label className="role-editor-field">
-          <span id={`${id}-access-label`}>Access level</span>
-          <select value={mode} onChange={event => setPreset(event.target.value)}
-            aria-labelledby={`${id}-access-label`}
-            aria-describedby={mode === 'standard' ? `${id}-access-hint` : undefined}>
-            <option value="custom">Custom permissions</option>
-            <option value="viewer">View only</option>
-            <option value="standard">Workshop access</option>
-          </select>
-          {mode === 'standard' && (
-            <small id={`${id}-access-hint`} className="role-access-hint">For customer, vehicle and job card work, with personal attendance where available.</small>
-          )}
-        </label>
-      )}
       <section className="role-permission-choice">
         <button type="button" className="role-permission-expand" aria-expanded={advanced}
           aria-controls="role-permission-details" onClick={() => setAdvanced(value => !value)}>
@@ -104,8 +83,8 @@ export const RoleEditorForm = ({
         {advanced && (
           <div id="role-permission-details">
             <RolePermissionMatrix modules={modules} permissions={formData.permissions}
-              protectedRole={protectedRole} onToggle={customize}
-              onToggleModule={customizeModule} />
+              protectedRole={protectedRole} onToggle={onPermissionToggle}
+              onToggleModule={onToggleModule} />
           </div>
         )}
       </section>

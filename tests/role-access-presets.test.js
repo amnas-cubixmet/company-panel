@@ -2,55 +2,51 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ROLE_PERMISSION_MODULES,
-  buildRoleAccessPreset,
+  WORKSHOP_ROLE_PRESETS,
+  buildRolePresetPermissions,
   permissionMatrixToCodes,
 } from '../src/config/rolePermissions.js';
 
-const codesFor = (preset) => permissionMatrixToCodes(buildRoleAccessPreset(
-  ROLE_PERMISSION_MODULES, preset,
+const preset = name => WORKSHOP_ROLE_PRESETS.find(role => role.name === name);
+const codesFor = name => permissionMatrixToCodes(buildRolePresetPermissions(
+  ROLE_PERMISSION_MODULES, preset(name),
 ));
 
-test('View only preset allows basic workshop reading only', () => {
-  assert.deepEqual(codesFor('viewer'), [
-    'dashboard.view',
-    'customers.view',
-    'vehicles.view',
-    'services.view',
-    'jobs.view',
-    'stock.view',
+test('Workshop role presets include different permissions for daily work', () => {
+  assert.deepEqual(codesFor('Mechanic'), [
+    'dashboard.view', 'vehicles.view', 'jobs.view', 'jobs.edit', 'attendance.self',
   ]);
+  assert.ok(codesFor('Service Advisor').includes('customers.create'));
+  assert.ok(codesFor('Parts Manager').includes('stock.edit'));
+  assert.ok(codesFor('Workshop Supervisor').includes('attendance.team.view'));
+  assert.ok(codesFor('Accountant').includes('invoices.create'));
+  assert.ok(codesFor('Accountant').includes('payments.create'));
+  assert.ok(codesFor('Accountant').includes('expenses.create'));
+  assert.equal(new Set(WORKSHOP_ROLE_PRESETS.map(role => codesFor(role.name).join('|'))).size,
+    WORKSHOP_ROLE_PRESETS.length);
 });
 
-test('Standard access only adds customer, vehicle, job editing and self attendance', () => {
-  assert.deepEqual(codesFor('standard'), [
-    'dashboard.view',
-    'customers.view', 'customers.create', 'customers.edit',
-    'vehicles.view', 'vehicles.create', 'vehicles.edit',
-    'services.view',
-    'jobs.view', 'jobs.create', 'jobs.edit',
-    'stock.view',
-    'attendance.self',
-  ]);
-});
-
-test('Standard access never grants destructive or sensitive permissions', () => {
-  const codes = codesFor('standard');
-  assert.ok(codes.length > 0);
-  for (const code of codes) {
-    assert.equal(/^(?:payments|expenses|payroll|invoices|settings|storage|staff|reports|notifications)\./.test(code), false, code);
-    assert.equal(/\.(?:delete|reverse|manage|approve|process)$/.test(code), false, code);
+test('Workshop presets keep financial write access with Accountant and exclude destructive and admin actions', () => {
+  for (const role of WORKSHOP_ROLE_PRESETS) {
+    const codes = codesFor(role.name);
+    assert.ok(codes.length > 0);
+    for (const code of codes) {
+      assert.doesNotMatch(code, /^(?:company|billing|payroll|settings|staff|storage)\.|\.(?:delete|reverse|manage|approve|process)$/);
+      if (role.name !== 'Accountant') assert.doesNotMatch(code, /^(?:invoices|payments|expenses)\./);
+    }
   }
 });
 
-test('Presets operate only on permitted and visible actions', () => {
+test('Presets operate only on the available actions and custom roles start empty', () => {
   const available = [
-    { key: 'customers', actions: ['view', 'create'] },
+    { key: 'customers', actions: ['view', 'delete'] },
     { key: 'jobs', actions: ['view'] },
     { key: 'payroll', actions: ['view', 'payments.record'] },
   ];
-  assert.deepEqual(buildRoleAccessPreset(available, 'standard'), {
-    customers: { view: true, create: true },
+  assert.deepEqual(buildRolePresetPermissions(available, preset('Service Advisor')), {
+    customers: { view: true, delete: false },
     jobs: { view: true },
     payroll: { view: false, 'payments.record': false },
   });
+  assert.deepEqual(codesFor(''), []);
 });
