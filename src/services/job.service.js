@@ -315,6 +315,12 @@ export const updateJobComplaintStatus = async (jobId, complaintId, { status, not
   );
 };
 
+export const updateJobComplaintDetails = (jobId, complaintId, details) =>
+  apiClient.patch(
+    `${API_ENDPOINTS.JOBS}/${encodeURIComponent(jobId)}/complaints/${encodeURIComponent(complaintId)}`,
+    details,
+  );
+
 export const reopenJobEstimate = async (id) => {
   if (USE_MOCK_API) {
     throw new Error('Reopening a skipped estimate requires the live Django backend.');
@@ -375,6 +381,7 @@ export const jobService = {
   getJobWorkflow,
   getJobActivity,
   updateJobComplaintStatus,
+  updateJobComplaintDetails,
   completeJobStage,
   skipJobWork,
   addJobService,

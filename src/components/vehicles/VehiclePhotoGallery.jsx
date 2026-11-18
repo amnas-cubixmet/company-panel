@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useId, useState } from 'react';
-import { Camera, RefreshCw, UploadCloud, Eye, EyeOff } from 'lucide-react';
+import { Camera, RefreshCw, UploadCloud, Eye, EyeOff, Pencil } from 'lucide-react';
 import { vehiclePhotoService } from '../../services/vehiclePhoto.service';
 import { LiveVehicleCamera } from './LiveVehicleCamera';
+import { ResponsiveModalSheet } from '../common/ResponsiveModalSheet';
 import '../../styles/vehicle-camera-queue.css';
 
-function PrivateVehiclePhoto({ photo, canEdit, onVisibility }) {
+function PrivateVehiclePhoto({ photo, canEdit, onVisibility, onEdit }) {
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -39,6 +40,8 @@ function PrivateVehiclePhoto({ photo, canEdit, onVisibility }) {
 
   return (
     <figure className="vehicle-photo-card">
+      {canEdit && <button type="button" className="vehicle-photo-edit" onClick={() => onEdit(photo)}
+        aria-label="Edit photo" title="Edit photo"><Pencil size={16} aria-hidden="true"/></button>}
       {!canEdit && <span className={'vehicle-photo-visibility-badge ' + (photo.published ? 'is-published' : 'is-private')}>
         {photo.published ? <Eye size={13} aria-hidden="true"/> : <EyeOff size={13} aria-hidden="true"/>}
         {photo.published ? 'Published' : 'Private'}
@@ -63,6 +66,45 @@ function PrivateVehiclePhoto({ photo, canEdit, onVisibility }) {
   );
 }
 
+function PhotoCaptionEditor({ photo, onClose, onSaved }) {
+  const [caption, setCaption] = useState(photo.caption || '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const close = () => { if (!saving) onClose(); };
+  const save = async (event) => {
+    event.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    setError('');
+    try {
+      onSaved(await vehiclePhotoService.setCaption(photo.id, caption.trim()));
+    } catch (cause) {
+      setError(cause?.message || 'Could not save the photo caption.');
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <ResponsiveModalSheet isOpen onClose={close} title="Edit photo caption" maxWidth="490px">
+      <form className="grid gap-3" onSubmit={save}>
+        <label className="grid gap-1.5 text-sm font-semibold text-content">
+          Caption (optional)
+          <textarea rows={3} maxLength={255} value={caption} disabled={saving}
+            onChange={event => setCaption(event.target.value)}
+            className="w-full rounded-lg border border-line bg-surface p-3 text-base text-content"/>
+        </label>
+        {error && <p className="vehicle-photo-gallery-error" role="alert">{error}</p>}
+        <div className="flex flex-wrap justify-end gap-2">
+          <button type="button" className="min-h-11 rounded-lg border border-line px-4" onClick={close} disabled={saving}>Cancel</button>
+          <button type="submit" className="min-h-11 rounded-lg bg-primary px-4 font-semibold text-white" disabled={saving}>
+            {saving ? 'Saving…' : 'Save caption'}
+          </button>
+        </div>
+      </form>
+    </ResponsiveModalSheet>
+  );
+}
+
 const ACCEPTED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_BATCH_SIZE = 8;
@@ -70,6 +112,7 @@ const MAX_BATCH_SIZE = 8;
 export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPublish = canEdit, refreshKey = 0 }) {
   const uploadFieldId = useId();
   const [photos, setPhotos] = useState([]);
+  const [editingPhoto, setEditingPhoto] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
@@ -232,12 +275,17 @@ export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPubl
         <div className="vehicle-photo-gallery-grid">
           {visiblePhotos.map((photo) => (
             <PrivateVehiclePhoto key={photo.id} photo={photo} canEdit={canPublish}
-              onVisibility={changeVisibility}/>
+              onVisibility={changeVisibility} onEdit={setEditingPhoto}/>
           ))}
         </div>
       ) : <p className="vehicle-camera-empty">
         {photos.length ? 'No photos match this filter.' : 'No vehicle photos captured yet.'}
       </p>}
+      {editingPhoto && canPublish && <PhotoCaptionEditor photo={editingPhoto} onClose={() => setEditingPhoto(null)}
+        onSaved={changed => {
+          setPhotos(current => current.map(photo => photo.id === changed.id ? changed : photo));
+          setEditingPhoto(null);
+        }}/>}
     </section>
   );
 }

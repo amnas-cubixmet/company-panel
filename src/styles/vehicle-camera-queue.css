@@ -31,6 +31,12 @@
   padding:4px 6px;font-size:12px;font-weight:700;line-height:1.3;overflow-wrap:anywhere
 }
 .vehicle-photo-gallery .vehicle-photo-visibility-badge.is-published{color:var(--success,#16803d)}
+.vehicle-photo-edit{
+  position:absolute;z-index:1;top:6px;right:6px;display:grid;place-items:center;
+  width:44px;height:44px;border:1px solid var(--border);border-radius:8px;
+  background:var(--surface);color:var(--text-primary)
+}
+.vehicle-photo-edit:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 /* Full-size image is never in the grid; only an on-demand lightbox can show it. */
 .vehicle-camera-thumbnail{position:relative;aspect-ratio:4/3;overflow:hidden;min-width:0;background:var(--surface-2)}
 .vehicle-camera-preview-button{position:relative;display:block;width:100%;height:100%;padding:0;margin:0;border:0;border-radius:0;background:transparent;color:inherit;cursor:zoom-in;overflow:hidden}
