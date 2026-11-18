@@ -207,6 +207,9 @@ export function JobEditPage() {
     setData(null);
     setError('');
     jobService.getJobEditor(id).then(result => {
+      if (!result?.job?.id || !result.customer || !result.vehicle || !result.access || !result.versions) {
+        throw new Error('Could not load the Job Card editor.');
+      }
       if (active) setData(result);
     }).catch(cause => {
       if (active) setError(cause?.message || 'Could not load the Job Card.');
