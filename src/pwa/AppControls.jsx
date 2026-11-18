@@ -1,4 +1,5 @@
 import { useSyncExternalStore, useState } from 'react';
+import { Download, RefreshCw } from 'lucide-react';
 import { useOfflineInventory } from './InventoryOfflineProvider';
 import './pwa.css';
 
@@ -62,7 +63,7 @@ export function AppUpdateNotice() {
   const [error, setError] = useState('');
   if (!update) return null;
   const apply = () => {
-    if ((edited || document.querySelector('input:focus, textarea:focus, [role="dialog"]')) &&
+    if ((edited || document.querySelector('input:focus, textarea:focus, [role="dialog"][aria-modal="true"]')) &&
         !window.confirm('Reload to update the app? Save any unfinished edits first. Parts queued on this device will be kept.')) return;
     const controller = navigator.serviceWorker.controller;
     publish({ applying: true });
@@ -76,13 +77,14 @@ export function AppUpdateNotice() {
   };
   return <aside className="cg-pwa-controls cg-pwa-update" aria-label="App update">
     <div role="status">{error || 'Update available'}</div>
-    <button type="button" className="settings-primary-button" disabled={applying} onClick={apply}>
+    <button type="button" className="cg-pwa-action" disabled={applying} onClick={apply}>
+      <RefreshCw size={16} aria-hidden="true" />
       {applying ? 'Updating…' : 'Update App'}
     </button>
   </aside>;
 }
 
-export function InstallAppControls() {
+export function InstallAppControls({ inDrawer = false }) {
   const { prompt, installed } = useSyncExternalStore(subscribe, read);
   const [instructions, setInstructions] = useState(false);
   const install = async () => {
@@ -90,10 +92,12 @@ export function InstallAppControls() {
     publish({ prompt: null });
     try { await prompt.prompt(); } catch { setInstructions(true); }
   };
-  return <section className="cg-pwa-controls" aria-label="App installation">
+  return <section className={`cg-pwa-controls${inDrawer ? ' cg-pwa-drawer-install' : ''}`} aria-label="App installation">
     {installed
       ? <span role="status">App installed</span>
-      : <button type="button" className="settings-primary-button" onClick={install}>Install App</button>}
+      : <button type="button" className="cg-pwa-action" onClick={install}>
+        <Download size={16} aria-hidden="true" /> Download App
+      </button>}
     {!installed && instructions && <p role="status">{apple
       ? 'In Safari, tap Share, then Add to Home Screen. If shown, enable Open as Web App, then tap Add.'
       : 'Open your browser menu and choose Install app or Add to Home screen when available.'}</p>}
