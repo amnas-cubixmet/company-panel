@@ -54,6 +54,7 @@ export function InventoryOfflineProvider({ children }) {
     if (!key) return undefined;
     let active = true;
     let read = 0;
+    let lastConfirmedRequestKey;
     const load = async () => {
       const attempt = ++read;
       try {
@@ -61,6 +62,11 @@ export function InventoryOfflineProvider({ children }) {
         if (active && attempt === read) {
           setStored({ key, data: result });
           setStorageError('');
+          // The persisted confirmation also refreshes Inventory in other tabs of this scope.
+          if (result.lastConfirmedRequestKey && result.lastConfirmedRequestKey !== lastConfirmedRequestKey && verifiedScope(key)) {
+            window.dispatchEvent(new Event('cubixgear:inventory-synced'));
+          }
+          lastConfirmedRequestKey = result.lastConfirmedRequestKey;
         }
       } catch {
         if (active) setStorageError('Offline storage is unavailable on this device.');
@@ -123,8 +129,15 @@ export function InventoryOfflineProvider({ children }) {
       const pending = records.filter(row => row.state === 'pending');
       if (!pending.length) return;
       setSyncing(true);
+      let synced = 0;
+      let rejected = 0;
       const status = (message) => inventoryStore(key, data => ({
-        ...data, lastSync: { message, at: new Date().toISOString() },
+        ...data,
+        lastSync: {
+          message: [synced && `${synced} synced`, rejected && `${rejected} need attention`, message]
+            .filter(Boolean).join(' · '),
+          at: new Date().toISOString(),
+        },
       }));
       const options = { timeout: 12000 };
       try {
@@ -135,8 +148,6 @@ export function InventoryOfflineProvider({ children }) {
           retrySession();
           return;
         }
-        let synced = 0;
-        let rejected = 0;
         for (const row of pending) {
           if (!navigator.onLine || !verifiedScope(key) || !await renew()) break;
           try {
@@ -155,13 +166,14 @@ export function InventoryOfflineProvider({ children }) {
             rejected += 1;
             continue;
           }
-          await inventoryStore(key, data => ({ ...data, records: data.records.filter(record => record.id !== row.id) }));
+          await inventoryStore(key, data => ({
+            ...data,
+            records: data.records.filter(record => record.id !== row.id),
+            lastConfirmedRequestKey: row.id,
+          }));
           synced += 1;
         }
-        if (synced || rejected) {
-          await status([synced && `${synced} synced`, rejected && `${rejected} need attention`].filter(Boolean).join(' · '));
-        }
-        if (synced) window.dispatchEvent(new Event('cubixgear:inventory-synced'));
+        if (synced || rejected) await status();
       } catch (error) {
         await status([401, 403].includes(error?.status)
           ? 'Sign in with the original account to resume sync.' : 'Connection interrupted. Pending sync.');
