@@ -1,5 +1,5 @@
 import { useSyncExternalStore, useState } from 'react';
-import { Download, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useOfflineInventory } from './InventoryOfflineProvider';
 import './pwa.css';
 
@@ -87,6 +87,7 @@ export function AppUpdateNotice() {
 export function InstallAppControls({ inDrawer = false }) {
   const { prompt, installed } = useSyncExternalStore(subscribe, read);
   const [instructions, setInstructions] = useState(false);
+  const appIcon = <img className="cg-pwa-app-icon" src="/app-icon-180.png" width="26" height="26" alt="" />;
   const install = async () => {
     if (!prompt) { setInstructions(true); return; }
     publish({ prompt: null });
@@ -94,9 +95,9 @@ export function InstallAppControls({ inDrawer = false }) {
   };
   return <section className={`cg-pwa-controls${inDrawer ? ' cg-pwa-drawer-install' : ''}`} aria-label="App installation">
     {installed
-      ? <span role="status">App installed</span>
+      ? <span className="cg-pwa-installed" role="status">{appIcon} App installed</span>
       : <button type="button" className="cg-pwa-action" onClick={install}>
-        <Download size={16} aria-hidden="true" /> Download App
+        {appIcon} Download App
       </button>}
     {!installed && instructions && <p role="status">{apple
       ? 'In Safari, tap Share, then Add to Home Screen. If shown, enable Open as Web App, then tap Add.'
