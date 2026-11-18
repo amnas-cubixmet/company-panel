@@ -157,7 +157,7 @@ export const DailyWageAccountPage = () => {
     try {
       const actions = {
         rate: () => dailyWageService.addRate(id, {
-          rate: form.rate, effectiveFrom: form.effectiveFrom, reason: form.reason,
+          rate: form.rate, effectiveFrom: form.effectiveFrom, reason: 'Daily wage rate saved from Wage Account',
         }),
         attendance: () => dailyWageService.finalizeAttendance(id, {
           date: form.date, status: form.status, reason: form.reason,
@@ -408,7 +408,7 @@ export const DailyWageAccountPage = () => {
               <p className="dw-alert" role="alert">No active financial accounts. Create a Cash or Bank account under Accounts before paying staff.</p>
             )}
           </>}
-          {modal !== 'pay' && (
+          {modal !== 'rate' && modal !== 'pay' && (
             <label>Reason<input value={form.reason || ''} required onChange={(e) => set('reason', e.target.value)} placeholder="Reason and authorizing detail"/></label>
           )}
           {error && <p className="dw-alert" role="alert">{error}</p>}

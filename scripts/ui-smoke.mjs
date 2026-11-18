@@ -2290,6 +2290,11 @@ try {
             const actions=sheet.getByRole('group',{name:'Wage forms'});
             await actions.getByRole('button',{name:'Wage Rate',exact:true}).waitFor();
             if(await actions.getByRole('button').count()!==5) throw Error('Wage forms sheet is missing payroll actions.');
+            await actions.getByRole('button',{name:'Wage Rate',exact:true}).click();
+            await sheet.getByLabel('Daily Wage Rate (₹)').waitFor();
+            if(await sheet.getByLabel('Reason',{exact:true}).count()) throw Error('Wage rate form should save without a manually entered reason.');
+            await actions.getByRole('button',{name:'Attendance',exact:true}).click();
+            await sheet.getByLabel('Reason',{exact:true}).waitFor();
             await actions.getByRole('button',{name:'Payment',exact:true}).click();
             await sheet.getByLabel('Pay Amount (₹)').waitFor();
             await sheet.getByRole('button',{name:'Cancel',exact:true}).click();
