@@ -8,8 +8,13 @@ const display = window.matchMedia('(display-mode: standalone)');
 const isStandalone = () => display.matches || navigator.standalone === true;
 const apple = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-let state = { prompt: null, installed: isStandalone(), update: null, applying: false };
+let state = {
+  prompt: null, installed: isStandalone(), update: null,
+  checking: false, applying: false, reloadAvailable: false, updateMessage: '',
+};
 let edited = false;
+let registrationPromise;
+let activationTimer;
 
 function publish(changes) {
   state = { ...state, ...changes };
@@ -33,59 +38,131 @@ display.addEventListener?.('change', () => publish({ installed: isStandalone() }
 document.addEventListener('input', () => { edited = true; }, true);
 document.addEventListener('change', () => { edited = true; }, true);
 
+function detectUpdate(registration) {
+  const update = navigator.serviceWorker.controller ? registration.waiting : null;
+  if (!state.applying && update !== state.update) publish({ update, updateMessage: '' });
+  return update;
+}
+
+function waitForInstallation(worker) {
+  if (!worker) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const finish = (error) => {
+      clearTimeout(timer);
+      worker.removeEventListener('statechange', check);
+      if (error) reject(error);
+      else resolve();
+    };
+    const check = () => {
+      if (worker.state === 'redundant') finish(new Error('App update installation failed.'));
+      if (['installed', 'activating', 'activated'].includes(worker.state)) finish();
+    };
+    const timer = setTimeout(() => finish(new Error('App update installation timed out.')), 12000);
+    worker.addEventListener('statechange', check);
+    check();
+  });
+}
+
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  let controller = navigator.serviceWorker.controller;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     const reload = state.applying;
-    publish({ update: null, applying: false });
+    const next = navigator.serviceWorker.controller;
+    const reloadAvailable = Boolean(controller && next && controller !== next);
+    controller = next;
+    clearTimeout(activationTimer);
+    publish({ update: null, applying: false, reloadAvailable, updateMessage: '' });
     if (reload) window.location.reload();
   });
-  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(registration => {
-    const detect = () => {
-      if (registration.waiting && navigator.serviceWorker.controller && !state.applying) {
-        publish({ update: registration.waiting });
-      }
-    };
+  registrationPromise = navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(registration => {
+    const detect = () => detectUpdate(registration);
     const watch = () => registration.installing?.addEventListener('statechange', detect);
     registration.addEventListener('updatefound', watch);
     watch();
     detect();
     const check = () => {
-      if (navigator.onLine && document.visibilityState === 'visible') void registration.update().catch(() => {});
+      if (!state.checking && navigator.onLine && document.visibilityState === 'visible') {
+        void registration.update().catch(() => {});
+      }
     };
     window.addEventListener('online', check);
     document.addEventListener('visibilitychange', check);
     setInterval(check, 60_000);
-  }).catch(() => { /* The site remains usable if the browser blocks installation. */ });
+    return registration;
+  }).catch(() => null);
+}
+
+function applyAppUpdate(update) {
+  // The mobile navigation drawer contains the update action and has no edits to save.
+  const editDialog = '[role="dialog"][aria-modal="true"]:not(#workspace-mobile-drawer)';
+  if ((edited || document.querySelector(`input:focus, textarea:focus, ${editDialog}`)) &&
+      !window.confirm('Reload to update the app? Save any unfinished edits first. Parts queued on this device will be kept.')) return;
+  if (!update) {
+    window.location.reload();
+    return;
+  }
+  publish({ applying: true, updateMessage: '' });
+  try {
+    update.postMessage({ type: 'ACTIVATE_UPDATE' });
+  } catch {
+    publish({ update: null, applying: false, updateMessage: 'Could not apply the update. Try again.' });
+    return;
+  }
+  activationTimer = setTimeout(() => {
+    publish({ applying: false, updateMessage: 'Update is taking longer than expected. Try again.' });
+  }, 12000);
+}
+
+async function updateApp() {
+  if (state.checking || state.applying) return;
+  if (state.update || state.reloadAvailable) {
+    applyAppUpdate(state.update);
+    return;
+  }
+  if (!navigator.onLine) {
+    publish({ updateMessage: 'Go online to check for updates.' });
+    return;
+  }
+  if (!registrationPromise) {
+    publish({ updateMessage: 'App updates are available in the published Company Panel.' });
+    return;
+  }
+
+  publish({ checking: true, updateMessage: '' });
+  try {
+    const registration = await registrationPromise;
+    if (!registration) throw new Error('App update service is unavailable.');
+    if (!detectUpdate(registration)) {
+      if (!registration.installing) await registration.update();
+      await waitForInstallation(registration.installing);
+    }
+    const update = detectUpdate(registration);
+    publish({ checking: false });
+    if (update || state.reloadAvailable) applyAppUpdate(update);
+    else publish({ updateMessage: 'App is up to date.' });
+  } catch {
+    publish({ checking: false, updateMessage: 'Could not check for updates. Try again.' });
+  }
+}
+
+function AppUpdateButton({ checking, applying }) {
+  return <button type="button" className="cg-pwa-action" disabled={checking || applying} onClick={() => void updateApp()}>
+    <RefreshCw size={16} aria-hidden="true" />
+    {applying ? 'Updating…' : checking ? 'Checking…' : 'Update App'}
+  </button>;
 }
 
 export function AppUpdateNotice() {
-  const { update, applying } = useSyncExternalStore(subscribe, read);
-  const [error, setError] = useState('');
+  const { update, checking, applying, updateMessage } = useSyncExternalStore(subscribe, read);
   if (!update) return null;
-  const apply = () => {
-    if ((edited || document.querySelector('input:focus, textarea:focus, [role="dialog"][aria-modal="true"]')) &&
-        !window.confirm('Reload to update the app? Save any unfinished edits first. Parts queued on this device will be kept.')) return;
-    const controller = navigator.serviceWorker.controller;
-    publish({ applying: true });
-    setError('');
-    update.postMessage({ type: 'ACTIVATE_UPDATE' });
-    setTimeout(() => {
-      if (navigator.serviceWorker.controller !== controller) return;
-      publish({ applying: false });
-      setError('Update is taking longer than expected. Try again.');
-    }, 12000);
-  };
   return <aside className="cg-pwa-controls cg-pwa-update" aria-label="App update">
-    <div role="status">{error || 'Update available'}</div>
-    <button type="button" className="cg-pwa-action" disabled={applying} onClick={apply}>
-      <RefreshCw size={16} aria-hidden="true" />
-      {applying ? 'Updating…' : 'Update App'}
-    </button>
+    <div role="status">{updateMessage || 'Update available'}</div>
+    <AppUpdateButton checking={checking} applying={applying} />
   </aside>;
 }
 
 export function InstallAppControls({ inDrawer = false }) {
-  const { prompt, installed } = useSyncExternalStore(subscribe, read);
+  const { prompt, installed, checking, applying, update, reloadAvailable, updateMessage } = useSyncExternalStore(subscribe, read);
   const [instructions, setInstructions] = useState(false);
   const appIcon = <img className="cg-pwa-app-icon" src="/app-icon-180.png" width="26" height="26" alt="" />;
   const install = async () => {
@@ -99,6 +176,8 @@ export function InstallAppControls({ inDrawer = false }) {
       : <button type="button" className="cg-pwa-action" onClick={install}>
         {appIcon} Download App
       </button>}
+    <AppUpdateButton checking={checking} applying={applying} />
+    {(updateMessage || update || reloadAvailable) && <p role="status">{updateMessage || 'Update available'}</p>}
     {!installed && instructions && <p role="status">{apple
       ? 'In Safari, tap Share, then Add to Home Screen. If shown, enable Open as Web App, then tap Add.'
       : 'Open your browser menu and choose Install app or Add to Home screen when available.'}</p>}
