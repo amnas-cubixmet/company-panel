@@ -27,6 +27,9 @@ const ratePeriod = (period) => ({
   ten_seconds: '10 seconds', hourly: 'hour', daily: 'day',
   weekly: 'week', monthly: '30 days', permanent: 'lifetime',
 })[period] || period || '—';
+const isPreviousReportsLabel = (bundle) =>
+  bundle.purchaseDisabledReason === 'REPORTS_IN_ACCOUNTS_TAX' ||
+  ['workflow-business_insights', 'business_insights'].includes(bundle.key);
 
 export function CreditWorkspace({ section = 'overview' }) {
   const navigate = useNavigate();
@@ -247,9 +250,10 @@ export function CreditWorkspace({ section = 'overview' }) {
   // The server hides free-only labels; also guard stale cached API responses.
   // Mixed labels remain visible for the paid modules they contain.
   const paidBundles = featureBundles.filter(bundle =>
-    (bundle.features || []).some(item => !freeKeys.includes(item.key))
+    !isPreviousReportsLabel(bundle) && (bundle.features || []).some(item => !freeKeys.includes(item.key))
   );
   const activeBundles = paidBundles.filter(bundle => bundle.active === true);
+  const previousReports = featureBundles.filter(bundle => bundle.active && isPreviousReportsLabel(bundle));
   const freeRoutes = [
     ...routeConfig.filter(route =>
       ['credits', 'dashboard', 'settings', 'staff-management', 'notifications'].includes(route.id) &&
@@ -396,7 +400,7 @@ export function CreditWorkspace({ section = 'overview' }) {
             <small>{bundle.validUntil ? `Valid until ${when(bundle.validUntil)}` : bundle.billingType === 'permanent' ? 'Permanent access until switched off' : 'See active label status'}</small>
           </article>;
         })}
-      </div> : <p className="cg-credit-empty">No active feature labels. Activate a published label to unlock paid workshop modules.</p>}
+      </div> : !previousReports.length && <p className="cg-credit-empty">No active feature labels. Activate a published label to unlock paid workshop modules.</p>}
       <div className="cg-credit-actions">
         <button type="button" className="primary" onClick={openModulePricing} aria-controls="module-pricing">View Prices &amp; Activation </button>
         <button type="button" onClick={() => navigate('/account/credits/logs')}>Check Wallet Cash Flow <FileClock size={16}/></button>
@@ -486,7 +490,7 @@ export function CreditWorkspace({ section = 'overview' }) {
                 onClick={() => buyBundle(bundle)}>
                 {purchaseRetryAt > Date.now() ? 'Temporarily rate limited'
                  : busy === `bundle:${bundle.id}` ? 'Saving…'
-                  : !status.allow && (!bundle.active || bundle.purchaseDisabledReason === 'REPORTS_IN_ACCOUNTS_TAX') ? status.label
+                  : !status.allow && !bundle.active ? status.label
                   : bundle.billingType === 'permanent' && bundle.active ? 'Owned permanently'
                   : bundle.purchaseDisabledReason === 'FREE_MODULES_ONLY' ? 'Included Free'
                   : bundle.billingMode === 'monthly_postpaid' ? (bundle.active ? 'Active · usage metered' : 'Switch ON · pay next month') : bundle.canResume ? 'Switch On' : bundle.active ? 'Extend access' : 'Activate access'}
@@ -498,6 +502,15 @@ export function CreditWorkspace({ section = 'overview' }) {
         })}
       </div>
       {!paidBundles.length && !loading && <p className="cg-credit-empty">No paid modules are published yet. Module pricing is managed by your SaaS administrator.</p>}
+      {previousReports.map(bundle => <div key={bundle.id} className="cg-credit-inline">
+        <span>Previous Reports access · {bundle.validUntil
+          ? `Valid until ${when(bundle.validUntil)}`
+          : `${credits(bundle.totalCredits)} credits / ${ratePeriod(bundle.billingType)}`}</span>
+        <div className="cg-bundle-actions">
+          <button className="secondary" type="button" disabled={busy !== '' || !wallet?.canManage}
+            onClick={() => stopBundle(bundle)}>Switch off previous Reports access</button>
+        </div>
+      </div>)}
       {wallet && !wallet.canManage && <p className="cg-credit-note">Only the company account owner can purchase module access.</p>}
     </section>}
 
