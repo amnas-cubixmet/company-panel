@@ -31,7 +31,8 @@ const SETTINGS_SECTION_PERMISSIONS = { operations: 'jobs.view', billing: 'invoic
 
 const schemas = {
   company: [
-    ['name', 'Workshop / Company Name', 'text'], ['phone', 'Phone', 'tel'], ['email', 'Official Email', 'email'], ['address', 'Registered Address', 'textarea'],
+    ['name', 'Workshop / Company Name', 'text'], ['phone', 'Phone', 'tel'], ['email', 'Official Email', 'email'],
+    ['gstNo', 'GSTIN / Tax Number', 'text'], ['address', 'Registered Address', 'textarea'],
     ['currency', 'Currency', 'select', ['INR', 'USD', 'AED', 'SAR']], ['timezone', 'Timezone', 'select', ['Asia/Kolkata', 'Asia/Dubai', 'Asia/Riyadh', 'UTC']], ['dateFormat', 'Date Format', 'select', ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD']]
   ],
   operations: [
@@ -170,6 +171,12 @@ export const Settings = () => {
       if (payload.phone && !validInternationalPhone(payload.phone)) {
         const { country } = splitInternationalPhone(payload.phone);
         errors.phone = `Enter a ${jobPhoneLength(country)}-digit phone number for ${country}.`;
+      }
+      if ('gstNo' in payload) {
+        payload.gstNo = payload.gstNo.trim().toUpperCase();
+        if (payload.gstNo && !/^[0-9]{2}[A-Z0-9]{13}$/.test(payload.gstNo)) {
+          errors.gstNo = 'Enter a 15-character GSTIN starting with two digits, or leave it blank.';
+        }
       }
       showCompanyErrors(errors);
       if (Object.keys(errors).length) return;
