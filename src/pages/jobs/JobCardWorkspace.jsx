@@ -11,6 +11,7 @@ import { staffService } from '../../services/staff.service';
 import { JobPartsWorkflow } from './JobPartsWorkflow';
 import { JobInspectionPanel } from '../../components/jobs/JobInspectionPanel';
 import { JobComplaintEditor } from '../../components/jobs/JobComplaintEditor';
+import { JobOverviewDetailsEditor } from '../../components/jobs/JobOverviewDetailsEditor';
 import { VehiclePhotoGallery } from '../../components/vehicles/VehiclePhotoGallery';
 import { QuickEstimatePanel } from '../../components/jobs/QuickEstimatePanel';
 import { JobQualityCheckPanel } from '../../components/jobs/JobQualityCheckPanel';
@@ -115,6 +116,8 @@ export function JobCardWorkspace() {
   const { can } = useFeatureAccess();
   const canEditJob = can('jobs.edit');
   const [complaintEditorOpen, setComplaintEditorOpen] = useState(false);
+  const [overviewEditorOpen, setOverviewEditorOpen] = useState(false);
+  const [overviewNotice, setOverviewNotice] = useState('');
   const [complaintNotice, setComplaintNotice] = useState('');
   const canViewStaff = can('staff.view');
   const hasInvoiceAccess = can('invoices.view');
@@ -315,6 +318,8 @@ export function JobCardWorkspace() {
   useEffect(() => {
     setComplaintEditorOpen(false);
     setComplaintNotice('');
+    setOverviewEditorOpen(false);
+    setOverviewNotice('');
     setJobInvoices([]);
     setJobPayments([]);
     setBillingSummaryState({ jobId: null, data: null });
@@ -1037,6 +1042,10 @@ export function JobCardWorkspace() {
 
   const readyForDelivery = job.status === 'Ready for Delivery';
   const shareTarget = readyForDelivery ? 'ready_delivery' : 'job';
+  const canEditJobDetails = canEditJob && job.status !== 'Delivered';
+  const canEditLinkedCustomer = Boolean(job.customerId && can('customers.edit'));
+  const canEditLinkedVehicle = Boolean(job.vehicleId && can('vehicles.edit'));
+  const canEditOverview = canEditJobDetails || canEditLinkedCustomer || canEditLinkedVehicle;
 
   return (
     <div className="job-management-page cg-job-detail jobs-ui-polished job-workspace-dashboard flex w-full min-w-0 flex-col gap-4 pb-4">
@@ -1359,6 +1368,15 @@ export function JobCardWorkspace() {
                   <h3 id="job-overview-customer-heading">Customer & Vehicle</h3>
                   <p>Basic job information</p>
                 </div>
+                {canEditOverview && <button type="button"
+                  aria-label="Edit Customer & Vehicle"
+                  className="ml-auto inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-line px-2.5 text-sm font-semibold text-content"
+                  onClick={() => {
+                    setOverviewNotice('');
+                    setOverviewEditorOpen(true);
+                  }}>
+                  <Pencil size={14} aria-hidden="true"/> Edit
+                </button>}
               </div>
               <dl className="job-overview-detail-grid">
                 <div><dt>Customer name</dt><dd>{job.customerName || 'Not added'}</dd></div>
@@ -1370,6 +1388,15 @@ export function JobCardWorkspace() {
                 <div><dt>Fuel Level</dt><dd>{job.fuelLevel || 'Not added'}</dd></div>
                 <div><dt>VIN / Chassis</dt><dd>{job.vin || job.vehicle?.vin || 'Not added'}</dd></div>
               </dl>
+              {overviewNotice && <p role="status" className="text-sm text-content">{overviewNotice}</p>}
+              {overviewEditorOpen && canEditOverview && <JobOverviewDetailsEditor key={job.id}
+                job={job} canEditJob={canEditJobDetails} canEditCustomer={canEditLinkedCustomer}
+                canEditVehicle={canEditLinkedVehicle} onClose={() => setOverviewEditorOpen(false)}
+                onSaved={updated => {
+                  setJob(updated);
+                  setOverviewEditorOpen(false);
+                  setOverviewNotice('Job details saved.');
+                }}/>}
             </section>
 
             <section className="job-overview-card" aria-labelledby="job-overview-assignment-heading">
