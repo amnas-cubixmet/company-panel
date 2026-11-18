@@ -91,6 +91,8 @@ export const SettingsEditor = ({
                   disabled={saving}
                   required={active === 'company' && key === 'name'}
                   maxLength={active === 'company' ? COMPANY_INPUT_LIMITS[key] : undefined}
+                  autoCapitalize={key === 'gstNo' ? 'characters' : undefined}
+                  spellCheck={key === 'gstNo' ? false : undefined}
                   {...errorProps}
                   step={type === 'number' ? 'any' : undefined}
                   onChange={(e) => onUpdate(key, type === 'number'
