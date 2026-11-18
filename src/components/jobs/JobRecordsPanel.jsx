@@ -1,5 +1,5 @@
 
-import { Camera, Car, ChevronRight, User, Wrench } from 'lucide-react';
+import { Camera, Car, ChevronRight, Pencil, User, Wrench } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { jobInvoiceFinance, jobInvoiceGST } from '../../utils/jobGstFinance';
 import { jobDisplayLabel, statusClass } from './jobs.utils';
@@ -134,6 +134,8 @@ export const JobRecordsPanel = ({
                       </div>}
                   </td>}
                   <td><div className="flex items-center gap-1">
+                    {canEditJobs && job.status !== 'Delivered' && <Link className="jobs-table-open" to={jobHref + '/edit'}
+                      aria-label={`Edit Job Card ${jobDisplayLabel(job)}`} title="Edit Job Card"><Pencil size={16} aria-hidden="true"/></Link>}
                     {canEditJobs && <Link className="jobs-table-open" to={jobHref + '/photos'}
                       aria-label={`Edit photos for ${jobDisplayLabel(job)}`} title="Edit Photos"><Camera size={16} aria-hidden="true"/></Link>}
                     <Link className="jobs-table-open" to={jobHref} aria-label={`Open ${jobDisplayLabel(job)}`} title="Open Job Card"><ChevronRight size={17} aria-hidden="true" /></Link>
@@ -213,6 +215,10 @@ export const JobRecordsPanel = ({
               </div>}
               <div className="jobs-mobile-card-footer">
                 <span title={job.createdDate || ''}>{formatJobDirectoryDate(job.createdDate) || '—'}</span>
+                {canEditJobs && job.status !== 'Delivered' && <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line px-3 text-sm font-semibold text-content"
+                  to={`/jobs/${encodeURIComponent(job.id)}/edit`} aria-label={`Edit Job Card ${jobDisplayLabel(job)}`}>
+                  <Pencil size={16} aria-hidden="true"/> Edit
+                </Link>}
                 {canEditJobs && <Link className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-line px-3 text-sm font-semibold text-content"
                   to={`/jobs/${encodeURIComponent(job.id)}/photos`}
                   aria-label={`Edit photos for ${jobDisplayLabel(job)}`}>

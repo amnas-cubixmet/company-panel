@@ -68,6 +68,9 @@ export const updateJob = async (id, data) => {
   return apiClient.patch(`${API_ENDPOINTS.JOBS}/${id}`, data);
 };
 
+export const getJobEditor = (id) => apiClient.get(`${API_ENDPOINTS.JOBS}/${encodeURIComponent(id)}/editor`);
+export const saveJobEditor = (id, data) => apiClient.patch(`${API_ENDPOINTS.JOBS}/${encodeURIComponent(id)}/editor`, data);
+
 const WORKFLOW_STAGES = ['overview', 'inspection', 'estimate', 'work', 'qc', 'invoice'];
 const STATUS_PROGRESS = {
   New: 0, Inspection: 1, 'Estimate Pending': 2,
@@ -378,6 +381,8 @@ export const jobService = {
   createJob,
   updateJobStatus,
   updateJob,
+  getJobEditor,
+  saveJobEditor,
   getJobWorkflow,
   getJobActivity,
   updateJobComplaintStatus,

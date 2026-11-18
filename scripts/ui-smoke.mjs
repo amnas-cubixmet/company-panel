@@ -132,6 +132,18 @@ function fixture(path) {
   const records = {employees:mockStaffList, customers:customersMock, vehicles:vehiclesMock,
     jobs:jobsMock, invoices:invoicesMock, payments:paymentsMock, expenses:expensesMock};
   const [,resource,id,subresource] = path.split('/');
+  if(resource==='jobs' && subresource==='editor') {
+    const job=jobsMock.find(row=>row.id===id);
+    if(job) {
+      const version='2026-11-16T00:00:00Z';
+      return {
+        job:{...job,kilometre:Number(String(job.kilometre).replace(/[^0-9]/g,''))},
+        customer:{name:job.customerName,phone:job.customerPhone,email:job.customerEmail,address:''},
+        vehicle:{registration:job.vehicleReg,make:'Toyota',model:'Innova',fuelType:'Diesel',vin:''},
+        access:{customer:true,vehicle:true},versions:{job:version,customer:version,vehicle:version},
+      };
+    }
+  }
   if(records[resource] && !subresource) {
     if(!id) return records[resource];
     const row=records[resource].find(row=>row.id===id);
@@ -1537,6 +1549,16 @@ try {
               throw Error('Job Cost, Selling and Profit labels were not separated.');
             }
           }
+        }
+
+        if (path === '/jobs/JOB-00251/edit') {
+          await page.getByRole('heading', {name:'Edit Job Card',exact:true}).waitFor();
+          const name=await page.getByLabel('Customer Name',{exact:true}).inputValue();
+          const complaint=await page.locator('textarea[name="complaint-0"]').inputValue();
+          if(name!==jobsMock[0].customerName || complaint!==jobsMock[0].complaints[0].description) {
+            throw Error('The Job Card editor must prefill the customer and complaints.');
+          }
+          await page.getByRole('button',{name:'Save Job Card',exact:true}).waitFor();
         }
 
         if (path === '/jobs/JOB-00251/invoice' && profile.width === 390) {
