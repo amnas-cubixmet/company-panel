@@ -63,7 +63,7 @@ export function AppUpdateNotice() {
   const [error, setError] = useState('');
   if (!update) return null;
   const apply = () => {
-    if ((edited || document.querySelector('input:focus, textarea:focus, [role="dialog"]')) &&
+    if ((edited || document.querySelector('input:focus, textarea:focus, [role="dialog"][aria-modal="true"]')) &&
         !window.confirm('Reload to update the app? Save any unfinished edits first. Parts queued on this device will be kept.')) return;
     const controller = navigator.serviceWorker.controller;
     publish({ applying: true });
