@@ -230,6 +230,8 @@ export function JobEditPage() {
       <header className="job-create-header">
         <h1 className="text-2xl font-bold text-content">Edit Job Card</h1>
         <p className="mt-1 text-sm text-muted">{jobDisplayLabel(data.job)} · {data.vehicle.registration}</p>
+        {(data.access.customer || data.access.vehicle) && data.job.status !== 'Delivered' &&
+          <p className="mt-1 text-sm text-muted">Customer and vehicle changes update their linked profiles.</p>}
       </header>
       {data.job.status === 'Delivered' ? <p role="status" className="p-4">Delivered Job Cards are locked.</p>
         : <JobEditorForm key={data.job.id} data={data} staff={staff} overview={overview}/>}
