@@ -62,7 +62,7 @@ const schemas = {
     ['browserPush', 'Browser Push', 'checkbox']
   ],
   security: [
-    ['sessionHours', 'Session Lifetime (Hours)', 'number'], ['requireStrongPassword', 'Strong Password Required', 'checkbox'], ['auditExports', 'Audit Data Exports', 'checkbox'], ['twoFactor', 'Two-factor Authentication', 'checkbox']
+    ['sessionHours', 'Session Lifetime (Hours)', 'number'], ['requireStrongPassword', 'Strong Password Required', 'checkbox'], ['auditExports', 'Audit Data Exports', 'checkbox']
   ]
 };
 
