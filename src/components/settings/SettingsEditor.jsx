@@ -2,10 +2,13 @@
 import { RotateCcw, Save } from 'lucide-react';
 import { SettingsCompanyLogo } from './SettingsCompanyLogo';
 import GstRateDropdown from '../common/GstRateDropdown';
+import { CountryPhoneField } from '../common/CountryPhoneField';
+
+const COMPANY_INPUT_LIMITS = { name: 180, email: 254, address: 2000 };
 
 export const SettingsEditor = ({
   active, sections, schema, data, themeMode, setThemeMode,
-  onUpdate, onReset, onSave, saving, dirty, canManageLogo
+  onUpdate, onReset, onSave, saving, dirty, canManageLogo, fieldErrors
 }) => {
   const current = sections.find((item) => item.id === active);
   return (
@@ -40,6 +43,16 @@ export const SettingsEditor = ({
         {(schema || []).map(([key, label, type, options]) => {
           const value = data?.[key] ?? (type === 'checkbox' ? false : '');
           const inputId = `settings-${active}-${key}`;
+          const error = fieldErrors?.[key];
+          const errorProps = {
+            'aria-invalid': error ? true : undefined,
+            'aria-describedby': error ? inputId + '-error' : undefined,
+          };
+          if (active === 'company' && key === 'phone') return (
+            <CountryPhoneField key={key} id={inputId} name={key} label={label} value={value}
+              className="settings-phone-field" disabled={saving} error={error}
+              onChange={(next) => onUpdate(key, next)}/>
+          );
           if (type === 'checkbox') return (
             <label className="settings-toggle" key={key} htmlFor={inputId}>
               <span>
@@ -63,23 +76,29 @@ export const SettingsEditor = ({
                   selectLabel="Default GST Rate (%)" disabled={saving}
                   onChange={rate => onUpdate(key, rate === '' ? '' : Number(rate))}/>
               ) : type === 'select' ? (
-                <select id={inputId} value={value} disabled={saving} onChange={(e) => onUpdate(key, e.target.value)}>
+                <select id={inputId} value={value} disabled={saving} {...errorProps} onChange={(e) => onUpdate(key, e.target.value)}>
                   {options.map((option) => <option key={option} value={option}>{option}</option>)}
                 </select>
               ) : type === 'textarea' ? (
-                <textarea id={inputId} rows={3} value={value} disabled={saving} onChange={(e) => onUpdate(key, e.target.value)}/>
+                <textarea id={inputId} rows={3} value={value} disabled={saving}
+                  maxLength={active === 'company' ? COMPANY_INPUT_LIMITS[key] : undefined}
+                  {...errorProps} onChange={(e) => onUpdate(key, e.target.value)}/>
               ) : (
                 <input
                   id={inputId}
                   type={type}
                   value={value}
                   disabled={saving}
+                  required={active === 'company' && key === 'name'}
+                  maxLength={active === 'company' ? COMPANY_INPUT_LIMITS[key] : undefined}
+                  {...errorProps}
                   step={type === 'number' ? 'any' : undefined}
                   onChange={(e) => onUpdate(key, type === 'number'
                     ? e.target.value === '' ? '' : Number(e.target.value)
                     : e.target.value)}
                 />
               )}
+              {error && <small id={inputId + '-error'} className="settings-field-error" role="alert">{error}</small>}
             </label>
           );
         })}
