@@ -1,6 +1,6 @@
 import { appConfirm } from '../../components/common/appDialogs';
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle2, Clock3, FileText, Gauge, History, PackageSearch, Plus, ReceiptText, ShieldCheck, Star, UserRound, Wrench, ChevronRight, Download, Share2, LockKeyhole, SkipForward } from "lucide-react";
+import { Camera, CheckCircle2, Clock3, FileText, Gauge, History, PackageSearch, Pencil, Plus, ReceiptText, ShieldCheck, Star, UserRound, Wrench, ChevronRight, Download, Share2, LockKeyhole, SkipForward } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { jobService } from '../../services/job.service';
 import { useFeatureAccess } from '../../context/FeatureAccessContext';
@@ -10,6 +10,7 @@ import { USE_MOCK_API } from '../../api/apiConfig';
 import { staffService } from '../../services/staff.service';
 import { JobPartsWorkflow } from './JobPartsWorkflow';
 import { JobInspectionPanel } from '../../components/jobs/JobInspectionPanel';
+import { JobComplaintEditor } from '../../components/jobs/JobComplaintEditor';
 import { VehiclePhotoGallery } from '../../components/vehicles/VehiclePhotoGallery';
 import { QuickEstimatePanel } from '../../components/jobs/QuickEstimatePanel';
 import { JobQualityCheckPanel } from '../../components/jobs/JobQualityCheckPanel';
@@ -113,6 +114,8 @@ export function JobCardWorkspace() {
   const navigate = useNavigate();
   const { can } = useFeatureAccess();
   const canEditJob = can('jobs.edit');
+  const [complaintEditorOpen, setComplaintEditorOpen] = useState(false);
+  const [complaintNotice, setComplaintNotice] = useState('');
   const canViewStaff = can('staff.view');
   const hasInvoiceAccess = can('invoices.view');
   const canCreateInvoice = can('invoices.create');
@@ -193,8 +196,10 @@ export function JobCardWorkspace() {
   const [feedbackRating, setFeedbackRating] = useState('');
   const [feedbackText, setFeedbackText] = useState('');
 
+  const photoPage = location.pathname.endsWith('/photos');
   const activeTab = useMemo(() => {
     const section = location.pathname.split('/').filter(Boolean).at(-1);
+    if (section === 'photos') return 'inspection';
     return section === 'full-log' ? 'activity' : TABS.some(([key]) => key === section) ? section : 'overview';
   }, [location.pathname]);
 
@@ -308,6 +313,8 @@ export function JobCardWorkspace() {
   };
 
   useEffect(() => {
+    setComplaintEditorOpen(false);
+    setComplaintNotice('');
     setJobInvoices([]);
     setJobPayments([]);
     setBillingSummaryState({ jobId: null, data: null });
@@ -1033,7 +1040,7 @@ export function JobCardWorkspace() {
 
   return (
     <div className="job-management-page cg-job-detail jobs-ui-polished job-workspace-dashboard flex w-full min-w-0 flex-col gap-4 pb-4">
-      <JobBreadcrumbs current={TABS.find(([key]) => key === activeTab)?.[1] || "Overview"} jobLabel={jobDisplayLabel(job)} jobId={job.id} />
+      <JobBreadcrumbs current={photoPage ? 'Vehicle Photos' : TABS.find(([key]) => key === activeTab)?.[1] || "Overview"} jobLabel={jobDisplayLabel(job)} jobId={job.id} />
       <header className="job-detail-header flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <div className="min-w-0">
@@ -1044,6 +1051,23 @@ export function JobCardWorkspace() {
 
         <div className="flex flex-wrap items-center gap-2">
           <span className="job-overview-status-badge">{normalizeJobStatus(job.status)}</span>
+          {canEditJob && !photoPage && <Link to={'/jobs/' + encodeURIComponent(job.id) + '/photos'}
+            className="job-financial-header-link">
+            <Camera size={15} aria-hidden="true"/> Edit Photos
+          </Link>}
+          {canEditJob && job.status !== 'Delivered' && complaints.length > 0 && (
+            <button type="button" className="job-financial-header-link" onClick={() => {
+              setComplaintNotice('');
+              setComplaintEditorOpen(true);
+            }}>
+              <Pencil size={15} aria-hidden="true"/> Edit Complaints
+            </button>
+          )}
+          {canEditJob && job.status !== 'Delivered' && complaints.length === 0 && activeTab !== 'complaints' && (
+            <button type="button" className="job-financial-header-link" onClick={() => openTab('complaints')}>
+              <Plus size={15} aria-hidden="true"/> Add Complaint
+            </button>
+          )}
           <WhatsAppManualShareButton key={`${job.id}:${shareTarget}`} targetType={shareTarget} targetId={job.id}
             label={readyForDelivery ? 'Share Vehicle Ready Message' : 'Send via WhatsApp'} buttonOnly />
           {hasInvoiceAccess && jobLinkedInvoiceId && activeTab !== 'invoice' && (
@@ -1061,6 +1085,14 @@ export function JobCardWorkspace() {
             )}
         </div>
       </header>
+      {complaintNotice && <p role="status" className="text-sm font-semibold text-content">{complaintNotice}</p>}
+      {complaintEditorOpen && canEditJob && job.status !== 'Delivered' &&
+        <JobComplaintEditor job={job} onClose={() => setComplaintEditorOpen(false)}
+          onSaved={updated => {
+            setJob(updated);
+            setComplaintEditorOpen(false);
+            setComplaintNotice('Complaint updated.');
+          }}/>}
 
       <nav className="cg-job-connected-links" aria-label="Job Card connected records">
         {can('customers.view') && job.customerId &&
@@ -1443,7 +1475,7 @@ export function JobCardWorkspace() {
             <span className="job-complaints-total">{complaints.length} {complaints.length === 1 ? 'complaint' : 'complaints'}</span>
           </header>
 
-          <div className="job-complaint-entry">
+          {canEditJob && job.status !== 'Delivered' && <div className="job-complaint-entry">
             <label htmlFor="job-customer-complaint">Add Customer Complaint</label>
             <div className="job-complaint-compose">
               <textarea
@@ -1464,7 +1496,7 @@ export function JobCardWorkspace() {
               <span>Track each complaint separately. Update status from its details page.</span>
               <span>{complaintText.length}/1000</span>
             </div>
-          </div>
+          </div>}
 
           <div className="job-complaints-list-header">
             <div>
@@ -1533,7 +1565,7 @@ export function JobCardWorkspace() {
 
       {activeTab === 'inspection' && (
         <div className="job-inspection-camera-stack">
-          <JobInspectionPanel
+          {!photoPage && <JobInspectionPanel
           job={job}
           canEdit={can('jobs.edit') && !activeTabLocked}
           canReopen={can('jobs.edit') && inspectionWasSkipped && currentStage === 'estimate' && !activeTabLocked}
@@ -1549,7 +1581,7 @@ export function JobCardWorkspace() {
               throw e;
             }
           }}
-          />
+          />}
           <VehiclePhotoGallery jobId={job.id} canEdit={can('jobs.edit')}/>
         </div>
       )}
