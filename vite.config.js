@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { companyPanelWorker } from './scripts/pwa-build.js';
 import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ command, mode }) => {
@@ -8,7 +9,7 @@ export default defineConfig(({ command, mode }) => {
     throw new Error('Production build requires VITE_API_URL pointing to the Django /api/v1 backend.');
   }
   return {
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), companyPanelWorker()],
   build: {
     sourcemap: false,
     minify: 'oxc',
