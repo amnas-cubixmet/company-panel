@@ -83,8 +83,9 @@
   .vehicle-photo-gallery .vehicle-photo-add-actions{width:100%}
   .vehicle-photo-gallery .vehicle-photo-add-actions>*{flex:1 1 130px;min-width:0}
   .vehicle-photo-gallery .vehicle-gallery-upload-metadata{
-    grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))
+    grid-template-columns:repeat(auto-fit,minmax(min(100%,162px),1fr))
   }
+  .vehicle-photo-gallery .vehicle-gallery-upload-metadata select{padding-inline:7px}
   .vehicle-photo-gallery .vehicle-photo-upload-caption{grid-column:1/-1}
   .vehicle-photo-gallery .vehicle-gallery-upload-label{width:100%}
 }

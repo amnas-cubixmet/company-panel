@@ -10,7 +10,7 @@ export const VEHICLE_PHOTO_CATEGORIES = [
   ['damage', 'Existing Damage'], ['additional', 'Additional'],
 ];
 
-export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
+export function LiveVehicleCamera({ onCapture, disabled = false, count = 0, buttonLabel = 'Open Live Camera' }) {
   const videoRef = useRef(null);
   const dialogRef = useRef(null);
   const closeButtonRef = useRef(null);
@@ -215,7 +215,7 @@ export function LiveVehicleCamera({ onCapture, disabled = false, count = 0 }) {
   return (
     <>
       <button type="button" className="live-camera-trigger" onClick={openCamera} disabled={disabled}>
-        <Camera size={17} aria-hidden="true" /> Open Live Camera
+        <Camera size={17} aria-hidden="true" /> {buttonLabel}
       </button>
       {open && createPortal(
         <div className="live-camera-overlay" role="dialog" aria-modal="true" aria-label="Vehicle live camera">

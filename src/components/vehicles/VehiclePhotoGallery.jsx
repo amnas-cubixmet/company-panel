@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { Camera, RefreshCw, UploadCloud, Eye, EyeOff } from 'lucide-react';
 import { vehiclePhotoService } from '../../services/vehiclePhoto.service';
 import { LiveVehicleCamera } from './LiveVehicleCamera';
@@ -68,6 +68,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_BATCH_SIZE = 8;
 
 export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPublish = canEdit, refreshKey = 0 }) {
+  const uploadFieldId = useId();
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -171,7 +172,7 @@ export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPubl
       <div className="vehicle-camera-heading">
         <h3><Camera size={18} aria-hidden="true"/> Vehicle Photo Gallery</h3>
         {canEdit && <div className="vehicle-photo-add-actions">
-          <LiveVehicleCamera onCapture={capture} disabled={uploading} count={photos.length}/>
+          <LiveVehicleCamera onCapture={capture} disabled={uploading} count={photos.length} buttonLabel="Live Camera"/>
           <label className="vehicle-gallery-upload-label">
             <UploadCloud size={17} aria-hidden="true"/> Upload Photos
             <input type="file" accept="image/jpeg,image/png,image/webp" multiple
@@ -181,9 +182,9 @@ export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPubl
         </div>}
       </div>
       {canEdit && <div className="vehicle-gallery-upload-metadata" aria-label="Photo upload details">
-        <label>Category
-          <select value={category} onChange={event => setCategory(event.target.value)} disabled={uploading}>
-            <option value="additional">Additional Photo</option>
+        <label><span id={uploadFieldId + '-category'}>Category</span>
+          <select aria-labelledby={uploadFieldId + '-category'} value={category} onChange={event => setCategory(event.target.value)} disabled={uploading}>
+            <option value="additional">Additional</option>
             <option value="front">Front View</option><option value="rear">Rear View</option>
             <option value="left">Left Side</option><option value="right">Right Side</option>
             <option value="interior">Interior</option><option value="dashboard">Dashboard</option>
@@ -191,8 +192,8 @@ export function VehiclePhotoGallery({ vehicleId, jobId, canEdit = false, canPubl
             <option value="damage">Existing Damage</option>
           </select>
         </label>
-        <label>Service phase
-          <select value={phase} onChange={event => setPhase(event.target.value)} disabled={uploading}>
+        <label><span id={uploadFieldId + '-phase'}>Service phase</span>
+          <select aria-labelledby={uploadFieldId + '-phase'} value={phase} onChange={event => setPhase(event.target.value)} disabled={uploading}>
             <option value="before">Before Service</option>
             <option value="progress">Work in Progress</option>
             <option value="after">After Service</option>
