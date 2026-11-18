@@ -2,6 +2,9 @@
 // A client-side estimate or enabled button cannot grant paid access.
 export function featureLabelStatus(bundle, wallet) {
   if (!bundle) return { label: 'Unavailable', message: 'Feature label could not be loaded.', allow: false };
+  if (bundle.purchaseDisabledReason === 'REPORTS_IN_ACCOUNTS_TAX') {
+    return { label: 'Included in Accounts & Tax', message: '', allow: false };
+  }
   // The opt-in due-day mode records a verified server-side usage session and
   // only charges the wallet AFTER a closed cycle. Zero wallet balance alone
   // must never prevent an eligible new monthly label activation.
