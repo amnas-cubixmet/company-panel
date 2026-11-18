@@ -4,13 +4,24 @@ import { SettingsCompanyLogo } from './SettingsCompanyLogo';
 import GstRateDropdown from '../common/GstRateDropdown';
 import { CountryPhoneField } from '../common/CountryPhoneField';
 
-const COMPANY_INPUT_LIMITS = { name: 180, email: 254, address: 2000 };
+const COMPANY_INPUT_LIMITS = { name: 180, email: 254, gstNo: 15, address: 2000 };
 
 export const SettingsEditor = ({
   active, sections, schema, data, themeMode, setThemeMode,
   onUpdate, onReset, onSave, saving, dirty, canManageLogo, fieldErrors
 }) => {
   const current = sections.find((item) => item.id === active);
+  const trimGstinPaste = (event) => {
+    const pasted = event.clipboardData.getData('text');
+    const trimmed = pasted.trim();
+    if (trimmed === pasted) return;
+    event.preventDefault();
+    const { value, selectionStart, selectionEnd, maxLength } = event.currentTarget;
+    const remaining = maxLength - value.length + selectionEnd - selectionStart;
+    if (trimmed && remaining > 0) {
+      onUpdate('gstNo', value.slice(0, selectionStart) + trimmed.slice(0, remaining) + value.slice(selectionEnd));
+    }
+  };
   return (
     <section className="settings-dashboard-card" aria-labelledby="settings-current-title">
       <header className="settings-dashboard-card-head">
@@ -93,6 +104,7 @@ export const SettingsEditor = ({
                   maxLength={active === 'company' ? COMPANY_INPUT_LIMITS[key] : undefined}
                   autoCapitalize={key === 'gstNo' ? 'characters' : undefined}
                   spellCheck={key === 'gstNo' ? false : undefined}
+                  onPaste={key === 'gstNo' ? trimGstinPaste : undefined}
                   {...errorProps}
                   step={type === 'number' ? 'any' : undefined}
                   onChange={(e) => onUpdate(key, type === 'number'
