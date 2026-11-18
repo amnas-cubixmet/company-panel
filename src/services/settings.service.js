@@ -8,9 +8,9 @@ const COMPANY_EDITABLE_SETTINGS = new Set([
 ]);
 
 const editablePayload = (category, data) => {
-  if (category === 'operations') {
+  if (category === 'operations' || category === 'security') {
     const payload = { ...data };
-    delete payload.deliveryCreditAllowed;
+    delete payload[category === 'operations' ? 'deliveryCreditAllowed' : 'twoFactor'];
     return payload;
   }
   if (category !== 'company') return data;
@@ -30,7 +30,7 @@ const defaults = {
   attendance: { graceMinutes: 15, overtimeAfterMinutes: 540, locationRequired: false, correctionApproval: true },
   payroll: { payrollDay: 30, overtimeMultiplier: 1.5, managerApproval: true },
   notifications: { jobCreated: true, jobAssigned: true, jobStatus: true, jobReady: true, lowStock: true, overdueInvoice: true, leaveDecision: true, email: false, whatsapp: false, browserPush: true },
-  security: { sessionHours: 12, requireStrongPassword: true, auditExports: true, twoFactor: false },
+  security: { sessionHours: 12, requireStrongPassword: true, auditExports: true },
   integrations: { razorpayEnabled: false, whatsappEnabled: false, emailEnabled: false, webhookUrl: '' }
 };
 
