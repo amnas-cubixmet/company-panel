@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const profile = readFileSync(new URL('../src/pages/vehicles/VehicleDetails.jsx', import.meta.url), 'utf8');
 const gallery = readFileSync(new URL('../src/components/vehicles/VehiclePhotoGallery.jsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../src/styles/vehicle-profile-refresh.css', import.meta.url), 'utf8');
+const galleryCss = readFileSync(new URL('../src/styles/vehicle-camera-queue.css', import.meta.url), 'utf8');
 const photoService = readFileSync(new URL('../src/services/vehiclePhoto.service.js', import.meta.url), 'utf8');
 
 test('vehicle details remove the large Back to Vehicles button but retain safe breadcrumbs', () => {
@@ -27,7 +28,7 @@ test('vehicle profile exposes accessible photos tab for managing customer sharin
 test('publishing new vehicle photos is selected by default only for authorized staff', () => {
   assert.match(gallery, /useState\(Boolean\(canPublish\)\)/);
   assert.match(gallery, /published: Boolean\(canPublish && publishNewPhotos\)/);
-  assert.match(gallery, /Published to Customer/);
+  assert.match(gallery, /Publish new photos to customer portal/);
   assert.match(gallery, /privateCount/);
   assert.match(gallery, /visibilityFilter === 'published'/);
   assert.match(gallery, /visibilityFilter === 'private'/);
@@ -37,9 +38,9 @@ test('publishing new vehicle photos is selected by default only for authorized s
 
 test('vehicle photo customer visibility uses backend state and is not spoofed by UI label', () => {
   assert.match(gallery, /checked=\{Boolean\(photo\.published\)\}/);
-  assert.match(gallery, /photo\.published \? 'Published to Customer' : 'Private'/);
+  assert.match(gallery, /photo\.published \? 'Published' : 'Private'/);
   assert.doesNotMatch(gallery, /setPhotos\(\(current\) => current\.map\(.*published: true/);
-  assert.match(css, /\.vehicle-photo-visibility-badge\.is-published/);
+  assert.match(galleryCss, /\.vehicle-photo-visibility-badge\.is-published/);
 });
 
 test('vehicle list and profile load same scoped responsive styles', () => {
