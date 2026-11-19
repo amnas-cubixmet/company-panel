@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  CarFront, CheckCircle2, HardHat, Package, Plus, Search, Trash2, UserRound,
+  CheckCircle2, HardHat, Package, Plus, Search, Trash2, UserRound,
   Wrench, X, RefreshCw,
 } from 'lucide-react';
 import { JobBreadcrumbs } from '../../components/jobs/JobBreadcrumbs';
@@ -28,7 +28,7 @@ const displayVehicle = vehicle => [
   [vehicle.make, vehicle.model, vehicle.variant].filter(Boolean).join(' '),
 ].filter(Boolean).join(' · ');
 
-function SearchResults({ label, query, onQuery, placeholder, loading, error, results, onAdd, emptyText, renderTitle, renderMeta }) {
+function SearchResults({ label, query, onQuery, placeholder, loading, error, results, onAdd, emptyText, renderTitle, renderMeta, isDisabled }) {
   return (
     <div className="quick-service-picker">
       <label className="quick-service-search-label">
@@ -48,7 +48,7 @@ function SearchResults({ label, query, onQuery, placeholder, loading, error, res
                 <strong>{renderTitle(row)}</strong>
                 <small>{renderMeta(row)}</small>
               </div>
-              <button type="button" className="quick-service-add-button" onClick={() => onAdd(row)}>
+              <button type="button" className="quick-service-add-button" disabled={Boolean(isDisabled?.(row))} onClick={() => onAdd(row)}>
                 <Plus size={15} aria-hidden="true" /> Add
               </button>
             </div>
@@ -69,6 +69,8 @@ function CustomerVehicleSection({ can, customer, onCustomer, vehicle, onVehicle,
   const [newCustomer, setNewCustomer] = useState(false);
   const [customerDraft, setCustomerDraft] = useState({ name: '', phone: '', email: '', address: '' });
   const [customerSaving, setCustomerSaving] = useState(false);
+  const canCustomersView = can('customers.view');
+  const canVehiclesView = can('vehicles.view');
 
   const [vehicleQuery, setVehicleQuery] = useState('');
   const [vehicleRows, setVehicleRows] = useState([]);
@@ -80,7 +82,7 @@ function CustomerVehicleSection({ can, customer, onCustomer, vehicle, onVehicle,
   const [vehicleSaving, setVehicleSaving] = useState(false);
 
   useEffect(() => {
-    if (!can('customers.view') || customer || !customerOpen) return;
+    if (!canCustomersView || customer || !customerOpen) return;
     let active = true;
     const timer = window.setTimeout(async () => {
       setCustomerLoading(true);
@@ -93,10 +95,10 @@ function CustomerVehicleSection({ can, customer, onCustomer, vehicle, onVehicle,
       } finally { if (active) setCustomerLoading(false); }
     }, 180);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [customerQuery, customerOpen, customer?.id, can]);
+  }, [customerQuery, customerOpen, customer?.id, canCustomersView]);
 
   useEffect(() => {
-    if (!can('vehicles.view') || vehicle || !vehicleOpen) return;
+    if (!canVehiclesView || vehicle || !vehicleOpen) return;
     let active = true;
     const timer = window.setTimeout(async () => {
       setVehicleLoading(true);
@@ -111,7 +113,7 @@ function CustomerVehicleSection({ can, customer, onCustomer, vehicle, onVehicle,
       } finally { if (active) setVehicleLoading(false); }
     }, 180);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [vehicleQuery, vehicleOpen, vehicle?.id, customer?.id, can]);
+  }, [vehicleQuery, vehicleOpen, vehicle?.id, customer?.id, canVehiclesView]);
 
   const pickCustomer = row => {
     onCustomer(row);
@@ -185,7 +187,7 @@ function CustomerVehicleSection({ can, customer, onCustomer, vehicle, onVehicle,
         <span className="quick-service-optional">Optional</span>
       </div>
       <div className="quick-service-two-columns">
-        {can('customers.view') && (
+        {canCustomersView && (
           <div className="quick-service-field-group">
             <div className="quick-service-field-heading">
               <label>Customer</label>
@@ -220,7 +222,7 @@ function CustomerVehicleSection({ can, customer, onCustomer, vehicle, onVehicle,
             {customerError && <p className="quick-service-error" role="alert">{customerError}</p>}
           </div>
         )}
-        {can('vehicles.view') && (
+        {canVehiclesView && (
           <div className="quick-service-field-group">
             <div className="quick-service-field-heading">
               <label>Vehicle</label>
@@ -398,6 +400,9 @@ export function QuickServicePage() {
   });
   const [customOpen, setCustomOpen] = useState(false);
   const [customDraft, setCustomDraft] = useState({ description: '', qty: '1', rate: '', hsnCode: '', taxRate: '' });
+  const canServicesView = can('services.view');
+  const canStockView = can('stock.view');
+  const canExpensesView = can('expenses.view');
 
   const resetRequestKey = () => { requestKey.current = makeKey(); };
 
@@ -409,7 +414,7 @@ export function QuickServicePage() {
     Promise.all([
       quickService.list(),
       billingService.getGstContext().catch(() => null),
-      can('expenses.view') ? outsideLabourService.list().catch(() => []) : Promise.resolve([]),
+      canExpensesView ? outsideLabourService.list().catch(() => []) : Promise.resolve([]),
     ]).then(([data, gst, workers]) => {
       if (!active) return;
       setServices(rowsOf(data));
@@ -425,10 +430,10 @@ export function QuickServicePage() {
     }).catch(err => { if (active) setLoadError(err.message || 'Could not load Quick Services.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [allowed, reload, can]);
+  }, [allowed, reload, canExpensesView]);
 
   useEffect(() => {
-    if (!can('services.view')) return;
+    if (!canServicesView) return;
     let active = true;
     const timer = window.setTimeout(async () => {
       setServiceLoading(true); setServiceError('');
@@ -439,10 +444,10 @@ export function QuickServicePage() {
       finally { if (active) setServiceLoading(false); }
     }, 180);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [serviceQuery, can]);
+  }, [serviceQuery, canServicesView]);
 
   useEffect(() => {
-    if (!can('stock.view')) return;
+    if (!canStockView) return;
     let active = true;
     const timer = window.setTimeout(async () => {
       setPartLoading(true); setPartError('');
@@ -453,7 +458,7 @@ export function QuickServicePage() {
       finally { if (active) setPartLoading(false); }
     }, 180);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [partQuery, can]);
+  }, [partQuery, canStockView]);
 
   const addService = row => {
     setItems(old => [...old, {
@@ -590,6 +595,9 @@ export function QuickServicePage() {
       {!allowed ? <p role="status">{USE_MOCK_API ? 'Quick Service requires a connected workshop.' : 'You do not have access to Quick Service.'}</p> : <>
         {canStart && (
           <form className="quick-service-builder" onSubmit={start}>
+            <section className="quick-service-section quick-service-title-section">
+              <label>Quick Service title (optional)<input value={description} maxLength={255} onChange={event => { setDescription(event.target.value); resetRequestKey(); }} placeholder="e.g. Minor repair / walk-in service"/></label>
+            </section>
             <CustomerVehicleSection can={can} customer={customer} onCustomer={setCustomer}
               vehicle={vehicle} onVehicle={setVehicle} resetRequestKey={resetRequestKey}/>
 
@@ -597,7 +605,7 @@ export function QuickServicePage() {
               <div className="quick-service-section-heading">
                 <div className="quick-service-section-title"><Wrench size={18}/><div><h2>Services</h2><p>Search the workshop service catalogue and add the work</p></div></div>
               </div>
-              {can('services.view') ? (
+              {canServicesView ? (
                 <SearchResults label="Search services" query={serviceQuery} onQuery={setServiceQuery}
                   placeholder="Service name or code" loading={serviceLoading} error={serviceError}
                   results={serviceRows} onAdd={addService} emptyText="No services found."
@@ -614,9 +622,9 @@ export function QuickServicePage() {
 
             <section className="quick-service-section">
               <div className="quick-service-section-heading"><div className="quick-service-section-title"><Package size={18}/><div><h2>Spare Parts</h2><p>Search stock and add the required quantity</p></div></div></div>
-              {can('stock.view') ? <SearchResults label="Search parts" query={partQuery} onQuery={setPartQuery}
+              {canStockView ? <SearchResults label="Search parts" query={partQuery} onQuery={setPartQuery}
                 placeholder="Part name, SKU or brand" loading={partLoading} error={partError}
-                results={partRows} onAdd={addPart} emptyText="No matching parts found. Add new parts in Inventory first."
+                results={partRows} onAdd={addPart} isDisabled={row => Number(row.branchAvailable ?? row.available ?? row.onHand ?? 0) <= 0} emptyText="No matching parts found. Add new parts in Inventory first."
                 renderTitle={row => row.partName || row.name} renderMeta={row => {
                   const available=Number(row.branchAvailable ?? row.available ?? row.onHand ?? 0);
                   return `${row.sku || 'No SKU'} · ${available} available · ${currency.format(Number(row.sellingPrice ?? row.price ?? 0))}`;
@@ -648,7 +656,7 @@ export function QuickServicePage() {
               </div>
               {!items.length ? <p className="quick-service-empty">Search and add a service, spare part or outside labour above.</p> : (
                 <div className="quick-service-added-list">
-                  {items.map((item,index)=><article className="quick-service-added-item" key={item.key}>
+                  {items.map(item=><article className="quick-service-added-item" key={item.key}>
                     <div className="quick-service-added-title"><div><strong>{item.description || item.workDescription}</strong><small>{item.kind === 'part' ? `Spare Part · ${item.sku}` : item.kind === 'outside' ? `Outside Labour · ${item.workerName}` : item.kind === 'service' ? 'Catalogue Service' : 'Custom Service'}</small></div><button type="button" aria-label={`Remove ${item.description}`} onClick={()=>removeItem(item.key)}><Trash2 size={16}/></button></div>
                     <div className="quick-service-added-controls">
                       <label>Qty<input type="number" min="0.01" step="0.01" value={item.qty} onChange={e=>updateItem(item.key,'qty',e.target.value)} disabled={item.kind==='outside'}/></label>
