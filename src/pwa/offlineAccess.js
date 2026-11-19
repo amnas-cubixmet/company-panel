@@ -50,7 +50,7 @@ export function forgetFeatureAccess() {
  * entitlement responses must remain blocked.
  */
 export function offlineAccessAfterFailure(user, error) {
-  const status = Number(error?.status ?? error?.response?.status || 0);
+  const status = Number(error?.status ?? error?.response?.status ?? 0);
   const code = error?.code || error?.cause?.code;
   const network = !status && ['ERR_NETWORK', 'ECONNABORTED', 'ETIMEDOUT', 'ERR_CONNECTION_REFUSED'].includes(code);
   const temporary = network || [408, 425, 429, 502, 503, 504].includes(status) ||
