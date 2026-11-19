@@ -11,10 +11,11 @@ const TTL_MS = 6 * 60 * 60 * 1000;
 const READ_MODULES = new Set([
   'dashboard', 'customers', 'vehicles', 'services', 'jobs', 'stock',
   'inventory', 'suppliers', 'employees', 'attendance', 'payroll',
-  'invoices', 'payments', 'expenses', 'reports', 'notifications',
-  'settings', 'company', 'branches', 'roles',
+  'invoices', 'payments', 'expenses', 'finance', 'gstr',
+  'reports', 'notifications', 'settings', 'company', 'branches', 'roles',
+  'staff', 'saas', 'account', 'e-way-bills',
 ]);
-const PRIVATE_PATH = /\/(?:auth|login|refresh|logout|password|security|tokens?|keys?|files?|download|export|webhooks?|gateway|checkout|verify|bank-accounts?|payslips?)(?:\/|$)/i;
+const PRIVATE_PATH = /\/(?:auth|login|refresh|logout|password|security|tokens?|keys?|files?|download|export|webhooks?|gateway|checkout|verify|access|entitlements|bank-accounts?|payslips?|statements?\/download|photos?\/file)(?:\/|$)/i;
 let database;
 
 export function offlineReadRequestKey(config) {
