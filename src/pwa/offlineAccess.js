@@ -1,8 +1,8 @@
-import { inventoryScope, offlineSessionDeadline, scopeKey } from './session.js';
+import { offlineUserScope, offlineSessionDeadline, scopeKey } from './session.js';
 
 const STORAGE_KEY = 'cubixgear:verified-feature-access:v1';
 
-const identity = (user) => scopeKey(inventoryScope(user));
+const identity = (user) => scopeKey(offlineUserScope(user));
 
 // This is a copy of server-authorized permissions, not a new permission grant.
 // Access is limited to the original user/company/branch and JWT expiry.
