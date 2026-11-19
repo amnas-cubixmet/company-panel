@@ -2,6 +2,8 @@ import { createContext, useCallback, useEffect, useMemo, useState } from "react"
 import apiClient from '../api/apiClient';
 import { useOffline } from '../pwa/connectivity';
 import { forgetVerifiedSession, offlineSessionDeadline, rememberVerifiedSession } from '../pwa/session';
+import { forgetFeatureAccess } from '../pwa/offlineAccess';
+import { clearOfflineResponses } from '../pwa/offlineReads';
 
 export const AuthContext = createContext(null);
 
@@ -74,6 +76,8 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('auth_refresh_token');
           localStorage.removeItem('auth_user');
           forgetVerifiedSession();
+          forgetFeatureAccess();
+          void clearOfflineResponses().catch(() => {});
           setUser(null);
           setIsAuthenticated(false);
           setUsingCachedSession(false);
@@ -210,6 +214,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('auth_refresh_token');
     localStorage.removeItem('auth_user');
     forgetVerifiedSession();
+    forgetFeatureAccess();
+    void clearOfflineResponses().catch(() => {});
     setUser(null);
     setIsAuthenticated(false);
     setUsingCachedSession(false);
