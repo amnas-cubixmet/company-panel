@@ -148,7 +148,11 @@ export const AuthProvider = ({ children }) => {
       if (localStorage.getItem('auth_token')) retrySession();
     };
     window.addEventListener('online', reconnect);
-    return () => window.removeEventListener('online', reconnect);
+    window.addEventListener('cubixgear:backend-recovered', reconnect);
+    return () => {
+      window.removeEventListener('online', reconnect);
+      window.removeEventListener('cubixgear:backend-recovered', reconnect);
+    };
   }, [retrySession]);
 
   // navigator.onLine may stay true when the API is down. Recheck when the
