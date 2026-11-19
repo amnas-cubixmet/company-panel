@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { offlineReadRequestKey } from '../src/pwa/offlineReads.js';
-import { rememberFeatureAccess, readFeatureAccess, forgetFeatureAccess } from '../src/pwa/offlineAccess.js';
+import { rememberFeatureAccess, readFeatureAccess, forgetFeatureAccess, offlineAccessAfterFailure } from '../src/pwa/offlineAccess.js';
 import { rememberVerifiedSession, forgetVerifiedSession } from '../src/pwa/session.js';
 
 test('offline API reads are scoped to allowed GET JSON endpoints and distinct filters', () => {
@@ -47,6 +47,22 @@ test('saved permissions require matching verified user, company, branch and JWT 
     });
     assert.deepEqual(readFeatureAccess(user).permissions, ['dashboard.view']);
 
+    // A momentary failure of /saas/credits/access must not block previously
+    // verified pages, but explicit tenant or permission denial still blocks.
+    for (const error of [
+      { code: 'ERR_NETWORK' }, { code: 'ECONNABORTED' },
+      { status: 503 }, { status: 500 }, { status: 502 },
+    ]) {
+      assert.deepEqual(offlineAccessAfterFailure(user, error)?.permissions, ['dashboard.view']);
+    }
+    for (const error of [
+      { status: 401 }, { status: 403 }, { status: 404 },
+      { status: 400 }, new Error('Invalid feature access response'),
+      new Error('Access response belongs to a different company'),
+    ]) {
+      assert.equal(offlineAccessAfterFailure(user, error), null);
+    }
+
     // Company owners may have no selected branch. Their verified company
     // shell may still be browsed offline; stock drafts remain branch-scoped.
     const owner = { ...user, branch: null };
@@ -66,6 +82,7 @@ test('saved permissions require matching verified user, company, branch and JWT 
 
     local.setItem('auth_token', jwt({ token_type: 'access', user_id: 'user1', exp: Math.floor(Date.now() / 1000) - 1 }));
     assert.equal(readFeatureAccess(user), null);
+    assert.equal(offlineAccessAfterFailure(user, { status: 503 }), null);
     forgetFeatureAccess();
     forgetVerifiedSession();
   } finally {
