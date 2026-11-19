@@ -250,16 +250,16 @@ export function QuickServicePage() {
               <div className="quick-service-card-head">
                 <div>
                   <h3>{service.description}</h3>
-                  <p>{service.invoiceId ? 'Closed' : 'In progress'} · {new Date(service.created_at).toLocaleString('en-IN')}</p>
+                  <p>{service.closedAt ? 'Closed' : 'In progress'} · {new Date(service.created_at).toLocaleString('en-IN')}</p>
                 </div>
                 <div className="quick-service-actions">
                   {service.invoiceId && canViewInvoice && <Link className="dashboard-button" to={`/invoices/${service.invoiceId}`}>View Invoice {service.invoiceNumber}</Link>}
-                  {!service.invoiceId && canClose && selectedId !== service.id && (
+                  {!service.closedAt && canClose && selectedId !== service.id && (
                     <button type="button" className="dashboard-button is-primary" onClick={() => setSelectedId(service.id)}>Finish Service</button>
                   )}
                 </div>
               </div>
-              {service.id === selectedId && !service.invoiceId && canClose && (
+              {service.id === selectedId && !service.closedAt && canClose && (
                 <QuickServiceCheckout service={service} onClose={finish} onCancel={() => setSelectedId(null)} />
               )}
             </article>
