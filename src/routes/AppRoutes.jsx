@@ -121,8 +121,6 @@ function PublicSignupRedirect() {
 function RootRedirect() {
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
-  const { offline } = useOfflineInventory();
-
   return (
     <Navigate
       to={`${isAuthenticated ? getStaffLandingPath(user) : "/dashboard"}${location.search}`}
