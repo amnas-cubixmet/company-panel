@@ -402,6 +402,7 @@ export function QuickServicePage() {
   const [customDraft, setCustomDraft] = useState({ description: '', qty: '1', rate: '', hsnCode: '', taxRate: '' });
   const canServicesView = can('services.view');
   const canStockView = can('stock.view');
+  const canStockEdit = can('stock.edit');
   const canExpensesView = can('expenses.view');
 
   const resetRequestKey = () => { requestKey.current = makeKey(); };
@@ -624,11 +625,12 @@ export function QuickServicePage() {
               <div className="quick-service-section-heading"><div className="quick-service-section-title"><Package size={18}/><div><h2>Spare Parts</h2><p>Search stock and add the required quantity</p></div></div></div>
               {canStockView ? <SearchResults label="Search parts" query={partQuery} onQuery={setPartQuery}
                 placeholder="Part name, SKU or brand" loading={partLoading} error={partError}
-                results={partRows} onAdd={addPart} isDisabled={row => Number(row.branchAvailable ?? row.available ?? row.onHand ?? 0) <= 0} emptyText="No matching parts found. Add new parts in Inventory first."
+                results={partRows} onAdd={addPart} isDisabled={row => !canStockEdit || Number(row.branchAvailable ?? row.available ?? row.onHand ?? 0) <= 0} emptyText="No matching parts found. Add new parts in Inventory first."
                 renderTitle={row => row.partName || row.name} renderMeta={row => {
                   const available=Number(row.branchAvailable ?? row.available ?? row.onHand ?? 0);
                   return `${row.sku || 'No SKU'} · ${available} available · ${currency.format(Number(row.sellingPrice ?? row.price ?? 0))}`;
                 }}/> : <p className="quick-service-muted">Stock View permission is required to search parts.</p>}
+              {!canStockEdit && canStockView && <p className="quick-service-muted">Stock Edit permission is required to add parts to an invoice.</p>}
               <p className="quick-service-hint"><Link to="/stock">Open Inventory to add a new part</Link></p>
             </section>
 
