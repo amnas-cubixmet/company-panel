@@ -181,7 +181,7 @@ function CustomerVehicleSection({ can, customer, onCustomer, vehicle, onVehicle,
   };
 
   return (
-    <section className="quick-service-section">
+    <section className="quick-service-section quick-service-customer-vehicle-section">
       <div className="quick-service-section-heading">
         <div className="quick-service-section-title"><UserRound size={18} aria-hidden="true" /><div><h2>Customer & Vehicle</h2><p>Optional for walk-in counter work</p></div></div>
         <span className="quick-service-optional">Optional</span>
