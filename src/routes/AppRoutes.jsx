@@ -1,4 +1,3 @@
-import { useOfflineInventory } from '../pwa/InventoryOfflineProvider';
 import { useEffect } from 'react';
 import { lazyPage } from './lazyPage';
 const OwnerCompanyProfile = lazyPage(() => import('../pages/saas/OwnerCompanyProfile'), 'OwnerCompanyProfile');
