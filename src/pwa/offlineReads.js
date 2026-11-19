@@ -1,4 +1,4 @@
-import { inventoryScope, offlineSessionDeadline, scopeKey } from './session';
+import { inventoryScope, offlineSessionDeadline, scopeKey } from './session.js';
 
 // Browser-local read-through snapshots for previously visited pages only.
 // Never cache API auth, entitlements, files or secrets. These are unencrypted
