@@ -1,6 +1,7 @@
 
 import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useOfflineInventory } from '../pwa/InventoryOfflineProvider';
+import { offlineSessionDeadline } from '../pwa/session';
 import { useAuth } from '../hooks/useAuth';
 import { SaaSAccountLayout, WorkspaceAccessNotice } from '../components/layout/SaaSAccountLayout';
 import { isAccountPath, isAccountOnly, setupRedirect } from '../utils/accountWorkspace';
@@ -53,8 +54,12 @@ export const ProtectedRoute = () => {
   }
 
   if (offline) {
-    if (isAuthenticated && !ready) return <p role="status">Loading offline Inventory…</p>;
-    if (isAuthenticated && (location.pathname === '/settings' ||
+    // Server-issued access tokens and the previously verified user/branch
+    // are required even for offline shell access. Never trust a network flag
+    // as evidence of authorization.
+    const verified = isAuthenticated && offlineSessionDeadline(user) > Date.now();
+    if (verified && !ready) return <p role="status">Loading offline Inventory…</p>;
+    if (verified && (location.pathname === '/settings' ||
         (snapshot && (location.pathname === '/stock' || location.pathname === '/')))) {
       return <DashboardLayout><Outlet /></DashboardLayout>;
     }
@@ -65,7 +70,7 @@ export const ProtectedRoute = () => {
           : 'Open Inventory online with a verified account to use it offline.'}</p>
         {snapshot && <Link to="/stock">Open Inventory</Link>}
       </section>;
-    return isAuthenticated ? <DashboardLayout>{notice}</DashboardLayout> : notice;
+    return verified ? <DashboardLayout>{notice}</DashboardLayout> : notice;
   }
 
   if (!isAuthenticated) {
