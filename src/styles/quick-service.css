@@ -312,6 +312,7 @@
 @media (min-width: 900px) {
   .quick-service-builder { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
   .quick-service-builder > .quick-service-title-section,
+.quick-service-builder > .quick-service-customer-vehicle-section,
 .quick-service-builder > .quick-service-section:first-child,
   .quick-service-builder > .quick-service-added-section,
   .quick-service-builder > .quick-service-start-footer { grid-column: 1 / -1; }
