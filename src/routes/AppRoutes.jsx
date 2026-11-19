@@ -125,7 +125,7 @@ function RootRedirect() {
 
   return (
     <Navigate
-      to={`${offline ? "/stock" : isAuthenticated ? getStaffLandingPath(user) : "/dashboard"}${location.search}`}
+      to={`${isAuthenticated ? getStaffLandingPath(user) : "/dashboard"}${location.search}`}
       replace
     />
   );
