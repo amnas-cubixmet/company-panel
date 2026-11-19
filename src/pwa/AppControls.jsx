@@ -162,12 +162,39 @@ export function AppUpdateNotice() {
   </aside>;
 }
 
+async function diagnoseInstallReadiness() {
+  if (!window.isSecureContext) return 'Installation needs HTTPS.';
+  if (!('serviceWorker' in navigator)) return 'This browser does not support service workers.';
+  let response;
+  try {
+    response = await fetch('/manifest.webmanifest', { cache: 'no-store' });
+    if (!response.ok) return 'Manifest request failed (HTTP ' + response.status + ').';
+    const mime = response.headers.get('content-type') || '';
+    if (!/json|webmanifest/i.test(mime)) return 'Manifest has the wrong content type: ' + mime;
+    const manifest = await response.json();
+    if (!manifest.id || !manifest.name || !manifest.start_url ||
+        !Array.isArray(manifest.icons) || manifest.icons.length === 0) {
+      return 'The production manifest is missing required install fields.';
+    }
+  } catch {
+    return 'Could not load /manifest.webmanifest. Check your production deployment.';
+  }
+  try {
+    const registration = await navigator.serviceWorker.getRegistration('/');
+    if (!registration?.active) return 'Service worker is not active. Check /sw.js under DevTools > Application.';
+  } catch {
+    return 'Unable to check service worker registration in this browser.';
+  }
+  return 'Manifest and service worker are present. If the browser does not offer Install, check DevTools > Application > Manifest and Issues. The app may already be installed.';
+}
+
 export function InstallAppControls({ inDrawer = false }) {
   const {
     prompt, installed, installing, installMessage, checking, applying,
     update, reloadAvailable, updateMessage,
   } = useSyncExternalStore(subscribe, read);
   const [instructions, setInstructions] = useState(false);
+  const [installDiagnostic, setInstallDiagnostic] = useState('');
   const appIcon = <img className="cg-pwa-app-icon" src="/app-icon-180.png" width="26" height="26" alt="" />;
   // Web Install API is a progressive enhancement. Chromium versions without
   // it still support the one-use beforeinstallprompt event.
@@ -203,6 +230,8 @@ export function InstallAppControls({ inDrawer = false }) {
     const deferred = state.prompt;
     if (!deferred) {
       setInstructions(true);
+      setInstallDiagnostic('Checking production PWA configuration…');
+      void diagnoseInstallReadiness().then(setInstallDiagnostic);
       return;
     }
 
@@ -236,6 +265,7 @@ export function InstallAppControls({ inDrawer = false }) {
     <AppUpdateButton checking={checking} applying={applying} />
     {installMessage && <p role="status">{installMessage}</p>}
     {(updateMessage || update || reloadAvailable) && <p role="status">{updateMessage || 'Update available'}</p>}
+    {!installed && instructions && installDiagnostic && <p role="status">{installDiagnostic}</p>}
     {!installed && instructions && <p role="status">{apple
       ? 'In Safari, tap Share, then Add to Home Screen. If shown, enable Open as Web App, then tap Add.'
       : 'In Chrome or Edge, open the browser menu and look for Install app or Install page as app. If it is missing, the app may already be installed or the browser has not recognized it as installable. Check the app manifest and service worker in DevTools.'}</p>}
