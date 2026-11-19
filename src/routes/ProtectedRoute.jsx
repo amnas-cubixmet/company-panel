@@ -54,23 +54,24 @@ export const ProtectedRoute = () => {
   }
 
   if (offline) {
-    // Server-issued access tokens and the previously verified user/branch
-    // are required even for offline shell access. Never trust a network flag
-    // as evidence of authorization.
+    // Never expose cached pages to unverified, expired or different-tenant
+    // sessions. The common authorization checks below still apply to every
+    // page even when their data is read from the device.
     const verified = isAuthenticated && offlineSessionDeadline(user) > Date.now();
-    if (verified && !ready) return <p role="status">Loading offline Inventory…</p>;
-    if (verified && (location.pathname === '/settings' ||
-        (snapshot && (location.pathname === '/stock' || location.pathname === '/')))) {
-      return <DashboardLayout><Outlet /></DashboardLayout>;
-    }
-    const notice = <section className="cg-pwa-controls" role="status">
-        <strong>Offline</strong>
-        <p>{snapshot
-          ? 'This page requires an internet connection.'
-          : 'Open Inventory online with a verified account to use it offline.'}</p>
-        {snapshot && <Link to="/stock">Open Inventory</Link>}
+    if (!verified) {
+      return <section className="cg-pwa-controls" role="status">
+        <strong>Offline session unavailable</strong>
+        <p>Connect to the internet to verify your sign-in before using the app offline.</p>
       </section>;
-    return verified ? <DashboardLayout>{notice}</DashboardLayout> : notice;
+    }
+    if (!ready) return <p role="status">Loading saved offline data…</p>;
+    if (featureAccess.unavailable && !featureAccess.loading) {
+      return <section className="cg-pwa-controls" role="status">
+        <strong>Company access not saved on this device</strong>
+        <p>Open the workspace online once to verify your company permissions before going offline.</p>
+        {snapshot && <Link to="/stock">Inventory cache available after access verification</Link>}
+      </section>;
+    }
   }
 
   if (!isAuthenticated) {
