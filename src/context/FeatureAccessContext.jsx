@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { isAccountOnly } from '../utils/accountWorkspace';
 import { useOfflineInventory } from '../pwa/InventoryOfflineProvider';
 import { useAuth } from '../hooks/useAuth';
-import { readFeatureAccess, rememberFeatureAccess } from '../pwa/offlineAccess';
+import { readFeatureAccess, rememberFeatureAccess, offlineAccessAfterFailure } from '../pwa/offlineAccess';
 
 // UI filtering only. Django tenant permissions and entitlements remain authoritative.
 const FeatureAccessContext = createContext(null);
@@ -110,9 +110,16 @@ export function FeatureAccessProvider({ children }) {
       };
       setAccess(verifiedAccess);
       rememberFeatureAccess(user, verifiedAccess);
-    } catch {
-      // Offline/invalid entitlement results never unlock another tenant's modules.
-      if (requestId === latestRequestRef.current) setAccess({ ...LOCKED, userKey });
+    } catch (error) {
+      // The Django server remains authoritative for every live request.
+      // If it is temporarily unreachable, use ONLY the last successful
+      // entitlement response for the same verified user/company/branch,
+      // bounded by the original JWT/label expiry. Never restore access after
+      // explicit 401/403, validation or tenant-mismatch failures.
+      if (requestId === latestRequestRef.current) {
+        const saved = offlineAccessAfterFailure(user, error);
+        setAccess(saved || { ...LOCKED, userKey });
+      }
     } finally {
       if (requestId === latestRequestRef.current) setLoading(false);
     }
