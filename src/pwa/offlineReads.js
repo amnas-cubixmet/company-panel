@@ -1,4 +1,4 @@
-import { inventoryScope, offlineSessionDeadline, scopeKey } from './session.js';
+import { offlineUserScope, offlineSessionDeadline, scopeKey } from './session.js';
 
 // Browser-local read-through snapshots for previously visited pages only.
 // Never cache API auth, entitlements, files or secrets. These are unencrypted
@@ -43,7 +43,7 @@ export function offlineReadRequestKey(config) {
 function verified() {
   try {
     const user = JSON.parse(localStorage.getItem('auth_user') || 'null');
-    const scope = scopeKey(inventoryScope(user));
+    const scope = scopeKey(offlineUserScope(user));
     const deadline = offlineSessionDeadline(user);
     return scope && deadline > Date.now() ? { scope, deadline } : null;
   } catch {
