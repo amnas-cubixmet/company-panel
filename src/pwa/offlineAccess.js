@@ -1,4 +1,4 @@
-import { inventoryScope, offlineSessionDeadline, scopeKey } from './session';
+import { inventoryScope, offlineSessionDeadline, scopeKey } from './session.js';
 
 const STORAGE_KEY = 'cubixgear:verified-feature-access:v1';
 
