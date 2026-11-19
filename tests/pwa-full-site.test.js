@@ -46,6 +46,21 @@ test('saved permissions require matching verified user, company, branch and JWT 
       labelOnly: false, unavailable: false,
     });
     assert.deepEqual(readFeatureAccess(user).permissions, ['dashboard.view']);
+
+    // Company owners may have no selected branch. Their verified company
+    // shell may still be browsed offline; stock drafts remain branch-scoped.
+    const owner = { ...user, branch: null };
+    rememberVerifiedSession(owner);
+    rememberFeatureAccess(owner, {
+      companyId: 'shop1', permissions: ['dashboard.view'], modules: ['dashboard'],
+      labelOnly: false, unavailable: false,
+    });
+    assert.deepEqual(readFeatureAccess(owner).permissions, ['dashboard.view']);
+    rememberVerifiedSession(user);
+    rememberFeatureAccess(user, {
+      companyId: 'shop1', permissions: ['dashboard.view'], modules: ['dashboard'],
+      labelOnly: false, unavailable: false,
+    });
     assert.equal(readFeatureAccess({ ...user, company: { id: 'shop2' } }), null);
     assert.equal(readFeatureAccess({ ...user, branch: { id: 'branch2' } }), null);
 
