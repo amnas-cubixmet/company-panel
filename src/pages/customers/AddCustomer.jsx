@@ -5,12 +5,17 @@ import { StickyFormFooter } from '../../components/common/forms/StickyFormFooter
 import { CustomerManagementTabs } from '../../components/customers/CustomerManagementTabs';
 import { CustomerFormFields } from '../../components/customers/CustomerFormFields';
 import { customerService } from '../../services/customer.service';
+import { useAuth } from '../../hooks/useAuth';
+import { useOffline } from '../../pwa/connectivity';
+import { queueOfflineCustomer } from '../../pwa/offlineCustomers';
 import {
   customerFormDefaults, toCustomerFormPayload, validateCustomerContact,
 } from '../../utils/customerFormModel';
 
 export const AddCustomer = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const offline = useOffline();
   const [formData, setFormData] = useState(customerFormDefaults);
   const [branches, setBranches] = useState([]);
   const [branchError, setBranchError] = useState('');
@@ -51,6 +56,11 @@ export const AddCustomer = () => {
     setSubmitting(true);
     try {
       const payload = toCustomerFormPayload(formData);
+      if (offline) {
+        await queueOfflineCustomer(user, payload);
+        navigate('/settings?section=pwa');
+        return;
+      }
       const duplicate = await customerService.checkDuplicateCustomer({
         phone: payload.phone, email: payload.email,
       });
@@ -76,7 +86,7 @@ export const AddCustomer = () => {
       <CustomerFormFields values={formData} onChange={change} errors={fieldErrors}
         branches={branches} branchError={branchError} disabled={submitting}/>
       <StickyFormFooter
-        statusText="New Customer"
+        statusText={offline ? "Offline draft — not yet in Django" : "New Customer"}
         cancelLabel="Cancel" saveLabel="Save Customer"
         isSubmitting={submitting} onCancel={() => navigate('/customers')}
       />
