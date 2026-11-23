@@ -120,6 +120,23 @@
   padding: 9px 0;
   background: transparent;
 }
+.quick-service-search-box--stacked {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  justify-items: stretch;
+  gap: 1px;
+  min-height: 64px;
+  padding: 7px 10px 5px;
+}
+.quick-service-search-box--stacked > svg { align-self: start; }
+.quick-service-page .quick-service-search-box--stacked input {
+  flex: none;
+  width: 100%;
+  min-height: 34px;
+  padding: 0;
+  font-size: 14px;
+}
 .quick-service-search-box:focus-within { border-color: var(--primary, #4f46e5); }
 
 .quick-service-results,
