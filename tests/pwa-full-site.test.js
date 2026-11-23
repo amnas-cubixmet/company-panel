@@ -16,6 +16,7 @@ test('offline API reads are scoped to allowed GET JSON endpoints and distinct fi
   );
   assert.equal(offlineReadRequestKey({ ...base, method: 'post', url: '/customers' }), '');
   assert.equal(offlineReadRequestKey({ ...base, url: '/auth/me' }), '');
+  assert.equal(offlineReadRequestKey({ ...base, url: '/customers/offline-capabilities' }), '');
   assert.equal(offlineReadRequestKey({ ...base, url: '/saas/credits/access' }), '');
   assert.equal(offlineReadRequestKey({ ...base, url: '/jobs/1/files/2' }), '');
   assert.equal(offlineReadRequestKey({ ...base, url: '/customers', responseType: 'blob' }), '');

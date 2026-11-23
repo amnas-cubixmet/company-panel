@@ -1,7 +1,8 @@
 import { InstallAppControls, InventorySyncControls } from '../../pwa/AppControls';
 import { useOffline } from '../../pwa/connectivity';
+import { OfflineCustomerSettings } from '../../pwa/OfflineCustomerSync';
 import { useContext, useEffect, useMemo, useState } from "react";
-import { Bell, Boxes, Building2, Clock3, CreditCard, ShieldCheck, WalletCards } from 'lucide-react';
+import { Bell, Boxes, Building2, Clock3, CreditCard, ShieldCheck, WalletCards, HardDrive } from 'lucide-react';
 import { ThemeContext } from '../../context/ThemeContext';
 import { settingsService } from '../../services/settings.service';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -24,7 +25,8 @@ const sections = [
   { id: 'attendance', label: 'Attendance Rules', icon: Clock3 },
   { id: 'payroll', label: 'Payroll', icon: WalletCards },
   { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'security', label: 'Roles & Security', icon: ShieldCheck }
+  { id: 'security', label: 'Roles & Security', icon: ShieldCheck },
+  { id: 'pwa', label: 'PWA & Offline Sync', icon: HardDrive }
 ];
 
 const SETTINGS_SECTION_PERMISSIONS = { operations: 'jobs.view', billing: 'invoices.view', inventory: 'stock.view', attendance: 'attendance.manage', payroll: 'payroll.view' };
@@ -213,7 +215,19 @@ export const Settings = () => {
   };
 
   const appControls = <><InstallAppControls /><InventorySyncControls /></>;
-  if (offline) return <div className="settings-page">{appControls}</div>;
+  if (offline) return <div className="settings-page">
+    {appControls}
+    <OfflineCustomerSettings />
+  </div>;
+
+  if (active === 'pwa') return <div className="settings-page">
+    {appControls}
+    <div className="settings-dashboard-layout">
+      <SettingsSectionNav sections={visibleSections} active={active} dirtySections={dirtySections}
+        onChange={id => navigate('/settings?section=' + id)} />
+      <OfflineCustomerSettings />
+    </div>
+  </div>;
 
   if (loading) return (
     <div className="settings-page" role="status" aria-live="polite">

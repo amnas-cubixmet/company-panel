@@ -2,6 +2,7 @@
 import { RecordReferenceRouter } from './routes/RecordReferenceRouter';
 import { InventoryOfflineProvider } from './pwa/InventoryOfflineProvider';
 import { AppUpdateNotice } from './pwa/AppControls';
+import { OfflineCustomerAutoSync } from './pwa/OfflineCustomerSync';
 import { AuthProvider } from './context/AuthContext';
 import { FeatureAccessProvider } from './context/FeatureAccessContext';
 import { CompanyProvider } from './context/CompanyContext';
@@ -72,6 +73,7 @@ export function App() {
           <AppDialogHost />
           <AuthProvider>
             <InventoryOfflineProvider>
+              <OfflineCustomerAutoSync />
               <AppUpdateNotice />
               <FeatureAccessProvider>
                 <CompanyProvider>

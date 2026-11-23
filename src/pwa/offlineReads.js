@@ -15,7 +15,7 @@ const READ_MODULES = new Set([
   'reports', 'notifications', 'settings', 'company', 'branches', 'roles',
   'staff', 'saas', 'account', 'e-way-bills',
 ]);
-const PRIVATE_PATH = /\/(?:auth|login|refresh|logout|password|security|tokens?|keys?|files?|download|export|webhooks?|gateway|checkout|verify|access|entitlements|bank-accounts?|payslips?|statements?\/download|photos?\/file)(?:\/|$)/i;
+const PRIVATE_PATH = /\/(?:auth|login|refresh|logout|password|security|tokens?|keys?|files?|download|export|webhooks?|offline-capabilities|gateway|checkout|verify|access|entitlements|bank-accounts?|payslips?|statements?\/download|photos?\/file)(?:\/|$)/i;
 let database;
 
 export function offlineReadRequestKey(config) {
