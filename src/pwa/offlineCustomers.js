@@ -2,6 +2,7 @@ import apiClient from '../api/apiClient.js';
 import { offlineSnapshot } from './connectivity.js';
 import { inventoryScope, offlineSessionDeadline, scopeKey } from './session.js';
 import { readFeatureAccess } from './offlineAccess.js';
+import { customerSyncErrorIsRetryable } from './offlineCustomerRules.js';
 
 // Only Customer CREATE is audited for offline replay at present.
 // Keep the device-local queue separate from cached GET responses and stock drafts.
@@ -197,8 +198,7 @@ async function doSync(user) {
       }));
       synced++;
     } catch (error) {
-      if (!error?.status || error.status === 401 || error.status === 408 ||
-          error.status === 425 || error.status === 429 || error.status >= 500) {
+      if (customerSyncErrorIsRetryable(error)) {
         break; // Keep a retryable, idempotent pending operation on uncertainty.
       }
       await patchRecord(row.key, current => ({
