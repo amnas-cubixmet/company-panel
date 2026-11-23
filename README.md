@@ -74,3 +74,19 @@ No database passwords, email credentials, Django/JWT secrets or Redis broker
 passwords may appear in frontend `VITE_*` variables — they are public.
 See the backend [PostgreSQL migration and Celery deployment guide](https://github.com/amnas-cubixmet/cubegears-backend/blob/main/docs/production-postgres-celery.md)
 after its deployment branch is merged.
+
+## Customer Website subdomains (kubescare.tech)
+
+The public `abc-mortgage.customer.kubescare.tech` website is **not** this
+React/Vite Company Panel. This app already reads the company-specific URL from
+Django `GET /api/v1/company/customer-website`, lets an authorized owner rename
+the label at `PATCH /api/v1/company/customer-website/subdomain`, and keeps
+production Open Website links disabled until the backend returns
+`wildcardReady: true`.
+
+For the actual rollout, configure `CUSTOMER_PORTAL_ROOT_DOMAIN`, the signed
+Customer Website proxy, wildcard DNS/TLS and the backend rollout flag. Do **not**
+add a `VITE_*` secret or point `VITE_API_URL` to a customer-site wildcard.
+See the backend [kubescare wildcard deployment runbook](https://github.com/amnas-cubixmet/cubegears-backend/blob/main/docs/customer-website-kubescare-wildcard.md)
+after the corresponding backend PR is merged. A separate Customer Website
+Vercel frontend/BFF deployment is still required for public pages.
