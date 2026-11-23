@@ -1,5 +1,35 @@
 # Full-site offline PWA: current capabilities and limits
 
+## Diagnosing a local offline test
+
+The Vite dev server (`npm run dev`, generally port 5173) does not register the
+production service worker. To test whether the installed app shell itself loads
+offline, keep the backend running, sign in, and run:
+
+```sh
+npm run build
+npm run preview
+```
+
+Open the preview URL (normally `http://localhost:4173`) **online first**.
+Wait for the service worker to activate and visit each permitted page that
+you expect to read offline. Then disconnect the backend/network, keep the
+frontend preview server running for the first test, and reload. Check
+DevTools > Application > Service Workers / IndexedDB.
+
+When Django is stopped but Wi-Fi is available, the first failed API request
+marks the backend unavailable; subsequent API GETs use previously stored,
+scoped snapshots if eligible. Unsaved or sensitive GET endpoints fail fast
+rather than sending repeated requests to `127.0.0.1:8000`. Some in-flight
+requests or separately implemented network calls can still report errors.
+Readiness polling probes recovery while the app is visible. This does
+**not** preload uncached modules or enable new offline write operations.
+
+A first-time offline visit has no private API data. Cached reads also require
+the previously verified, unexpired access JWT and scoped permissions; after
+expiry, sign in online again. The default JWT access lifetime is 30 minutes.
+Do not bypass this by simply extending IndexedDB TTL in the browser.
+
 CubixGear Company Panel keeps the React/Vite shell installable and cached by the
 versioned service worker. No private Django API response is stored in CacheStorage.
 
