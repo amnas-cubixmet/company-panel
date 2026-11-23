@@ -98,6 +98,7 @@
 .quick-service-page textarea { resize: vertical; }
 .quick-service-search-box {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -107,11 +108,16 @@
   background: var(--surface);
 }
 .quick-service-search-box > svg { flex: 0 0 auto; color: var(--text-muted); }
-.quick-service-search-box input {
+.quick-service-page .quick-service-search-box input {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  min-height: 40px;
   border: 0;
+  border-radius: 0;
   outline: 0;
   box-shadow: none;
-  padding-inline: 0;
+  padding: 9px 0;
   background: transparent;
 }
 .quick-service-search-box:focus-within { border-color: var(--primary, #4f46e5); }
