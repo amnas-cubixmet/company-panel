@@ -61,6 +61,14 @@ export function isOfflineCustomerEnabled(user) {
   catch { return false; }
 }
 
+export async function verifyOfflineCustomerSupport() {
+  const capability = await apiClient.get('/customers/offline-capabilities', { timeout: 12000 });
+  if (capability?.customerCreatesIdempotent !== true) {
+    throw new Error('The Django backend does not support safe offline customer sync yet.');
+  }
+  return true;
+}
+
 export function setOfflineCustomerEnabled(user, enabled) {
   const scope = scoped(user);
   if (!scope) throw new Error('Sign in online and choose a workshop branch first.');
@@ -169,6 +177,7 @@ async function doSync(user) {
   if (!scope || offlineSnapshot()) return { synced: 0 };
   const rows = (await listOfflineCustomers(user)).filter(row => row.state === 'pending');
   if (!rows.length) return { synced: 0 };
+  await verifyOfflineCustomerSupport();
   const profile = await apiClient.get('/auth/me', { timeout: 12000 });
   const verified = profile?.user || profile;
   if (scopeKey(inventoryScope(verified)) !== scope) {
