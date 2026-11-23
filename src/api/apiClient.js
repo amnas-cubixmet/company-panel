@@ -2,7 +2,8 @@ import axios from 'axios';
 import { API_CONFIG } from './apiConfig';
 import { forgetVerifiedSession } from '../pwa/session';
 import { forgetFeatureAccess } from '../pwa/offlineAccess';
-import { offlineSnapshot } from '../pwa/connectivity';
+import { offlineSnapshot, reportBackendConnection } from '../pwa/connectivity';
+import { isBackendNetworkFailure, shouldSkipUncachedOfflineRead } from '../pwa/offlineTransportRules';
 import {
   offlineReadRequestKey, readOfflineResponse, rememberOfflineResponse,
   clearOfflineResponses,
@@ -96,7 +97,8 @@ apiClient.interceptors.request.use(
 
     // A limited, device-local read-only copy of pages that this account
     // already visited online. Auth, permissions and binary files are excluded.
-    if (offlineSnapshot() && offlineReadRequestKey(config)) {
+    const cacheKey = offlineReadRequestKey(config);
+    if (offlineSnapshot() && cacheKey) {
       config.adapter = async request => {
         const cached = await readOfflineResponse(request).catch(() => ({ found: false }));
         if (!cached.found) {
@@ -114,6 +116,13 @@ apiClient.interceptors.request.use(
           config: request,
         };
       };
+    } else if (shouldSkipUncachedOfflineRead(config, offlineSnapshot(), cacheKey)) {
+      // Never repeat a known-failing network request for unsaved data.
+      // Existing session handling sees a transport failure, not fake API data.
+      const error = new Error('The backend is offline and this information is not saved on this device.');
+      error.code = 'ERR_NETWORK';
+      error.config = config;
+      return Promise.reject(error);
     }
     return config;
   },
@@ -128,6 +137,10 @@ apiClient.interceptors.response.use(
     return response.data;
   },
   async (error) => {
+    // navigator.onLine can still be true when Django is stopped locally.
+    // Mark the API unreachable on the first actual network failure so later
+    // page requests use verified IndexedDB reads rather than spamming port 8000.
+    if (isBackendNetworkFailure(error)) reportBackendConnection(false);
     if (error?.code === 'OFFLINE_WRITE_BLOCKED' || error?.code === 'OFFLINE_CACHE_MISS') {
       return Promise.reject(error);
     }
