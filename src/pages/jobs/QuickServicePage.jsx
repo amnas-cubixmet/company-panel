@@ -473,6 +473,18 @@ export function QuickServicePage() {
   const addPart = row => {
     const available = Number(row.branchAvailable ?? row.available ?? row.onHand ?? 0);
     if (available <= 0) return;
+    const existing = items.find(item => item.kind === 'part' && String(item.inventoryId) === String(row.id));
+    if (existing) {
+      const nextQty = Number(existing.qty || 0) + 1;
+      if (nextQty > available) {
+        setError(`Only ${available} of ${row.partName || row.name} are available in this branch.`);
+        return;
+      }
+      setItems(old => old.map(item => item.key === existing.key ? { ...item, qty: String(nextQty) } : item));
+      setError('');
+      resetRequestKey();
+      return;
+    }
     setItems(old => [...old, {
       key: makeKey(), kind: 'part', inventoryId: row.id,
       description: row.partName || row.name, sku: row.sku || '',
@@ -661,7 +673,7 @@ export function QuickServicePage() {
                   {items.map(item=><article className="quick-service-added-item" key={item.key}>
                     <div className="quick-service-added-title"><div><strong>{item.description || item.workDescription}</strong><small>{item.kind === 'part' ? `Spare Part · ${item.sku}` : item.kind === 'outside' ? `Outside Labour · ${item.workerName}` : item.kind === 'service' ? 'Catalogue Service' : 'Custom Service'}</small></div><button type="button" aria-label={`Remove ${item.description}`} onClick={()=>removeItem(item.key)}><Trash2 size={16}/></button></div>
                     <div className="quick-service-added-controls">
-                      <label>Qty<input type="number" min="0.01" step="0.01" value={item.qty} onChange={e=>updateItem(item.key,'qty',e.target.value)} disabled={item.kind==='outside'}/></label>
+                      <label>Qty<input type="number" min="0.01" max={item.kind === 'part' ? item.available : undefined} step="0.01" value={item.qty} onChange={e=>updateItem(item.key,'qty',e.target.value)} disabled={item.kind==='outside'} aria-label={`${item.description} quantity`}/></label>
                       {item.kind==='outside' ? <><label>Customer charge<input type="number" min="0.01" step="0.01" value={item.customerCharge} onChange={e=>{updateItem(item.key,'customerCharge',e.target.value); updateItem(item.key,'rate',e.target.value);}}/></label><label>Worker cost<input type="number" min="0.01" step="0.01" value={item.workerCharge} onChange={e=>updateItem(item.key,'workerCharge',e.target.value)}/></label></> : item.kind==='custom' ? <label>Rate (₹)<input type="number" min="0.01" step="0.01" value={item.rate} onChange={e=>updateItem(item.key,'rate',e.target.value)}/></label> : <div className="quick-service-line-price"><small>Unit price</small><strong>{currency.format(Number(item.rate||0))}</strong></div>}
                       <div className="quick-service-line-total"><small>Line total</small><strong>{currency.format(Number(item.rate || item.customerCharge || 0)*Number(item.qty||1))}</strong></div>
                     </div>
