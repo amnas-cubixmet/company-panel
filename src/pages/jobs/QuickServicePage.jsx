@@ -200,7 +200,7 @@ function CustomerVehicleSection({ can, customer, onCustomer, vehicle, onVehicle,
               </div>
             ) : (
               <>
-                <div className="quick-service-search-box quick-service-search-box--stacked">
+                <div className="quick-service-search-box">
                   <Search size={16} aria-hidden="true"/>
                   <input value={customerQuery} placeholder="Search name or phone" onFocus={() => setCustomerOpen(true)}
                     onChange={event => { setCustomerQuery(event.target.value); setCustomerOpen(true); setNewCustomer(false); }} />
@@ -235,7 +235,7 @@ function CustomerVehicleSection({ can, customer, onCustomer, vehicle, onVehicle,
               </div>
             ) : (
               <>
-                <div className="quick-service-search-box quick-service-search-box--stacked">
+                <div className="quick-service-search-box">
                   <Search size={16} aria-hidden="true"/>
                   <input value={vehicleQuery} placeholder="Search registration / model" onFocus={() => setVehicleOpen(true)}
                     onChange={event => { setVehicleQuery(event.target.value); setVehicleOpen(true); setNewVehicle(false); }} />
