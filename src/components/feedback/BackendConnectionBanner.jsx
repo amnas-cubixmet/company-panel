@@ -77,7 +77,7 @@ export function BackendConnectionBanner() {
       <WifiOff size={19} aria-hidden="true" className="backend-connection-symbol" />
       <div className="backend-connection-copy">
         <strong>{retrying ? 'Reconnecting to CubeGears…' : issue === 'dependencies' ? 'Database or service temporarily unavailable' : 'Backend connection unavailable'}</strong>
-        <span>Changes cannot be saved until CubeGears is ready. Your session stays signed in.</span>
+        <span>Server changes are unavailable until CubeGears is ready. Supported offline drafts remain on this device.</span>
       </div>
       <button type="button" onClick={() => checkConnection()} disabled={retrying}>
         <RefreshCw size={16} aria-hidden="true" />
