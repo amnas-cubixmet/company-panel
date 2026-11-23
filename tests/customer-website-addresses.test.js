@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { customerWebsiteDevParams, trackingUrlWithDevPort } from '../src/utils/customerWebsiteAddresses.js';
+import { customerWebsiteAddresses, customerWebsiteDevParams, trackingUrlWithDevPort } from '../src/utils/customerWebsiteAddresses.js';
 
 const trackingUrl = 'http://abc-motors.localhost:5174/access/fixture.token';
 
@@ -21,4 +21,19 @@ test('customer tracking keeps the backend URL outside configured local developme
     customerWebsiteDevParams(true, 'app.example.test', configuredOrigin)]) {
     assert.equal(trackingUrlWithDevPort(trackingUrl, params.customerWebsiteDevOrigin), trackingUrl);
   }
+});
+
+test('production subdomain URL uses Django hostname and remains gated until wildcard rollout', () => {
+  const settings = {
+    subdomain: 'abc-mortgage.customer.kubescare.tech',
+    subdomainLabel: 'abc-mortgage',
+  };
+  const pending = customerWebsiteAddresses({ ...settings, wildcardReady: false });
+  assert.equal(pending.productionUrl, 'https://abc-mortgage.customer.kubescare.tech/');
+  assert.equal(pending.suffix, '.customer.kubescare.tech');
+  assert.equal(pending.canOpen, false);
+
+  const active = customerWebsiteAddresses({ ...settings, wildcardReady: true });
+  assert.equal(active.displayUrl, 'https://abc-mortgage.customer.kubescare.tech/');
+  assert.equal(active.canOpen, true);
 });
