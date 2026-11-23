@@ -41,7 +41,7 @@ export const DashboardLayout = ({ children }) => {
           <nav className="cg-pwa-controls cg-pwa-offline-nav" aria-label="Offline workspace"
             style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' }}>
             <strong>Offline · previously saved data</strong>
-            <span>Other changes require internet. Inventory drafts can sync after reconnection.</span>
+            <span>Inventory and enabled Customer drafts save on this device. Other changes require internet; pending drafts sync after reconnection.</span>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
               {routeConfig.filter(route => can(route.permission) || route.accessAny?.some(can)).map(route =>
                 <Link key={route.path} to={route.path}>{route.label}</Link>)}
