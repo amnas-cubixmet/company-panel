@@ -252,7 +252,7 @@ export function OwnerOnboarding() {
       ])));
       const issue = setupIssue(result);
       const next = STEPS.findIndex(({ key }) => !(result.completedSteps || []).includes(key));
-      setActive(next < 0 ? STEPS.length - 1 : next);
+      setActive(next < 0 ? (result.completed ? 0 : STEPS.length - 1) : next);
       if (issue && issue.index === next) setError(issue.message);
     } catch (cause) {
       setError(cause?.message || 'Unable to load workshop setup.');
