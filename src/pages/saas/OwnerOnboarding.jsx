@@ -69,6 +69,22 @@ const STEPS = [
   },
 ];
 
+// Completion can reject earlier saved steps if the master data is incomplete.
+const setupIssue = (payload) => {
+  const fields = payload?.missingFields || {};
+  const missing = Array.isArray(payload?.missingSteps) ? payload.missingSteps : [];
+  const index = STEPS.findIndex(step => Object.hasOwn(fields, step.key) || missing.includes(step.key));
+  if (index < 0) return null;
+  const step = STEPS[index];
+  const entries = Object.entries(fields[step.key] || {});
+  const details = entries.map(([key, messages]) => {
+    const label = step.fields.find(([field]) => field === key)?.[1] || key;
+    return `${label}: ${Array.isArray(messages) ? messages.join(' ') : String(messages)}`;
+  });
+  return { index, invalidKeys: STEPS.filter(s => Object.hasOwn(fields, s.key) || missing.includes(s.key)).map(s => s.key),
+    message: details.length ? details.join(' • ') : `Please save ${step.title} before finishing setup.` };
+};
+
 const integerFields = new Set(['punchRadiusMeters', 'bookingSlotMinutes', 'paymentTermsDays']);
 const numberFields = new Set(['latitude', 'longitude', 'defaultTaxRate']);
 const LOCATION_FIELDS = new Set(['latitude', 'longitude', 'punchRadiusMeters']);
@@ -234,8 +250,10 @@ export function OwnerOnboarding() {
               selectedAccountId: '' }
           : result[key] || {},
       ])));
+      const issue = setupIssue(result);
       const next = STEPS.findIndex(({ key }) => !(result.completedSteps || []).includes(key));
-      setActive(next < 0 ? 0 : next);
+      setActive(next < 0 ? (result.completed ? 0 : STEPS.length - 1) : next);
+      if (issue && issue.index === next) setError(issue.message);
     } catch (cause) {
       setError(cause?.message || 'Unable to load workshop setup.');
     } finally {
@@ -399,6 +417,8 @@ export function OwnerOnboarding() {
       const missing = STEPS.findIndex(step => !next.completedSteps.includes(step.key));
       if (missing >= 0) {
         setActive(missing);
+        const issue = setupIssue(next);
+        if (issue && issue.index === missing) setError(issue.message);
       } else {
         const finished = await onboardingService.complete();
         setState(finished);
@@ -406,8 +426,24 @@ export function OwnerOnboarding() {
         window.location.replace('/account');
       }
     } catch (cause) {
-      const first = Object.entries(cause?.fieldErrors || {}).find(([key]) => current.fields.some(([field]) => field === key));
-      setError(first ? `${first[0]}: ${first[1]}` : (cause?.message || 'Unable to save. Please review this step.'));
+      const issue = setupIssue(cause?.data);
+      if (issue) {
+        setActive(issue.index);
+        setState(previous => previous && ({
+          ...previous,
+          completedSteps: (previous.completedSteps || []).filter(key => !issue.invalidKeys.includes(key)),
+        }));
+        setError(issue.message);
+      } else {
+        const nestedUpi = cause?.data?.upi;
+        const upiErrors = nestedUpi && typeof nestedUpi === 'object'
+          ? Object.entries(nestedUpi).map(([key, value]) => `${key === 'upiId' ? 'UPI ID' : key === 'payeeName' ? 'Account holder name' : key}: ${Array.isArray(value) ? value.join(' ') : String(value)}`).join(' • ')
+          : '';
+        const first = Object.entries(cause?.fieldErrors || {}).find(([key]) => current.fields.some(([field]) => field === key));
+        const offline = ['ERR_NETWORK', 'OFFLINE_WRITE_BLOCKED', 'ECONNABORTED', 'ETIMEDOUT'].includes(cause?.code);
+        setError(offline ? 'Django API is unreachable. Start the backend, reconnect and retry. Your saved steps are preserved.' :
+          upiErrors || (first ? `${first[0]}: ${first[1]}` : (cause?.message || 'Unable to save. Please review this step.')));
+      }
     } finally {
       setSaving(false);
     }
