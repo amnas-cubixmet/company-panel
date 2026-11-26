@@ -7,5 +7,6 @@ const ROOT = '/company/onboarding';
 export const onboardingService = {
   get: () => apiClient.get(ROOT),
   saveStep: (step, data) => apiClient.patch(ROOT, { step, data }),
+  previewUpi: (data) => apiClient.post(ROOT, data),
   complete: () => apiClient.post(ROOT + '/complete', {}),
 };
