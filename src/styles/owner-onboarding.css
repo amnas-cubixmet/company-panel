@@ -176,3 +176,13 @@
   .cg-setup-bank-modes { display: grid; grid-template-columns: 1fr; }
   .cg-setup-bank-modes label { width: 100%; }
 }
+
+
+/* Reusable UPI payment setup uses the existing onboarding field layout. */
+.cg-setup-upi { margin-top: 20px; }
+.cg-setup-upi h3 { font-size: 16px; font-weight: 650; margin: 0 0 8px; }
+.cg-setup-upi-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.cg-setup-upi-preview { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px 12px; margin-top: 16px; text-align: center; border: 1px solid currentColor; border-radius: 12px; overflow-wrap: anywhere; }
+.cg-setup-upi-preview img { display: block; width: min(220px, 100%); height: auto; background: #fff; image-rendering: pixelated; }
+.cg-setup-upi-preview a { text-decoration: underline; }
+.cg-setup-upi-preview small { max-width: 360px; }

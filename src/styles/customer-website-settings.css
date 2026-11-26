@@ -37,3 +37,14 @@
 .cws-local-domain-info{display:grid;gap:4px;margin:12px 2px 0;font-size:13px;line-height:1.6;color:var(--text-secondary,#70848a);overflow-wrap:anywhere}
 .cws-local-domain-info strong{color:var(--text-primary,#34535a);font-weight:750}
 .cws-domain-url>span{min-width:0;overflow-wrap:anywhere}
+
+.cws-publication {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-basis: 100%;
+}
+
+#website-subdomain-status:not(:empty) {
+  flex-basis: 100%;
+}

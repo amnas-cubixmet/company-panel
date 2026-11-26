@@ -51,6 +51,8 @@ export function trackingUrlWithDevPort(value, configuredOrigin) {
 export function customerWebsiteAddresses({
   subdomain = '',
   subdomainLabel = '',
+  websiteUrl = '',
+  websiteEnabled = true,
   wildcardReady = false,
   localDevelopment = false,
   localOrigin = '',
@@ -64,7 +66,7 @@ export function customerWebsiteAddresses({
   const localUrl = localSuffix && validLabel.test(label)
     ? 'http://' + label + localSuffix + '/' : '';
   const productionHost = subdomain;
-  const productionUrl = productionHost ? 'https://' + productionHost + '/' : '';
+  const productionUrl = websiteUrl || (productionHost ? 'https://' + productionHost + '/' : '');
   const productionReady = Boolean(productionHost && wildcardReady);
   const suffix = localUrl
     ? localSuffix
@@ -78,6 +80,6 @@ export function customerWebsiteAddresses({
     localUrl,
     suffix,
     isLocalPreview: Boolean(localUrl),
-    canOpen: Boolean(localUrl || productionReady),
+    canOpen: websiteEnabled && Boolean(localUrl || productionReady),
   };
 }

@@ -47,7 +47,7 @@ const STEPS = [
     ],
   },
   {
-    key: 'bank', title: 'Bank & opening balance', subtitle: 'Connect an existing bank or add a new one (optional)',
+    key: 'bank', title: 'Bank & UPI payments', subtitle: 'Set up your bank account, opening balance and customer payment QR (optional)',
     fields: [
       ['name', 'Account display name', 'text', true],
       ['bankName', 'Bank name', 'text', true],
@@ -69,6 +69,22 @@ const STEPS = [
   },
 ];
 
+// Completion can reject earlier saved steps if the master data is incomplete.
+const setupIssue = (payload) => {
+  const fields = payload?.missingFields || {};
+  const missing = Array.isArray(payload?.missingSteps) ? payload.missingSteps : [];
+  const index = STEPS.findIndex(step => Object.hasOwn(fields, step.key) || missing.includes(step.key));
+  if (index < 0) return null;
+  const step = STEPS[index];
+  const entries = Object.entries(fields[step.key] || {});
+  const details = entries.map(([key, messages]) => {
+    const label = step.fields.find(([field]) => field === key)?.[1] || key;
+    return `${label}: ${Array.isArray(messages) ? messages.join(' ') : String(messages)}`;
+  });
+  return { index, invalidKeys: STEPS.filter(s => Object.hasOwn(fields, s.key) || missing.includes(s.key)).map(s => s.key),
+    message: details.length ? details.join(' • ') : `Please save ${step.title} before finishing setup.` };
+};
+
 const integerFields = new Set(['punchRadiusMeters', 'bookingSlotMinutes', 'paymentTermsDays']);
 const numberFields = new Set(['latitude', 'longitude', 'defaultTaxRate']);
 const LOCATION_FIELDS = new Set(['latitude', 'longitude', 'punchRadiusMeters']);
@@ -76,15 +92,18 @@ const PUNCH_RADIUS_OPTIONS = [50, 100, 150, 200, 300, 500, 1000];
 
 const apiDataFor = (step, draft) => {
   if (step.key === 'bank') {
-    if (draft?.configured) return { mode: 'existing', accountId: draft.accountId };
+    const upi = { upiId: String(draft?.upi?.upiId || '').trim(),
+      payeeName: String(draft?.upi?.payeeName || '').trim() };
+    if (draft?.configured) return { mode: 'existing', accountId: draft.accountId, upi };
     const mode = draft?.mode || 'new';
-    if (mode === 'skip') return { mode: 'skip' };
+    if (mode === 'skip') return { mode: 'skip', upi };
     if (mode === 'existing') {
-      return { mode: 'existing', accountId: draft?.selectedAccountId || '' };
+      return { mode: 'existing', accountId: draft?.selectedAccountId || '', upi };
     }
     // Never send a masked account number from snapshot back as raw bank data.
     return {
       mode: 'new',
+      upi,
       name: String(draft?.name || '').trim(),
       bankName: String(draft?.bankName || '').trim(),
       accountNumber: String(draft?.accountNumber || '').trim(),
@@ -118,6 +137,72 @@ const apiDataFor = (step, draft) => {
   }
   return values;
 };
+
+function UpiPaymentSetup({ value, saved, companyName, onChange, disabled }) {
+  const [preview, setPreview] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const upiId = String(value?.upiId || '');
+  const payeeName = String(value?.payeeName || '');
+  const matches = item => item?.upiId === upiId.trim() && item?.payeeName === payeeName.trim();
+  const qr = upiId.trim() && (matches(preview) ? preview : matches(saved) ? saved : null);
+  const change = (key, next) => {
+    setPreview(null);
+    setError('');
+    onChange({ upiId, payeeName, [key]: next,
+      ...(key === 'upiId' && next && !payeeName ? { payeeName: companyName || '' } : {}) });
+  };
+  const generate = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      setPreview(await onboardingService.previewUpi({ upiId: upiId.trim(), payeeName: payeeName.trim() }));
+    } catch (cause) {
+      setError(cause?.message || 'Unable to generate UPI QR.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="cg-setup-bank cg-setup-upi" aria-label="UPI payment setup">
+      <h3>UPI payment QR (optional)</h3>
+      <p className="cg-setup-bank-intro">Enter your workshop's receiving UPI ID to generate a reusable payment QR. This does not connect a bank or confirm payments.</p>
+      <div className="cg-setup-fields cg-setup-bank-fields">
+        <label>
+          <span className="cg-setup-label">UPI ID</span>
+          <input name="upiId" type="text" autoComplete="off" autoCapitalize="none" spellCheck={false}
+            maxLength={151} placeholder="workshop@upi" value={upiId} disabled={disabled || busy}
+            onChange={event => change('upiId', event.target.value)}/>
+        </label>
+        <label>
+          <span className="cg-setup-label">UPI account holder name</span>
+          <input name="payeeName" type="text" maxLength={100} required={Boolean(upiId.trim())}
+            value={payeeName} disabled={disabled || busy}
+            onChange={event => change('payeeName', event.target.value)}/>
+        </label>
+      </div>
+      <div className="cg-setup-upi-actions">
+        <button type="button" className="cg-setup-back" onClick={generate}
+          disabled={disabled || busy || !upiId.trim() || !payeeName.trim()}>
+          {busy ? 'Generating…' : 'Generate QR'}
+        </button>
+        <button type="button" className="cg-setup-back" disabled={disabled || busy || !upiId}
+          onClick={() => { setPreview(null); setError(''); onChange({ upiId: '', payeeName: '' }); }}>
+          Clear UPI
+        </button>
+      </div>
+      {error && <p className="cg-setup-error" role="alert">{error}</p>}
+      {qr?.qrDataUrl && <div className="cg-setup-upi-preview">
+        <img src={qr.qrDataUrl} alt="Scan to pay the workshop via UPI" width={220} height={220}/>
+        <strong>{qr.payeeName}</strong>
+        <span>{qr.upiId}</span>
+        <a href={qr.qrDataUrl} download="workshop-upi-qr.png">Download QR code</a>
+        <small>Check the recipient in your UPI app before sharing or paying. Save & continue to keep changes.</small>
+      </div>}
+      {!upiId.trim() && <p className="cg-setup-bank-note">Leave blank to skip UPI setup.</p>}
+    </section>
+  );
+}
 
 export function OwnerOnboarding() {
   const { user } = useAuth();
@@ -165,8 +250,10 @@ export function OwnerOnboarding() {
               selectedAccountId: '' }
           : result[key] || {},
       ])));
+      const issue = setupIssue(result);
       const next = STEPS.findIndex(({ key }) => !(result.completedSteps || []).includes(key));
-      setActive(next < 0 ? 0 : next);
+      setActive(next < 0 ? (result.completed ? 0 : STEPS.length - 1) : next);
+      if (issue && issue.index === next) setError(issue.message);
     } catch (cause) {
       setError(cause?.message || 'Unable to load workshop setup.');
     } finally {
@@ -330,6 +417,8 @@ export function OwnerOnboarding() {
       const missing = STEPS.findIndex(step => !next.completedSteps.includes(step.key));
       if (missing >= 0) {
         setActive(missing);
+        const issue = setupIssue(next);
+        if (issue && issue.index === missing) setError(issue.message);
       } else {
         const finished = await onboardingService.complete();
         setState(finished);
@@ -337,8 +426,24 @@ export function OwnerOnboarding() {
         window.location.replace('/account');
       }
     } catch (cause) {
-      const first = Object.entries(cause?.fieldErrors || {}).find(([key]) => current.fields.some(([field]) => field === key));
-      setError(first ? `${first[0]}: ${first[1]}` : (cause?.message || 'Unable to save. Please review this step.'));
+      const issue = setupIssue(cause?.data);
+      if (issue) {
+        setActive(issue.index);
+        setState(previous => previous && ({
+          ...previous,
+          completedSteps: (previous.completedSteps || []).filter(key => !issue.invalidKeys.includes(key)),
+        }));
+        setError(issue.message);
+      } else {
+        const nestedUpi = cause?.data?.upi;
+        const upiErrors = nestedUpi && typeof nestedUpi === 'object'
+          ? Object.entries(nestedUpi).map(([key, value]) => `${key === 'upiId' ? 'UPI ID' : key === 'payeeName' ? 'Account holder name' : key}: ${Array.isArray(value) ? value.join(' ') : String(value)}`).join(' • ')
+          : '';
+        const first = Object.entries(cause?.fieldErrors || {}).find(([key]) => current.fields.some(([field]) => field === key));
+        const offline = ['ERR_NETWORK', 'OFFLINE_WRITE_BLOCKED', 'ECONNABORTED', 'ETIMEDOUT'].includes(cause?.code);
+        setError(offline ? 'Django API is unreachable. Start the backend, reconnect and retry. Your saved steps are preserved.' :
+          upiErrors || (first ? `${first[0]}: ${first[1]}` : (cause?.message || 'Unable to save. Please review this step.')));
+      }
     } finally {
       setSaving(false);
     }
@@ -617,6 +722,11 @@ export function OwnerOnboarding() {
                   </>
                 )}
               </section>
+            )}
+            {current.key === 'bank' && (
+              <UpiPaymentSetup value={drafts.bank?.upi} saved={state.bank?.upi}
+                companyName={drafts.company?.name} disabled={saving}
+                onChange={value => update('upi', value)}/>
             )}
             {current.key === 'billing' && <p className="cg-setup-help">
               <ShieldCheck size={16}/> GST rates are configurable defaults, not a filing determination. Actual invoice tax depends on the applicable transaction.
